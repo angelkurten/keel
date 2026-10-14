@@ -118,6 +118,21 @@ curl -X POST localhost:8000/events \
 
 The body is one envelope or a list. The response is the ingest report: `processed`, `unhandled` types and `errors`. A malformed envelope is a `422`; a wrong token is a `401`. Without a token the endpoint accepts any caller, so use that only on localhost.
 
+## Consume a Kafka topic or an SQS queue
+
+Your SaaS publishes envelopes as JSON messages; Keel consumes them. `uv sync --extra kafka` (confluent-kafka) or `--extra sqs` (boto3).
+
+```python
+from keel.adapters.bus import KafkaAdapter, SqsAdapter
+
+adapter = KafkaAdapter.connect("broker:9092", topic="keel-events", group_id="keel")
+adapter = SqsAdapter.connect("https://sqs.us-east-1.amazonaws.com/123456789012/keel-events")
+ingestor.ingest(adapter)            # drain what is there now, then stop
+ingestor.ingest(adapter.follow())   # consume forever
+```
+
+Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the handler ran, so a crash mid-event re-delivers it. A message that is not a valid envelope raises and stays on the bus; pass `dead_letter=lambda body, error: ...` to log it somewhere and move on. Both adapters only need two calls from their client (`poll`/`commit`, `receive_message`/`delete_message`), which is how the tests run them on fakes and how you would wrap another client.
+
 ## Serve the tools over MCP
 
 ```bash

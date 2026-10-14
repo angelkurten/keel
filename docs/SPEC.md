@@ -163,9 +163,11 @@ An adapter is any iterable of envelopes. It MUST NOT interpret payloads.
 | Adapter | Status | Notes |
 | --- | --- | --- |
 | JSONL file | shipped | Development and tests. |
-| Postgres table + polling | planned 0.0.x | A cursor (last `recorded_at`, id) so restarts do not re-ingest. |
-| Webhook (HTTP) | planned 0.0.x | Validates the envelope, enqueues, returns 202. |
-| Kafka, SQS, Postgres CDC | planned 0.2 | |
+| Postgres table + polling | shipped | `PostgresTableAdapter`: a `seq` cursor in a file, so restarts resume. At-least-once. |
+| Webhook (HTTP) | shipped | `build_app`: validates the envelope, ingests, returns the report; bearer token. |
+| Kafka | shipped | `KafkaAdapter` (`keel.adapters.bus`): offset committed after the handler ran. At-least-once; `dead_letter` for poison messages. |
+| SQS | shipped | `SqsAdapter` (`keel.adapters.bus`): message deleted after the handler ran. Same semantics. |
+| Postgres CDC | planned | |
 
 ### 4.2 Handlers
 

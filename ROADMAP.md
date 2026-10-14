@@ -47,8 +47,8 @@ Exit: a pilot connects its second agent in under a day, measured.
 Pulled forward from Later on 2026-10-14. Small pieces, each its own release, while the post circulates and the pilots are found.
 
 - [x] Exportable audit trail per tenant: `keel export <tenant> --db` (entities, relations and facts with provenance, corrections, who annotated what)
-- [ ] Kafka and SQS adapters as optional extras, tested against fake consumers until a pilot runs a real broker
-- [ ] Agent registry: identity, permitted scopes and relations per agent, enforced in `Tools`. A design note first, then code
+- [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
+- [ ] Agent registry: identity, permitted scopes and relations per agent, enforced in `Tools`. Design note written ([docs/design/agent-registry.md](docs/design/agent-registry.md)); code after its two open questions are decided
 
 ## Later — 0.3+ (2027)
 

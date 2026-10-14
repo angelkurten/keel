@@ -78,7 +78,7 @@ ingestor = Ingestor(cartridge, SqliteStore("keel.db"))  # durable; MemoryStore()
 ingestor.ingest(adapter.follow(interval=5))
 ```
 
-Or receive envelopes over HTTP (`uv sync --extra webhook`):
+Or consume a bus: `KafkaAdapter.connect(...)` and `SqsAdapter.connect(...)` in `keel.adapters.bus` (`--extra kafka`, `--extra sqs`), at-least-once, acknowledged after the handler ran. Or receive envelopes over HTTP (`uv sync --extra webhook`):
 
 ```python
 from keel.adapters.webhook import build_app

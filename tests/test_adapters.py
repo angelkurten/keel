@@ -108,3 +108,113 @@ def test_mcp_server_exposes_exactly_the_five_tools():
             assert facts and all(f["subject"] == "tire:T-9001" for f in facts)
 
     anyio.run(run)
+
+
+# ---- bus adapters on fakes: the loop, the ack order, the poison pill ----------------------
+
+
+class _KafkaMessage:
+    def __init__(self, value, offset):
+        self._value, self.offset = value, offset
+
+    def value(self):
+        return self._value
+
+    def error(self):
+        return None
+
+
+class _KafkaConsumer:
+    def __init__(self, bodies):
+        self.queue = [_KafkaMessage(b, i) for i, b in enumerate(bodies)]
+        self.committed = []
+
+    def poll(self, timeout):
+        return self.queue.pop(0) if self.queue else None
+
+    def commit(self, message, asynchronous=False):
+        self.committed.append(message.offset)
+
+
+class _Sqs:
+    def __init__(self, bodies):
+        self.pending = {f"rh-{i}": b for i, b in enumerate(bodies)}  # stays visible until deleted
+        self.deleted = []
+
+    def receive_message(self, QueueUrl, MaxNumberOfMessages, WaitTimeSeconds):
+        items = list(self.pending.items())[:MaxNumberOfMessages]
+        return {"Messages": [{"MessageId": h, "ReceiptHandle": h, "Body": b} for h, b in items]}
+
+    def delete_message(self, QueueUrl, ReceiptHandle):
+        self.pending.pop(ReceiptHandle)
+        self.deleted.append(ReceiptHandle)
+
+
+def _lines():
+    from pathlib import Path
+
+    lines = Path(FLEET_EVENTS).read_text(encoding="utf-8").splitlines()
+    return [line for line in lines if line.strip() and not line.startswith("#")]  # what JsonlAdapter yields
+
+
+def _bus(kind, bodies, **kw):
+    from keel.adapters.bus import KafkaAdapter, SqsAdapter
+
+    if kind == "kafka":
+        consumer = _KafkaConsumer([b.encode() for b in bodies])
+        return KafkaAdapter(consumer, **kw), consumer
+    client = _Sqs(bodies)
+    return SqsAdapter(client, "https://sqs.example/keel", **kw), client
+
+
+@pytest.mark.parametrize("kind", ["kafka", "sqs"])
+def test_bus_adapters_ingest_like_the_file_and_ack_after_the_handler(kind):
+    c = load_cartridge(FLEET)
+    adapter, client = _bus(kind, _lines())
+    store = MemoryStore()
+    seen_at_first_ack = []
+    original = client.commit if kind == "kafka" else client.delete_message
+
+    def ack_spy(*a, **k):  # the ack must run after the handler: the entity is already there
+        if not seen_at_first_ack:
+            seen_at_first_ack.append(store.entity(TENANT, "unit:MXK-4821") is not None)
+        return original(*a, **k)
+
+    if kind == "kafka":
+        client.commit = ack_spy
+    else:
+        client.delete_message = ack_spy
+    report = Ingestor(c, store).ingest(adapter, strict=True)
+    assert report.processed == 12 and not report.errors
+    assert seen_at_first_ack == [True]
+    assert len(client.committed if kind == "kafka" else client.deleted) == 12
+    reference = MemoryStore()
+    Ingestor(c, reference).ingest(JsonlAdapter(FLEET_EVENTS))
+    for subject in ("unit:MXK-4821", "tire:T-9001"):
+        assert _shape(Tools(c, store, TENANT), subject) == _shape(Tools(c, reference, TENANT), subject)
+
+
+@pytest.mark.parametrize("kind", ["kafka", "sqs"])
+def test_bus_adapters_poison_message_raises_unless_dead_lettered(kind):
+    c = load_cartridge(FLEET)
+    good = _lines()[0]
+    adapter, client = _bus(kind, ["not json", good])
+    with pytest.raises(ValueError):
+        Ingestor(c, MemoryStore()).ingest(adapter)
+    assert not (client.committed if kind == "kafka" else client.deleted)  # nothing acknowledged
+    dead = []
+    adapter, client = _bus(kind, ["not json", good], dead_letter=lambda body, exc: dead.append(type(exc).__name__))
+    report = Ingestor(c, MemoryStore()).ingest(adapter)
+    assert report.processed == 1 and dead == ["JSONDecodeError"]
+    assert len(client.committed if kind == "kafka" else client.deleted) == 2  # the poison pill was acked and skipped
+
+
+def test_bus_adapter_leaves_a_failed_event_unacked_in_strict_mode():
+    c = load_cartridge(FLEET)
+    lines = _lines()
+    broken = json.loads(lines[4])  # tire.depth_measured
+    del broken["payload"]["depth_mm"]  # the handler will raise KeyError
+    adapter, consumer = _bus("kafka", lines[:4] + [json.dumps(broken)])
+    with pytest.raises(KeyError):
+        Ingestor(c, MemoryStore()).ingest(adapter, strict=True)
+    assert consumer.committed == [0, 1, 2, 3]  # the four before it were acked, the failed one is redelivered

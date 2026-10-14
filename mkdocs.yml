@@ -35,6 +35,8 @@ nav:
   - Specification: SPEC.md
   - Roadmap: roadmap.md
   - Contributing: contributing.md
+  - Design notes:
+      - Agent registry: design/agent-registry.md
 
 markdown_extensions:
   - admonition
