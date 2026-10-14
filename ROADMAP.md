@@ -42,9 +42,9 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 
 Exit: a pilot connects its second agent in under a day, measured.
 
-## 0.2 — in parallel with the pilots (October–December 2026)
+## 0.2 — in parallel with the pilots (shipped as 0.2.0 on 2026-10-14)
 
-Pulled forward from Later on 2026-10-14. Small pieces, each its own release, while the post circulates and the pilots are found.
+Pulled forward from Later on 2026-10-14 and shipped the same day, while the post circulates and the pilots are found.
 
 - [x] Exportable audit trail per tenant: `keel export <tenant> --db` (entities, relations and facts with provenance, corrections, who annotated what)
 - [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
