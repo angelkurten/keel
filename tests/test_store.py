@@ -78,3 +78,13 @@ def test_cli_ingests_and_replays_into_a_db(tmp_path):
     res = CliRunner().invoke(app, ["replay", FLEET, EVENTS, TENANT, "--db", db])
     assert res.exit_code == 0 and "processed=12" in res.output, res.output
     assert len(SqliteStore(db).facts(TENANT, "tire:T-9001")) == 2  # replayed, not duplicated
+
+
+def test_cli_expire_drops_expired_memory(tmp_path):
+    db = str(tmp_path / "keel.db")
+    CliRunner().invoke(app, ["ingest", FLEET, EVENTS, "--db", db])
+    store = SqliteStore(db)
+    store.open_fact(TENANT, "tire:T-9001", "note", "old", valid_from=datetime(2026, 9, 1, tzinfo=UTC), scope="agent", expires_at=datetime(2026, 9, 2, tzinfo=UTC))
+    assert all(f.predicate != "note" for f in store.facts(TENANT, "tire:T-9001"))  # reads already hide it
+    res = CliRunner().invoke(app, ["expire", TENANT, "--db", db])
+    assert res.exit_code == 0 and "dropped=1" in res.output, res.output

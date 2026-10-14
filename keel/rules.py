@@ -28,17 +28,14 @@ from collections.abc import Iterable
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from keel.envelope import parse_iso
 from keel.store.base import Fact
 
 
 def _as_datetime(v: Any) -> datetime:
-    if isinstance(v, datetime):
-        d = v
-    elif isinstance(v, date):
-        d = datetime(v.year, v.month, v.day)
-    else:
-        d = datetime.fromisoformat(str(v))
-    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    if isinstance(v, date) and not isinstance(v, datetime):
+        return datetime(v.year, v.month, v.day, tzinfo=timezone.utc)
+    return parse_iso(v)
 
 
 _OPS = {

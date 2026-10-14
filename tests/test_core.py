@@ -20,8 +20,8 @@ def _run(cart, events):
     return c, s, ing, report
 
 
-def test_both_cartridges_validate():
-    for cart in (FLEET, CRM):
+def test_every_cartridge_validates():
+    for cart in (FLEET, CRM, "cartridges/finance", "cartridges/clinics"):
         assert load_cartridge(cart).validate() == []
 
 
@@ -163,3 +163,29 @@ def test_event_ids_are_content_hashes_when_the_source_has_none():
     assert a == b and len(set(a)) == len(a)  # stable across reads, distinct across events
     given = Event(tenant="t", type="x.y", subject="k:1", occurred_at=datetime(2026, 1, 1, tzinfo=UTC), source="s", id="given")
     assert given.id == "given"
+
+
+def test_fourth_cartridge_is_the_tutorial_one():
+    c, s, _, report = _run("cartridges/clinics", "examples/events/clinics.jsonl")
+    assert report.processed == 7 and not report.errors
+    t = Tools(c, s, "clinic-centro")
+    assert t.context("appointment:A-1")["evaluation"] == {"appointment_missed": True}
+    assert t.context("appointment:A-3")["evaluation"] == {"appointment_missed": False}
+    appts = [r["subject"] for r in t.related("patient:P-1", "booked_by")]
+    assert appts == ["appointment:A-1", "appointment:A-2", "appointment:A-3"]
+    missed = [a for a in appts if t.context(a)["evaluation"]["appointment_missed"]]
+    assert len(missed) >= c.rules["at_risk_patient"]["no_shows"]  # the rule without `when`: the agent applies it
+    assert t.related("appointment:A-4", "performed_in") == [
+        {"relation": "performed_in", "direction": "in", "subject": "treatment:T-1", "since": "2026-10-01T11:40:00+00:00"}
+    ]
+    assert [f["value"] for f in t.history("appointment:A-4", predicate="status")] == ["booked", "done"]
+
+
+def test_iso_parsing_accepts_z_and_bare_dates():
+    from keel.envelope import parse_iso
+
+    assert parse_iso("2026-09-05T10:00:00Z") == datetime(2026, 9, 5, 10, tzinfo=UTC)
+    assert parse_iso("2026-09-05") == datetime(2026, 9, 5, tzinfo=UTC)
+    c = load_cartridge("cartridges/clinics")
+    ev = Event(tenant="t", type="appointment.booked", subject="patient:P-9", occurred_at=datetime(2026, 1, 1, tzinfo=UTC), source="s", payload={"id": "A-9", "starts_at": "not a date", "treatment": "x"})
+    assert c.check_event(ev) == ["'appointment.booked' payload 'starts_at' should be datetime, got str"]

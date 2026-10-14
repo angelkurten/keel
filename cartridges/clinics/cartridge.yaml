@@ -1,0 +1,45 @@
+# Fourth cartridge: the one docs/first-cartridge.md walks you through, as shipped.
+# A clinic: patients, appointments, treatments. Adding it changed nothing under keel/.
+
+name: clinics
+version: 0.1.0
+
+entities:
+  patient:     { description: A person treated at the clinic., ref: patients.id }
+  appointment: { description: A scheduled visit., ref: appointments.id }
+  treatment:   { description: A procedure performed., ref: treatments.id }
+
+relations:
+  booked_by:    { from: appointment, to: patient }
+  performed_in: { from: treatment,   to: appointment }
+
+events:
+  appointment.booked:
+    subject: patient
+    owner: scheduling
+    payload: { id: string, starts_at: datetime, treatment: string }
+  appointment.no_show:
+    subject: appointment
+    owner: scheduling
+    payload: {}
+  treatment.performed:
+    subject: appointment
+    owner: clinical
+    payload: { id: string, code: string }
+
+rules:
+  at_risk_patient:
+    applies_to: patient
+    definition: "A patient is at risk of churn after two no-shows in 90 days."
+    no_shows: 2
+    days: 90
+  appointment_missed:
+    applies_to: appointment
+    definition: "An appointment is missed when its status is no_show."
+    when: { predicate: status, eq: no_show }
+
+memory:
+  ttl:
+    task: 14d
+    agent: 1d
+  requires_evidence: [global, tenant]

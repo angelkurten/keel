@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, ingest, replay, context, serve."""
+"""keel CLI: init, validate, ingest, replay, expire, context, serve."""
 
 from __future__ import annotations
 
@@ -120,6 +120,13 @@ def replay(cartridge: Path, events: Path, tenant: str, db: Path | None = DB):
     _, _, ing, _ = _run(cartridge, None, db=db)
     report = ing.replay(tenant, events=JsonlAdapter(events))
     typer.echo(f"replayed tenant={tenant} processed={report.processed}")
+
+
+@app.command()
+def expire(tenant: str, db: Path = typer.Option(..., "--db", help="The durable graph to clean.")):
+    """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
+    n = SqliteStore(db).expire(tenant)
+    typer.echo(f"expired tenant={tenant} dropped={n}")
 
 
 @app.command()

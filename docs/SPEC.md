@@ -201,7 +201,7 @@ events:                 # required: type -> spec
   <type>:
     subject: <kind>     # required: the kind of event.subject
     owner: <team>       # recommended: who owns this event's shape
-    payload: { <field>: <type-hint>, ... }   # string | int | number | bool | date; `| null` = optional
+    payload: { <field>: <type-hint>, ... }   # string | int | number | bool | date | datetime; `| null` = optional
 
 rules:                  # optional: name -> definition
   <rule>:
@@ -235,7 +235,7 @@ A cartridge is valid when:
 4. every handler's event type is in the catalog;
 5. every rule's `when` names a `predicate` and uses only the operators in §5.4.
 
-`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared type (`string`, `int`, `number`, `bool`, `date`; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
+`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared type (`string`, `int`, `number`, `bool`, `date`, `datetime`; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
 
 ### 5.4 Rules (semantic layer)
 
@@ -243,7 +243,7 @@ Rules are authored by product, versioned with the cartridge, and returned by the
 
 ### 5.5 The generality test
 
-Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps three cartridges (`fleet`, `crm`, `finance`) and all MUST pass the test suite after any core change.
+Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps four cartridges (`fleet`, `crm`, `finance`, `clinics`) and all MUST pass the test suite after any core change.
 
 ---
 
@@ -316,9 +316,9 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 
 ---
 
-## 8. Jobs (planned)
+## 8. Jobs
 
-- **Expiry**: drop facts past `expires_at`, per tenant, on a schedule. Shipped as `MemoryStore.expire`; scheduling is not.
+- **Expiry**: drop facts past `expires_at`, per tenant. Shipped: `store.expire(tenant)` on both stores and `keel expire <tenant> --db`; the schedule is the operator's cron. Reads exclude expired facts regardless.
 - **Consolidation**: summarize old `task`/`agent` facts into a durable `tenant` fact with evidence pointing at the originals. Not designed yet; see CLAUDE.md open decisions.
 - **Replay**: rebuild a tenant from the external log. Shipped: `Ingestor.replay(tenant, events=adapter)` and `keel replay <cartridge> <stream> <tenant> --db`.
 

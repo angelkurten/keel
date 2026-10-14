@@ -1,0 +1,7 @@
+{"tenant":"clinic-centro","type":"appointment.booked","subject":"patient:P-1","occurred_at":"2026-09-01T09:00:00Z","source":"scheduling","payload":{"id":"A-1","starts_at":"2026-09-10T10:00:00Z","treatment":"cleaning"}}
+{"tenant":"clinic-centro","type":"appointment.no_show","subject":"appointment:A-1","occurred_at":"2026-09-10T10:30:00Z","source":"scheduling","payload":{}}
+{"tenant":"clinic-centro","type":"appointment.booked","subject":"patient:P-1","occurred_at":"2026-09-11T09:00:00Z","source":"scheduling","payload":{"id":"A-2","starts_at":"2026-09-24T10:00:00Z","treatment":"cleaning"}}
+{"tenant":"clinic-centro","type":"appointment.no_show","subject":"appointment:A-2","occurred_at":"2026-09-24T10:30:00Z","source":"scheduling","payload":{}}
+{"tenant":"clinic-centro","type":"appointment.booked","subject":"patient:P-1","occurred_at":"2026-09-25T09:00:00Z","source":"scheduling","payload":{"id":"A-3","starts_at":"2026-10-20T10:00:00Z","treatment":"cleaning"}}
+{"tenant":"clinic-centro","type":"appointment.booked","subject":"patient:P-2","occurred_at":"2026-09-28T09:00:00Z","source":"scheduling","payload":{"id":"A-4","starts_at":"2026-10-01T11:00:00Z","treatment":"filling"}}
+{"tenant":"clinic-centro","type":"treatment.performed","subject":"appointment:A-4","occurred_at":"2026-10-01T11:40:00Z","source":"clinical.treatments","payload":{"id":"T-1","code":"filling"}}

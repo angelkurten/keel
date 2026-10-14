@@ -8,6 +8,8 @@ cartridges/clinics/
   handlers.py
 ```
 
+The finished version is in the repo (`cartridges/clinics`, `examples/events/clinics.jsonl`), so every command below runs as written.
+
 ## 1. Scaffold it (1 min)
 
 ```bash
@@ -47,6 +49,8 @@ events:
     payload: {}
 ```
 
+The shipped cartridge adds a third one, `treatment.performed`, so the `treatment` kind gets used.
+
 ## 4. Write one handler per event (5 min)
 
 A handler maps a payload to four primitives: `upsert_entity`, `link`, `open_fact`, `close_fact`. Ten lines each.
@@ -59,6 +63,7 @@ registry = HandlerRegistry()
 def booked(event, store):
     p = event.payload
     appt = f"appointment:{p['id']}"
+    store.upsert_entity(event.tenant, "patient", event.subject_id)
     store.upsert_entity(event.tenant, "appointment", p["id"], starts_at=p["starts_at"])
     store.link(event.tenant, appt, "booked_by", event.subject, event.occurred_at)
     store.open_fact(event.tenant, appt, "status", "booked", valid_from=event.occurred_at, evidence=event.id)

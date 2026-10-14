@@ -19,6 +19,15 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def parse_iso(value: Any) -> datetime:
+    """ISO 8601 date or datetime to an aware UTC datetime. Accepts a trailing Z on Python 3.10 too."""
+    if isinstance(value, datetime):
+        d = value
+    else:
+        d = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
 class Event(BaseModel):
     """A domain fact with time, from one of the SaaS's systems."""
 

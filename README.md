@@ -114,7 +114,7 @@ Design rules the core enforces:
 
 ```
 keel/            core: envelope, handlers, store, scopes, cartridge loader, ingest, tools, cli
-cartridges/      fleet (reference), crm and finance (proof that the core is domain-agnostic)
+cartridges/      fleet (reference), crm, finance and clinics: four domains, one core, no core change between them
 examples/        sample event streams and a minimal agent
 docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, SPEC
 tests/

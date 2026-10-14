@@ -17,13 +17,13 @@ from __future__ import annotations
 
 import importlib.util
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from keel.envelope import Event
+from keel.envelope import Event, parse_iso
 from keel.handlers import HandlerRegistry
 from keel.rules import problems as rule_problems
 from keel.scopes import MemoryPolicy, Scope
@@ -91,9 +91,9 @@ def _is(value: Any, hint: str) -> bool:
         return isinstance(value, int) and not isinstance(value, bool)
     if hint == "number":
         return isinstance(value, (int, float)) and not isinstance(value, bool)
-    if hint == "date":
+    if hint in ("date", "datetime"):
         try:
-            datetime.fromisoformat(str(value))
+            parse_iso(value)
         except ValueError:
             return False
         return True

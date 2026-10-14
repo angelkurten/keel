@@ -8,17 +8,15 @@ then sees context/history/search/annotate/related and nothing else.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
+from keel.envelope import parse_iso
 from keel.tools import Tools
 
 
 def _dt(s: str | None) -> datetime | None:
-    if not s:
-        return None
-    d = datetime.fromisoformat(s)
-    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    return parse_iso(s) if s else None
 
 
 def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp package

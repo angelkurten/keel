@@ -32,10 +32,12 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 
 - [x] Durable store: SQLite (`keel/store/sqlite.py`, stdlib, same filters as the reference store, `--db` in the CLI). Graphiti stays a candidate for graph-native queries once a pilot needs them
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
-- [ ] Consolidation job: expire task/agent memory, summarize old episodic facts into durable ones
+- [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
+- [ ] Consolidation: summarize old episodic facts into durable ones (design open; see CLAUDE.md)
 - [x] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule (rules carry a `when`; `context` takes `as_of`)
 - [x] Cartridge validation against event streams (`keel validate --events` reports unknown types, wrong subject kinds and bad payloads)
-- [ ] Third and fourth cartridges contributed or written with pilots (clinics, logistics)
+- [x] Third and fourth cartridges: `finance` (modeled on Toche) and `clinics` (the tutorial's result), zero core changes
+- [ ] A cartridge written with a pilot that is not ours (logistics?)
 - [ ] Two pilots outside the design customer, running the core for free
 
 Exit: a pilot connects its second agent in under a day, measured.
