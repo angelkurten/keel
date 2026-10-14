@@ -1,5 +1,7 @@
 # Keel
 
+[![ci](https://github.com/angelkurten/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/angelkurten/keel/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/keel-context)](https://pypi.org/project/keel-context/) [![docs](https://img.shields.io/badge/docs-angelkurten.github.io%2Fkeel-black)](https://angelkurten.github.io/keel/)
+
 **Stop rebuilding the pipeline for every agent.**
 
 Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
