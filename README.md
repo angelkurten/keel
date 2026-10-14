@@ -35,7 +35,7 @@ annotate(subject, predicate, value, scope, evidence)  -> an agent (or a human) w
 related(subject, relation?)                          -> neighbors by relation type
 ```
 
-Expose them over MCP (`keel serve`) and point any agent framework at them.
+Expose them over MCP (`keel serve`) and point any agent framework at them. Declare `agents:` in the cartridge and `keel serve --agent <id>` binds a server to one of them: what it may read and write is enforced by the layer, not by the agent.
 
 ## Quick start
 

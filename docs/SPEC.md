@@ -214,6 +214,12 @@ rules:                  # optional: name -> definition
       predicate: <predicate>
       <op>: <operand>   # lt, lte, gt, gte, eq, ne, in, within_days; a list of conditions must all hold
 
+agents:                 # optional: the agent registry (§6.1). Absent = no registry, any caller
+  <id>:
+    description: <text>
+    writes: [task, agent]                        # scopes it may annotate; never global
+    reads: { kinds: [<kind>, ...], relations: [<rel>, ...] }   # optional; absent = everything
+
 memory:                 # optional; defaults in §6
   ttl:
     global: never | <n>d | <n>h | <n>m
@@ -235,7 +241,8 @@ A cartridge is valid when:
 2. every event's `subject` is a declared entity kind;
 3. every cataloged event type has at least one handler;
 4. every handler's event type is in the catalog;
-5. every rule's `when` names a `predicate` and uses only the operators in §5.4.
+5. every rule's `when` names a `predicate` and uses only the operators in §5.4;
+6. every agent's `writes` are known scopes other than `global`, and its `reads` name declared kinds and relations.
 
 `keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared type (`string`, `int`, `number`, `bool`, `date`, `datetime`; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
 
@@ -274,11 +281,20 @@ Rules:
 - Promotion to a wider scope is a new `annotate` with evidence and `by`; the narrower fact keeps its own lifetime.
 - `expires_at = now + ttl` at write time; `null` when TTL is `never`. Reads MUST exclude expired facts even before a job physically removes them.
 
+### 6.1 Agent registry
+
+A cartridge MAY declare `agents:` (§5.1). Without it there is no registry: any caller, any scope with evidence, and an `agent` id passed to `Tools` is attribution only. With it:
+
+- A `Tools` instance MUST be bound to a declared agent (`Tools(..., agent=<id>)`, `keel serve --agent <id>`). A missing or unknown id raises `PermissionError` at construction.
+- **Writes.** `annotate` to a scope outside the agent's `writes` raises `PermissionError`. `global` is never writable by an agent. The scope policy (evidence, TTL) applies after the registry check. `source` is `annotate:<agent>`; `corrected_by` is `by` when given (a human correcting through the agent), else the agent id.
+- **Reads.** `context`, `history`, `related` and `annotate` on a subject whose kind is outside `reads.kinds` raise `PermissionError`. Relations outside `reads.relations`, or whose other end is a hidden kind, are left out of `context` and `related`. `search` drops hits on hidden kinds.
+- Authentication is the host's job. Keel takes the agent id as given and enforces what that id may do; it never trusts the agent to police itself (rule 5).
+
 ---
 
 ## 7. The five tools
 
-A `Tools` instance is bound to one cartridge and one tenant. Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
+A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge declares agents, one agent (§6.1). Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
 
 ### 7.1 `context(subject, as_of=None) -> object`
 

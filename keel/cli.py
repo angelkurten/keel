@@ -17,6 +17,14 @@ from keel.tools import Tools
 app = typer.Typer(help="Keel: a context layer for AI agents in vertical SaaS.", no_args_is_help=True)
 
 DB = typer.Option(None, "--db", help="SQLite file for a durable graph. Without it the graph lives in memory and ends with the command.")
+AGENT = typer.Option(None, "--agent", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
+
+
+def _tools(c, store, tenant: str, agent: str | None) -> Tools:
+    try:
+        return Tools(c, store, tenant, agent)
+    except PermissionError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--agent") from exc
 
 CARTRIDGE_TEMPLATE = """name: {name}
 
@@ -154,11 +162,11 @@ def export(
 
 
 @app.command()
-def context(cartridge: Path, events: Path, subject: str, tenant: str | None = None):
+def context(cartridge: Path, events: Path, subject: str, tenant: str | None = None, agent: str | None = AGENT):
     """Ingest, then print what the `context` tool returns for a subject."""
     c, store, ing, _ = _run(cartridge, events)
     tenant = tenant or next(iter({e.tenant for e in ing.log}), "")
-    typer.echo(json.dumps(Tools(c, store, tenant).context(subject), indent=2, ensure_ascii=False))
+    typer.echo(json.dumps(_tools(c, store, tenant, agent).context(subject), indent=2, ensure_ascii=False))
 
 
 @app.command()
@@ -167,6 +175,7 @@ def serve(
     tenant: str = typer.Option(..., help="The end-customer this server is bound to."),
     events: Path | None = None,
     db: Path | None = DB,
+    agent: str | None = AGENT,
 ):
     """Serve the five tools over MCP (stdio). Requires `uv sync --extra mcp`. --events fills an in-memory graph; --db serves a durable one."""
     from keel.mcp_server import build_server
@@ -175,7 +184,7 @@ def serve(
     store = SqliteStore(db) if db else MemoryStore()
     if events:
         Ingestor(c, store).ingest(JsonlAdapter(events))
-    build_server(Tools(c, store, tenant)).run()
+    build_server(_tools(c, store, tenant, agent)).run()
 
 
 if __name__ == "__main__":

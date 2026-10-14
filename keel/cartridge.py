@@ -23,6 +23,8 @@ from typing import Any
 
 import yaml
 
+from keel.agents import AgentSpec, parse_agents
+from keel.agents import problems as agent_problems
 from keel.envelope import Event, parse_iso
 from keel.handlers import HandlerRegistry
 from keel.rules import problems as rule_problems
@@ -39,6 +41,7 @@ class Cartridge:
     rules: dict[str, Any] = field(default_factory=dict)  # semantic definitions, versioned
     policy: MemoryPolicy = field(default_factory=MemoryPolicy.default)
     registry: HandlerRegistry = field(default_factory=HandlerRegistry)
+    agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
 
     def validate(self) -> list[str]:
         problems: list[str] = []
@@ -56,6 +59,7 @@ class Cartridge:
             problems.append(f"handler for '{etype}' exists but the event is not in the catalog")
         for name, rule in self.rules.items():
             problems += rule_problems(name, rule)
+        problems += agent_problems(self.agents, self.entities, self.relations)
         return problems
 
     def check_event(self, event: Event) -> list[str]:
@@ -148,4 +152,5 @@ def load_cartridge(path: str | Path) -> Cartridge:
         rules=raw.get("rules") or {},
         policy=_policy_from(raw.get("memory")),
         registry=_load_registry(path),
+        agents=parse_agents(raw.get("agents")),
     )

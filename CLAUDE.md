@@ -25,7 +25,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Ingestor (keel/ingest.py)                 reads an adapter, dispatches by event.type
    -> HandlerRegistry (keel/handlers.py)        cartridge handlers map payload -> store primitives
    -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory or sqlite)
-   -> Tools (keel/tools.py)                     context / history / search / annotate / related
+   -> Tools (keel/tools.py)                     context / history / search / annotate / related; bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers
 ```
@@ -38,7 +38,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 2. **Pointers, not copies.** An entity carries `ref` to the row in the system of record and the few attributes a tool needs to label it. If a PR copies a whole row or table into the graph, reject it.
 3. **Explicit time, bitemporal.** `valid_from`/`valid_to` = world time. `recorded_at` = when Keel learned it. Facts close; they are never mutated or deleted by handlers. "The tire was critical on Oct 3" and "the tire is critical" are different queries and both must work.
 4. **Provenance on every fact.** `source`, `evidence` (event id, row ref, photo), and `corrected_by` when a human or agent corrected it.
-5. **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Policy (TTL, evidence requirement) is enforced in `Tools.annotate` via `MemoryPolicy`, never trusted to the calling agent. Promotion to a wider scope is an explicit `annotate` with evidence.
+5. **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Policy (TTL, evidence requirement) is enforced in `Tools.annotate` via `MemoryPolicy`, never trusted to the calling agent. Promotion to a wider scope is an explicit `annotate` with evidence. When the cartridge declares `agents:`, the registry (who may write which scope, see which kinds and relations) is enforced in `Tools` too; a missing or unknown agent id is refused.
 6. **The core is domain-agnostic.** No entity kind, relation name, predicate, rule or event type appears anywhere under `keel/`. The acceptance test for any core change: both `cartridges/fleet` and `cartridges/crm` still pass without edits. Adding a third cartridge must require zero changes under `keel/`.
 7. **Five tools, and only five.** New capabilities go into the semantics of these five (richer `context`, filters on `history`) before anyone adds a sixth. The tool names and signatures are part of the public standard.
 8. **One subgraph per tenant.** Every store call takes `tenant` first. Cross-tenant reads do not exist. A tool instance is bound to one tenant.

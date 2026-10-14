@@ -114,6 +114,22 @@ uv run keel serve cartridges/clinics --tenant clinic-centro --events examples/ev
 
 Any MCP client now sees `context`, `history`, `search`, `annotate`, `related`. Your second agent uses the same five tools; there is no second pipeline.
 
+## 8. Declare your agents (optional)
+
+When more than one agent shares the graph, say who they are and what each may do. The layer enforces it; the agent never polices itself.
+
+```yaml
+agents:
+  reception-bot:
+    description: Confirms appointments. Writes task memory only.
+    writes: [task, agent]
+    reads: { kinds: [patient, appointment], relations: [booked_by] }
+  clinic-copilot:
+    writes: [task, agent, tenant]   # no reads: sees everything
+```
+
+Once `agents:` exists, every `Tools(...)` and every `keel serve` needs `--agent <id>`, and an id that is not declared is refused. `annotate` is signed with the agent id, so `keel export` shows who wrote what.
+
 ## The test that it worked
 
 Did you edit anything under `keel/`? If yes, some domain leaked into the core. Open an issue; that is exactly the kind of thing we want to fix.

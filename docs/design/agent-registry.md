@@ -1,6 +1,6 @@
 # Design note: agent registry
 
-Status: proposal, 2026-10-14. Not implemented. Two decisions are needed at the end before code.
+Status: implemented on 2026-10-14 as proposed, with both open questions decided the same day: read filtering is in v1, and an unknown or missing agent id is refused whenever the cartridge declares agents. The normative text is now [SPEC §6.1](../SPEC.md#61-agent-registry); this note stays as the reasoning.
 
 ## Problem
 

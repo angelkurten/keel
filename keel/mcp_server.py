@@ -29,7 +29,7 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
             raise SystemExit("MCP server needs the optional dependency: uv sync --extra mcp") from exc
     from mcp.types import ToolAnnotations
 
-    mcp = Server(f"keel:{tools.cartridge.name}:{tools.tenant}")
+    mcp = Server(":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id])))
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     read_only = {"annotations": ToolAnnotations(readOnlyHint=True)}
 
