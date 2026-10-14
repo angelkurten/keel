@@ -95,8 +95,11 @@ def test_mcp_server_exposes_exactly_the_five_tools():
     async def run():
         async with stdio_client(params) as (r, w), ClientSession(r, w) as session:
             await session.initialize()
-            names = {t.name for t in (await session.list_tools()).tools}
+            tools = (await session.list_tools()).tools
+            names = {t.name for t in tools}
             assert names == {"context", "history", "search", "annotate", "related"}
+            read_only = {t.name for t in tools if (t.annotations or None) and t.annotations.model_dump(by_alias=True).get("readOnlyHint")}
+            assert read_only == names - {"annotate"}  # clients that gate on annotations run reads unprompted
             res = await session.call_tool("context", {"subject": "unit:MXK-4821"})
             ctx = json.loads(res.content[0].text)
             assert ctx["subject"] == "unit:MXK-4821" and ctx["relations"] and "fuel_anomaly" in ctx["rules"]

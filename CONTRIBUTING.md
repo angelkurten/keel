@@ -7,7 +7,7 @@ Keel is built in the open, part-time. Small, focused pull requests land fastest.
 ```bash
 uv sync --extra dev
 uv run pytest
-uv run keel validate cartridges/fleet && uv run keel validate cartridges/crm
+uv run keel validate cartridges/fleet --events examples/events/fleet.jsonl && uv run keel validate cartridges/crm --events examples/events/crm.jsonl && uv run keel validate cartridges/finance --events examples/events/finance.jsonl
 ```
 
 ## What we are looking for

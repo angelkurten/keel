@@ -9,6 +9,8 @@ You describe your vertical once, in a *cartridge*: ontology, event catalog, sema
 !!! note "Status"
     Pre-alpha. The MCP server, the Postgres table adapter and the webhook adapter run against the in-memory store today. The durable store is next. See the [roadmap](roadmap.md).
 
+![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
+
 ## The problem
 
 Every new agent in a SaaS product repeats the same work: extract the customer's data, normalize it, decide what "critical" means, keep its own memory, expose its own tools to the model. Four agents, four copies of the customer's context, four definitions of "critical", four memories that never talk.
@@ -53,11 +55,11 @@ Events are the truth and the graph is derived, so one tenant's subgraph can be r
 ## Five tools, any agent
 
 ```text
-context(subject)                  -> what is true now about this subject
-history(subject, since, until)    -> what was true, and when we learned it
-search(text)                      -> entities and facts matching text
-annotate(scope, fact, evidence)   -> an agent (or a human) writes what it learned
-related(subject, relation)        -> neighbors by relation type
+context(subject, as_of?)                             -> what is true now, or at as_of: facts, relations, rules and their verdicts
+history(subject, since?, until?, predicate?, scope?)  -> what was true, and when we learned it
+search(text)                                         -> entities and facts matching text
+annotate(subject, predicate, value, scope, evidence)  -> an agent (or a human) writes what it learned
+related(subject, relation?)                          -> neighbors by relation type
 ```
 
 Expose them over MCP with `keel serve` and point any agent framework at them. The names and signatures are part of the public standard; see the [specification](SPEC.md).

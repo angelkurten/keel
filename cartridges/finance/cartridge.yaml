@@ -63,10 +63,14 @@ rules:
     applies_to: debt
     definition: "A debt is expensive when its effective annual rate is above 25%."
     rate_ea_pct: 25
+    when: { predicate: rate_ea_pct, gt: 25 }
   due_critical:
     applies_to: due
     definition: "A pending due is critical when it falls within 5 days; overdue once its date has passed."
     days: 5
+    when:
+      - { predicate: status, eq: pending }
+      - { predicate: due_on, within_days: 5 }
   line_over_budget:
     applies_to: budget_line
     definition: "A budget line is over budget when real spend exceeds the plan by more than 10% in the month."

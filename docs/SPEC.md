@@ -201,13 +201,16 @@ events:                 # required: type -> spec
   <type>:
     subject: <kind>     # required: the kind of event.subject
     owner: <team>       # recommended: who owns this event's shape
-    payload: { <field>: <type-hint>, ... }   # documentation; not enforced in 0.0.x
+    payload: { <field>: <type-hint>, ... }   # string | int | number | bool | date; `| null` = optional
 
 rules:                  # optional: name -> definition
   <rule>:
     applies_to: <kind>  # optional; absent = applies to every subject
     definition: <text>  # human-readable, versioned with the cartridge
     <param>: <value>    # machine-readable parameters agents read
+    when:               # optional: a condition the core evaluates in `context` (§5.4)
+      predicate: <predicate>
+      <op>: <operand>   # lt, lte, gt, gte, eq, ne, in, within_days; a list of conditions must all hold
 
 memory:                 # optional; defaults in §6
   ttl:
@@ -229,17 +232,18 @@ A cartridge is valid when:
 1. every relation's `from` and `to` are declared entity kinds;
 2. every event's `subject` is a declared entity kind;
 3. every cataloged event type has at least one handler;
-4. every handler's event type is in the catalog.
+4. every handler's event type is in the catalog;
+5. every rule's `when` names a `predicate` and uses only the operators in §5.4.
 
-*Planned:* payload shape checking against event streams (`keel validate --events`).
+`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared type (`string`, `int`, `number`, `bool`, `date`; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
 
 ### 5.4 Rules (semantic layer)
 
-Rules are authored by product, versioned with the cartridge, and returned by the `context` tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core treats a rule as an opaque mapping; `applies_to` is the only key it interprets.
+Rules are authored by product, versioned with the cartridge, and returned by the `context` tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core interprets two keys: `applies_to` and `when`. A `when` is one condition or a list of conditions that must all hold. Each names a `predicate` and one or more operators: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in` (value in a list), `within_days` (a date predicate on or before `as_of + n days`, so dates already past count). `context` evaluates every applicable rule that has a `when` against the subject's open facts and returns `true`, `false`, or `null` when a predicate has no open fact. A rule without `when` (an aggregate, anything that needs more than the subject's own facts) is returned as a definition only and the agent applies it.
 
 ### 5.5 The generality test
 
-Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps two cartridges (`fleet`, `crm`) and both MUST pass the test suite after any core change.
+Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps three cartridges (`fleet`, `crm`, `finance`) and all MUST pass the test suite after any core change.
 
 ---
 
@@ -274,9 +278,9 @@ Rules:
 
 A `Tools` instance is bound to one cartridge and one tenant. Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
 
-### 7.1 `context(subject) -> object`
+### 7.1 `context(subject, as_of=None) -> object`
 
-What is true now about a subject.
+What is true about a subject now, or at `as_of` (world time).
 
 ```json
 {
@@ -285,13 +289,14 @@ What is true now about a subject.
   "facts": [ ...open facts at now, expired excluded... ],
   "relations": [ ...open relations at now, both directions... ],
   "rules": { "<rule>": {...} },      // rules with applies_to == subject kind or absent
-  "as_of": "2026-10-14T18:41:07Z"
+  "evaluation": { "<rule>": true },  // true | false | null, for the rules above that carry a `when`
+  "as_of": "2026-10-14T18:41:07Z"    // now, or the `as_of` asked for
 }
 ```
 
-### 7.2 `history(subject, since=None, until=None) -> [Fact]`
+### 7.2 `history(subject, since=None, until=None, predicate=None, scope=None) -> [Fact]`
 
-Facts over time, oldest first, including closed ones. Each carries `valid_from`, `valid_to`, `recorded_at`, `source`, `evidence`, `scope`, `corrected_by`.
+Facts over time, oldest first, including closed ones. `predicate` keeps one predicate; `scope` keeps one memory scope. Each carries `valid_from`, `valid_to`, `recorded_at`, `source`, `evidence`, `scope`, `corrected_by`.
 
 ### 7.3 `search(text) -> [Entity | Fact]`
 
@@ -327,7 +332,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 4. Replay produces a graph equal to the one built incrementally.
 5. `annotate` to a scope in `requires_evidence` without evidence raises.
 6. `task`/`agent` annotations carry `expires_at`; `tenant`/`global` with `never` TTL do not.
-7. The core imports nothing from `cartridges/`; both reference cartridges validate and pass after any core change.
+7. The core imports nothing from `cartridges/`; every reference cartridge validates and passes after any core change.
 8. Ingest performs no I/O other than reading the adapter and writing the store.
 
 ---

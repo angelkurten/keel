@@ -77,5 +77,5 @@ If `examples/agent_minimal.py` output changes, say why in the PR.
 - Never add a dependency to the core for one cartridge's convenience.
 - Never let a tool return facts from another tenant.
 - Never delete or mutate a fact from a handler. Close it.
-- Never read `event.payload` in `keel/`. Only handlers do.
+- Never read `event.payload` in `keel/`. Only handlers do. One exception: `Cartridge.check_event` (behind `keel validate --events`) compares payload keys and types with the catalog; it never reads values.
 - Never write generic placeholders (`TBD`, `n/a`) into cartridge YAML; leave the key out.

@@ -17,13 +17,15 @@ from __future__ import annotations
 
 import importlib.util
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from keel.envelope import Event
 from keel.handlers import HandlerRegistry
+from keel.rules import problems as rule_problems
 from keel.scopes import MemoryPolicy, Scope
 
 
@@ -52,7 +54,50 @@ class Cartridge:
                 problems.append(f"event '{etype}' has no handler in handlers.py")
         for etype in self.registry.types() - set(self.events):
             problems.append(f"handler for '{etype}' exists but the event is not in the catalog")
+        for name, rule in self.rules.items():
+            problems += rule_problems(name, rule)
         return problems
+
+    def check_event(self, event: Event) -> list[str]:
+        """One event against the catalog: known type, right subject kind, declared payload fields
+        present with the declared type. Structural only: keys and types, never values."""
+        spec = self.events.get(event.type)
+        if spec is None:
+            return [f"unknown event type '{event.type}'"]
+        out = []
+        if event.subject_kind != spec.get("subject"):
+            out.append(f"'{event.type}' subject '{event.subject}' is not a '{spec.get('subject')}'")
+        for name, hint in (spec.get("payload") or {}).items():
+            kinds = {k.strip() for k in str(hint).split("|")}
+            if name not in event.payload:
+                if "null" not in kinds:
+                    out.append(f"'{event.type}' payload is missing '{name}' ({hint})")
+                continue
+            value = event.payload[name]
+            if value is None and "null" in kinds:
+                continue
+            if not any(_is(value, k) for k in kinds - {"null"}):
+                out.append(f"'{event.type}' payload '{name}' should be {hint}, got {type(value).__name__}")
+        return out
+
+
+def _is(value: Any, hint: str) -> bool:
+    """Does a payload value match a catalog type hint? Hints the core does not know are documentation."""
+    if hint == "string":
+        return isinstance(value, str)
+    if hint == "bool":
+        return isinstance(value, bool)
+    if hint == "int":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if hint == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if hint == "date":
+        try:
+            datetime.fromisoformat(str(value))
+        except ValueError:
+            return False
+        return True
+    return True
 
 
 def _parse_ttl(v: Any) -> timedelta | None:

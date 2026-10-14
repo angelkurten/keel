@@ -19,13 +19,14 @@ unit = "unit:MXK-4821"
 ctx = tools.context(unit)
 print(f"{unit}: {len(ctx['relations'])} relations, {len(ctx['facts'])} open facts")
 
-# The agent does not define 'critical'; it reads the rule from the graph.
+# The agent neither defines nor computes 'critical': the rule and its `when` live in the
+# cartridge, and `context` returns the verdict next to the rule.
 for rel in tools.related(unit, "mounted_on"):
     tire = rel["subject"]
     tire_ctx = tools.context(tire)
-    threshold = tire_ctx["rules"]["tire_critical"]["threshold_mm"]
-    depth = next((f for f in tire_ctx["facts"] if f["predicate"] == "depth_mm"), None)
-    if depth and depth["value"] < threshold:
+    if tire_ctx["evaluation"].get("tire_critical"):
+        threshold = tire_ctx["rules"]["tire_critical"]["threshold_mm"]
+        depth = next(f for f in tire_ctx["facts"] if f["predicate"] == "depth_mm")
         note = tools.annotate(tire, "assessment", f"critical: {depth['value']} mm < {threshold} mm", scope="task", evidence=depth["evidence"], by="agent:tires-demo")
         print("wrote:", note["subject"], note["predicate"], note["value"], "expires", note["expires_at"])
 

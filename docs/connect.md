@@ -131,7 +131,22 @@ With Claude Code, one command registers the server. The agent sees exactly five 
 claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
 ```
 
-Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance.
+With Codex CLI (OpenAI), declare the server in `~/.codex/config.toml`. Keel annotates `context`, `history`, `search` and `related` as read-only, so Codex runs them without asking even under `approval_policy = "never"`; `annotate` writes, so it prompts unless you set `default_tools_approval_mode = "auto"` on the server:
+
+```toml
+[mcp_servers.keel]
+command = "uv"
+args = ["run", "--directory", "/path/to/keel", "keel", "serve", "cartridges/fleet", "--tenant", "acme-logistics", "--events", "examples/events/fleet.jsonl"]
+startup_timeout_sec = 60
+```
+
+A headless run, for a smoke test or CI:
+
+```bash
+codex exec --json "Which tires on unit:MXK-4821 are critical according to the cartridge's own rules? Use only the keel tools." < /dev/null
+```
+
+Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance.
 
 !!! note "Where is the graph stored?"
     In memory, for now. The MCP server ingests the stream at start and serves it. The durable store is the next item on the [roadmap](roadmap.md).

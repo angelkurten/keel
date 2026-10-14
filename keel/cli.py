@@ -8,6 +8,7 @@ from pathlib import Path
 import typer
 
 from keel.cartridge import load_cartridge
+from keel.envelope import Event
 from keel.ingest import Ingestor, JsonlAdapter
 from keel.store.memory import MemoryStore
 from keel.tools import Tools
@@ -63,15 +64,34 @@ def init(path: Path = typer.Argument(..., help="Folder for the new cartridge, e.
 
 
 @app.command()
-def validate(cartridge: Path):
-    """Check that the catalog, the ontology and the handlers agree."""
+def validate(
+    cartridge: Path,
+    events: Path | None = typer.Option(None, help="Also check a .jsonl stream: unknown types, wrong subject kinds, payload shape."),
+):
+    """Check that the catalog, the ontology and the handlers agree; with --events, that a stream fits the catalog."""
     c = load_cartridge(cartridge)
     problems = c.validate()
+    checked = 0
+    if events:
+        for n, line in enumerate(events.read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip() or line.startswith("#"):
+                continue
+            try:
+                ev = Event.model_validate(json.loads(line))
+            except ValueError as exc:  # json and pydantic errors both subclass ValueError
+                errs = getattr(exc, "errors", None)  # pydantic: first error, with its field
+                detail = f"{'.'.join(map(str, errs()[0]['loc']))}: {errs()[0]['msg']}" if errs else str(exc)
+                problems.append(f"line {n}: bad envelope: {detail}")
+                continue
+            checked += 1
+            problems += [f"line {n}: {p}" for p in c.check_event(ev)]
     if problems:
         for p in problems:
             typer.echo(f"  - {p}")
         raise typer.Exit(code=1)
     typer.echo(f"{c.name}: {len(c.entities)} entity kinds, {len(c.relations)} relations, {len(c.events)} events, all handled")
+    if events:
+        typer.echo(f"{events}: {checked} events match the catalog")
 
 
 def _run(cartridge: Path, events: Path, strict: bool = False):

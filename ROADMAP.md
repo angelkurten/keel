@@ -16,13 +16,13 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 - [x] Docs: *Your first cartridge in 20 minutes*
 - [x] Docs site: MkDocs Material on GitHub Pages, built from the repo's markdown
 - [x] MCP server tested end to end with Claude via MCP (`tests/test_adapters.py` drives it with the MCP client; `claude -p --mcp-config` answered from the three tool calls)
-- [ ] MCP server tested end to end with one non-Anthropic client
+- [x] MCP server tested end to end with one non-Anthropic client: Codex CLI with `openai/gpt-5.2-codex`, seven tool calls, right answers (see [docs/connect.md](docs/connect.md))
 - [x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
 - [x] Webhook adapter (FastAPI, optional extra)
 - [x] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates
 - [x] Launch post: [*We built four agents and four copies of our customer context*](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 - [ ] Share it: HN, r/LLMDevs, LinkedIn
-- [ ] Recorded demo with subtitles
+- [x] Recorded demo: terminal recording with narration lines (`examples/demo.tape` renders `docs/demo.gif`); a narrated video with subtitles is still open
 
 Exit: the post is published, the demo runs, and the fleet slice runs against a real event stream from the first design customer.
 
@@ -33,8 +33,8 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [ ] Durable store: Graphiti-backed (or SQLite if Graphiti forces an LLM into ingest; see CLAUDE.md)
 - [ ] Replay from an external log (the bus is the truth, not `Ingestor.log`)
 - [ ] Consolidation job: expire task/agent memory, summarize old episodic facts into durable ones
-- [ ] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule
-- [ ] Cartridge validation against event streams (`keel validate --events` reports unknown types and bad payloads)
+- [x] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule (rules carry a `when`; `context` takes `as_of`)
+- [x] Cartridge validation against event streams (`keel validate --events` reports unknown types, wrong subject kinds and bad payloads)
 - [ ] Third and fourth cartridges contributed or written with pilots (clinics, logistics)
 - [ ] Two pilots outside the design customer, running the core for free
 

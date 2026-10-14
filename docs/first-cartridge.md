@@ -81,19 +81,24 @@ rules:
     definition: "A patient is at risk of churn after two no-shows in 90 days."
     no_shows: 2
     days: 90
+  appointment_missed:
+    applies_to: appointment
+    definition: "An appointment is missed when its status is no_show."
+    when: { predicate: status, eq: no_show }
 ```
 
-The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition.
+The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a `when` is also evaluated for you: `context` returns `evaluation: {appointment_missed: true}` next to the rule, so the agent neither defines nor computes it. `at_risk_patient` needs a count over 90 days, more than one subject's open facts, so it has no `when` and the agent applies the definition. Operators: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in`, `within_days`.
 
 ## 6. Validate and run (2 min)
 
 ```bash
 uv run keel validate cartridges/clinics
+uv run keel validate cartridges/clinics --events examples/events/clinics.jsonl
 uv run keel ingest cartridges/clinics examples/events/clinics.jsonl
 uv run keel context cartridges/clinics examples/events/clinics.jsonl patient:P-1
 ```
 
-`validate` fails if an event has no handler, a handler has no event, or a relation uses an undeclared kind.
+`validate` fails if an event has no handler, a handler has no event, a relation uses an undeclared kind, or a rule's `when` uses an unknown operator. With `--events` it also checks a stream against the catalog: unknown types, wrong subject kinds, missing or mistyped payload fields.
 
 ## 7. Point an agent at it
 

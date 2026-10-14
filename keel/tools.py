@@ -18,6 +18,7 @@ from typing import Any
 
 from keel.cartridge import Cartridge
 from keel.envelope import utcnow
+from keel.rules import conditions, evaluate
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Store
 
@@ -43,10 +44,11 @@ class Tools:
         self.store = store
         self.tenant = tenant  # tools are always scoped to one end-customer
 
-    def context(self, subject: str) -> dict[str, Any]:
-        """Current truth about a subject: entity, open facts, open relations, applicable rules."""
+    def context(self, subject: str, as_of: datetime | None = None) -> dict[str, Any]:
+        """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
+        that apply to its kind, and the evaluation of every rule that carries a `when`."""
         ent = self.store.entity(self.tenant, subject)
-        now = utcnow()
+        now = as_of or utcnow()
         facts = self.store.facts(self.tenant, subject, at=now)
         rels = self.store.relations(self.tenant, subject, at=now)
         kind = subject.split(":", 1)[0]
@@ -58,13 +60,27 @@ class Tools:
                 "facts": facts,
                 "relations": [asdict(r) for r in rels],
                 "rules": rules,
+                "evaluation": {k: evaluate(v, facts, now) for k, v in rules.items() if conditions(v)},
                 "as_of": now,
             }
         )
 
-    def history(self, subject: str, since: datetime | None = None, until: datetime | None = None) -> list[dict[str, Any]]:
-        """Facts over time: valid_from/valid_to (world) and recorded_at (when we learned it)."""
-        return _ser(self.store.facts(self.tenant, subject, since=since, until=until))
+    def history(
+        self,
+        subject: str,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        predicate: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Facts over time: valid_from/valid_to (world) and recorded_at (when we learned it).
+        Optionally one predicate only, or one memory scope only."""
+        facts = self.store.facts(self.tenant, subject, since=since, until=until)
+        if predicate:
+            facts = [f for f in facts if f.predicate == predicate]
+        if scope:
+            facts = [f for f in facts if f.scope == Scope(scope)]
+        return _ser(facts)
 
     def search(self, text: str) -> list[dict[str, Any]]:
         return _ser(self.store.search(self.tenant, text))
@@ -108,8 +124,8 @@ class Tools:
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject"], "doc": self.context.__doc__},
-            {"name": "history", "args": ["subject", "since?", "until?"], "doc": self.history.__doc__},
+            {"name": "context", "args": ["subject", "as_of?"], "doc": self.context.__doc__},
+            {"name": "history", "args": ["subject", "since?", "until?", "predicate?", "scope?"], "doc": self.history.__doc__},
             {"name": "search", "args": ["text"], "doc": "Entities and facts matching text."},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?"], "doc": "Neighbors by relation type."},

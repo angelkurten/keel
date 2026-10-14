@@ -81,10 +81,12 @@ rules:
     applies_to: tire
     definition: "A tire is critical when tread depth is below 3 mm."
     threshold_mm: 3
+    when: { predicate: depth_mm, lt: 3 }
   document_critical:
     applies_to: document
     definition: "A document is critical when it expires within 15 days; expired when the date has passed."
     days: 15
+    when: { predicate: expires_on, within_days: 15 }
   fuel_anomaly:
     applies_to: unit
     definition: "A fuel load is anomalous when liters exceed the tank capacity or consumption per km deviates more than 30% from the unit's 30-day average."

@@ -10,6 +10,8 @@ You describe your vertical once, in a *cartridge* (ontology, event catalog, sema
 
 > Status: pre-alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store today. The durable store is next.
 
+![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
+
 ## The problem
 
 Every new agent in a SaaS product repeats the same work: extract the customer's data, normalize it, decide what "critical" means, keep its own memory, expose its own tools to the model. Four agents, four copies of the customer's context, four definitions of "critical", four memories that never talk.
@@ -26,11 +28,11 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 ## Five tools, any agent
 
 ```
-context(subject)                  -> what is true now about this subject
-history(subject, since, until)    -> what was true, and when we learned it
-search(text)                      -> entities and facts matching text
-annotate(scope, fact, evidence)   -> an agent (or a human) writes what it learned
-related(subject, relation)        -> neighbors by relation type
+context(subject, as_of?)                             -> what is true now, or at as_of: facts, relations, rules and their verdicts
+history(subject, since?, until?, predicate?, scope?)  -> what was true, and when we learned it
+search(text)                                         -> entities and facts matching text
+annotate(subject, predicate, value, scope, evidence)  -> an agent (or a human) writes what it learned
+related(subject, relation?)                          -> neighbors by relation type
 ```
 
 Expose them over MCP (`keel serve`) and point any agent framework at them.
@@ -39,7 +41,7 @@ Expose them over MCP (`keel serve`) and point any agent framework at them.
 
 ```bash
 uv sync --extra dev
-uv run keel validate cartridges/fleet
+uv run keel validate cartridges/fleet --events examples/events/fleet.jsonl
 uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
 uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 ```
@@ -60,6 +62,8 @@ With Claude Code, one command registers it and the agent sees exactly five tools
 ```bash
 claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
 ```
+
+Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [connect](docs/connect.md#serve-the-tools-over-mcp).
 
 Poll an outbox table in your Postgres (a cursor file makes restarts resume, not re-ingest):
 
