@@ -1,0 +1,79 @@
+# Third cartridge: household finance, modeled on Toche (budget lines, debts, due dates, movements).
+# It exists to prove the core is domain-agnostic a second time. Zero changes under keel/.
+
+name: finance
+version: 0.1.0
+
+entities:
+  household:
+    description: The home whose finances are tracked. The tenant of the tenant.
+  account:
+    description: A bank account, wallet, card or loan the household holds.
+    ref: accounts.id
+  budget_line:
+    description: A budget line (rubro) with a planned monthly amount.
+    ref: budget_lines.id
+  debt:
+    description: A debt with a creditor, tracked by monthly snapshot.
+    ref: debts.id
+  due:
+    description: A scheduled payment with a date and an amount.
+    ref: dues.id
+  movement:
+    description: A bank movement, imported or manual.
+    ref: movements.id
+
+relations:
+  held_by:     { from: account,  to: household }
+  owed_by:     { from: debt,     to: household }
+  for_debt:    { from: due,      to: debt }
+  paid_from:   { from: due,      to: account }
+  in_account:  { from: movement, to: account }
+  in_line:     { from: movement, to: budget_line }
+
+events:
+  account.opened:
+    subject: household
+    owner: accounts
+    payload: { id: string, name: string, kind: string, currency: string }
+  budget_line.planned:
+    subject: budget_line
+    owner: budget
+    payload: { name: string, group: string, amount_cop: number }
+  debt.snapshot:
+    subject: debt
+    owner: debts
+    payload: { creditor: string, product: string, balance_cop: number, rate_ea_pct: number, installment_cop: number, month: string }
+  due.scheduled:
+    subject: due
+    owner: calendar
+    payload: { concept: string, amount_cop: number, due_on: date, debt_id: string | null, account_id: string | null }
+  due.paid:
+    subject: due
+    owner: calendar
+    payload: { paid_on: date, amount_cop: number, account_id: string, movement_id: string }
+  movement.imported:
+    subject: movement
+    owner: bank-import
+    payload: { account_id: string, description: string, amount_cop: number, line_id: string | null }
+
+# Semantic layer: authored by product, versioned, consulted by the tools.
+rules:
+  debt_expensive:
+    applies_to: debt
+    definition: "A debt is expensive when its effective annual rate is above 25%."
+    rate_ea_pct: 25
+  due_critical:
+    applies_to: due
+    definition: "A pending due is critical when it falls within 5 days; overdue once its date has passed."
+    days: 5
+  line_over_budget:
+    applies_to: budget_line
+    definition: "A budget line is over budget when real spend exceeds the plan by more than 10% in the month."
+    deviation_pct: 10
+
+memory:
+  ttl:
+    task: 30d       # a month close
+    agent: 1d
+  requires_evidence: [global, tenant]
