@@ -11,6 +11,7 @@ semantics, and earned memory. It never holds copies of those rows.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
@@ -80,3 +81,6 @@ class Store(Protocol):
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]: ...
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]: ...
+
+    # maintenance (jobs and operators, never handlers)
+    def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]: ...  # everything, for export and audit

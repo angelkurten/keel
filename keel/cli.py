@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, ingest, replay, expire, context, serve."""
+"""keel CLI: init, validate, ingest, replay, expire, export, context, serve."""
 
 from __future__ import annotations
 
@@ -127,6 +127,30 @@ def expire(tenant: str, db: Path = typer.Option(..., "--db", help="The durable g
     """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
     n = SqliteStore(db).expire(tenant)
     typer.echo(f"expired tenant={tenant} dropped={n}")
+
+
+@app.command()
+def export(
+    tenant: str,
+    db: Path = typer.Option(..., "--db", help="The durable graph to export from."),
+    out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
+):
+    """Audit trail for one tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what."""
+    from dataclasses import asdict
+
+    from keel.tools import _ser
+
+    lines = (json.dumps({"record": type(o).__name__.lower(), **_ser(asdict(o))}, ensure_ascii=False) for o in SqliteStore(db).dump(tenant))
+    if out:
+        n = 0
+        with out.open("w", encoding="utf-8") as fh:
+            for line in lines:
+                fh.write(line + "\n")
+                n += 1
+        typer.echo(f"exported tenant={tenant} records={n} to {out}")
+    else:
+        for line in lines:
+            typer.echo(line)
 
 
 @app.command()

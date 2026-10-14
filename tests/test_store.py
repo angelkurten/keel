@@ -1,6 +1,12 @@
-"""Store conformance: both stores answer identically, and the SQLite one survives a restart."""
+"""Store conformance: every store answers like the reference one; the SQLite one survives a restart.
 
+Run it against your own store with KEEL_STORE="your_pkg.module:factory", a zero-argument callable
+(or class) that returns a fresh, empty store:  KEEL_STORE=keel.store.sqlite:SqliteStore uv run pytest tests/test_store.py
+"""
+
+import importlib
 import json
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -22,22 +28,36 @@ def _strip(o):  # recorded_at and as_of are transaction time: they differ betwee
     return o
 
 
-@pytest.fixture(params=["memory", "sqlite"])
+EXTERNAL = os.environ.get("KEEL_STORE")  # "pkg.module:factory"
+
+
+@pytest.fixture(params=["memory", "sqlite"] + (["external"] if EXTERNAL else []))
 def store(request, tmp_path):
-    return MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "keel.db")
+    if request.param == "memory":
+        return MemoryStore()
+    if request.param == "sqlite":
+        return SqliteStore(tmp_path / "keel.db")
+    module, _, factory = EXTERNAL.partition(":")
+    return getattr(importlib.import_module(module), factory)()
 
 
-def test_stores_answer_identically(tmp_path):
+def test_stores_answer_identically(store):
     c = load_cartridge(FLEET)
-    mem, sql = MemoryStore(), SqliteStore(tmp_path / "keel.db")
-    for s in (mem, sql):
+    reference = MemoryStore()
+    for s in (reference, store):
         assert not Ingestor(c, s).ingest(JsonlAdapter(EVENTS), strict=True).errors
-    a, b = Tools(c, mem, TENANT), Tools(c, sql, TENANT)
+    a, b = Tools(c, reference, TENANT), Tools(c, store, TENANT)
     for subject in ("unit:MXK-4821", "tire:T-9001", "ticket:TK-3608", "document:POL-7731", "inspection:INS-4821-10"):
         assert _strip(a.context(subject)) == _strip(b.context(subject))
         assert _strip(a.history(subject)) == _strip(b.history(subject))
         assert _strip(a.related(subject)) == _strip(b.related(subject))
     assert _strip(a.search("T-9001")) == _strip(b.search("T-9001")) != []
+    from dataclasses import asdict
+
+    from keel.tools import _ser
+
+    dumps = [_strip([_ser(asdict(o)) for o in s.dump(TENANT)]) for s in (reference, store)]
+    assert dumps[0] == dumps[1] and len(dumps[0]) > 20
 
 
 def test_invariants_hold_in_every_store(store):
@@ -88,3 +108,24 @@ def test_cli_expire_drops_expired_memory(tmp_path):
     assert all(f.predicate != "note" for f in store.facts(TENANT, "tire:T-9001"))  # reads already hide it
     res = CliRunner().invoke(app, ["expire", TENANT, "--db", db])
     assert res.exit_code == 0 and "dropped=1" in res.output, res.output
+
+
+def test_cli_export_is_the_audit_trail(tmp_path):
+    db = str(tmp_path / "keel.db")
+    CliRunner().invoke(app, ["ingest", FLEET, EVENTS, "--db", db])
+    c = load_cartridge(FLEET)
+    Tools(c, SqliteStore(db), TENANT).annotate("tire:T-9001", "assessment", "replace", scope="tenant", evidence="photo:123", by="human:angel")
+    out = tmp_path / "audit.jsonl"
+    res = CliRunner().invoke(app, ["export", TENANT, "--db", db, "--out", str(out)])
+    assert res.exit_code == 0 and "records=" in res.output, res.output
+    records = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    kinds = {r["record"] for r in records}
+    assert kinds == {"entity", "relation", "fact"}
+    facts = [r for r in records if r["record"] == "fact"]
+    assert all(r["tenant"] == TENANT and r["evidence"] for r in facts)  # provenance on every fact
+    closed = [r for r in facts if r["predicate"] == "depth_mm" and r["valid_to"]]
+    assert len(closed) == 1 and closed[0]["value"] == 5.2  # history is exported, not just the present
+    human = next(r for r in facts if r["predicate"] == "assessment")
+    assert human["corrected_by"] == "human:angel" and human["scope"] == "tenant" and human["source"] == "annotate:human:angel"
+    empty = CliRunner().invoke(app, ["export", "someone-else", "--db", db])
+    assert empty.exit_code == 0 and empty.output.strip() == ""  # no cross-tenant leak

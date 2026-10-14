@@ -35,3 +35,24 @@ uv run keel validate cartridges/fleet --events examples/events/fleet.jsonl && uv
 - If `examples/agent_minimal.py` output changes, say why in the pull request.
 
 By contributing you agree that your contributions are licensed under the Apache License 2.0.
+
+## Your own store
+
+The core talks to a `Store` protocol (`keel/store/base.py`); `MemoryStore` is the reference and `SqliteStore` the default durable one. A third store (Postgres, Graphiti, anything) is a separate package, never a core change. Run the conformance suite against it:
+
+```bash
+KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py
+```
+
+`factory` is a zero-argument callable or class that returns a fresh, empty store.
+
+## Releasing
+
+Bump `version` in `pyproject.toml` and `__version__` in `keel/__init__.py`, update the roadmap, then:
+
+```bash
+git tag -a vX.Y.Z -m "keel-context X.Y.Z" && git push origin vX.Y.Z
+gh release create vX.Y.Z --title "X.Y.Z" --notes-file notes.md
+```
+
+The tag triggers `.github/workflows/release.yml`, which runs the tests, builds and publishes `keel-context` to PyPI through trusted publishing (one-time setup on PyPI: pending publisher for project `keel-context`, owner `angelkurten`, repository `keel`, workflow `release.yml`, environment `pypi`).

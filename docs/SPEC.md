@@ -140,9 +140,9 @@ relations(tenant, key, rel=None, at=None) -> [Relation]
 search(tenant, text) -> [Entity | Fact]
 ```
 
-Maintenance (called by jobs, never by handlers): `expire(tenant, now)`, `reset(tenant)`.
+Maintenance (called by jobs and operators, never by handlers): `expire(tenant, now)`, `reset(tenant)`, `dump(tenant)` (everything about one tenant, closed facts included; `keel export` writes it as JSONL).
 
-A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` unchanged. Reference: `keel/store/memory.py` (in memory). Durable: `keel/store/sqlite.py`, one file, WAL mode, the same filters as the reference so both answer identically. A Graphiti-backed store remains planned for graph-native queries.
+A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` unchanged. Run the suite against your own store with `KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py`, where `factory` is a zero-argument callable (or class) returning a fresh, empty store. Reference: `keel/store/memory.py` (in memory). Durable: `keel/store/sqlite.py`, one file, WAL mode, the same filters as the reference so both answer identically. A Graphiti-backed store remains planned for graph-native queries.
 
 ---
 

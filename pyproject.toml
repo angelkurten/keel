@@ -1,6 +1,6 @@
 [project]
-name = "keel"
-version = "0.0.1"
+name = "keel-context"
+version = "0.1.0"
 description = "Context layer for AI agents in vertical SaaS: domain events in, a per-tenant bitemporal context graph out, shared by every agent through five MCP tools."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -8,7 +8,7 @@ requires-python = ">=3.10"
 authors = [{ name = "Angel Kürten", email = "angel@angelkurten.com" }]
 keywords = ["agents", "context", "knowledge-graph", "event-driven", "mcp", "bitemporal"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Topic :: Software Development :: Libraries",

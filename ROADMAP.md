@@ -26,7 +26,7 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 
 Exit: the post is published, the demo runs, and the fleet slice runs against a real event stream from the first design customer.
 
-## Next — 0.1 (December 2026–January 2027)
+## Next — 0.1 (code shipped early as 0.1.0 on 2026-10-14; pilots through January 2027)
 
 Goal: durable, replayable, and used by two SaaS products that are not ours.
 
@@ -42,13 +42,19 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 
 Exit: a pilot connects its second agent in under a day, measured.
 
-## Later — 0.2+ (2027)
+## 0.2 — in parallel with the pilots (October–December 2026)
+
+Pulled forward from Later on 2026-10-14. Small pieces, each its own release, while the post circulates and the pilots are found.
+
+- [x] Exportable audit trail per tenant: `keel export <tenant> --db` (entities, relations and facts with provenance, corrections, who annotated what)
+- [ ] Kafka and SQS adapters as optional extras, tested against fake consumers until a pilot runs a real broker
+- [ ] Agent registry: identity, permitted scopes and relations per agent, enforced in `Tools`. A design note first, then code
+
+## Later — 0.3+ (2027)
 
 Goal: the hosted product and the cartridge catalog.
 
-- [ ] Kafka and SQS adapters; Postgres CDC
-- [ ] Agent registry: identity, permitted scopes and relations per agent
-- [ ] Exportable audit trail per tenant (facts with provenance, corrections, who annotated what)
+- [ ] Postgres CDC adapter
 - [ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier
 - [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month)
 - [ ] SSO, retention policies and tenant-level data export for enterprise

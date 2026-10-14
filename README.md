@@ -8,7 +8,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: pre-alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store or the SQLite store (`--db keel.db`, stdlib, no server to run).
+> Status: 0.1.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store or the SQLite store (`--db keel.db`, stdlib, no server to run).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -48,6 +48,8 @@ uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 
 Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes).
 
+In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`.
+
 ## Connect a real event stream
 
 Point an MCP client at the five tools:
@@ -84,7 +86,7 @@ from keel.adapters.webhook import build_app
 app = build_app(ingestor, token="shared-secret")  # POST /events, Authorization: Bearer <token>
 ```
 
-The table shape and the envelope fields are in `keel/adapters/postgres.py` and `keel/envelope.py`.
+The table shape and the envelope fields are in `keel/adapters/postgres.py` and `keel/envelope.py`. `keel export <tenant> --db keel.db` writes one tenant's whole audit trail as JSONL, closed facts and provenance included.
 
 ## Architecture
 

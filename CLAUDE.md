@@ -67,8 +67,8 @@ If `examples/agent_minimal.py` output changes, say why in the PR.
 
 ## Open decisions (do not resolve silently)
 
-- **Durable store.** `SqliteStore` (`keel/store/sqlite.py`) is the shipped intermediate step: stdlib, one file, same filters as `MemoryStore`, conformance in `tests/test_store.py`. Graphiti remains the candidate for graph-native queries; if it forces an LLM in the ingest path for structured events, use only its graph store and keep our deterministic ingest.
-- **Consolidation/decay.** Expiry exists (`expires_at`, `MemoryStore.expire`). Summarizing old episodic facts into durable ones is not designed yet.
+- **Durable store.** Decided 2026-10-14: pluggable by design, never a core change. `Store` protocol (`keel/store/base.py`), `MemoryStore` as reference, `SqliteStore` as the default durable one, and a conformance suite any store can run (`KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py`). Graphiti or Postgres would be third implementations; if Graphiti forces an LLM in the ingest path, use only its graph store and keep our deterministic ingest.
+- **Consolidation/decay.** Expiry is shipped (`expires_at`, `store.expire`, `keel expire`). Summarizing old episodic facts into durable ones is deliberately left open (2026-10-14) until a pilot brings a real case; the leading candidate is a deterministic job, never an LLM in the core.
 - **Multi-cartridge tenants.** One tenant, one cartridge for now. Composing cartridges is a later decision.
 - **Pricing unit** (hosted): events ingested per month. Not a code concern yet, but metering must be possible from the log.
 

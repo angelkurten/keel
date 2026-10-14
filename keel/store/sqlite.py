@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -179,6 +180,15 @@ class SqliteStore:
             "DELETE FROM facts WHERE tenant = ? AND expires_at IS NOT NULL AND expires_at <= ?", (tenant, _ts(now or utcnow()))
         )
         return cur.rowcount
+
+    def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]:
+        """Everything about one tenant, closed facts included: the audit trail."""
+        for row in self.db.execute("SELECT * FROM entities WHERE tenant = ? ORDER BY rowid", (tenant,)):
+            yield _entity(row)
+        for row in self.db.execute("SELECT * FROM relations WHERE tenant = ? ORDER BY seq", (tenant,)):
+            yield _relation(row)
+        for row in self.db.execute("SELECT * FROM facts WHERE tenant = ? ORDER BY seq", (tenant,)):
+            yield _fact(row)
 
     def reset(self, tenant: str) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""

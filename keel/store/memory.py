@@ -8,7 +8,7 @@ stores answer every query identically.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import datetime
 from typing import Any
 
@@ -149,6 +149,12 @@ class MemoryStore:
         before = len(self._facts[tenant])
         self._facts[tenant] = [f for f in self._facts[tenant] if f.expires_at is None or f.expires_at > now]
         return before - len(self._facts[tenant])
+
+    def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]:
+        """Everything about one tenant, closed facts included: the audit trail."""
+        yield from self._entities[tenant].values()
+        yield from self._relations[tenant]
+        yield from self._facts[tenant]
 
     def reset(self, tenant: str) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""

@@ -1,0 +1,26 @@
+name: release
+
+# Publishes to PyPI with trusted publishing (no token stored here) when a v* tag is pushed.
+# One-time setup on PyPI: add a pending publisher for project keel-context, owner angelkurten,
+# repository keel, workflow release.yml, environment pypi.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev
+      - run: uv run pytest -q
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
