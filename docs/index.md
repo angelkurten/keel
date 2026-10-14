@@ -22,6 +22,34 @@ Existing memory layers ingest text and documents and model memory per user or pe
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **Tenant of the tenant.** One subgraph per end-customer, with its own permissions and expiry.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph saas ["Your SaaS"]
+        pg[("Postgres outbox")]
+        wh["Webhook"]
+        jl[".jsonl file"]
+    end
+    subgraph core ["Keel core (domain-agnostic)"]
+        env["Event envelope<br/>tenant · type · subject · time"]
+        ing["Ingestor<br/>dispatch by event.type"]
+        store[("Bitemporal graph<br/>one subgraph per tenant")]
+        tools["Five tools<br/>context · history · search · annotate · related"]
+        env --> ing --> store --> tools
+    end
+    subgraph cart ["Cartridge (your vertical)"]
+        yaml["cartridge.yaml<br/>ontology · events · rules · memory policy"]
+        hand["handlers.py<br/>payload → store primitives"]
+    end
+    pg & wh & jl --> env
+    hand -.-> ing
+    yaml -.-> tools
+    tools <--> a1["Agent A"] & a2["Agent B"] & a3["Agent N"]
+```
+
+Events are the truth and the graph is derived, so one tenant's subgraph can be rebuilt by replaying its log. Agents never see a pipeline: they see five tools.
+
 ## Five tools, any agent
 
 ```text

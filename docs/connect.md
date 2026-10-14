@@ -70,6 +70,25 @@ ingestor.ingest(adapter.follow(interval=5))   # or poll forever
 
 Delivery is at-least-once: the cursor advances after the consumer has taken an event, so a crash mid-event re-delivers it. The table name, the cursor column and the batch size are parameters. Any DB-API 2.0 connection works; pass `placeholder="?"` for sqlite3.
 
+```mermaid
+sequenceDiagram
+    participant S as Your SaaS
+    participant T as keel_events
+    participant A as PostgresTableAdapter
+    participant C as cursor file
+    participant I as Ingestor
+    S->>T: INSERT envelope (seq 41)
+    A->>C: read position
+    C-->>A: 40
+    A->>T: SELECT * WHERE seq > 40 ORDER BY seq LIMIT 500
+    T-->>A: row 41
+    A->>I: Event 41
+    I->>I: dispatch to the handler
+    I->>A: next event?
+    A->>C: write 41
+    Note over A,I: a crash before "write 41" re-delivers event 41 on restart
+```
+
 !!! warning "Concurrent writers"
     A serial cursor can skip a row that commits late while a later row was already read. Use one writer per table, or a `recorded_at` cursor with a lag, if that bites.
 

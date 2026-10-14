@@ -98,6 +98,21 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 
 **Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST first close any open fact with the same `(subject, predicate)` by setting its `valid_to = valid_from`, then append the new fact. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
+```mermaid
+sequenceDiagram
+    participant H as Handler
+    participant S as Store
+    participant Q as Tool
+    H->>S: open_fact(tire:T-9001, depth_mm, 5.2, valid_from=Sep 10)
+    Note over S: depth_mm=5.2 valid [Sep 10, open)
+    H->>S: open_fact(tire:T-9001, depth_mm, 2.6, valid_from=Oct 3)
+    Note over S: close 5.2 with valid_to=Oct 3, append 2.6 valid [Oct 3, open)
+    Q->>S: facts(at=Sep 20)
+    S-->>Q: depth_mm=5.2
+    Q->>S: facts(at=now)
+    S-->>Q: depth_mm=2.6
+```
+
 **Queries the store MUST answer:**
 
 - facts true **at** a world time `t`: `valid_from <= t < valid_to` (or open).
@@ -236,6 +251,14 @@ Adding or changing a cartridge MUST require no change under `keel/`. The reposit
 | `tenant` | that tenant's agents | handlers (from events); agents/humans via `annotate` | never | yes |
 | `task` | agents working the same task | agents via `annotate` | 14 days | no |
 | `agent` | that agent only | that agent | 1 day | no |
+
+```mermaid
+flowchart LR
+    g["global<br/>every tenant · never expires · evidence"] --> t["tenant<br/>one end-customer · never expires · evidence"] --> k["task<br/>agents on one task · 14 d"] --> a["agent<br/>one agent · 1 d"]
+    w["annotate(subject, predicate, value, scope, evidence, by)"] --> p{"MemoryPolicy.check_write"}
+    p -- "scope requires evidence, none given" --> e["PermissionError"]
+    p -- "ok" --> f["open_fact with scope, evidence, corrected_by=by<br/>expires_at = now + ttl"]
+```
 
 Rules:
 
