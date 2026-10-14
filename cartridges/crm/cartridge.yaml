@@ -1,0 +1,50 @@
+# Second cartridge: a minimal CRM. It exists to prove the core is domain-agnostic.
+# If you had to touch keel/ to make this work, something leaked.
+
+name: crm
+version: 0.1.0
+
+entities:
+  business:
+    description: A small business using the product.
+  customer:
+    description: An end customer of that business.
+  appointment:
+    description: A booked service.
+  payment:
+    description: A payment for an appointment.
+
+relations:
+  customer_of:   { from: customer,    to: business }
+  booked_by:     { from: appointment, to: customer }
+  pays_for:      { from: payment,     to: appointment }
+
+events:
+  customer.created:
+    subject: business
+    owner: crm
+    payload: { id: string, name: string, phone: string }
+  appointment.booked:
+    subject: customer
+    owner: scheduling
+    payload: { id: string, service: string, starts_at: datetime }
+  appointment.status_changed:
+    subject: appointment
+    owner: scheduling
+    payload: { status: string }
+  payment.received:
+    subject: appointment
+    owner: billing
+    payload: { id: string, amount: number, currency: string }
+
+rules:
+  inactive_customer:
+    applies_to: customer
+    definition: "A customer is inactive after 60 days without an appointment."
+    days: 60
+
+memory:
+  ttl:
+    task: 7d
+    agent: 1d
+  requires_evidence: [global, tenant]

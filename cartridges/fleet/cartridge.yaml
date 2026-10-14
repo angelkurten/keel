@@ -1,0 +1,99 @@
+# Reference cartridge: fleet management (inspired by a real fleet SaaS, anonymized).
+# A cartridge declares the domain; the core never reads this file's meaning, only its shape.
+
+name: fleet
+version: 0.1.0
+
+entities:
+  unit:
+    description: A vehicle in the customer's fleet.
+    ref: vehicles.id
+  driver:
+    description: A person assigned to drive units.
+    ref: drivers.id
+  tire:
+    description: A tire mounted on a unit, tracked by position (P1..P4, R1).
+    ref: tires.id
+  inspection:
+    description: A checklist run on a unit, with photos and a signature.
+    ref: inspections.id
+  ticket:
+    description: A maintenance work order (preventive or corrective).
+    ref: tickets.id
+  document:
+    description: A permit, policy or license with an expiry date, on a unit or a driver.
+    ref: documents.id
+  workshop:
+    description: An internal or third-party garage.
+    ref: workshops.id
+
+relations:
+  assigned_to:      { from: driver,     to: unit }
+  mounted_on:       { from: tire,       to: unit }
+  has_inspection:   { from: unit,       to: inspection }
+  has_ticket:       { from: unit,       to: ticket }
+  in_workshop:      { from: unit,       to: workshop }
+  covers_unit:      { from: document,   to: unit }
+  covers_driver:    { from: document,   to: driver }
+  found_in:         { from: ticket,     to: inspection }
+
+events:
+  unit.registered:
+    subject: unit
+    owner: fleet-core
+    payload: { id: string, plate: string, model: string }
+  driver.assigned:
+    subject: unit
+    owner: fleet-core
+    payload: { driver_id: string }
+  inspection.created:
+    subject: unit
+    owner: inspections
+    payload: { id: string, checklist: string, damages: int, photos: int }
+  inspection.damage_marked:
+    subject: inspection
+    owner: inspections
+    payload: { damage_id: string, kind: string, severity: string, photo: string }
+  tire.depth_measured:
+    subject: tire
+    owner: tires
+    payload: { unit_id: string, position: string, depth_mm: number }
+  ticket.opened:
+    subject: unit
+    owner: maintenance
+    payload: { id: string, kind: string, urgency: string, inspection_id: string | null }
+  ticket.status_changed:
+    subject: ticket
+    owner: maintenance
+    payload: { status: string, workshop_id: string | null }
+  document.expiry_set:
+    subject: document
+    owner: compliance
+    payload: { kind: string, covers: string, expires_on: date }
+  fuel.load_recorded:
+    subject: unit
+    owner: fuel
+    payload: { liters: number, odometer_km: number, price: number }
+
+# Semantic layer: authored by product, versioned, consulted by the tools.
+rules:
+  tire_critical:
+    applies_to: tire
+    definition: "A tire is critical when tread depth is below 3 mm."
+    threshold_mm: 3
+  document_critical:
+    applies_to: document
+    definition: "A document is critical when it expires within 15 days; expired when the date has passed."
+    days: 15
+  fuel_anomaly:
+    applies_to: unit
+    definition: "A fuel load is anomalous when liters exceed the tank capacity or consumption per km deviates more than 30% from the unit's 30-day average."
+    deviation_pct: 30
+
+memory:
+  ttl:
+    global: never
+    tenant: never
+    task: 14d       # an audit of one inspection
+    agent: 1d
+  requires_evidence: [global, tenant]

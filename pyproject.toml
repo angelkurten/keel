@@ -1,0 +1,45 @@
+[project]
+name = "keel"
+version = "0.0.1"
+description = "Context layer for AI agents in vertical SaaS: domain events in, a per-tenant bitemporal context graph out, shared by every agent through five MCP tools."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "Angel Kürten", email = "angel@angelkurten.com" }]
+keywords = ["agents", "context", "knowledge-graph", "event-driven", "mcp", "bitemporal"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.2"]
+graphiti = ["graphiti-core>=0.5"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+keel = "keel.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/angelkurten/keel"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["keel"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,4 @@
+{"tenant":"salon-luna","type":"customer.created","subject":"business:salon-luna","occurred_at":"2026-09-02T15:00:00Z","source":"crm.customers","payload":{"id":"C-41","name":"Marta P.","phone":"+57 300 000 0000"}}
+{"tenant":"salon-luna","type":"appointment.booked","subject":"customer:C-41","occurred_at":"2026-09-02T15:05:00Z","source":"scheduling","payload":{"id":"A-900","service":"color","starts_at":"2026-09-05T10:00:00Z"}}
+{"tenant":"salon-luna","type":"appointment.status_changed","subject":"appointment:A-900","occurred_at":"2026-09-05T11:30:00Z","source":"scheduling","payload":{"status":"done"}}
+{"tenant":"salon-luna","type":"payment.received","subject":"appointment:A-900","occurred_at":"2026-09-05T11:35:00Z","source":"billing","payload":{"id":"P-1","amount":180000,"currency":"COP"}}
