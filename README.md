@@ -2,7 +2,7 @@
 
 **Stop rebuilding the pipeline for every agent.**
 
-Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/)
+Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 
 Keel is a context layer for AI agents inside vertical SaaS products. Domain events from your product go in; a bitemporal context graph per end-customer comes out; every agent you build reads and writes it through the same five MCP tools.
 

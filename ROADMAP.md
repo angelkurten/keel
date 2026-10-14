@@ -20,7 +20,8 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 - [x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
 - [x] Webhook adapter (FastAPI, optional extra)
 - [x] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates
-- [ ] Launch post: *We built four agents and four copies of our customer context* (HN, r/LLMDevs, LinkedIn)
+- [x] Launch post: [*We built four agents and four copies of our customer context*](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
+- [ ] Share it: HN, r/LLMDevs, LinkedIn
 - [ ] Recorded demo with subtitles
 
 Exit: the post is published, the demo runs, and the fleet slice runs against a real event stream from the first design customer.
