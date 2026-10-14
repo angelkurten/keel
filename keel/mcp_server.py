@@ -15,11 +15,14 @@ from keel.tools import Tools
 
 def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp package
     try:
-        from mcp.server.fastmcp import FastMCP
-    except ImportError as exc:
-        raise SystemExit("MCP server needs the optional dependency: uv sync --extra mcp") from exc
+        from mcp.server.mcpserver import MCPServer as Server  # mcp >= 2
+    except ImportError:
+        try:
+            from mcp.server.fastmcp import FastMCP as Server  # mcp 1.x
+        except ImportError as exc:
+            raise SystemExit("MCP server needs the optional dependency: uv sync --extra mcp") from exc
 
-    mcp = FastMCP(f"keel:{tools.cartridge.name}:{tools.tenant}")
+    mcp = Server(f"keel:{tools.cartridge.name}:{tools.tenant}")
 
     @mcp.tool()
     def context(subject: str) -> dict[str, Any]:

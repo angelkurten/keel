@@ -7,9 +7,9 @@ upsert per event, and can be rebuilt by replaying the log for a tenant.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
 
 from keel.cartridge import Cartridge
 from keel.envelope import Event
@@ -59,7 +59,7 @@ class Ingestor:
                 report.unhandled.append(ev.type)
                 if strict:
                     raise
-            except Exception as exc:  # noqa: BLE001 - one bad event must not stop the stream
+            except Exception as exc:
                 report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
                 if strict:
                     raise

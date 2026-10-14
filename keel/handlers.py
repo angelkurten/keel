@@ -14,7 +14,7 @@ the payload to store primitives in a few lines. The core routes on
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from keel.envelope import Event
 from keel.store.base import Store
@@ -51,6 +51,6 @@ class HandlerRegistry:
             h(event, store)
         return len(handlers)
 
-    def merge(self, other: "HandlerRegistry") -> None:
+    def merge(self, other: HandlerRegistry) -> None:
         for t, hs in other._handlers.items():
             self._handlers.setdefault(t, []).extend(hs)

@@ -23,7 +23,7 @@ def test_both_cartridges_validate():
 
 
 def test_fleet_ingest_and_context():
-    c, s, ing, report = _run(FLEET, "examples/events/fleet.jsonl")
+    c, s, _, report = _run(FLEET, "examples/events/fleet.jsonl")
     assert report.processed == 12 and not report.errors
     t = Tools(c, s, "acme-logistics")
     ctx = t.context("unit:MXK-4821")

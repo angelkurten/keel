@@ -1,0 +1,24 @@
+name: Bug report
+description: The core, the CLI or a shipped cartridge does not behave as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got. A failing test or a `keel` command is ideal.
+    validations:
+      required: true
+  - type: textarea
+    id: events
+    attributes:
+      label: Events to reproduce
+      description: The smallest `.jsonl` stream (or table rows) that triggers it. Strip anything confidential.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: Keel version and Python version
+      placeholder: keel 0.0.1, Python 3.12
+    validations:
+      required: true

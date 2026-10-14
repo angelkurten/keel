@@ -14,10 +14,11 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 - [x] Two cartridges on one core: `fleet` (reference) and `crm` (proof of generality)
 - [x] CLI: `init`, `validate`, `ingest`, `replay`, `context`, `serve`
 - [x] Docs: *Your first cartridge in 20 minutes*
-- [ ] MCP server tested end to end with a real agent (Claude via MCP, then one non-Anthropic client)
-- [ ] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
-- [ ] Webhook adapter (FastAPI, optional extra)
-- [ ] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates
+- [x] MCP server tested end to end with Claude via MCP (`tests/test_adapters.py` drives it with the MCP client; `claude -p --mcp-config` answered from the three tool calls)
+- [ ] MCP server tested end to end with one non-Anthropic client
+- [x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
+- [x] Webhook adapter (FastAPI, optional extra)
+- [x] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates
 - [ ] Launch post: *We built four agents and four copies of our customer context* (HN, r/LLMDevs, LinkedIn)
 - [ ] Recorded demo with subtitles
 

@@ -87,7 +87,7 @@ def _load_registry(path: Path) -> HandlerRegistry:
     spec.loader.exec_module(mod)
     reg = getattr(mod, "registry", None)
     if not isinstance(reg, HandlerRegistry):
-        raise ValueError(f"{handlers_py} must define `registry = HandlerRegistry()`")
+        raise TypeError(f"{handlers_py} must define `registry = HandlerRegistry()`")
     return reg
 
 

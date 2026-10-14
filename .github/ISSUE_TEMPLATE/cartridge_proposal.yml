@@ -1,0 +1,23 @@
+name: Cartridge proposal
+description: Propose a new vertical, or report that writing one needed a change under keel/.
+labels: [cartridge]
+body:
+  - type: input
+    id: vertical
+    attributes:
+      label: Vertical
+      placeholder: clinics, last-mile logistics, property management
+    validations:
+      required: true
+  - type: textarea
+    id: ontology
+    attributes:
+      label: Entities, relations and the three most important event types
+      description: A sketch is enough. See cartridges/fleet/cartridge.yaml for the shape.
+    validations:
+      required: true
+  - type: textarea
+    id: core
+    attributes:
+      label: Did the core get in the way?
+      description: Anything under keel/ you had to change or wished existed. This is the most valuable part.

@@ -6,7 +6,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: pre-alpha. The core shape is here; the Graphiti-backed store, the webhook adapter and the MCP server are stubs you can run against the in-memory store today.
+> Status: pre-alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store today. The durable store is next.
 
 ## The problem
 
@@ -43,6 +43,41 @@ uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 ```
 
 Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes).
+
+## Connect a real event stream
+
+Point an MCP client at the five tools:
+
+```bash
+uv sync --extra mcp
+uv run keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+```
+
+With Claude Code, one command registers it and the agent sees exactly five tools:
+
+```bash
+claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+```
+
+Poll an outbox table in your Postgres (a cursor file makes restarts resume, not re-ingest):
+
+```python
+import psycopg
+from keel.adapters.postgres import PostgresTableAdapter
+
+adapter = PostgresTableAdapter(lambda: psycopg.connect(DSN), table="keel_events", cursor_path=".keel/cursor")
+ingestor.ingest(adapter.follow(interval=5))
+```
+
+Or receive envelopes over HTTP (`uv sync --extra webhook`):
+
+```python
+from keel.adapters.webhook import build_app
+
+app = build_app(ingestor, token="shared-secret")  # POST /events, Authorization: Bearer <token>
+```
+
+The table shape and the envelope fields are in `keel/adapters/postgres.py` and `keel/envelope.py`.
 
 ## Architecture
 
@@ -84,9 +119,9 @@ tests/
 - [x] In-memory bitemporal store
 - [x] Memory scopes with expiry
 - [x] Five tools as plain functions
-- [ ] MCP server (`keel serve`)
+- [x] MCP server (`keel serve`)
 - [ ] Graphiti-backed store
-- [ ] Postgres (table + polling) and webhook adapters
+- [x] Postgres (table + polling) and webhook adapters
 - [ ] Consolidation and decay jobs
 - [ ] Cartridge catalog
 

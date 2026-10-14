@@ -108,7 +108,11 @@ def context(cartridge: Path, events: Path, subject: str, tenant: str | None = No
 
 
 @app.command()
-def serve(cartridge: Path, tenant: str, events: Path | None = None):
+def serve(
+    cartridge: Path,
+    tenant: str = typer.Option(..., help="The end-customer this server is bound to."),
+    events: Path | None = None,
+):
     """Serve the five tools over MCP (stdio). Requires `uv sync --extra mcp`."""
     from keel.mcp_server import build_server
 

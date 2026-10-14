@@ -28,7 +28,7 @@ class Scope(str, Enum):
     def rank(self) -> int:
         return {"global": 0, "tenant": 1, "task": 2, "agent": 3}[self.value]
 
-    def wider_than(self, other: "Scope") -> bool:
+    def wider_than(self, other: Scope) -> bool:
         return self.rank < other.rank
 
 
@@ -40,7 +40,7 @@ class MemoryPolicy:
     requires_evidence: set[Scope]
 
     @classmethod
-    def default(cls) -> "MemoryPolicy":
+    def default(cls) -> MemoryPolicy:
         return cls(
             ttl={
                 Scope.GLOBAL: None,
