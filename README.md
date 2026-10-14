@@ -2,6 +2,8 @@
 
 **Stop rebuilding the pipeline for every agent.**
 
+Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/)
+
 Keel is a context layer for AI agents inside vertical SaaS products. Domain events from your product go in; a bitemporal context graph per end-customer comes out; every agent you build reads and writes it through the same five MCP tools.
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
@@ -109,7 +111,7 @@ Design rules the core enforces:
 keel/            core: envelope, handlers, store, scopes, cartridge loader, ingest, tools, cli
 cartridges/      fleet (reference), crm (proof that the core is domain-agnostic)
 examples/        sample event streams and a minimal agent
-docs/            first-cartridge.md
+docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, SPEC
 tests/
 ```
 

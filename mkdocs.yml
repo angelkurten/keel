@@ -1,0 +1,47 @@
+site_name: Keel
+site_description: Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.
+site_url: https://angelkurten.github.io/keel/
+repo_url: https://github.com/angelkurten/keel
+repo_name: angelkurten/keel
+edit_uri: edit/master/docs/
+copyright: Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+
+nav:
+  - Home: index.md
+  - Your first cartridge: first-cartridge.md
+  - Connect your events: connect.md
+  - Specification: SPEC.md
+  - Roadmap: roadmap.md
+  - Contributing: contributing.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true

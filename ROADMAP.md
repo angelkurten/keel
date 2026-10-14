@@ -14,6 +14,7 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 - [x] Two cartridges on one core: `fleet` (reference) and `crm` (proof of generality)
 - [x] CLI: `init`, `validate`, `ingest`, `replay`, `context`, `serve`
 - [x] Docs: *Your first cartridge in 20 minutes*
+- [x] Docs site: MkDocs Material on GitHub Pages, built from the repo's markdown
 - [x] MCP server tested end to end with Claude via MCP (`tests/test_adapters.py` drives it with the MCP client; `claude -p --mcp-config` answered from the three tool calls)
 - [ ] MCP server tested end to end with one non-Anthropic client
 - [x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
