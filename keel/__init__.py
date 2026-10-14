@@ -10,6 +10,7 @@ from keel.handlers import HandlerRegistry
 from keel.ingest import Ingestor
 from keel.scopes import Scope
 from keel.store.memory import MemoryStore
+from keel.store.sqlite import SqliteStore
 from keel.tools import Tools
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "Ingestor",
     "MemoryStore",
     "Scope",
+    "SqliteStore",
     "Tools",
     "load_cartridge",
 ]

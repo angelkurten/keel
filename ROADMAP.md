@@ -30,8 +30,8 @@ Exit: the post is published, the demo runs, and the fleet slice runs against a r
 
 Goal: durable, replayable, and used by two SaaS products that are not ours.
 
-- [ ] Durable store: Graphiti-backed (or SQLite if Graphiti forces an LLM into ingest; see CLAUDE.md)
-- [ ] Replay from an external log (the bus is the truth, not `Ingestor.log`)
+- [x] Durable store: SQLite (`keel/store/sqlite.py`, stdlib, same filters as the reference store, `--db` in the CLI). Graphiti stays a candidate for graph-native queries once a pilot needs them
+- [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [ ] Consolidation job: expire task/agent memory, summarize old episodic facts into durable ones
 - [x] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule (rules carry a `when`; `context` takes `as_of`)
 - [x] Cartridge validation against event streams (`keel validate --events` reports unknown types, wrong subject kinds and bad payloads)

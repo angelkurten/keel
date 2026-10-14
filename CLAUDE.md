@@ -24,7 +24,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Event envelope (keel/envelope.py)        tenant, type, subject, occurred_at, recorded_at, source, payload
    -> Ingestor (keel/ingest.py)                 reads an adapter, dispatches by event.type
    -> HandlerRegistry (keel/handlers.py)        cartridge handlers map payload -> store primitives
-   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant
+   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory or sqlite)
    -> Tools (keel/tools.py)                     context / history / search / annotate / related
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers
@@ -67,7 +67,7 @@ If `examples/agent_minimal.py` output changes, say why in the PR.
 
 ## Open decisions (do not resolve silently)
 
-- **Durable store.** Graphiti is the planned backend. If it forces an LLM in the ingest path for structured events, use only its graph store and keep our deterministic ingest. A SQLite store is an acceptable intermediate step.
+- **Durable store.** `SqliteStore` (`keel/store/sqlite.py`) is the shipped intermediate step: stdlib, one file, same filters as `MemoryStore`, conformance in `tests/test_store.py`. Graphiti remains the candidate for graph-native queries; if it forces an LLM in the ingest path for structured events, use only its graph store and keep our deterministic ingest.
 - **Consolidation/decay.** Expiry exists (`expires_at`, `MemoryStore.expire`). Summarizing old episodic facts into durable ones is not designed yet.
 - **Multi-cartridge tenants.** One tenant, one cartridge for now. Composing cartridges is a later decision.
 - **Pricing unit** (hosted): events ingested per month. Not a code concern yet, but metering must be possible from the log.

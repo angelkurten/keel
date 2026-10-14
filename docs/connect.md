@@ -58,10 +58,10 @@ uv sync --extra postgres
 ```python
 import psycopg
 
-from keel import Ingestor, MemoryStore, load_cartridge
+from keel import Ingestor, MemoryStore, SqliteStore, load_cartridge
 from keel.adapters.postgres import PostgresTableAdapter
 
-ingestor = Ingestor(load_cartridge("cartridges/fleet"), MemoryStore())
+ingestor = Ingestor(load_cartridge("cartridges/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
 adapter = PostgresTableAdapter(lambda: psycopg.connect(DSN), table="keel_events", cursor_path=".keel/cursor")
 
 ingestor.ingest(adapter)                      # one pass over everything after the cursor
@@ -102,10 +102,10 @@ uv sync --extra webhook
 
 ```python
 # app.py
-from keel import Ingestor, MemoryStore, load_cartridge
+from keel import Ingestor, MemoryStore, SqliteStore, load_cartridge
 from keel.adapters.webhook import build_app
 
-ingestor = Ingestor(load_cartridge("cartridges/fleet"), MemoryStore())
+ingestor = Ingestor(load_cartridge("cartridges/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
 app = build_app(ingestor, token="shared-secret")
 ```
 
@@ -149,4 +149,12 @@ codex exec --json "Which tires on unit:MXK-4821 are critical according to the ca
 Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance.
 
 !!! note "Where is the graph stored?"
-    In memory, for now. The MCP server ingests the stream at start and serves it. The durable store is the next item on the [roadmap](roadmap.md).
+    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it.
+
+    ```bash
+    uv run keel ingest cartridges/fleet examples/events/fleet.jsonl --db keel.db   # or adapter.follow() in your own process
+    uv run keel serve cartridges/fleet --tenant acme-logistics --db keel.db
+    uv run keel replay cartridges/fleet examples/events/fleet.jsonl acme-logistics --db keel.db   # wipe one tenant, rebuild it from the log
+    ```
+
+    The log is the truth and the file is derived: `replay` rebuilds one tenant from the external log (your outbox table, your bus, a `.jsonl`) and never from the file itself. A Graphiti-backed store is still planned for graph-native queries.

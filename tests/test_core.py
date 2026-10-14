@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import pytest
 from typer.testing import CliRunner
 
-from keel import Ingestor, MemoryStore, Tools, load_cartridge
+from keel import Event, Ingestor, MemoryStore, Tools, load_cartridge
 from keel.cli import app
 from keel.ingest import JsonlAdapter
 
@@ -155,3 +155,11 @@ def test_validate_events_reports_unknown_types_and_bad_payloads(tmp_path):
         assert expected in res.output, res.output
     ok = CliRunner().invoke(app, ["validate", FLEET, "--events", "examples/events/fleet.jsonl"])
     assert ok.exit_code == 0 and "12 events match the catalog" in ok.output
+
+
+def test_event_ids_are_content_hashes_when_the_source_has_none():
+    a = [e.id for e in JsonlAdapter("examples/events/fleet.jsonl")]
+    b = [e.id for e in JsonlAdapter("examples/events/fleet.jsonl")]
+    assert a == b and len(set(a)) == len(a)  # stable across reads, distinct across events
+    given = Event(tenant="t", type="x.y", subject="k:1", occurred_at=datetime(2026, 1, 1, tzinfo=UTC), source="s", id="given")
+    assert given.id == "given"

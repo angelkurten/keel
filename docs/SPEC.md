@@ -34,7 +34,7 @@ Every event, from any adapter, MUST be an envelope with these fields.
 
 | Field | Type | Req. | Meaning |
 | --- | --- | --- | --- |
-| `id` | string | no | Unique id. Generated (uuid4 hex) when absent. Used as `evidence` on derived facts. |
+| `id` | string | no | The source's own id when it has one. Otherwise a content hash of tenant, type, subject, occurred_at, source and payload, so the same stream yields the same ids on replay and a duplicate is recognizable. Used as `evidence` on derived facts. |
 | `tenant` | string | yes | Tenant key. Opaque to Keel. |
 | `type` | string | yes | Dotted lowercase event type from the cartridge catalog, e.g. `inspection.created`. |
 | `subject` | string | yes | `<kind>:<id>`. `kind` MUST be an entity kind declared in the cartridge. |
@@ -142,7 +142,7 @@ search(tenant, text) -> [Entity | Fact]
 
 Maintenance (called by jobs, never by handlers): `expire(tenant, now)`, `reset(tenant)`.
 
-A store implementation MUST pass `tests/test_core.py` unchanged. Reference: `keel/store/memory.py`. Planned: Graphiti-backed and SQLite stores.
+A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` unchanged. Reference: `keel/store/memory.py` (in memory). Durable: `keel/store/sqlite.py`, one file, WAL mode, the same filters as the reference so both answer identically. A Graphiti-backed store remains planned for graph-native queries.
 
 ---
 
@@ -153,7 +153,7 @@ The ingestor reads envelopes from an adapter and dispatches each to the handlers
 - The event log is the source of truth. Keel's own copy of the log (`Ingestor.log`) is a development convenience; in production the bus holds it.
 - Dispatch is **deterministic**: no network, no LLM, no randomness in the ingest path. Replaying the same log in the same order MUST produce an identical graph.
 - An event with no handler is reported as unhandled; in strict mode it raises. A handler exception is reported with the event id and does not stop the stream, unless strict.
-- `replay(tenant)` wipes that tenant's subgraph and re-dispatches its events. It is the recovery path, not the update path.
+- `replay(tenant, events=None)` wipes that tenant's subgraph and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log. It is the recovery path, not the update path.
 - Ordering: adapters SHOULD deliver events in `occurred_at` order per subject. Handlers MUST be correct under late arrival (they use `occurred_at`, and `open_fact` closes on world time).
 
 ### 4.1 Adapters
@@ -320,7 +320,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 
 - **Expiry**: drop facts past `expires_at`, per tenant, on a schedule. Shipped as `MemoryStore.expire`; scheduling is not.
 - **Consolidation**: summarize old `task`/`agent` facts into a durable `tenant` fact with evidence pointing at the originals. Not designed yet; see CLAUDE.md open decisions.
-- **Replay**: rebuild a tenant from the external log. Shipped in-process; external log wiring is planned.
+- **Replay**: rebuild a tenant from the external log. Shipped: `Ingestor.replay(tenant, events=adapter)` and `keel replay <cartridge> <stream> <tenant> --db`.
 
 ---
 

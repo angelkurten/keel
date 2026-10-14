@@ -1,18 +1,77 @@
 """In-memory bitemporal store. Reference implementation and test double.
 
-Good enough to run cartridges, tests and demos. Not durable. The Graphiti
-and SQLite stores implement the same protocol.
+Good enough to run cartridges, tests and demos. Not durable. `SqliteStore`
+implements the same protocol on a file and reuses the filters below, so both
+stores answer every query identically.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
 from keel.envelope import utcnow
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation
+
+# ---- shared by every store: build a fact, filter rows the bitemporal way, search ---------
+
+
+def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
+    return Fact(
+        tenant=tenant,
+        subject=subject,
+        predicate=predicate,
+        value=value,
+        valid_from=valid_from,
+        recorded_at=kw.get("recorded_at") or utcnow(),
+        source=kw.get("source"),
+        scope=Scope(kw.get("scope", Scope.TENANT)),
+        corrected_by=kw.get("corrected_by"),
+        evidence=kw.get("evidence"),
+        expires_at=kw.get("expires_at"),
+    )
+
+
+def filter_facts(
+    facts: Iterable[Fact],
+    at: datetime | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> list[Fact]:
+    out = list(facts)
+    if at is not None:
+        out = [f for f in out if f.valid_from <= at and (f.valid_to is None or f.valid_to > at)]
+    if since is not None:
+        out = [f for f in out if f.valid_to is None or f.valid_to >= since]
+    if until is not None:
+        out = [f for f in out if f.valid_from <= until]
+    now = utcnow()
+    out = [f for f in out if f.expires_at is None or f.expires_at > now]
+    return sorted(out, key=lambda f: f.valid_from)
+
+
+def filter_relations(rels: Iterable[Relation], rel: str | None = None, at: datetime | None = None) -> list[Relation]:
+    out = list(rels)
+    if rel:
+        out = [r for r in out if r.rel == rel]
+    if at is not None:
+        out = [r for r in out if r.valid_from <= at and (r.valid_to is None or r.valid_to > at)]
+    return out
+
+
+def search_in(entities: Iterable[Entity], facts: Iterable[Fact], text: str) -> list[Entity | Fact]:
+    t = text.lower()
+    hits: list[Entity | Fact] = []
+    for e in entities:
+        if t in e.key.lower() or any(t in str(v).lower() for v in e.attrs.values()):
+            hits.append(e)
+    for f in facts:
+        if t in f.predicate.lower() or t in str(f.value).lower():
+            hits.append(f)
+    return hits
 
 
 class MemoryStore:
@@ -52,19 +111,7 @@ class MemoryStore:
         # closing the previous open fact on the same predicate is what makes this bitemporal:
         # the old value keeps its history, it is not overwritten.
         self.close_fact(tenant, subject, predicate, valid_to=valid_from)
-        f = Fact(
-            tenant=tenant,
-            subject=subject,
-            predicate=predicate,
-            value=value,
-            valid_from=valid_from,
-            recorded_at=kw.get("recorded_at") or utcnow(),
-            source=kw.get("source"),
-            scope=kw.get("scope", Scope.TENANT),
-            corrected_by=kw.get("corrected_by"),
-            evidence=kw.get("evidence"),
-            expires_at=kw.get("expires_at"),
-        )
+        f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
         self._facts[tenant].append(f)
         return f
 
@@ -86,35 +133,13 @@ class MemoryStore:
         since: datetime | None = None,
         until: datetime | None = None,
     ) -> list[Fact]:
-        out = [f for f in self._facts[tenant] if f.subject == subject]
-        if at is not None:
-            out = [f for f in out if f.valid_from <= at and (f.valid_to is None or f.valid_to > at)]
-        if since is not None:
-            out = [f for f in out if f.valid_to is None or f.valid_to >= since]
-        if until is not None:
-            out = [f for f in out if f.valid_from <= until]
-        now = utcnow()
-        out = [f for f in out if f.expires_at is None or f.expires_at > now]
-        return sorted(out, key=lambda f: f.valid_from)
+        return filter_facts((f for f in self._facts[tenant] if f.subject == subject), at, since, until)
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
-        out = [r for r in self._relations[tenant] if r.src == key or r.dst == key]
-        if rel:
-            out = [r for r in out if r.rel == rel]
-        if at is not None:
-            out = [r for r in out if r.valid_from <= at and (r.valid_to is None or r.valid_to > at)]
-        return out
+        return filter_relations((r for r in self._relations[tenant] if r.src == key or r.dst == key), rel, at)
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]:
-        t = text.lower()
-        hits: list[Entity | Fact] = []
-        for e in self._entities[tenant].values():
-            if t in e.key.lower() or any(t in str(v).lower() for v in e.attrs.values()):
-                hits.append(e)
-        for f in self._facts[tenant]:
-            if t in f.predicate.lower() or t in str(f.value).lower():
-                hits.append(f)
-        return hits
+        return search_in(self._entities[tenant].values(), self._facts[tenant], text)
 
     # ---- maintenance --------------------------------------------------------------
 

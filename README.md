@@ -8,7 +8,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: pre-alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store today. The durable store is next.
+> Status: pre-alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store or the SQLite store (`--db keel.db`, stdlib, no server to run).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -72,6 +72,7 @@ import psycopg
 from keel.adapters.postgres import PostgresTableAdapter
 
 adapter = PostgresTableAdapter(lambda: psycopg.connect(DSN), table="keel_events", cursor_path=".keel/cursor")
+ingestor = Ingestor(cartridge, SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
 ingestor.ingest(adapter.follow(interval=5))
 ```
 
@@ -126,7 +127,7 @@ tests/
 - [x] Memory scopes with expiry
 - [x] Five tools as plain functions
 - [x] MCP server (`keel serve`)
-- [ ] Graphiti-backed store
+- [x] Durable store: SQLite (Graphiti still planned for graph-native queries)
 - [x] Postgres (table + polling) and webhook adapters
 - [ ] Consolidation and decay jobs
 - [ ] Cartridge catalog

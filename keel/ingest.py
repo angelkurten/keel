@@ -65,11 +65,15 @@ class Ingestor:
                     raise
         return report
 
-    def replay(self, tenant: str) -> IngestReport:
-        """Recovery path: wipe the tenant's subgraph and rebuild it from the log."""
+    def replay(self, tenant: str, events: Iterable[Event] | None = None) -> IngestReport:
+        """Recovery path: wipe the tenant's subgraph and rebuild it from the log.
+
+        `events` is the external log (the bus, the outbox table, a .jsonl file): the truth a
+        deployment replays from. Without it, the in-memory log of this process is used.
+        """
         reset = getattr(self.store, "reset", None)
         if reset:
             reset(tenant)
-        events = [e for e in self.log if e.tenant == tenant]
-        self.log = [e for e in self.log if e.tenant != tenant]
-        return self.ingest(events)
+        if events is None:
+            events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
+        return self.ingest(e for e in events if e.tenant == tenant)
