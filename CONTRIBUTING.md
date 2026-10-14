@@ -36,6 +36,16 @@ uv run keel validate cartridges/fleet --events examples/events/fleet.jsonl && uv
 
 By contributing you agree that your contributions are licensed under the Apache License 2.0.
 
+## Against a real Postgres
+
+The table adapter's tests run on sqlite3. To run the same test on Postgres, start one and point `KEEL_PG_DSN` at it:
+
+```bash
+docker run -d --rm --name keel-pg -e POSTGRES_PASSWORD=keel -p 127.0.0.1:5435:5432 postgres:16-alpine
+KEEL_PG_DSN=postgresql://postgres:keel@127.0.0.1:5435/postgres uv run --extra postgres pytest -k real_postgres
+docker rm -f keel-pg
+```
+
 ## Your own store
 
 The core talks to a `Store` protocol (`keel/store/base.py`); `MemoryStore` is the reference and `SqliteStore` the default durable one. A third store (Postgres, Graphiti, anything) is a separate package, never a core change. Run the conformance suite against it:

@@ -88,7 +88,10 @@ def _fact(row: sqlite3.Row) -> Fact:
 
 class SqliteStore:
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self.db = sqlite3.connect(str(path), isolation_level=None)  # autocommit: one primitive, one transaction
+        # autocommit: one primitive, one transaction. check_same_thread off because MCP servers run tool
+        # calls in worker threads; Python's sqlite3 is built serialized, so one shared connection is safe.
+        # ponytail: one connection per store; a connection per thread if contention ever shows.
+        self.db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)

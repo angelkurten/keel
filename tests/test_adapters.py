@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import sys
 
@@ -218,3 +219,44 @@ def test_bus_adapter_leaves_a_failed_event_unacked_in_strict_mode():
     with pytest.raises(KeyError):
         Ingestor(c, MemoryStore()).ingest(adapter, strict=True)
     assert consumer.committed == [0, 1, 2, 3]  # the four before it were acked, the failed one is redelivered
+
+
+
+# ---- the real thing, when a Postgres is at hand ----------------------------------------------
+
+
+@pytest.mark.skipif(not os.environ.get("KEEL_PG_DSN"), reason="set KEEL_PG_DSN to run against a real Postgres")
+def test_table_adapter_on_real_postgres(tmp_path):
+    """docker run -d --rm --name keel-pg -e POSTGRES_PASSWORD=keel -p 127.0.0.1:5435:5432 postgres:16-alpine
+    KEEL_PG_DSN=postgresql://postgres:keel@127.0.0.1:5435/postgres uv run --extra postgres pytest -k real_postgres"""
+    psycopg = pytest.importorskip("psycopg")
+    dsn = os.environ["KEEL_PG_DSN"]
+    ddl = (
+        "DROP TABLE IF EXISTS keel_events; CREATE TABLE keel_events (seq bigserial PRIMARY KEY, id text NOT NULL, "
+        "tenant text NOT NULL, type text NOT NULL, subject text NOT NULL, occurred_at timestamptz NOT NULL, "
+        "recorded_at timestamptz NOT NULL DEFAULT now(), source text NOT NULL, payload jsonb NOT NULL DEFAULT '{}')"
+    )
+    ins = "INSERT INTO keel_events (id, tenant, type, subject, occurred_at, source, payload) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    events = list(JsonlAdapter(FLEET_EVENTS))
+
+    def insert(batch):
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            for e in batch:
+                conn.execute(ins, (e.id, e.tenant, e.type, e.subject, e.occurred_at, e.source, json.dumps(e.payload)))
+
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute(ddl)
+    insert(events[:7])
+    c = load_cartridge(FLEET)
+    store, ing = MemoryStore(), None
+    ing = Ingestor(c, store)
+    adapter = PostgresTableAdapter(lambda: psycopg.connect(dsn), cursor_path=tmp_path / "cursor")
+    assert ing.ingest(adapter, strict=True).processed == 7 and adapter.position == 7
+    insert(events[7:])
+    assert ing.ingest(adapter, strict=True).processed == 5 and adapter.position == 12
+    assert ing.ingest(adapter, strict=True).processed == 0
+    assert [e.id for e in ing.log] == [e.id for e in events]
+    reference = MemoryStore()
+    Ingestor(c, reference).ingest(JsonlAdapter(FLEET_EVENTS))
+    for subject in ("unit:MXK-4821", "tire:T-9001", "ticket:TK-3608"):
+        assert _shape(Tools(c, store, TENANT), subject) == _shape(Tools(c, reference, TENANT), subject)

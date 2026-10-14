@@ -129,3 +129,31 @@ def test_cli_export_is_the_audit_trail(tmp_path):
     assert human["corrected_by"] == "human:angel" and human["scope"] == "tenant" and human["source"] == "annotate:human:angel"
     empty = CliRunner().invoke(app, ["export", "someone-else", "--db", db])
     assert empty.exit_code == 0 and empty.output.strip() == ""  # no cross-tenant leak
+
+
+def test_mcp_serve_reads_and_writes_a_db_file(tmp_path):
+    """Regression: MCP servers run tools in worker threads; the SQLite connection must survive that."""
+    pytest.importorskip("mcp")
+    import sys
+
+    import anyio
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
+    db = str(tmp_path / "keel.db")
+    assert CliRunner().invoke(app, ["ingest", FLEET, EVENTS, "--db", db]).exit_code == 0
+    params = StdioServerParameters(command=sys.executable, args=["-m", "keel.cli", "serve", FLEET, "--tenant", TENANT, "--db", db])
+
+    def failed(res):
+        return getattr(res, "is_error", None) or getattr(res, "isError", None)
+
+    async def run():
+        async with stdio_client(params) as (r, w), ClientSession(r, w) as s:
+            await s.initialize()
+            res = await s.call_tool("context", {"subject": "tire:T-9001"})
+            assert not failed(res) and json.loads(res.content[0].text)["evaluation"] == {"tire_critical": True}
+            res = await s.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "critical", "scope": "task", "by": "agent:mcp"})
+            assert not failed(res), res.content[0].text
+
+    anyio.run(run)
+    assert any(f.predicate == "assessment" for f in SqliteStore(db).facts(TENANT, "tire:T-9001"))  # written through MCP, durable
