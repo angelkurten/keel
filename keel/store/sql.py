@@ -131,16 +131,25 @@ class SqlStore:
         have = self._columns("facts")
         for name, sqltype, index in self.ADDED_FACT_COLUMNS:  # additive migration for databases from <= 0.8
             if name not in have:
-                self._exec(f"ALTER TABLE facts ADD COLUMN {name} {sqltype}")
+                self._ddl(f"ALTER TABLE facts ADD COLUMN {name} {sqltype}", lambda n=name: n in self._columns("facts"))
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
-                self._exec(index)
+                self._ddl(index, lambda i=index: self._has_index("facts", re.search(r"INDEX (\w+)", i).group(1)))
         if not self._has_index("facts", "facts_key"):  # annotate(key=) stays one write even across processes
             try:
-                self._exec("CREATE UNIQUE INDEX facts_key ON facts (tenant, subject, idempotency_key)")
+                self._ddl("CREATE UNIQUE INDEX facts_key ON facts (tenant, subject, idempotency_key)", lambda: self._has_index("facts", "facts_key"))
             except Exception as exc:  # an older database may already hold a key written twice
                 if type(exc).__name__ != "IntegrityError":  # every driver's name for it
                     raise
                 warnings.warn(f"facts_key not created, so annotate(key=) is not race-safe here: {exc}", stacklevel=2)
+
+    def _ddl(self, stmt: str, done: Callable[[], bool]) -> None:
+        """A migration step several processes may race to run on one database: when it fails because
+        another process already did it (MySQL 1060/1061, SQLite "already exists"), carry on."""
+        try:
+            self._exec(stmt)
+        except Exception:
+            if not done():
+                raise
 
     def _columns(self, table: str) -> set[str]:
         """Column names of a table (dialect hook)."""

@@ -378,6 +378,30 @@ def test_a_database_with_a_key_already_written_twice_still_opens(tmp_path):
     assert len(again.facts(TENANT, "tire:T-1")) == 2
 
 
+@pytest.mark.parametrize("kind", ["sqlite"] + (["mysql"] if MYSQL else []))
+def test_processes_opening_one_database_at_once_do_not_fail(kind, tmp_path, monkeypatch):
+    """Two processes open a database without the index: both see it missing, the second CREATE fails
+    with 'already exists' (MySQL 1061). The loser must carry on, not crash."""
+    if kind == "sqlite":
+        open_store = lambda: SqliteStore(tmp_path / "keel.db")
+    else:
+        from keel.store.mysql import MysqlStore
+
+        open_store = lambda: MysqlStore.from_url(MYSQL)
+    first = open_store()  # the winner created the index
+    real, lied = type(first)._has_index, []
+
+    def has_index(self, table, name):  # what the loser saw just before the winner's CREATE
+        if name == "facts_key" and not lied:
+            lied.append(name)
+            return False
+        return real(self, table, name)
+
+    monkeypatch.setattr(type(first), "_has_index", has_index)
+    second = open_store()
+    assert lied and real(second, "facts", "facts_key")
+
+
 def test_search_enumerates_by_kind_and_rule_with_pages(store):
     c = load_cartridge(FLEET)
     Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
