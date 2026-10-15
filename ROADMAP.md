@@ -34,6 +34,7 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
+- [x] The table, Kafka and SQS adapters acknowledge only after the Ingestor commits: with `batch=N`, a batch that rolled back was skipped by the cursor and lost (0.16.2; from the kagent PoC)
 - [x] `keel sdk python` writes rules as a Python literal: a rule with `true` or `null` no longer breaks the import (0.16.1)
 - [x] `KEEL_TENANT`: the default tenant for every command that takes one, and the bound tenant of `serve`; a product with no end-customers sets one value and forgets it (0.16.1)
 - [x] `replay` keeps annotations and consolidations; the events land around them (0.16.0)

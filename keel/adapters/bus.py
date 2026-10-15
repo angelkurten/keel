@@ -12,7 +12,9 @@ other client can be wrapped the same way.
     ingestor.ingest(adapter.follow())   # consume forever
 
 Delivery is at-least-once: a message is acknowledged (offset committed, SQS message deleted)
-only after the ingestor has taken the event, so a crash mid-event re-delivers it. A message
+only after it is stored. Driven by `Ingestor.ingest`, that is after each commit (`ack()`), so a
+batch that rolls back is redelivered whole; iterated by hand, once you ask for the next event,
+or when you call `ack()` yourself. A message
 that is not a valid envelope raises and stays unacknowledged, unless you pass `dead_letter`:
 it receives (body, error), and the adapter acknowledges the message and moves on.
 """
@@ -24,6 +26,7 @@ import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
+from keel.adapters import Following
 from keel.envelope import Event
 
 Ack = Callable[[], None]
@@ -33,8 +36,17 @@ DeadLetter = Callable[[bytes | str, Exception], None]
 class BusAdapter:
     """The shared loop. A subclass fetches raw messages as (body, ack) pairs."""
 
+    manual_ack = False  # Ingestor.ingest sets it: messages are then acknowledged only on ack()
+
     def __init__(self, dead_letter: DeadLetter | None = None) -> None:
         self.dead_letter = dead_letter
+        self._pending: list[Ack] = []
+
+    def ack(self) -> None:
+        """Everything taken so far is stored: acknowledge it."""
+        pending, self._pending = self._pending, []
+        for ack in pending:
+            ack()
 
     def _fetch(self) -> list[tuple[bytes | str, Ack]]:  # pragma: no cover - abstract
         raise NotImplementedError
@@ -52,20 +64,28 @@ class BusAdapter:
                     if self.dead_letter is None:
                         raise
                     self.dead_letter(body, exc)
-                    ack()
+                    self._pending.append(ack)
+                    if not self.manual_ack:
+                        self.ack()
                     continue
+                self._pending.append(ack)  # before the yield: ack() right after a commit covers it
                 yield event
-                ack()  # runs once the consumer asks for the next event: the handler already ran
+                if not self.manual_ack:
+                    self.ack()  # runs once the consumer asks for the next event: the handler already ran
 
-    def follow(self, interval: float = 1.0) -> Iterator[Event]:
+    def follow(self, interval: float = 1.0) -> Following:
         """Consume forever. `ingestor.ingest(adapter.follow())` never returns."""
-        while True:
-            n = 0
-            for ev in self:
-                n += 1
-                yield ev
-            if n == 0:
-                time.sleep(interval)
+
+        def forever() -> Iterator[Event]:
+            while True:
+                n = 0
+                for ev in self:
+                    n += 1
+                    yield ev
+                if n == 0:
+                    time.sleep(interval)
+
+        return Following(self, forever())
 
 
 class KafkaAdapter(BusAdapter):

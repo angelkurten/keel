@@ -147,11 +147,12 @@ class _KafkaConsumer:
 
 class _Sqs:
     def __init__(self, bodies):
-        self.pending = {f"rh-{i}": b for i, b in enumerate(bodies)}  # stays visible until deleted
-        self.deleted = []
+        self.pending = {f"rh-{i}": b for i, b in enumerate(bodies)}  # stays until deleted
+        self.deleted, self.in_flight = [], set()  # received, hidden until the visibility timeout
 
     def receive_message(self, QueueUrl, MaxNumberOfMessages, WaitTimeSeconds):
-        items = list(self.pending.items())[:MaxNumberOfMessages]
+        items = [(h, b) for h, b in self.pending.items() if h not in self.in_flight][:MaxNumberOfMessages]
+        self.in_flight |= {h for h, _ in items}
         return {"Messages": [{"MessageId": h, "ReceiptHandle": h, "Body": b} for h, b in items]}
 
     def delete_message(self, QueueUrl, ReceiptHandle):
@@ -290,3 +291,62 @@ def test_bus_connect_passes_every_option(monkeypatch):
     assert k.consumer.conf["security.protocol"] == "SASL_SSL" and k.consumer.conf["enable.auto.commit"] is False
     s = SqsAdapter.connect("https://q", batch_size=5, wait_seconds=1, dead_letter=dl, region_name="us-east-1")
     assert (s.batch_size, s.wait_seconds, s.dead_letter, s.client) == (5, 1, dl, ("sqs", {"region_name": "us-east-1"}))
+
+
+class _Crash(Exception):
+    pass
+
+
+def _crash_at(cartridge, event_id):
+    """The process dies while storing `event_id`, once: the batch it is in rolls back."""
+    dispatch, fired = cartridge.registry.dispatch, []
+
+    def crashing(ev, store):
+        if ev.id == event_id and not fired:
+            fired.append(ev.id)
+            raise _Crash(ev.id)
+        return dispatch(ev, store)
+
+    cartridge.registry.dispatch = crashing
+
+
+def test_table_adapter_cursor_never_runs_ahead_of_a_batch_commit(tmp_path):
+    from keel.store.sqlite import SqliteStore
+
+    db, cursor = tmp_path / "outbox.db", tmp_path / "cursor"
+    events = list(JsonlAdapter(FLEET_EVENTS))
+    conn = sqlite3.connect(db)
+    conn.execute(DDL)
+    conn.executemany(
+        "INSERT INTO keel_events (id, tenant, type, subject, occurred_at, recorded_at, source, payload) VALUES (?,?,?,?,?,?,?,?)",
+        [(e.id, e.tenant, e.type, e.subject, e.occurred_at.isoformat(), e.recorded_at.isoformat(), e.source, json.dumps(e.payload)) for e in events],
+    )
+    conn.commit()
+
+    def adapter():
+        return PostgresTableAdapter(lambda: sqlite3.connect(db), cursor_path=cursor, placeholder="?", batch_size=4)
+
+    c, store = load_cartridge(FLEET), SqliteStore(tmp_path / "keel.db")
+    _crash_at(c, events[7].id)  # in the third batch of three (6, 7, 8)
+    with pytest.raises(_Crash):
+        Ingestor(c, store).ingest(adapter(), strict=True, batch=3)
+    assert adapter().position == 6  # the two committed batches, not the events taken after them
+    Ingestor(c, store).ingest(adapter(), strict=True, batch=3)
+    assert adapter().position == 12
+    ref = MemoryStore()
+    Ingestor(load_cartridge(FLEET), ref).ingest(JsonlAdapter(FLEET_EVENTS), strict=True)
+    assert _shape(Tools(c, store, TENANT), "unit:MXK-4821") == _shape(Tools(c, ref, TENANT), "unit:MXK-4821")
+
+
+@pytest.mark.parametrize("kind", ["kafka", "sqs"])
+def test_bus_acks_only_what_a_batch_committed(kind, tmp_path):
+    from keel.store.sqlite import SqliteStore
+
+    lines = _lines()
+    adapter, client = _bus(kind, lines)
+    c = load_cartridge(FLEET)
+    _crash_at(c, list(JsonlAdapter(FLEET_EVENTS))[7].id)
+    with pytest.raises(_Crash):
+        Ingestor(c, SqliteStore(tmp_path / "keel.db")).ingest(adapter, strict=True, batch=3)
+    acked = client.committed if kind == "kafka" else client.deleted
+    assert len(acked) == 6  # messages 6..8 stay unacknowledged and come back

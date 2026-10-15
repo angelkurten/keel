@@ -11,6 +11,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from keel.cartridge import Cartridge
 from keel.envelope import Event
@@ -75,7 +76,16 @@ class Ingestor:
         """Dispatch every event. When the store has transactions, each event is one (its primitives and
         `remember` land together); a bulk caller (a file, an HTTP batch) passes `batch` to commit every
         `batch` events instead, which is what makes a networked database fast. A chunk that raises in
-        strict mode is rolled back whole and will be redelivered whole; dedupe takes care of the rest."""
+        strict mode is rolled back whole and will be redelivered whole; dedupe takes care of the rest.
+
+        An adapter with `ack()` (the table and bus adapters) is acknowledged after each commit, never
+        before: its cursor or offsets cover only what is stored."""
+        return self._ingest(events, strict, batch, source=events)
+
+    def _ingest(self, events: Iterable[Event], strict: bool, batch: int, source: Any) -> IngestReport:
+        ack = getattr(source, "ack", None)
+        if ack:
+            source.manual_ack = True
         report = IngestReport()
         tx = getattr(self.store, "transaction", None)
         bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
@@ -98,6 +108,8 @@ class Ingestor:
                         report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
                         if strict:
                             raise
+            if ack:
+                ack()
         return report
 
     def replay(self, tenant: str, events: Iterable[Event] | None = None) -> IngestReport:
@@ -114,4 +126,4 @@ class Ingestor:
             reset(tenant, keep_annotations=True) if _accepts(reset, "keep_annotations") else reset(tenant)
         if events is None:
             events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
-        return self.ingest((e for e in events if e.tenant == tenant), batch=500)
+        return self._ingest((e for e in events if e.tenant == tenant), False, 500, source=events)
