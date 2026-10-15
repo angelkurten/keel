@@ -78,6 +78,18 @@ A second design customer: kagent, with 354 real Jira cards and 2831 events, wrot
 - [ ] Semantic `search` (planned since 0.0.x; kagent has embeddings to plug in)
 - [x] Bulk ingest: set-based batch flush for the SQL stores ([design note](docs/design/bulk-ingest.md)); 101 000 events in 8.4 s on MySQL, a million in under a minute and a half, against 45 minutes before
 
+## 0.9 — what agentic workflows demand (proposed 2026-10-14)
+
+From a survey of the state of the art and a complex multi-agent flow run on Keel (`examples/workflow_fleet_ops.py`); the reasoning is in the [design note](docs/design/agentic-workflows.md). All inside the five tools.
+
+- [ ] Transaction time: `context` / `history` with `as_known_at` (what the agent saw), with the close's own `recorded_at`
+- [ ] Changes since a cursor: tenant-wide `history(since=)` with annotations, and the watermark in every `context`
+- [ ] Task ids on task memory, `history(task=)`, `keel expire --task`
+- [ ] Idempotency key on `annotate`
+- [ ] `search(kind=, rule=, limit=)`: enumerate subjects by kind or by rule state, with a cursor
+- [ ] People as principals in the registry (`kind: human`)
+- [ ] Next: detail levels and budgets, conflict policy per predicate, proposed vs accepted annotations, trace propagation into the audit log
+
 ## Later — 0.4+ (2027)
 
 Goal: the hosted product and the cartridge catalog.

@@ -40,6 +40,7 @@ nav:
       - Agent registry: design/agent-registry.md
       - SDKs from the cartridge: design/sdk-generator.md
       - Ingesting millions of events: design/bulk-ingest.md
+      - What agentic workflows demand: design/agentic-workflows.md
 
 markdown_extensions:
   - admonition
