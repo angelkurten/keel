@@ -80,7 +80,7 @@ The tag triggers `.github/workflows/release.yml`, which runs the tests, builds a
 The SDK runtimes release separately, when they change:
 
 ```bash
-cd sdk/typescript && npm version X.Y.Z && npm publish --access public        # npm, needs 2FA; org keel-context
+git tag sdk/typescript/vX.Y.Z && git push origin sdk/typescript/vX.Y.Z   # npm, by .github/workflows/sdk-typescript-release.yml (trusted publishing); bump sdk/typescript/package.json first
 git tag sdk/go/vX.Y.Z && git push origin sdk/go/vX.Y.Z                       # Go module in this repo
 git subtree split --prefix=sdk/php -b php-split && git push git@github.com:angelkurten/keel-sdk-php.git php-split:main   # Composer
 cd ../.. && git tag -f php-split-done && git branch -D php-split              # then tag vX.Y.Z in keel-sdk-php; Packagist follows it
