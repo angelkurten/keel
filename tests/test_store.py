@@ -385,3 +385,24 @@ def test_old_databases_gain_the_new_columns(tmp_path):
     store = SqliteStore(path)  # a 0.8 database: the columns are added on open, rows kept
     assert {"task", "idempotency_key", "closed_at"} <= store._columns("facts")
     assert [f.value for f in store.facts("t", "tire:T-1")] == [4.0]
+
+
+def test_time_arguments_accept_what_the_tools_return(store):
+    """Regression (0.9.0): the watermark is ISO text and the spec says to pass it back as is."""
+    c = load_cartridge(FLEET)
+    ing = Ingestor(c, store)
+    events = list(JsonlAdapter(EVENTS))
+    ing.ingest(events[:6], strict=True)
+    t = Tools(c, store, TENANT)
+    watermark = t.context("unit:MXK-4821")["watermark"]
+    assert isinstance(watermark, str)
+    _tick()
+    ing.ingest(events[6:], strict=True)
+    changed = t.history(changed_since=watermark)  # straight from context, no parsing
+    assert {"inspection:INS-4821-10", "ticket:TK-3608"} <= {f["subject"] for f in changed}
+    assert t.history("tire:T-9001", changed_since=watermark)
+    assert t.context("tire:T-9001", as_known_at=watermark)["evaluation"] == {"tire_critical": False}
+    assert [f["value"] for f in t.history("tire:T-9001", predicate="depth_mm", as_known_at=watermark)] == [5.2]
+    assert t.context("tire:T-9001", as_of="2026-09-20")["evaluation"] == {"tire_critical": False}
+    assert t.history("tire:T-9001", since="2026-10-01", until="2026-10-31Z")
+    assert t.related("unit:MXK-4821", "mounted_on", as_of="2026-09-05") == []

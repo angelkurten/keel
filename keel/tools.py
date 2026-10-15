@@ -18,7 +18,7 @@ from typing import Any
 
 from keel.agents import resolve
 from keel.cartridge import Cartridge
-from keel.envelope import utcnow
+from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation, Store
@@ -38,6 +38,14 @@ def _ser(o: Any) -> Any:
     if isinstance(o, list):
         return [_ser(v) for v in o]
     return o
+
+
+Instant = datetime | str | None  # every time argument: a datetime or ISO 8601 text, as the tools return it
+
+
+def _t(v: Instant) -> datetime | None:
+    """Accept what the tools hand out (ISO text: `watermark`, `as_of`, `recorded_at`) as readily as a datetime."""
+    return parse_iso(v) if isinstance(v, str) else v
 
 
 def _kind(subject: str) -> str:
@@ -141,9 +149,9 @@ class Tools:
     def context(
         self,
         subject: str,
-        as_of: datetime | None = None,
+        as_of: Instant = None,
         depth: int = 0,
-        as_known_at: datetime | None = None,
+        as_known_at: Instant = None,
         task: str | None = None,
     ) -> dict[str, Any]:
         """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
@@ -153,6 +161,7 @@ class Tools:
         an agent saw when it decided. `task` keeps only that task's task-scope memory. `watermark`
         is the tenant's latest transaction time, the cursor for `history(changed_since=)`."""
         self._readable(subject)
+        as_of, as_known_at = _t(as_of), _t(as_known_at)
         now = as_of or as_known_at or utcnow()
         graph = self._graph(now, as_known_at, task)
         rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
@@ -191,18 +200,19 @@ class Tools:
     def history(
         self,
         subject: str | None = None,
-        since: datetime | None = None,
-        until: datetime | None = None,
+        since: Instant = None,
+        until: Instant = None,
         predicate: str | None = None,
         scope: str | None = None,
-        as_known_at: datetime | None = None,
+        as_known_at: Instant = None,
         task: str | None = None,
-        changed_since: datetime | None = None,
+        changed_since: Instant = None,
     ) -> list[dict[str, Any]]:
         """Facts over time: valid_from/valid_to (world), recorded_at and closed_at (when we learned
         them). Filters: one predicate, one memory scope, one task. `as_known_at`: as Keel knew them
         then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
         with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run"."""
+        since, until, as_known_at, changed_since = _t(since), _t(until), _t(as_known_at), _t(changed_since)
         if subject is None:
             if changed_since is None:
                 raise ValueError("history needs a subject, or changed_since for the whole tenant")
@@ -315,10 +325,10 @@ class Tools:
         )
         return _ser(f)
 
-    def related(self, subject: str, relation: str | None = None, as_of: datetime | None = None) -> list[dict[str, Any]]:
+    def related(self, subject: str, relation: str | None = None, as_of: Instant = None) -> list[dict[str, Any]]:
         """Neighbours by relation type, now or at `as_of`. A symmetric relation shows once, direction `both`."""
         self._readable(subject)
-        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, rel=relation, at=as_of or utcnow()) if self._visible(r, subject)], subject)
+        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, rel=relation, at=_t(as_of) or utcnow()) if self._visible(r, subject)], subject)
         out = []
         for r in rels:
             other = r.dst if r.src == subject else r.src
