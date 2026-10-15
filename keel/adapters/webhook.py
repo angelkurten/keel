@@ -33,6 +33,6 @@ def build_app(ingestor: Ingestor, token: str | None = None, strict: bool = False
     def events(body: list[Event] | Event) -> dict[str, Any]:
         batch = body if isinstance(body, list) else [body]
         report = ingestor.ingest(batch, strict=strict)
-        return {"processed": report.processed, "unhandled": report.unhandled, "errors": report.errors}
+        return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors}
 
     return app

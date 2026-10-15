@@ -82,5 +82,10 @@ class Store(Protocol):
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]: ...
 
+    # ingest bookkeeping (the Ingestor, never handlers): at-least-once delivery means duplicates arrive
+    def seen(self, tenant: str, event_id: str) -> bool: ...  # was this event already applied?
+
+    def remember(self, tenant: str, event_id: str) -> None: ...  # it is now
+
     # maintenance (jobs and operators, never handlers)
     def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]: ...  # everything, for export and audit

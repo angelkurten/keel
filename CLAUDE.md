@@ -30,7 +30,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers
 ```
 
-Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. `open_fact` closes the previous open fact on the same predicate; nothing is overwritten.
+Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. `open_fact` places the fact in its predicate's history by `valid_from` (closing the one current at that instant, closing itself at the next one's start); nothing is overwritten, and arrival order does not change the result. The Ingestor skips event ids the store has already applied.
 
 ## Design rules (enforce these in review)
 

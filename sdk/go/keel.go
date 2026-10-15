@@ -82,9 +82,10 @@ type Related struct {
 }
 
 type IngestReport struct {
-	Processed int         `json:"processed"`
-	Unhandled []string    `json:"unhandled"`
-	Errors    [][2]string `json:"errors"`
+	Processed  int         `json:"processed"`
+	Duplicates int         `json:"duplicates"`
+	Unhandled  []string    `json:"unhandled"`
+	Errors     [][2]string `json:"errors"`
 }
 
 // Error is a non-2xx answer: a refusal (403: scope policy, agent registry), bad input (400), bad secret (401).

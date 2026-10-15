@@ -38,6 +38,8 @@ def test_secret_tenant_header_and_ingest():
     assert res.status_code == 400  # the header, when given, must match every envelope
     res = client.post("/v1/events", json=lines, headers={**AUTH, "X-Keel-Tenant": TENANT})
     assert res.status_code == 200 and res.json()["processed"] == 12
+    retry = client.post("/v1/events", json=lines, headers={**AUTH, "X-Keel-Tenant": TENANT}).json()  # a client retry
+    assert (retry["processed"], retry["duplicates"]) == (0, 12)
     h = {**AUTH, "X-Keel-Tenant": TENANT}
     ctx = client.post("/v1/context", json={"subject": "tire:T-9001"}, headers=h).json()
     assert ctx["evaluation"] == {"tire_critical": True}

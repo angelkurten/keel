@@ -35,6 +35,21 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
     )
 
 
+def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
+    """Slot `new` into the history of its predicate by valid_from, whatever order events arrive in:
+    the fact current at new.valid_from closes there, and `new` closes at the next fact's start.
+    Returns the fact that was closed, if any, so a durable store can persist that change."""
+    prev = max((f for f in same if f.valid_from <= new.valid_from), key=lambda f: f.valid_from, default=None)
+    nxt = min((f for f in same if f.valid_from > new.valid_from), key=lambda f: f.valid_from, default=None)
+    closed = None
+    if prev is not None and (prev.valid_to is None or prev.valid_to > new.valid_from):
+        prev.valid_to = new.valid_from
+        closed = prev
+    if nxt is not None:
+        new.valid_to = nxt.valid_from
+    return closed
+
+
 def filter_facts(
     facts: Iterable[Fact],
     at: datetime | None = None,
@@ -79,6 +94,7 @@ class MemoryStore:
         self._entities: dict[str, dict[str, Entity]] = defaultdict(dict)  # tenant -> key -> entity
         self._relations: dict[str, list[Relation]] = defaultdict(list)
         self._facts: dict[str, list[Fact]] = defaultdict(list)
+        self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
 
     # ---- writes (the primitives) -------------------------------------------------
 
@@ -108,16 +124,18 @@ class MemoryStore:
                 r.valid_to = valid_to
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
-        # closing the previous open fact on the same predicate is what makes this bitemporal:
-        # the old value keeps its history, it is not overwritten.
-        self.close_fact(tenant, subject, predicate, valid_to=valid_from)
+        # the old value keeps its history, it is never overwritten; and the new fact takes its
+        # place by valid_from even when it arrives late (see place_fact)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
+        place_fact(f, [x for x in self._facts[tenant] if x.subject == subject and x.predicate == predicate])
         self._facts[tenant].append(f)
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+        # a close that predates a fact's start would invert its interval: that close is about an
+        # earlier period and leaves this fact alone
         for f in self._facts[tenant]:
-            if f.subject == subject and f.predicate == predicate and f.valid_to is None:
+            if f.subject == subject and f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
                 f.valid_to = valid_to
 
     # ---- reads -------------------------------------------------------------------
@@ -141,6 +159,14 @@ class MemoryStore:
     def search(self, tenant: str, text: str) -> list[Entity | Fact]:
         return search_in(self._entities[tenant].values(), self._facts[tenant], text)
 
+    # ---- ingest bookkeeping -----------------------------------------------------------
+
+    def seen(self, tenant: str, event_id: str) -> bool:
+        return event_id in self._seen[tenant]
+
+    def remember(self, tenant: str, event_id: str) -> None:
+        self._seen[tenant].add(event_id)
+
     # ---- maintenance --------------------------------------------------------------
 
     def expire(self, tenant: str, now: datetime | None = None) -> int:
@@ -161,3 +187,4 @@ class MemoryStore:
         self._entities.pop(tenant, None)
         self._relations.pop(tenant, None)
         self._facts.pop(tenant, None)
+        self._seen.pop(tenant, None)

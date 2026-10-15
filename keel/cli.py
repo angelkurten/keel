@@ -151,7 +151,7 @@ def _run(cartridge: Path, events: Path | None, strict: bool = False, db: Path | 
 def ingest(cartridge: Path, events: Path, strict: bool = False, db: Path | None = DB):
     """Ingest a .jsonl event stream into the graph (in memory, or the --db file) and report."""
     _, _, _, report = _run(cartridge, events, strict, db)
-    typer.echo(f"processed={report.processed} unhandled={len(report.unhandled)} errors={len(report.errors)}")
+    typer.echo(f"processed={report.processed} duplicates={report.duplicates} unhandled={len(report.unhandled)} errors={len(report.errors)}")
     for eid, err in report.errors:
         typer.echo(f"  {eid}: {err}")
 

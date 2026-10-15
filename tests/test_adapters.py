@@ -78,7 +78,7 @@ def test_webhook_validates_authenticates_and_ingests():
     r = client.post("/events", json=events[:1], headers=ok)
     assert r.status_code == 200 and r.json()["processed"] == 1
     r = client.post("/events", json=events[1:], headers=ok)
-    assert r.json() == {"processed": 3, "unhandled": [], "errors": []}
+    assert r.json() == {"processed": 3, "duplicates": 0, "unhandled": [], "errors": []}
     assert any(f["predicate"] == "paid" for f in Tools(c, s, "salon-luna").context("appointment:A-900")["facts"])
 
 

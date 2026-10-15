@@ -73,7 +73,7 @@ def no_show(event, store):
     store.open_fact(event.tenant, event.subject, "status", "no_show", valid_from=event.occurred_at, evidence=event.id)
 ```
 
-`open_fact` closes the previous value of the same predicate instead of overwriting it. That is what makes the graph bitemporal: you can ask what was true on any date.
+`open_fact` closes the previous value of the same predicate instead of overwriting it, and a late event takes its place in the history rather than closing a newer value backwards. That is what makes the graph bitemporal: you can ask what was true on any date. Events are deduplicated by id, so retrying a batch is safe.
 
 ## 5. Add your semantics (2 min)
 

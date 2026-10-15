@@ -38,6 +38,7 @@ class JsonlAdapter:
 @dataclass
 class IngestReport:
     processed: int = 0
+    duplicates: int = 0  # ids already applied: skipped, so at-least-once delivery and client retries are safe
     unhandled: list[str] = field(default_factory=list)
     errors: list[tuple[str, str]] = field(default_factory=list)
 
@@ -51,10 +52,14 @@ class Ingestor:
     def ingest(self, events: Iterable[Event], strict: bool = False) -> IngestReport:
         report = IngestReport()
         for ev in events:
+            if self.store.seen(ev.tenant, ev.id):
+                report.duplicates += 1
+                continue
             self.log.append(ev)
             try:
                 self.cartridge.registry.dispatch(ev, self.store)
                 report.processed += 1
+                self.store.remember(ev.tenant, ev.id)  # after the handler ran: a failed event is not remembered
             except UnhandledEvent:
                 report.unhandled.append(ev.type)
                 if strict:

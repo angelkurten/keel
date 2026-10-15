@@ -140,7 +140,7 @@ relations(tenant, key, rel=None, at=None) -> [Relation]
 search(tenant, text) -> [Entity | Fact]
 ```
 
-Maintenance (called by jobs and operators, never by handlers): `expire(tenant, now)`, `reset(tenant)`, `dump(tenant)` (everything about one tenant, closed facts included; `keel export` writes it as JSONL).
+Ingest bookkeeping (called by the Ingestor, never by handlers): `seen(tenant, event_id)` and `remember(tenant, event_id)`, the dedupe behind at-least-once delivery; `reset` forgets them too. Maintenance (jobs and operators): `expire(tenant, now)`, `reset(tenant)`, `dump(tenant)` (everything about one tenant, closed facts included; `keel export` writes it as JSONL).
 
 A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` unchanged. Run the suite against your own store with `KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py`, where `factory` is a zero-argument callable (or class) returning a fresh, empty store. Reference: `keel/store/memory.py` (in memory). Durable: `keel/store/sqlite.py`, one file, WAL mode, the same filters as the reference so both answer identically. A Graphiti-backed store remains planned for graph-native queries.
 
@@ -154,7 +154,8 @@ The ingestor reads envelopes from an adapter and dispatches each to the handlers
 - Dispatch is **deterministic**: no network, no LLM, no randomness in the ingest path. Replaying the same log in the same order MUST produce an identical graph.
 - An event with no handler is reported as unhandled; in strict mode it raises. A handler exception is reported with the event id and does not stop the stream, unless strict.
 - `replay(tenant, events=None)` wipes that tenant's subgraph and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log. It is the recovery path, not the update path.
-- Ordering: adapters SHOULD deliver events in `occurred_at` order per subject. Handlers MUST be correct under late arrival (they use `occurred_at`, and `open_fact` closes on world time).
+- Ordering: adapters SHOULD deliver events in `occurred_at` order per subject, but the result MUST NOT depend on it for facts: `open_fact` places a fact in its predicate's history by `valid_from`, closing the fact current at that instant and closing itself at the next fact's start, so a late event lands in its slot instead of closing a newer fact backwards. Relations (`link`/`unlink`) still assume order per subject.
+- Duplicates: an event whose `id` the store has already applied for that tenant is skipped and counted in `IngestReport.duplicates`. With content-hash ids this makes at-least-once adapters and client retries safe; a source that can emit two identical events at the same instant MUST give them ids.
 
 ### 4.1 Adapters
 
@@ -365,6 +366,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 2. `open_fact` never overwrites: after two writes to the same predicate, both facts exist and the first is closed at the second's `valid_from`.
 3. A fact query `at=t` returns exactly the facts valid at `t`.
 4. Replay produces a graph equal to the one built incrementally.
+9. Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.
 5. `annotate` to a scope in `requires_evidence` without evidence raises.
 6. `task`/`agent` annotations carry `expires_at`; `tenant`/`global` with `never` TTL do not.
 7. The core imports nothing from `cartridges/`; every reference cartridge validates and passes after any core change.

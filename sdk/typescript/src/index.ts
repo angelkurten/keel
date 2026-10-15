@@ -50,7 +50,7 @@ export type Context = {
   as_of: string;
 };
 export type Related = { relation: string; direction: "in" | "out"; subject: string; since: string };
-export type IngestReport = { processed: number; unhandled: string[]; errors: Array<[string, string]> };
+export type IngestReport = { processed: number; duplicates: number; unhandled: string[]; errors: Array<[string, string]> };
 
 export type ClientOptions = {
   /** Where `keel serve --transport http` listens, e.g. http://keel.internal:8000 */

@@ -157,3 +157,24 @@ def test_mcp_serve_reads_and_writes_a_db_file(tmp_path):
 
     anyio.run(run)
     assert any(f.predicate == "assessment" for f in SqliteStore(db).facts(TENANT, "tire:T-9001"))  # written through MCP, durable
+
+
+def test_ingest_is_idempotent_and_order_independent(store):
+    """At-least-once delivery: the same batch twice changes nothing; any arrival order gives the same history."""
+    c = load_cartridge("cartridges/finance")
+    events = list(JsonlAdapter("examples/events/finance.jsonl"))
+    ing = Ingestor(c, store)
+    assert ing.ingest(events, strict=True).processed == 13
+    t = Tools(c, store, "hogar-demo")
+    subjects = ("debt:visa", "due:visa-2026-09", "due:visa-2026-10", "due:visa-2026-11", "budget_line:tarjeta")
+    once = _strip({s: t.history(s) for s in subjects})
+    again = ing.ingest(events, strict=True)
+    assert (again.processed, again.duplicates) == (0, 13)
+    assert _strip({s: t.history(s) for s in subjects}) == once
+    ing.replay("hogar-demo", events=reversed(events))  # oldest last: every fact must still land in its slot
+    assert _strip({s: t.history(s) for s in subjects}) == once
+    balances = t.history("debt:visa", predicate="balance_cop")
+    assert [(f["value"], f["valid_to"] is None) for f in balances] == [(4200000, False), (3870000, True)]
+    assert balances[0]["valid_to"] == balances[1]["valid_from"]
+    status = t.history("due:visa-2026-10", predicate="status")
+    assert [f["value"] for f in status] == ["pending", "paid"] and status[0]["valid_to"] == status[1]["valid_from"]

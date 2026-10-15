@@ -24,7 +24,7 @@ from typing import Any
 from keel.envelope import utcnow
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation
-from keel.store.memory import filter_facts, filter_relations, new_fact, search_in
+from keel.store.memory import filter_facts, filter_relations, new_fact, place_fact, search_in
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS entities (
@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS facts (
   value TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT,
   scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT);
 CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
+CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id));
 """
 
 
@@ -131,20 +132,29 @@ class SqliteStore:
         )
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
-        self.close_fact(tenant, subject, predicate, valid_to=valid_from)  # never overwrite: close, then open
+        # never overwrite; the new fact takes its place by valid_from even when it arrives late (place_fact)
+        rows = self.db.execute(
+            "SELECT * FROM facts WHERE tenant = ? AND subject = ? AND predicate = ?", (tenant, subject, predicate)
+        ).fetchall()
+        same = [_fact(r) for r in rows]
+        seq_of = {id(fact): r["seq"] for fact, r in zip(same, rows)}
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
+        closed = place_fact(f, same)
+        if closed is not None:
+            self.db.execute("UPDATE facts SET valid_to = ? WHERE seq = ?", (_ts(closed.valid_to), seq_of[id(closed)]))
         self.db.execute(
-            "INSERT INTO facts (tenant, subject, predicate, value, valid_from, recorded_at, source, scope, "
-            "corrected_by, evidence, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (tenant, subject, predicate, json.dumps(value), _ts(f.valid_from), _ts(f.recorded_at), f.source,
+            "INSERT INTO facts (tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
+            "corrected_by, evidence, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (tenant, subject, predicate, json.dumps(value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
              f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at)),
         )
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+        # a close that predates a fact's start is about an earlier period and leaves this fact alone
         self.db.execute(
-            "UPDATE facts SET valid_to = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND valid_to IS NULL",
-            (_ts(valid_to), tenant, subject, predicate),
+            "UPDATE facts SET valid_to = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND valid_to IS NULL AND valid_from <= ?",
+            (_ts(valid_to), tenant, subject, predicate, _ts(valid_to)),
         )
 
     # ---- reads -------------------------------------------------------------------
@@ -175,6 +185,14 @@ class SqliteStore:
         facts = (_fact(r) for r in self.db.execute("SELECT * FROM facts WHERE tenant = ? ORDER BY seq", (tenant,)))
         return search_in(ents, facts, text)
 
+    # ---- ingest bookkeeping -----------------------------------------------------------
+
+    def seen(self, tenant: str, event_id: str) -> bool:
+        return self.db.execute("SELECT 1 FROM ingested WHERE tenant = ? AND id = ?", (tenant, event_id)).fetchone() is not None
+
+    def remember(self, tenant: str, event_id: str) -> None:
+        self.db.execute("INSERT OR IGNORE INTO ingested (tenant, id) VALUES (?, ?)", (tenant, event_id))
+
     # ---- maintenance --------------------------------------------------------------
 
     def expire(self, tenant: str, now: datetime | None = None) -> int:
@@ -195,5 +213,5 @@ class SqliteStore:
 
     def reset(self, tenant: str) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
-        for table in ("entities", "relations", "facts"):
+        for table in ("entities", "relations", "facts", "ingested"):
             self.db.execute(f"DELETE FROM {table} WHERE tenant = ?", (tenant,))
