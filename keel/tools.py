@@ -22,6 +22,7 @@ from keel.envelope import utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation, Store
+from keel.store.memory import changed_after, filter_facts, search_in
 
 
 def _ser(o: Any) -> Any:
@@ -50,21 +51,39 @@ class _Graph:
     """What rules may look at, read through the store at one instant. Rules are the product's
     semantics, so they see the whole tenant whatever the calling agent's read slice is."""
 
-    def __init__(self, store: Store, tenant: str, as_of: datetime, calendar: Calendar, symmetric: set[str]) -> None:
+    def __init__(
+        self, store: Store, tenant: str, as_of: datetime, calendar: Calendar, symmetric: set[str],
+        known_at: datetime | None = None, task: str | None = None,
+    ) -> None:
         self.store, self.tenant, self.as_of, self.calendar, self.symmetric = store, tenant, as_of, calendar, symmetric
+        self.known_at, self.task = known_at, task
         self._facts: dict[str, list[Fact]] = {}
+
+    def _read(self, subject: str, **kw: Any) -> list[Fact]:
+        if self.known_at is not None:
+            kw["known_at"] = self.known_at  # only passed when asked: a store from before 0.9 does not take it
+        facts = self.store.facts(self.tenant, subject, **kw)
+        if self.task is not None:  # one task's memory, plus everything that belongs to no task
+            facts = [f for f in facts if f.task is None or f.task == self.task]
+        return facts
 
     def facts(self, subject: str) -> list[Fact]:
         if subject not in self._facts:
-            self._facts[subject] = self.store.facts(self.tenant, subject, at=self.as_of)
+            self._facts[subject] = self._read(subject, at=self.as_of)
         return self._facts[subject]
 
     def history(self, subject: str, predicate: str) -> list[Fact]:
-        return [f for f in self.store.facts(self.tenant, subject, until=self.as_of) if f.predicate == predicate]
+        return [f for f in self._read(subject, until=self.as_of) if f.predicate == predicate]
+
+    def relations(self, subject: str, rel: str | None = None) -> list[Relation]:
+        rels = self.store.relations(self.tenant, subject, rel=rel, at=self.as_of)
+        if self.known_at is not None:
+            rels = [r for r in rels if r.recorded_at is None or r.recorded_at <= self.known_at]
+        return rels
 
     def neighbors(self, subject: str, rel: str, direction: str) -> list[str]:
         out: list[str] = []
-        for r in self.store.relations(self.tenant, subject, rel=rel, at=self.as_of):
+        for r in self.relations(subject, rel):
             if rel not in self.symmetric and direction == "out" and r.src != subject:
                 continue
             if rel not in self.symmetric and direction == "in" and r.dst != subject:
@@ -96,8 +115,8 @@ class Tools:
         other = r.dst if r.src == subject else r.src
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
 
-    def _graph(self, now: datetime) -> _Graph:
-        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric)
+    def _graph(self, now: datetime, known_at: datetime | None = None, task: str | None = None) -> _Graph:
+        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task)
 
     def _rules_for(self, subject: str) -> dict[str, Any]:
         kind = _kind(subject)
@@ -119,14 +138,25 @@ class Tools:
             out.append(r)
         return out
 
-    def context(self, subject: str, as_of: datetime | None = None, depth: int = 0) -> dict[str, Any]:
+    def context(
+        self,
+        subject: str,
+        as_of: datetime | None = None,
+        depth: int = 0,
+        as_known_at: datetime | None = None,
+        task: str | None = None,
+    ) -> dict[str, Any]:
         """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
         that apply to its kind, and the evaluation of every rule that carries a `when`. With
-        `depth=1`, also each neighbour's entity, open facts and evaluation (up to NEIGHBOR_CAP)."""
+        `depth=1`, also each neighbour's entity, open facts and evaluation (up to NEIGHBOR_CAP).
+        `as_known_at` answers what Keel knew then (transaction time; `as_of` defaults to it): what
+        an agent saw when it decided. `task` keeps only that task's task-scope memory. `watermark`
+        is the tenant's latest transaction time, the cursor for `history(changed_since=)`."""
         self._readable(subject)
-        now = as_of or utcnow()
-        graph = self._graph(now)
-        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, at=now) if self._visible(r, subject)], subject)
+        now = as_of or as_known_at or utcnow()
+        graph = self._graph(now, as_known_at, task)
+        rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
+        watermark = getattr(self.store, "watermark", None)
         out: dict[str, Any] = {
             "subject": subject,
             "entity": self.store.entity(self.tenant, subject),
@@ -135,7 +165,10 @@ class Tools:
             "rules": self._rules_for(subject),
             "evaluation": self._evaluation(subject, graph),
             "as_of": now,
+            "watermark": watermark(self.tenant) if watermark else None,
         }
+        if as_known_at is not None:
+            out["as_known_at"] = as_known_at
         if depth >= 1:
             neighbors = []
             for r in rels[:NEIGHBOR_CAP]:
@@ -157,27 +190,83 @@ class Tools:
 
     def history(
         self,
-        subject: str,
+        subject: str | None = None,
         since: datetime | None = None,
         until: datetime | None = None,
         predicate: str | None = None,
         scope: str | None = None,
+        as_known_at: datetime | None = None,
+        task: str | None = None,
+        changed_since: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """Facts over time: valid_from/valid_to (world) and recorded_at (when we learned it).
-        Optionally one predicate only, or one memory scope only."""
-        self._readable(subject)
-        facts = self.store.facts(self.tenant, subject, since=since, until=until)
+        """Facts over time: valid_from/valid_to (world), recorded_at and closed_at (when we learned
+        them). Filters: one predicate, one memory scope, one task. `as_known_at`: as Keel knew them
+        then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
+        with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run"."""
+        if subject is None:
+            if changed_since is None:
+                raise ValueError("history needs a subject, or changed_since for the whole tenant")
+            facts = self.store.changes(self.tenant, changed_since)
+            if self.agent:
+                facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
+            if as_known_at is not None:
+                facts = filter_facts(facts, known_at=as_known_at)
+        else:
+            self._readable(subject)
+            kw: dict[str, Any] = {"since": since, "until": until}
+            if as_known_at is not None:
+                kw["known_at"] = as_known_at
+            facts = self.store.facts(self.tenant, subject, **kw)
+            if changed_since is not None:
+                facts = changed_after(facts, changed_since)
         if predicate:
             facts = [f for f in facts if f.predicate == predicate]
         if scope:
             facts = [f for f in facts if f.scope == Scope(scope)]
+        if task:
+            facts = [f for f in facts if f.task == task]
         return _ser(facts)
 
-    def search(self, text: str) -> list[dict[str, Any]]:
-        hits = self.store.search(self.tenant, text)
-        if self.agent:
-            hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
-        return _ser(hits)
+    def search(
+        self,
+        text: str = "",
+        kind: str | None = None,
+        rule: str | None = None,
+        limit: int | None = None,
+        after: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Entities and facts matching text. With `kind` or `rule` it enumerates instead: the entities
+        of that kind (a rule's `applies_to` when only `rule` is given) whose key or attributes match
+        `text`, where the rule fires now when `rule` is given, ordered by key; page with `limit` and
+        `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers."""
+        if kind is None and rule is None:
+            hits = self.store.search(self.tenant, text)
+            if self.agent:
+                hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
+            return _ser(hits[:limit] if limit else hits)
+        spec = None
+        if rule is not None:
+            spec = self.cartridge.rules.get(rule)
+            if spec is None or not spec.get("when"):
+                raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
+            kind = kind or spec.get("applies_to")
+            if kind is None:
+                raise ValueError(f"rule '{rule}' applies to every kind: pass `kind` too")
+        if self.agent and not self.agent.sees_kind(kind):
+            raise PermissionError(f"agent '{self.agent.id}' may not read kind '{kind}'")
+        found: list[Entity] = []
+        graph = self._graph(utcnow()) if spec else None
+        for e in self.store.entities(self.tenant, kind):
+            if after is not None and e.key <= after:
+                continue
+            if text and not search_in([e], [], text):
+                continue
+            if spec and evaluate(spec, e.key, graph.as_of, graph) is not True:
+                continue
+            found.append(e)
+            if limit and len(found) >= limit:
+                break
+        return _ser(found)
 
     def annotate(
         self,
@@ -187,27 +276,42 @@ class Tools:
         scope: str = "task",
         evidence: str | None = None,
         by: str | None = None,
+        task: str | None = None,
+        key: str | None = None,
     ) -> dict[str, Any]:
         """Write earned memory. The registry says who may write which scope; the scope policy says
-        whether evidence is required and how long it lives. Both are enforced here."""
+        whether evidence is required and how long it lives. Both are enforced here. `task` ties the
+        fact to one job (`history(task=)`, `keel expire --task`). `key` makes the write idempotent:
+        the same key again returns the fact it wrote; the same key with other arguments is an error."""
         sc = Scope(scope)
         self._readable(subject)
         if self.agent and not self.agent.can_write(sc):
             raise PermissionError(f"agent '{self.agent.id}' may not write scope '{sc.value}'")
         self.cartridge.policy.check_write(sc, evidence)
+        if key is not None:
+            for f in self.store.facts(self.tenant, subject):
+                if f.idempotency_key == key:
+                    if (f.predicate, f.value, f.task) != (predicate, value, task):
+                        raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
+                    return _ser(f)
         ttl = self.cartridge.policy.ttl.get(sc)
         now = utcnow()
+        author = self.agent_id or by or "agent"
+        if self.agent and self.agent.kind == "human":
+            author = f"human:{self.agent.id}"
         f = self.store.open_fact(
             self.tenant,
             subject,
             predicate,
             value,
             valid_from=now,
-            source=f"annotate:{self.agent_id or by or 'agent'}",
+            source=f"annotate:{author}",
             scope=sc,
-            corrected_by=by or self.agent_id,
+            corrected_by=by or (author if self.agent_id else None),
             evidence=evidence,
             expires_at=(now + ttl) if ttl else None,
+            task=task,
+            idempotency_key=key,
         )
         return _ser(f)
 
@@ -225,9 +329,9 @@ class Tools:
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject", "as_of?", "depth?"], "doc": self.context.__doc__},
-            {"name": "history", "args": ["subject", "since?", "until?", "predicate?", "scope?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text"], "doc": "Entities and facts matching text."},
-            {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?"], "doc": self.annotate.__doc__},
+            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?"], "doc": self.context.__doc__},
+            {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?"], "doc": self.history.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?"], "doc": self.search.__doc__},
+            {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
         ]

@@ -51,6 +51,9 @@ type Fact struct {
 	CorrectedBy *string `json:"corrected_by"`
 	Evidence    *string `json:"evidence"`
 	ExpiresAt   *string `json:"expires_at"`
+	Task        *string `json:"task,omitempty"`
+	Key         *string `json:"idempotency_key,omitempty"`
+	ClosedAt    *string `json:"closed_at,omitempty"` // transaction time of the close
 }
 
 type RelationRow struct {
@@ -72,6 +75,8 @@ type Context struct {
 	Rules              map[string]map[string]any `json:"rules"`
 	Evaluation         map[string]*bool          `json:"evaluation"`
 	AsOf               string                    `json:"as_of"`
+	AsKnownAt          string                    `json:"as_known_at,omitempty"`
+	Watermark          *string                   `json:"watermark,omitempty"` // cursor for HistoryFilter.ChangedSince
 	Neighbors          []Neighbor                `json:"neighbors,omitempty"` // with ContextDepth(..., 1)
 	NeighborsTruncated bool                      `json:"neighbors_truncated,omitempty"`
 }
@@ -188,33 +193,75 @@ func (c *Client) Context(ctx context.Context, subject string, asOf *time.Time) (
 
 // ContextDepth is Context with depth 1: each neighbour's entity, open facts and evaluation come along.
 func (c *Client) ContextDepth(ctx context.Context, subject string, asOf *time.Time, depth int) (Context, error) {
+	return c.ContextWith(ctx, subject, ContextOptions{AsOf: asOf, Depth: depth})
+}
+
+// ContextOptions: AsKnownAt answers what Keel knew then; Task keeps one task's memory.
+type ContextOptions struct {
+	AsOf, AsKnownAt *time.Time
+	Depth           int
+	Task            string
+}
+
+func (c *Client) ContextWith(ctx context.Context, subject string, o ContextOptions) (Context, error) {
 	var out Context
-	err := c.post(ctx, "/v1/context", map[string]any{"subject": subject, "as_of": iso(asOf), "depth": depth}, &out)
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt)}
+	if o.Task != "" {
+		body["task"] = o.Task
+	}
+	err := c.post(ctx, "/v1/context", body, &out)
 	return out, err
 }
 
 type HistoryFilter struct {
-	Since, Until *time.Time
-	Predicate    string
-	Scope        string
+	Since, Until            *time.Time
+	Predicate               string
+	Scope                   string
+	AsKnownAt, ChangedSince *time.Time // ChangedSince with an empty subject: the tenant's changes since a watermark
+	Task                    string
 }
 
 func (c *Client) History(ctx context.Context, subject string, f HistoryFilter) ([]Fact, error) {
 	var out []Fact
-	body := map[string]any{"subject": subject, "since": iso(f.Since), "until": iso(f.Until)}
+	body := map[string]any{"since": iso(f.Since), "until": iso(f.Until), "as_known_at": iso(f.AsKnownAt), "changed_since": iso(f.ChangedSince)}
+	if subject != "" {
+		body["subject"] = subject
+	}
 	if f.Predicate != "" {
 		body["predicate"] = f.Predicate
 	}
 	if f.Scope != "" {
 		body["scope"] = f.Scope
 	}
+	if f.Task != "" {
+		body["task"] = f.Task
+	}
 	err := c.post(ctx, "/v1/history", body, &out)
 	return out, err
 }
 
 func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, error) {
+	return c.SearchWith(ctx, SearchOptions{Text: text})
+}
+
+// SearchOptions: with Kind or Rule it lists entities of a kind, or where a rule fires now, paged by Limit/After.
+type SearchOptions struct {
+	Text, Kind, Rule, After string
+	Limit                   int
+}
+
+func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
 	var out []map[string]any
-	err := c.post(ctx, "/v1/search", map[string]any{"text": text}, &out)
+	body := map[string]any{"text": o.Text}
+	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After} {
+		if v != "" {
+			body[k] = v
+		}
+	}
+	if o.Limit > 0 {
+		body["limit"] = o.Limit
+	}
+	err := c.post(ctx, "/v1/search", body, &out)
 	return out, err
 }
 
@@ -225,6 +272,8 @@ type Annotation struct {
 	Scope     string `json:"scope,omitempty"`
 	Evidence  string `json:"evidence,omitempty"`
 	By        string `json:"by,omitempty"`
+	Task      string `json:"task,omitempty"`
+	Key       string `json:"key,omitempty"` // a retried write with the same key returns the first fact
 }
 
 func (c *Client) Annotate(ctx context.Context, a Annotation) (Fact, error) {

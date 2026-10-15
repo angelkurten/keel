@@ -29,6 +29,10 @@ export type Fact = {
   corrected_by: string | null;
   evidence: string | null;
   expires_at: string | null;
+  task?: string | null;
+  idempotency_key?: string | null;
+  /** When Keel learned the fact closed (transaction time). */
+  closed_at?: string | null;
 };
 export type RelationRow = {
   tenant: string;
@@ -48,6 +52,10 @@ export type Context = {
   rules: Record<string, Record<string, unknown>>;
   evaluation: Record<string, boolean | null>;
   as_of: string;
+  /** Present when asked with `asKnownAt`. */
+  as_known_at?: string;
+  /** The tenant's latest transaction time: pass it to `history(null, { changedSince })` next run. */
+  watermark?: string | null;
   /** Present with `depth: 1`: each neighbour's entity, open facts and evaluation (capped; see neighbors_truncated). */
   neighbors?: Neighbor[];
   neighbors_truncated?: boolean;
@@ -141,28 +149,60 @@ export class Client<S extends string = string> {
     return (await res.json()) as T;
   }
 
-  /** What is true about a subject now, or at `asOf`: facts, relations, rules and their verdicts. `depth: 1` adds the neighbours. */
-  context(subject: S, asOf?: Date | string, depth = 0): Promise<Context> {
-    return this.post("/v1/context", { subject, as_of: asOf ? iso(asOf) : undefined, depth });
+  /** What is true about a subject now, or at `asOf`: facts, relations, rules and their verdicts. `depth: 1` adds the neighbours;
+   * `opts.asKnownAt` answers what Keel knew then; `opts.task` keeps one task's memory. */
+  context(subject: S, asOf?: Date | string, depth = 0, opts: { asKnownAt?: Date | string; task?: string } = {}): Promise<Context> {
+    return this.post("/v1/context", {
+      subject,
+      as_of: asOf ? iso(asOf) : undefined,
+      depth,
+      as_known_at: opts.asKnownAt ? iso(opts.asKnownAt) : undefined,
+      task: opts.task,
+    });
   }
 
-  /** Facts over time, oldest first, closed ones included. */
-  history(subject: S, f: { since?: Date | string; until?: Date | string; predicate?: string; scope?: Scope } = {}): Promise<Fact[]> {
+  /** Facts over time, oldest first, closed ones included. `subject: null` with `changedSince` lists the tenant's changes. */
+  history(
+    subject: S | null,
+    f: {
+      since?: Date | string;
+      until?: Date | string;
+      predicate?: string;
+      scope?: Scope;
+      asKnownAt?: Date | string;
+      task?: string;
+      changedSince?: Date | string;
+    } = {},
+  ): Promise<Fact[]> {
     return this.post("/v1/history", {
       subject,
       since: f.since ? iso(f.since) : undefined,
       until: f.until ? iso(f.until) : undefined,
       predicate: f.predicate,
       scope: f.scope,
+      as_known_at: f.asKnownAt ? iso(f.asKnownAt) : undefined,
+      task: f.task,
+      changed_since: f.changedSince ? iso(f.changedSince) : undefined,
     });
   }
 
-  search(text: string): Promise<Array<Entity | Fact>> {
-    return this.post("/v1/search", { text });
+  /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`. */
+  search(text = "", opts: { kind?: string; rule?: string; limit?: number; after?: string } = {}): Promise<Array<Entity | Fact>> {
+    return this.post("/v1/search", { text, ...opts });
   }
 
-  /** Write earned memory. The server enforces the scope policy and the agent registry. */
-  annotate(a: { subject: S; predicate: string; value: unknown; scope?: Scope; evidence?: string; by?: string }): Promise<Fact> {
+  /** Write earned memory. The server enforces the scope policy and the agent registry. `task` ties it to a job;
+   * `key` makes a retried write return the first one. */
+  annotate(a: {
+    subject: S;
+    predicate: string;
+    value: unknown;
+    scope?: Scope;
+    evidence?: string;
+    by?: string;
+    task?: string;
+    key?: string;
+  }): Promise<Fact> {
     return this.post("/v1/annotate", a);
   }
 

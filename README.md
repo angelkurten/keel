@@ -10,7 +10,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: 0.8.1, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
+> Status: 0.9.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -30,10 +30,10 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 ## Five tools, any agent
 
 ```
-context(subject, as_of?, depth?)                     -> what is true now, or at as_of: facts, relations, rules and their verdicts; depth=1 adds the neighbors
-history(subject, since?, until?, predicate?, scope?)  -> what was true, and when we learned it
-search(text)                                         -> entities and facts matching text
-annotate(subject, predicate, value, scope, evidence)  -> an agent (or a human) writes what it learned
+context(subject, as_of?, depth?, as_known_at?, task?) -> what is true now, at as_of, or as known at a past moment; rules and their verdicts; depth=1 adds the neighbors
+history(subject?, ..., task?, changed_since?)        -> what was true and when we learned it; without a subject, what changed since a watermark
+search(text?, kind?, rule?, limit?, after?)          -> text search, or every entity of a kind / where a rule fires, paged
+annotate(subject, predicate, value, scope, evidence, task?, key?) -> an agent (or a person) writes what it learned; key makes retries safe
 related(subject, relation?, as_of?)                  -> neighbors by relation type
 ```
 

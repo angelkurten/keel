@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 
@@ -33,6 +34,8 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
         corrected_by=kw.get("corrected_by"),
         evidence=kw.get("evidence"),
         expires_at=kw.get("expires_at"),
+        task=kw.get("task"),
+        idempotency_key=kw.get("idempotency_key"),
     )
 
 
@@ -45,10 +48,29 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
     closed = None
     if prev is not None and (prev.valid_to is None or prev.valid_to > new.valid_from):
         prev.valid_to = new.valid_from
+        prev.closed_at = new.recorded_at  # we learned it ended when we learned what replaced it
         closed = prev
     if nxt is not None:
         new.valid_to = nxt.valid_from
+        new.closed_at = new.recorded_at
     return closed
+
+
+def as_known_at(facts: Iterable[Fact], known_at: datetime) -> list[Fact]:
+    """The facts as Keel knew them at `known_at` (transaction time): only those recorded by then, and
+    a close learned later is not applied yet. Copies, so the stored facts are never touched."""
+    out = []
+    for f in facts:
+        if f.recorded_at is not None and f.recorded_at > known_at:
+            continue
+        out.append(replace(f, valid_to=None) if f.closed_at is not None and f.closed_at > known_at else f)
+    return out
+
+
+def changed_after(facts: Iterable[Fact], after: datetime) -> list[Fact]:
+    """Facts recorded or closed after a watermark, oldest change first: an agent's "since my last run"."""
+    out = [f for f in facts if (f.recorded_at and f.recorded_at > after) or (f.closed_at and f.closed_at > after)]
+    return sorted(out, key=lambda f: max(t for t in (f.recorded_at, f.closed_at) if t is not None))
 
 
 def filter_facts(
@@ -56,15 +78,16 @@ def filter_facts(
     at: datetime | None = None,
     since: datetime | None = None,
     until: datetime | None = None,
+    known_at: datetime | None = None,
 ) -> list[Fact]:
-    out = list(facts)
+    out = as_known_at(facts, known_at) if known_at is not None else list(facts)
     if at is not None:
         out = [f for f in out if f.valid_from <= at and (f.valid_to is None or f.valid_to > at)]
     if since is not None:
         out = [f for f in out if f.valid_to is None or f.valid_to >= since]
     if until is not None:
         out = [f for f in out if f.valid_from <= until]
-    now = utcnow()
+    now = known_at or utcnow()  # memory alive then counts when asking what was known then
     out = [f for f in out if f.expires_at is None or f.expires_at > now]
     return sorted(out, key=lambda f: f.valid_from)
 
@@ -101,6 +124,11 @@ class MemoryStore:
         self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
         self._tx: list[tuple[str, str]] | None = None
+        self._watermark: dict[str, datetime] = {}  # tenant -> latest recorded_at or closed_at
+
+    def _mark(self, tenant: str, t: datetime | None) -> None:
+        if t is not None and (tenant not in self._watermark or t > self._watermark[tenant]):
+            self._watermark[tenant] = t
 
     # ---- writes (the primitives) -------------------------------------------------
 
@@ -139,14 +167,17 @@ class MemoryStore:
         place_fact(f, [x for x in self._facts[tenant][subject] if x.predicate == predicate])
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
+        self._mark(tenant, f.recorded_at)
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone
+        now = utcnow()
         for f in self._facts[tenant][subject]:
             if f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
-                f.valid_to = valid_to
+                f.valid_to, f.closed_at = valid_to, now
+                self._mark(tenant, now)
 
     # ---- reads -------------------------------------------------------------------
 
@@ -160,8 +191,22 @@ class MemoryStore:
         at: datetime | None = None,
         since: datetime | None = None,
         until: datetime | None = None,
+        known_at: datetime | None = None,
     ) -> list[Fact]:
-        return filter_facts(self._facts[tenant].get(subject, ()), at, since, until)
+        return filter_facts(self._facts[tenant].get(subject, ()), at, since, until, known_at)
+
+    def entities(self, tenant: str, kind: str | None = None) -> list[Entity]:
+        """Every entity of a kind (or all), ordered by key: the work list of a sweep."""
+        return sorted((e for e in self._entities[tenant].values() if kind is None or e.kind == kind), key=lambda e: e.key)
+
+    def changes(self, tenant: str, after: datetime) -> list[Fact]:
+        """Facts recorded or closed after a watermark, across subjects."""
+        now = utcnow()
+        return [f for f in changed_after(self._all_facts[tenant], after) if f.expires_at is None or f.expires_at > now]
+
+    def watermark(self, tenant: str) -> datetime | None:
+        """The latest transaction time in the tenant: a cursor for `changes`."""
+        return self._watermark.get(tenant)
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
         return filter_relations(self._rels[tenant].get(key, ()), rel, at)
@@ -210,6 +255,16 @@ class MemoryStore:
             self._facts[tenant][subject] = [f for f in facts if f.expires_at is None or f.expires_at > now]
         return before - len(self._all_facts[tenant])
 
+    def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int:
+        """End a task: its memory expires now (reads stop seeing it; `expire` removes it later)."""
+        now = now or utcnow()
+        n = 0
+        for f in self._all_facts[tenant]:
+            if f.task == task and (f.expires_at is None or f.expires_at > now):
+                f.expires_at = now
+                n += 1
+        return n
+
     def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]:
         """Everything about one tenant, closed facts included: the audit trail."""
         yield from self._entities[tenant].values()
@@ -218,5 +273,5 @@ class MemoryStore:
 
     def reset(self, tenant: str) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
-        for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen):
+        for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen, self._watermark):
             d.pop(tenant, None)

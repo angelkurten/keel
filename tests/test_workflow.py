@@ -22,8 +22,12 @@ def test_fleet_ops_workflow(make):
     assert report["orders"] == ["tire:T-MXK-4821-P1"]  # the partial specialist missed the rear tire of VAN-0073
     assert report["flagged"] == ["document:POL-MXK-4821", "document:POL-VAN-0073"]
     assert report["rounds"] == 2  # the verifier sent the planner back once, for the grounded unit without an order
-    assert set(report["promoted"]) == {"unit:MXK-4821", "unit:VAN-0073"} and all(";" in e or len(e) == 32 for e in report["promoted"].values())
-    assert [c[1] for c in report["conflict"]] == ["annotate:tires-bot", "annotate:compliance-bot"]  # both kept, with their author
+    assert set(report["promoted"]) == {"unit:MXK-4821", "unit:VAN-0073"}
+    assert set(report["promoted"].values()) == {"annotate:human:dispatcher"}  # a declared person signed the approvals
+    assert report["conflict"] == [("compliance", "annotate:compliance-bot"), ("tires", "annotate:tires-bot")]  # both kept; yesterday's run excluded
     assert report["refusals"] == ["agent 'compliance-bot' may not read kind 'ticket'"]
-    assert report["triage_saw_30_days_ago"] == {"unit_grounded": False}  # before the last measurement
+    assert report["triage_saw"] == {"unit_grounded": True}  # what it saw when it decided, read back later
+    assert report["task_facts_closed"] > 10
+    assert {"triage", "recommendation", "plan", "approved_plan"} <= set(report["changed_during_run"])
+    assert report["critical_tires"] == ["T-MXK-4821-P1", "T-VAN-0073-P2"]
     assert report["export_records"] > 40

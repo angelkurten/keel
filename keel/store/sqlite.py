@@ -30,8 +30,10 @@ class SqliteStore(SqlStore):
     CREATE TABLE IF NOT EXISTS facts (
       seq INTEGER PRIMARY KEY, tenant TEXT NOT NULL, subject TEXT NOT NULL, predicate TEXT NOT NULL,
       value TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT,
-      scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT);
+      scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT,
+      task TEXT, idempotency_key TEXT, closed_at TEXT);
     CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
+    CREATE INDEX IF NOT EXISTS facts_recorded ON facts (tenant, recorded_at);
     CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id))
     """
     UPSERT_ENTITY = (
@@ -39,6 +41,12 @@ class SqliteStore(SqlStore):
         "ON CONFLICT (tenant, kind, id) DO UPDATE SET ref = excluded.ref, attrs = excluded.attrs"
     )
     REMEMBER = "INSERT OR IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
+    INDEX_IF_NOT_EXISTS = True
+    ADDED_FACT_COLUMNS = (
+        ("task", "TEXT", "CREATE INDEX IF NOT EXISTS facts_task ON facts (tenant, task)"),
+        ("idempotency_key", "TEXT", None),
+        ("closed_at", "TEXT", "CREATE INDEX IF NOT EXISTS facts_closed ON facts (tenant, closed_at)"),
+    )
 
     def __init__(self, path: str | Path = ":memory:", prefix: str = "") -> None:
         def connect() -> sqlite3.Connection:
@@ -52,3 +60,6 @@ class SqliteStore(SqlStore):
 
     def _prepare(self, conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA journal_mode=WAL")
+
+    def _columns(self, table: str) -> set[str]:
+        return {r["name"] for r in self._rows(f"PRAGMA table_info({table})")}

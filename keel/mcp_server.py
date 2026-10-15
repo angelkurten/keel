@@ -54,33 +54,39 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def context(subject: str, as_of: str | None = None, depth: int = 0) -> dict[str, Any]:
-        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. depth=1 adds each neighbour's facts and evaluation."""
-        return tools.context(subject, _dt(as_of), depth)
+    def context(subject: str, as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None) -> dict[str, Any]:
+        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. depth=1 adds each neighbour. as_known_at: what Keel knew then. task: one task's memory. The result's watermark is the cursor for history(changed_since=)."""
+        return tools.context(subject, _dt(as_of), depth, _dt(as_known_at), task)
 
     @mcp.tool(**read_only)
     @guarded
     def history(
-        subject: str,
+        subject: str | None = None,
         since: str | None = None,
         until: str | None = None,
         predicate: str | None = None,
         scope: str | None = None,
+        as_known_at: str | None = None,
+        task: str | None = None,
+        changed_since: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Facts over time for a subject. ISO dates; optional filters by predicate and memory scope."""
-        return tools.history(subject, _dt(since), _dt(until), predicate, scope)
+        """Facts over time for a subject. ISO dates; filters by predicate, scope, task; as_known_at for what Keel knew then. Without a subject, changed_since (a watermark) lists the tenant's changes since then."""
+        return tools.history(subject, _dt(since), _dt(until), predicate, scope, _dt(as_known_at), task, _dt(changed_since))
 
     @mcp.tool(**read_only)
     @guarded
-    def search(text: str) -> list[dict[str, Any]]:
-        """Entities and facts matching text."""
-        return tools.search(text)
+    def search(text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None) -> list[dict[str, Any]]:
+        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after."""
+        return tools.search(text, kind, rule, limit, after)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False))
     @guarded
-    def annotate(subject: str, predicate: str, value: str, scope: str = "task", evidence: str | None = None, by: str | None = None) -> dict[str, Any]:
-        """Write what you learned. tenant/global scopes require evidence."""
-        return tools.annotate(subject, predicate, value, scope, evidence, by)
+    def annotate(
+        subject: str, predicate: str, value: str, scope: str = "task", evidence: str | None = None, by: str | None = None,
+        task: str | None = None, key: str | None = None,
+    ) -> dict[str, Any]:
+        """Write what you learned. tenant/global scopes require evidence. task ties it to one job; key makes a retried write return the first one."""
+        return tools.annotate(subject, predicate, value, scope, evidence, by, task, key)
 
     @mcp.tool(**read_only)
     @guarded

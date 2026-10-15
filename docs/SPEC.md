@@ -94,7 +94,10 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `scope` | enum | `global`, `tenant`, `task`, `agent` (§6). Default `tenant`. |
 | `evidence` | string? | Event id, row ref, photo URL or other pointer that justifies the fact. |
 | `corrected_by` | string? | A person or agent id when the fact is a correction or an annotation. |
-| `expires_at` | datetime? | Memory lifetime (not world time). Set from the scope's TTL. |
+| `expires_at` | datetime? | Memory lifetime (not world time). Set from the scope's TTL, or to the close time when its task closes. |
+| `closed_at` | datetime? | Transaction time of the close: when Keel learned `valid_to`. With `recorded_at` it makes "as known at" queries possible. |
+| `task` | string? | The job a task-scope annotation belongs to (`annotate(task=)`). |
+| `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. |
 
 **Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST first close any open fact with the same `(subject, predicate)` by setting its `valid_to = valid_from`, then append the new fact. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
@@ -323,6 +326,7 @@ A cartridge MAY declare `agents:` (§5.1). Without it there is no registry: any 
 
 - A `Tools` instance MUST be bound to a declared agent (`Tools(..., agent=<id>)`, `keel serve --agent <id>`). A missing or unknown id raises `PermissionError` at construction.
 - **Writes.** `annotate` to a scope outside the agent's `writes` raises `PermissionError`. `global` is never writable by an agent. The scope policy (evidence, TTL) applies after the registry check. `source` is `annotate:<agent>`; `corrected_by` is `by` when given (a human correcting through the agent), else the agent id.
+- **People.** An entry with `kind: human` is a person: it is enforced like any agent, and its annotations are signed `annotate:human:<id>` with `corrected_by = human:<id>`. Approvals are writes by a declared person, so the audit export shows who approved.
 - **Reads.** `context`, `history`, `related` and `annotate` on a subject whose kind is outside `reads.kinds` raise `PermissionError`. Relations outside `reads.relations`, or whose other end is a hidden kind, are left out of `context` and `related`. `search` drops hits on hidden kinds.
 - Authentication is the host's job. Keel takes the agent id as given and enforces what that id may do; it never trusts the agent to police itself (rule 5).
 
@@ -332,7 +336,7 @@ A cartridge MAY declare `agents:` (§5.1). Without it there is no registry: any 
 
 A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge declares agents, one agent (§6.1). Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
 
-### 7.1 `context(subject, as_of=None, depth=0) -> object`
+### 7.1 `context(subject, as_of=None, depth=0, as_known_at=None, task=None) -> object`
 
 What is true about a subject now, or at `as_of` (world time). With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
 
@@ -348,23 +352,27 @@ What is true about a subject now, or at `as_of` (world time). With `depth=1` the
 }
 ```
 
-### 7.2 `history(subject, since=None, until=None, predicate=None, scope=None) -> [Fact]`
+### 7.2 `history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None) -> [Fact]`
 
-Facts over time, oldest first, including closed ones. `predicate` keeps one predicate; `scope` keeps one memory scope. Each carries `valid_from`, `valid_to`, `recorded_at`, `source`, `evidence`, `scope`, `corrected_by`.
+Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter. `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
 
-### 7.3 `search(text) -> [Entity | Fact]`
+### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None) -> [Entity | Fact]`
 
-Case-insensitive substring match over entity keys and attrs, and fact predicates and values. *Planned:* semantic search over the same set.
+Without `kind` and `rule`: case-insensitive substring match over entity keys and attrs, and fact predicates and values. With `kind`, or `rule` (whose `applies_to` gives the kind, and which must carry a `when`): the entities of that kind matching `text`, and with `rule` only those where the rule evaluates true now, ordered by key; `limit` caps the page and `after` (the last key received) continues it. This is the work list of a sweep, a router or an orchestrator. *Planned:* semantic search over the same set.
 
-### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None) -> Fact`
+### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None) -> Fact`
 
-Writes earned memory. Applies the scope policy (§6). `source` is `annotate:<by or 'agent'>`; `corrected_by = by`. Returns the stored fact including `expires_at`.
+Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value or task raises. Returns the stored fact including `expires_at`.
 
 ### 7.5 `related(subject, relation=None, as_of=None) -> [{relation, direction, subject, since}]`
 
 Open relations at now or at `as_of`, optionally filtered by type, with direction relative to the subject (`out`, `in`, or `both` for a symmetric relation, which is reported once even when the source recorded it from both ends).
 
-### 7.6 Transport
+### 7.6 Two time axes
+
+`as_of` is world time: what was true then. `as_known_at` is transaction time: what Keel knew then, which is what an agent saw when it decided. A fact counts as known at `t` when `recorded_at <= t`, its close counts only when `closed_at <= t`, and memory counts when it had not expired by `t`. `context(as_known_at=t)` defaults `as_of` to `t`, and also evaluates the rules on that view; relations count when `recorded_at <= t`. Every `context` carries `watermark`, the tenant's latest transaction time, which is the cursor an agent stores for its next `history(changed_since=)`. Entities are not bitemporal and are shown as they are now. Facts written before 0.9 have no `closed_at`; their closes count as always known.
+
+### 7.7 Transport
 
 The tools are plain functions first. `keel serve` exposes the same five over MCP (stdio, or streamable HTTP at `/mcp` with `--transport http --tenant`) and as a JSON API (`POST /v1/<tool>`, one process for many tenants, tenant and agent from `X-Keel-Tenant` and `X-Keel-Agent` behind a shared bearer secret). The names and semantics MUST NOT change per transport.
 

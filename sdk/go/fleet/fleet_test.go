@@ -90,6 +90,18 @@ func TestGeneratedClient(t *testing.T) {
 	if !errors.As(err, &ke) || ke.Status != 403 {
 		t.Fatalf("expected a 403 refusal, got %v", err)
 	}
+	first, err := c.Annotate(ctx, keel.Annotation{Subject: "tire:T-9001", Predicate: "plan", Value: "swap", Task: "run-1", Key: "k1"})
+	again, err2 := c.Annotate(ctx, keel.Annotation{Subject: "tire:T-9001", Predicate: "plan", Value: "swap", Task: "run-1", Key: "k1"})
+	if err != nil || err2 != nil || *first.RecordedAt != *again.RecordedAt {
+		t.Fatalf("idempotent annotate: %v %v", err, err2)
+	}
+	epoch := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	if changes, err := c.History(ctx, "", keel.HistoryFilter{ChangedSince: &epoch, Task: "run-1"}); err != nil || len(changes) != 1 {
+		t.Fatalf("changes: %v %+v", err, changes)
+	}
+	if tires, err := c.SearchWith(ctx, keel.SearchOptions{Kind: "tire"}); err != nil || len(tires) != 1 {
+		t.Fatalf("search kind: %v %+v", err, tires)
+	}
 	other := NewClient(keel.Options{BaseURL: base, Tenant: "someone-else", Secret: secret})
 	if got, err := other.Context(ctx, "tire:T-9001", nil); err != nil || got.Entity != nil {
 		t.Fatalf("tenant isolation: %v %+v", err, got.Entity)

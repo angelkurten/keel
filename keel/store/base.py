@@ -58,6 +58,9 @@ class Fact:
     corrected_by: str | None = None  # a person or agent id when this fact is a correction
     evidence: str | None = None  # pointer: event id, row ref, photo url
     expires_at: datetime | None = None  # memory policy, not world time
+    task: str | None = None  # the job this memory belongs to (task scope); see history(task=)
+    idempotency_key: str | None = None  # annotate(key=): a replayed write returns this fact
+    closed_at: datetime | None = None  # transaction time of the close: when Keel learned valid_to
 
 
 class Store(Protocol):

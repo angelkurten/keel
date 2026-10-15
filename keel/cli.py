@@ -175,9 +175,16 @@ def replay(cartridge: Path, events: Path, tenant: str, db: str | None = DB):
 
 
 @app.command()
-def expire(tenant: str, db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL.")):
+def expire(
+    tenant: str,
+    db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
+    task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
+):
     """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
-    n = _store(db).expire(tenant)
+    store = _store(db)
+    if task:
+        typer.echo(f"closed task={task} facts={store.close_task(tenant, task)}")
+    n = store.expire(tenant)
     typer.echo(f"expired tenant={tenant} dropped={n}")
 
 

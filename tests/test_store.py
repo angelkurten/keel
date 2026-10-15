@@ -22,7 +22,7 @@ UTC = timezone.utc
 
 def _strip(o):  # recorded_at and as_of are transaction time: they differ between runs by design
     if isinstance(o, dict):
-        return {k: _strip(v) for k, v in o.items() if k not in ("recorded_at", "as_of")}
+        return {k: _strip(v) for k, v in o.items() if k not in ("recorded_at", "as_of", "closed_at", "watermark")}
     if isinstance(o, list):
         return sorted((_strip(v) for v in o), key=lambda v: json.dumps(v, sort_keys=True))
     return o
@@ -259,3 +259,129 @@ def test_batched_ingest_with_repeated_subjects_matches_the_reference(store):
     Ingestor(c, store).replay(TENANT, events=shuffled)
     for pos in range(4):
         assert _strip(a.history(f"tire:T1-{pos}")) == _strip(b.history(f"tire:T1-{pos}"))
+
+
+# ---- 0.9: what agentic workflows demand ---------------------------------------------------
+
+
+def _tick():
+    import time
+
+    time.sleep(0.005)  # distinct transaction times on fast machines
+    t = datetime.now(UTC)
+    time.sleep(0.005)
+    return t
+
+
+def test_as_known_at_answers_what_the_agent_saw(store):
+    c = load_cartridge(FLEET)
+    events = list(JsonlAdapter(EVENTS))
+    ing = Ingestor(c, store)
+    ing.ingest(events[:5], strict=True)  # the tire at 5.2 mm, not yet measured again
+    seen_then = _tick()
+    ing.ingest(events[5:], strict=True)  # the 2.6 mm measurement arrives later
+    t = Tools(c, store, TENANT)
+    now = t.context("tire:T-9001")
+    assert now["evaluation"] == {"tire_critical": True} and now["watermark"] > seen_then.isoformat()
+    then = t.context("tire:T-9001", as_known_at=seen_then)
+    assert then["evaluation"] == {"tire_critical": False} and [f["value"] for f in then["facts"]] == [5.2]
+    assert then["facts"][0]["valid_to"] is None  # the close was learned later, so it is not applied yet
+    assert [f["value"] for f in t.history("tire:T-9001", predicate="depth_mm", as_known_at=seen_then)] == [5.2]
+    later = t.context("tire:T-9001", as_of=datetime(2026, 9, 20, tzinfo=UTC), as_known_at=seen_then)
+    assert later["as_of"].startswith("2026-09-20") and later["as_known_at"] == seen_then.isoformat()
+
+
+def test_changes_since_a_watermark_span_the_tenant(store):
+    c = load_cartridge(FLEET)
+    ing = Ingestor(c, store)
+    events = list(JsonlAdapter(EVENTS))
+    ing.ingest(events[:6], strict=True)
+    t = Tools(c, store, TENANT)
+    cursor = t.context("unit:MXK-4821")["watermark"]
+    _tick()
+    ing.ingest(events[6:], strict=True)
+    note = t.annotate("tire:T-9001", "assessment", "replace", scope="task", by="agent:x")
+    changed = t.history(changed_since=datetime.fromisoformat(cursor))
+    subjects = {f["subject"] for f in changed}
+    assert {"tire:T-9001", "inspection:INS-4821-10", "ticket:TK-3608"} <= subjects and "document:POL-7731" not in subjects
+    assert changed[-1]["predicate"] == "assessment" and changed[-1]["recorded_at"] == note["recorded_at"]
+    closed = [f for f in changed if f["predicate"] == "depth_mm" and f["valid_to"]]
+    assert [f["value"] for f in closed] == [5.2]  # a close is a change too
+    assert t.history(changed_since=datetime.fromisoformat(t.context("unit:MXK-4821")["watermark"])) == []
+    with pytest.raises(ValueError):
+        t.history()
+
+
+def test_task_ids_scope_memory_and_close_with_the_task(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    t.annotate("tire:T-9001", "assessment", "run A says replace", task="run-A")
+    t.annotate("tire:T-9002", "assessment", "run A, other tire", task="run-A")
+    t.annotate("tire:T-9001", "note", "run B is looking", task="run-B")
+    assert [f["value"] for f in t.history("tire:T-9001", task="run-A")] == ["run A says replace"]
+    preds = {f["predicate"] for f in t.context("tire:T-9001", task="run-B")["facts"]}
+    assert preds == {"depth_mm", "note"}  # tenant facts plus run B's memory, not run A's
+    assert store.close_task(TENANT, "run-A") == 2
+    assert t.history("tire:T-9001", task="run-A") == [] and t.history("tire:T-9001", task="run-B")
+
+
+def test_annotate_with_a_key_is_idempotent(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    first = t.annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7")
+    again = t.annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7")  # a durable-execution replay
+    assert again == first and len(t.history("tire:T-9001", predicate="assessment")) == 1
+    with pytest.raises(ValueError):
+        t.annotate("tire:T-9001", "assessment", "keep", task="run-A", key="step-7")
+
+
+def test_search_enumerates_by_kind_and_rule_with_pages(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    for tire in ("T-9002", "T-9003"):
+        store.upsert_entity(TENANT, "tire", tire, position="P1")
+    t = Tools(c, store, TENANT)
+    assert [e["id"] for e in t.search(kind="tire")] == ["T-9001", "T-9002", "T-9003"]
+    page = t.search(kind="tire", limit=2)
+    assert [e["id"] for e in page] == ["T-9001", "T-9002"] and [e["id"] for e in t.search(kind="tire", after="tire:T-9002")] == ["T-9003"]
+    assert [e["id"] for e in t.search(rule="tire_critical")] == ["T-9001"]  # kind from the rule's applies_to
+    assert [e["id"] for e in t.search(rule="unit_grounded")] == ["MXK-4821"]
+    assert [e["id"] for e in t.search("9003", kind="tire")] == ["T-9003"]
+    with pytest.raises(ValueError):
+        t.search(rule="fuel_anomaly")  # no `when`
+
+
+def test_people_are_principals(store):
+    from keel.agents import parse_agents
+
+    c = load_cartridge(FLEET)
+    c.agents = parse_agents({"planner-bot": {"writes": ["task"]}, "dispatcher": {"kind": "human", "writes": ["task", "tenant"]}})
+    assert c.validate() == []
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    with pytest.raises(PermissionError):
+        Tools(c, store, TENANT, agent="planner-bot").annotate("unit:MXK-4821", "approved_plan", "x", scope="tenant", evidence="e")
+    f = Tools(c, store, TENANT, agent="dispatcher").annotate("unit:MXK-4821", "approved_plan", "x", scope="tenant", evidence="e")
+    assert f["source"] == "annotate:human:dispatcher" and f["corrected_by"] == "human:dispatcher"
+    c.agents = parse_agents({"x": {"kind": "robot"}})
+    assert any("kind 'robot'" in p for p in c.validate())
+
+
+def test_old_databases_gain_the_new_columns(tmp_path):
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    conn = sqlite3.connect(path)
+    conn.executescript(
+        "CREATE TABLE facts (seq INTEGER PRIMARY KEY, tenant TEXT NOT NULL, subject TEXT NOT NULL, predicate TEXT NOT NULL,"
+        " value TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT,"
+        " scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT);"
+        "INSERT INTO facts (tenant, subject, predicate, value, valid_from, recorded_at, scope) VALUES"
+        " ('t', 'tire:T-1', 'depth_mm', '4.0', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00', 'tenant');"
+    )
+    conn.commit()
+    conn.close()
+    store = SqliteStore(path)  # a 0.8 database: the columns are added on open, rows kept
+    assert {"task", "idempotency_key", "closed_at"} <= store._columns("facts")
+    assert [f.value for f in store.facts("t", "tire:T-1")] == [4.0]

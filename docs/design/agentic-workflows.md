@@ -1,6 +1,6 @@
 # Design note: what agentic workflows demand from Keel
 
-Status: researched and exercised on 2026-10-14; proposals below, not yet implemented. Two inputs: a survey of the 2025-2026 state of the art (frameworks, memory systems, context engineering, protocols, observability, approvals) and `examples/workflow_fleet_ops.py`, a deliberately complex flow on Keel (five agents with different registry slices, two in parallel threads, an evaluator-optimizer loop, a human promoting a plan to tenant memory with evidence, an audit) that runs in the test suite on both stores.
+Status: researched and exercised on 2026-10-14; items 1 to 6 and 11 shipped in 0.9.0 on 2026-10-15 (the flow in `examples/workflow_fleet_ops.py` now uses each one); 7 to 10 and 12 remain. Two inputs: a survey of the 2025-2026 state of the art (frameworks, memory systems, context engineering, protocols, observability, approvals) and `examples/workflow_fleet_ops.py`, a deliberately complex flow on Keel (five agents with different registry slices, two in parallel threads, an evaluator-optimizer loop, a human promoting a plan to tenant memory with evidence, an audit) that runs in the test suite on both stores.
 
 ## What the flow showed
 

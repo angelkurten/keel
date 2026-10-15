@@ -16,34 +16,47 @@ final class Client
     }
 
     /** @return array<string, mixed> */
-    /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`. */
-    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0): array
+    /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`; `$asKnownAt` answers
+     * what Keel knew then; `$task` keeps one task's memory. The result's `watermark` is the changes cursor. */
+    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null): array
     {
-        return $this->post('/v1/context', ['subject' => $subject, 'as_of' => $asOf === null ? null : Envelope::iso($asOf), 'depth' => $depth]);
-    }
-
-    /** @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string} $filter @return list<array<string, mixed>> */
-    public function history(string $subject, array $filter = []): array
-    {
-        return $this->post('/v1/history', [
+        return $this->post('/v1/context', [
             'subject' => $subject,
-            'since' => isset($filter['since']) ? Envelope::iso($filter['since']) : null,
-            'until' => isset($filter['until']) ? Envelope::iso($filter['until']) : null,
-            'predicate' => $filter['predicate'] ?? null,
-            'scope' => $filter['scope'] ?? null,
+            'as_of' => $asOf === null ? null : Envelope::iso($asOf),
+            'depth' => $depth,
+            'as_known_at' => $asKnownAt === null ? null : Envelope::iso($asKnownAt),
+            'task' => $task,
         ]);
     }
 
-    /** @return list<array<string, mixed>> */
-    public function search(string $text): array
+    /** `$subject = null` with `changed_since` lists the tenant's changes since a watermark.
+     * @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string, as_known_at?: \DateTimeInterface|string, task?: string, changed_since?: \DateTimeInterface|string} $filter @return list<array<string, mixed>> */
+    public function history(?string $subject, array $filter = []): array
     {
-        return $this->post('/v1/search', ['text' => $text]);
+        $iso = fn(string $k) => isset($filter[$k]) ? Envelope::iso($filter[$k]) : null;
+        return $this->post('/v1/history', [
+            'subject' => $subject,
+            'since' => $iso('since'),
+            'until' => $iso('until'),
+            'predicate' => $filter['predicate'] ?? null,
+            'scope' => $filter['scope'] ?? null,
+            'as_known_at' => $iso('as_known_at'),
+            'task' => $filter['task'] ?? null,
+            'changed_since' => $iso('changed_since'),
+        ]);
     }
 
-    /** @return array<string, mixed> */
-    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null): array
+    /** With `kind` or `rule`: the entities of a kind, or where a rule fires now, paged by `limit`/`after`.
+     * @param array{kind?: string, rule?: string, limit?: int, after?: string} $filter @return list<array<string, mixed>> */
+    public function search(string $text = '', array $filter = []): array
     {
-        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by]);
+        return $this->post('/v1/search', ['text' => $text] + $filter);
+    }
+
+    /** `$task` ties the fact to a job; `$key` makes a retried write return the first one. @return array<string, mixed> */
+    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null, ?string $task = null, ?string $key = null): array
+    {
+        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key]);
     }
 
     /** @return list<array<string, mixed>> */

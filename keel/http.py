@@ -113,16 +113,25 @@ def build_http_app(
         subject: str
         as_of: str | None = None
         depth: int = 0
+        as_known_at: str | None = None
+        task: str | None = None
 
     class HistoryIn(BaseModel):
-        subject: str
+        subject: str | None = None
         since: str | None = None
         until: str | None = None
         predicate: str | None = None
         scope: str | None = None
+        as_known_at: str | None = None
+        task: str | None = None
+        changed_since: str | None = None
 
     class SearchIn(BaseModel):
-        text: str
+        text: str = ""
+        kind: str | None = None
+        rule: str | None = None
+        limit: int | None = None
+        after: str | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -131,6 +140,8 @@ def build_http_app(
         scope: str = "task"
         evidence: str | None = None
         by: str | None = None
+        task: str | None = None
+        key: str | None = None
 
     class RelatedIn(BaseModel):
         subject: str
@@ -155,19 +166,19 @@ def build_http_app(
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth))
+        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task))
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope))
+        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since)))
 
     @app.post("/v1/search")
     def search(body: SearchIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).search(body.text))
+        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after))
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by))
+        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key))
 
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:

@@ -72,6 +72,10 @@ def test_generated_python_client(tmp_path, server):
     with pytest.raises(KeelError) as err:
         keel.annotate(m.subjects.tire("T-9001"), "assessment", "x", scope="tenant")
     assert err.value.status == 403 and "requires evidence" in err.value.detail
+    first = keel.annotate("tire:T-9001", "plan", "swap", task="run-1", key="k1")
+    assert keel.annotate("tire:T-9001", "plan", "swap", task="run-1", key="k1") == first
+    assert [f["predicate"] for f in keel.history(changed_since="2000-01-01T00:00:00Z", task="run-1")] == ["plan"]
+    assert [e["id"] for e in keel.search(kind="tire")] == ["T-9001"]
     assert m.client(server, "someone-else", secret=SECRET).context("tire:T-9001")["entity"] is None
     with pytest.raises(KeelError) as err:
         m.client(server, TENANT, secret="wrong").search("x")

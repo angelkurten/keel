@@ -46,6 +46,10 @@ try {
 } catch (KeelError $e) {
     ok($e->status === 403, 'refusal status ' . $e->status);
 }
+$a = $keel->annotate(Subjects::tire('T-9001'), 'plan', 'swap', 'task', null, null, 'run-1', 'k1');
+ok($keel->annotate(Subjects::tire('T-9001'), 'plan', 'swap', 'task', null, null, 'run-1', 'k1')['recorded_at'] === $a['recorded_at'], 'idempotent annotate');
+ok(count($keel->search('', ['kind' => 'tire'])) === 1, 'search kind');
+ok(count($keel->history(null, ['changed_since' => '2000-01-01T00:00:00Z', 'task' => 'run-1'])) === 1, 'changes');
 ok(Keel::client($base, 'someone-else', $secret)->context('tire:T-9001')['entity'] === null, 'tenant isolation');
 try {
     Keel::client($base, $tenant, 'wrong')->search('x');

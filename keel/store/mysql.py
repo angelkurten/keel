@@ -36,7 +36,9 @@ class MysqlStore(SqlStore):
       seq BIGINT AUTO_INCREMENT PRIMARY KEY, tenant VARCHAR(191) NOT NULL, subject VARCHAR(191) NOT NULL, predicate VARCHAR(191) NOT NULL,
       value JSON NOT NULL, valid_from VARCHAR(40) NOT NULL, valid_to VARCHAR(40), recorded_at VARCHAR(40), source TEXT,
       scope VARCHAR(16) NOT NULL, corrected_by TEXT, evidence TEXT, expires_at VARCHAR(40),
-      KEY facts_subject (tenant, subject), KEY facts_predicate (tenant, subject, predicate));
+      task VARCHAR(191), idempotency_key VARCHAR(191), closed_at VARCHAR(40),
+      KEY facts_subject (tenant, subject), KEY facts_predicate (tenant, subject, predicate),
+      KEY facts_recorded (tenant, recorded_at), KEY facts_closed (tenant, closed_at), KEY facts_task (tenant, task));
     CREATE TABLE IF NOT EXISTS ingested (tenant VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL, PRIMARY KEY (tenant, id))
     """
     UPSERT_ENTITY = (
@@ -44,6 +46,11 @@ class MysqlStore(SqlStore):
         "ON DUPLICATE KEY UPDATE ref = VALUES(ref), attrs = VALUES(attrs)"
     )
     REMEMBER = "INSERT IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
+    ADDED_FACT_COLUMNS = (
+        ("task", "VARCHAR(191)", "CREATE INDEX facts_task ON facts (tenant, task)"),
+        ("idempotency_key", "VARCHAR(191)", None),
+        ("closed_at", "VARCHAR(40)", "CREATE INDEX facts_closed ON facts (tenant, closed_at)"),
+    )
 
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
         self._last_ping = time.monotonic()
@@ -77,6 +84,9 @@ class MysqlStore(SqlStore):
             conn.autocommit(True)  # PyMySQL: a method
         except TypeError:
             conn.autocommit = True  # mysql-connector: a property
+
+    def _columns(self, table: str) -> set[str]:
+        return {r["Field"] for r in self._rows(f"SHOW COLUMNS FROM {table}")}
 
     def _cursor(self, conn: Any) -> Any:
         pymysql = type(conn).__module__.startswith("pymysql")
