@@ -34,6 +34,29 @@ final class Cartridge
                 'within_days' => 15,
             ],
         ],
+        'unit_grounded' => [
+            'applies_to' => 'unit',
+            'definition' => 'A unit is grounded when any tire mounted on it is critical.',
+            'when' => [
+                'via' => 'mounted_on',
+                'direction' => 'in',
+                'any' => [
+                    'predicate' => 'depth_mm',
+                    'lt' => 3,
+                ],
+            ],
+        ],
+        'ticket_stale' => [
+            'applies_to' => 'ticket',
+            'definition' => 'A ticket is stale when its status has not changed for 7 days.',
+            'days' => 7,
+            'when' => [
+                'predicate' => 'status',
+                'open_for_days' => [
+                    'gte' => 7,
+                ],
+            ],
+        ],
         'fuel_anomaly' => [
             'applies_to' => 'unit',
             'definition' => 'A fuel load is anomalous when liters exceed the tank capacity or consumption per km deviates more than 30% from the unit\'s 30-day average.',
