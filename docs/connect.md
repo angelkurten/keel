@@ -33,6 +33,8 @@ For development and tests. One envelope per line; blank lines and lines starting
 uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
 ```
 
+The command prints `processed`, `duplicates`, `unhandled` and `errors` and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (500 events) is rolled back.
+
 ## A Postgres outbox table
 
 Your SaaS inserts envelopes into a table. Keel polls it in order and remembers the last row it took in a cursor file, so a restart resumes instead of re-ingesting.
@@ -68,7 +70,7 @@ ingestor.ingest(adapter)                      # one pass over everything after t
 ingestor.ingest(adapter.follow(interval=5))   # or poll forever
 ```
 
-Delivery is at-least-once: the cursor advances after the consumer has taken an event, so a crash mid-event re-delivers it, and the store applies each event in one transaction, so a redelivery is skipped as a duplicate. The table name, the cursor column and the batch size are parameters. Any DB-API 2.0 connection works; pass `placeholder="?"` for sqlite3.
+Delivery is at-least-once: the cursor advances after the consumer has taken an event, so a crash mid-event re-delivers it, and the store applies each event in one transaction, so a redelivery is skipped as a duplicate. The table name, the cursor column and the batch size are parameters (`table=`, `cursor_column="seq"`, `batch_size=500`). Any DB-API 2.0 connection works; pass `placeholder="?"` for sqlite3.
 
 ```mermaid
 sequenceDiagram
@@ -116,7 +118,7 @@ curl -X POST localhost:8000/events \
   -d '[{"tenant": "acme-logistics", "type": "unit.registered", "subject": "unit:MXK-4821", "occurred_at": "2026-09-01T09:00:00Z", "source": "fleet.vehicles", "payload": {"id": "MXK-4821", "plate": "MXK-4821", "model": "Freightliner Cascadia"}}]'
 ```
 
-The body is one envelope or a list. The response is the ingest report: `processed`, `unhandled` types and `errors`. A malformed envelope is a `422`; a wrong token is a `401`. Without a token the endpoint accepts any caller, so use that only on localhost.
+The body is one envelope or a list. The response is the ingest report: `processed`, `duplicates` (ids the store had already applied), `unhandled` types and `errors`. `build_app(ingestor, token=..., strict=True)` fails the request at the first unhandled type or handler error instead of reporting it; on a SQL store the request's batch is rolled back, so the sender can retry it whole. A malformed envelope is a `422`; a wrong token is a `401`. Without a token the endpoint accepts any caller, so use that only on localhost.
 
 ## Consume a Kafka topic or an SQS queue
 
@@ -131,7 +133,7 @@ ingestor.ingest(adapter)            # drain what is there now, then stop
 ingestor.ingest(adapter.follow())   # consume forever
 ```
 
-Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the handler ran, so a crash mid-event re-delivers it. A message that is not a valid envelope raises and stays on the bus; pass `dead_letter=lambda body, error: ...` to log it somewhere and move on. Both adapters only need two calls from their client (`poll`/`commit`, `receive_message`/`delete_message`), which is how the tests run them on fakes and how you would wrap another client.
+Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the handler ran, so a crash mid-event re-delivers it. A message that is not a valid envelope raises and stays on the bus; pass `dead_letter=lambda body, error: ...` to log it somewhere and move on. `KafkaAdapter.connect(..., **config)` merges extra keys into the confluent-kafka consumer config (dotted keys go through a dict: `**{"security.protocol": "SSL"}`); `SqsAdapter.connect(queue_url, **kwargs)` passes them to `boto3.client("sqs", ...)`. `connect` uses the defaults for the rest; to change them, or to pass `dead_letter`, build the adapter from your own client: `KafkaAdapter(consumer, poll_timeout=1.0, dead_letter=...)`, `SqsAdapter(client, queue_url, batch_size=10, wait_seconds=10, dead_letter=...)`. Both adapters only need two calls from their client (`poll`/`commit`, `receive_message`/`delete_message`), which is how the tests run them on fakes and how you would wrap another client.
 
 ## Serve the tools over MCP
 
@@ -161,10 +163,10 @@ A headless run, for a smoke test or CI:
 codex exec --json "Which tires on unit:MXK-4821 are critical according to the cartridge's own rules? Use only the keel tools." < /dev/null
 ```
 
-Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares `agents:`, add `--agent <id>`: the server then reads and writes only what that agent may, and signs its annotations.
+Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares `agents:`, add `--agent <id>`: the server then reads and writes only what that agent may, and signs its annotations. Agent-scope memory is read only by the agent that wrote it, so a server started without `--agent` reads none.
 
 !!! note "Where is the graph stored?"
-    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`uv sync --extra mysql`); the tables are created on first use and the same conformance suite runs against it in CI. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on.
+    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use and the same conformance suite runs against it in CI. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
 
     ```bash
     uv run keel ingest cartridges/fleet examples/events/fleet.jsonl --db keel.db   # or adapter.follow() in your own process
@@ -182,22 +184,38 @@ For a backend, or for many tenants from one process, serve the same five operati
 KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
 ```
 
-| Call | Body | Returns |
+The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server prints a warning and starts anyway with the API open to any caller, so keep that on localhost.
+
+| Call | Body (`?` optional, default in parentheses) | Returns |
 | --- | --- | --- |
-| `POST /v1/events` | one envelope or a list | the ingest report |
-| `POST /v1/context` | `{"subject", "as_of"?}` | what `context` returns |
-| `POST /v1/history` | `{"subject", "since"?, "until"?, "predicate"?, "scope"?}` | facts |
-| `POST /v1/search` | `{"text"}` | entities and facts |
-| `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"?, "evidence"?, "by"?}` | the fact |
-| `POST /v1/related` | `{"subject", "relation"?}` | neighbours |
+| `POST /v1/events` | one envelope or a list | the ingest report: `processed`, `duplicates`, `unhandled`, `errors` |
+| `POST /v1/context` | `{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("full" or "concise")}` | what `context` returns |
+| `POST /v1/history` | `{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"?}` | facts |
+| `POST /v1/search` | `{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?}` | entities and facts |
+| `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"? ("task"), "evidence"?, "by"?, "task"?, "key"?, "status"?}` | the fact |
+| `POST /v1/related` | `{"subject", "relation"?, "as_of"?}` | neighbours |
+| `GET /health` | | `{"ok", "cartridge", "mcp"}` |
 | `GET /openapi.json` | | the contract, for generated clients |
 
-Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. A refusal (scope policy, agent registry) is a `403` with its reason. With `--tenant`, the same server also exposes `/mcp` (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.
+Times are ISO 8601 strings. Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. `/health`, `/openapi.json`, `/docs` and `/redoc` need no token. Two optional headers are stored with every write the request makes: `traceparent` (W3C trace context) and `X-Keel-Tool-Call` (the agent's tool call id).
+
+On `/v1/events`, `X-Keel-Tenant` is optional: each envelope names its tenant, and when the header is present every envelope must match it. The agent registry does not apply to ingest.
+
+| Status | Meaning |
+| --- | --- |
+| `400` | bad input: missing `X-Keel-Tenant`, an envelope of another tenant, an unknown rule, an invalid `mode` or `detail` |
+| `401` | bad or missing bearer token |
+| `403` | a refusal (scope policy, agent registry), with its reason |
+| `422` | a malformed body, such as an envelope that fails validation |
+
+With `--tenant`, the same server also exposes `/mcp` (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.
 
 ```bash
 curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Keel-Tenant: acme-logistics" \
   -H "Content-Type: application/json" -d '{"subject": "tire:T-9001"}'
 ```
+
+Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send `X-Keel-Agent` to read your own). Task-scope memory tied to a task id is read only by calls that pass that `task` (`history`'s `task` is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, `__global__`, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name.
 
 ## Semantic search
 
@@ -209,6 +227,8 @@ export KEEL_EMBEDDINGS_BASE_URL=https://api.openai.com/v1 KEEL_EMBEDDINGS_MODEL=
 uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db --index chroma:///var/keel/vectors   # cron it: incremental
 uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
 ```
+
+`keel index` keeps the time of its last run in a cursor file, `.keel/index-<tenant>.cursor` unless `--cursor` names another, and indexes only what changed since; `--full` rebuilds the tenant's index. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
 
 Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM). Another vector database or embedder is your own adapter: a class with the four `VectorIndex` methods (or `embed`), named by a spec like `--index my_pkg.qdrant:make?url=http://qdrant:6333`, and checked against the same conformance suite as the bundled ones:
 
@@ -226,6 +246,17 @@ semantic:
   exclude: [comentario]      # comments full of URLs and technical noise stay out
   relations: [de_cliente]    # "de_cliente: cliente:BAT (nombre: ...)" goes into the card's document
 ```
+
+## Consolidate episodic memory
+
+Agents write task and agent memory that expires. A cartridge's `consolidate:` section declares which of it becomes a durable fact: the source predicate and scopes, how many observations make a pattern, a reducer (`mode`, `latest`, `count`, `min`, `max`, `avg`, `distinct` or `summary`) and the predicate and scope to write. It runs as a job, never in ingest:
+
+```bash
+uv run keel consolidate cartridges/fleet --tenant acme-logistics --db keel.db
+uv run keel expire acme-logistics --db keel.db --consolidate cartridges/fleet   # consolidate, then drop expired memory
+```
+
+Each run prints `written` and `unchanged` per consolidation and is idempotent: the same inputs never write twice. The originals stay until their TTL. `reduce: summary` needs `--summarizer`: `llm` (any OpenAI-compatible chat model, from `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`), `join` (the distinct values joined, deterministic) or your own `pkg.module:factory`. The other reducers are deterministic and need none.
 
 ## Export the audit trail
 

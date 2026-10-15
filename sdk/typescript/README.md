@@ -26,4 +26,6 @@ const ctx = await keel.context(subjects.tire("T-9001"));
 ctx.evaluation.tire_critical; // true: the rule lives in the cartridge, the verdict comes with the context
 ```
 
+Besides `baseUrl`, `tenant`, `secret` and `agent`, `client()` takes `traceparent` (sent as the W3C header on every call; Keel stores it with every write) and `fetch`, your own fetch implementation. There is no built-in timeout: pass a `fetch` that sets an `AbortSignal` if you need one. A non-2xx answer throws `KeelError` with `status` and `detail`.
+
 The generated file is the only thing that knows your cartridge; regenerate it when the cartridge changes (`--check` in CI tells you when). Docs: https://angelkurten.github.io/keel/

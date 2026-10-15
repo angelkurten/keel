@@ -10,7 +10,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: 0.14.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
+> Status: 0.15.0, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -23,18 +23,25 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 ## How Keel is different
 
 1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
-2. **Events in, not documents.** Keel ingests structured facts with time (Postgres tables, webhooks, Kafka later). Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
+2. **Events in, not documents.** Keel ingests structured facts with time (Postgres tables, webhooks, Kafka, SQS). Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **Tenant of the tenant.** One subgraph per end-customer, with its own permissions and expiry.
 
 ## Five tools, any agent
 
 ```
-context(subject, as_of?, depth?, as_known_at?, task?) -> what is true now, at as_of, or as known at a past moment; rules and their verdicts; depth=1 adds the neighbors
-history(subject?, ..., task?, changed_since?)        -> what was true and when we learned it; without a subject, what changed since a watermark
-search(text?, kind?, rule?, limit?, after?)          -> text search, or every entity of a kind / where a rule fires, paged
-annotate(subject, predicate, value, scope, evidence, task?, key?) -> an agent (or a person) writes what it learned; key makes retries safe
-related(subject, relation?, as_of?)                  -> neighbors by relation type
+context(subject, as_of?, depth?, as_known_at?, task?, detail?)
+  -> what is true now, at as_of, or as known at a past moment; rules and their verdicts;
+     depth=1 adds the neighbors; detail="concise" for about a third of the tokens
+history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
+  -> what was true and when we learned it; without a subject, what changed since a watermark
+search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?)
+  -> text or semantic search, or every entity of a kind / where a rule fires, paged;
+     related_to (and via) keeps only one subject's neighbors
+annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
+  -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
+related(subject, relation?, as_of?)
+  -> neighbors by relation type
 ```
 
 Expose them over MCP (`keel serve`) and point any agent framework at them. Declare `agents:` in the cartridge and `keel serve --agent <id>` binds a server to one of them: what it may read and write is enforced by the layer, not by the agent.
@@ -93,7 +100,7 @@ The table shape and the envelope fields are in `keel/adapters/postgres.py` and `
 ## Architecture
 
 ```
-  your SaaS (Postgres)   webhooks   Kafka / SQS (later)
+  your SaaS (Postgres)   webhooks   Kafka / SQS
             \               |            /
              v              v           v
    +-------------------------------------------------+      +------------------+
@@ -112,15 +119,17 @@ Design rules the core enforces:
 - **Events are the truth.** An append-only log; the graph is derived and can be replayed.
 - **Pointers, not copies.** The graph holds references to your rows, the semantics, and earned memory. Never a copy of your tables.
 - **Explicit time.** Facts close, they are not overwritten.
-- **Scopes, not a flat store.** Nothing is promoted to a wider scope by accident.
+- **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Nothing is promoted to a wider scope by accident. Agent memory is read only by the agent that wrote it; task memory tied to a task id only by calls that pass that task (`context(task=)`, `history(task=)`); global memory lives in a reserved partition every tenant reads and no event writes.
 
 ## Repository layout
 
 ```
 keel/            core: envelope, handlers, store, scopes, cartridge loader, ingest, tools, cli
 cartridges/      fleet (reference), crm, finance and clinics: four domains, one core, no core change between them
-examples/        sample event streams and a minimal agent
-docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, SPEC
+examples/        sample event streams, a minimal agent and a multi-agent workflow (workflow_fleet_ops.py)
+sdk/             SDK runtimes: typescript, go, php (the Python client ships in keel)
+evals/           the semantic-search eval bench
+docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, sdks, SPEC
 tests/
 ```
 

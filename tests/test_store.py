@@ -333,7 +333,7 @@ def test_annotate_with_a_key_is_idempotent(store):
     t = Tools(c, store, TENANT)
     first = t.annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7")
     again = t.annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7")  # a durable-execution replay
-    assert again == first and len(t.history("tire:T-9001", predicate="assessment")) == 1
+    assert again == first and len(t.history("tire:T-9001", predicate="assessment", task="run-A")) == 1
     with pytest.raises(ValueError):
         t.annotate("tire:T-9001", "assessment", "keep", task="run-A", key="step-7")
 
@@ -427,7 +427,7 @@ def test_multi_valued_predicates_keep_every_author_and_show_the_conflict(store):
     tires_bot.annotate("unit:MXK-4821", "recommendation", "replace tire", task="r1")
     compliance_bot.annotate("unit:MXK-4821", "recommendation", "renew policy", task="r1")
     tires_bot.annotate("unit:MXK-4821", "recommendation", "replace both tires", task="r1")  # its own second word closes its first
-    ctx = Tools(c, store, TENANT).context("unit:MXK-4821")
+    ctx = Tools(c, store, TENANT).context("unit:MXK-4821", task="r1")  # task memory is read by that task
     open_recs = sorted((f["source"], f["value"]) for f in ctx["facts"] if f["predicate"] == "recommendation")
     assert open_recs == [("annotate:compliance-bot", "renew policy"), ("annotate:tires-bot", "replace both tires")]
     assert sorted(x["value"] for x in ctx["conflicts"]["recommendation"]) == ["renew policy", "replace both tires"]
@@ -631,3 +631,38 @@ def test_live_llm_summarizer(store):
     consolidate_tenant(c, store, TENANT, summarizer=load_summarizer("llm"))
     text = next(f.value for f in store.facts(TENANT, "tire:T-9001") if f.predicate == "assessment_summary")
     assert isinstance(text, str) and 3 < len(text.split()) <= 40 and any(w in text.lower() for w in ("leak", "pressure"))
+
+
+def test_memory_scopes_are_enforced_on_read(store):
+    """SPEC §6: agent memory is its author's, task memory its task's, global memory every tenant's."""
+    from pydantic import ValidationError
+
+    from keel import Event
+    from keel.scopes import GLOBAL_TENANT
+
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    a, b, nobody = Tools(c, store, TENANT, agent="bot-a"), Tools(c, store, TENANT, agent="bot-b"), Tools(c, store, TENANT)
+    preds = lambda t, **kw: {f["predicate"] for f in t.context("tire:T-9001", **kw)["facts"]}
+
+    a.annotate("tire:T-9001", "scratch", "a thinks aloud", scope="agent")
+    assert "scratch" in preds(a) and "scratch" not in preds(b) and "scratch" not in preds(nobody)
+    assert all(f["predicate"] != "scratch" for f in b.history("tire:T-9001"))
+    assert all(f["predicate"] != "scratch" for f in b.history(changed_since="2000-01-01T00:00:00Z"))
+    assert a.search("a thinks aloud") and not b.search("a thinks aloud")
+
+    a.annotate("tire:T-9001", "note", "for run 1", task="run-1")
+    a.annotate("tire:T-9001", "loose", "tied to no task")  # task scope without a task id: the tenant's
+    assert "note" in preds(b, task="run-1") and "note" not in preds(b) and "note" not in preds(b, task="run-2")
+    assert "loose" in preds(b) and "loose" in preds(b, task="run-2")
+
+    nobody.annotate("tire:T-9001", "recall", "model recalled", scope="global", evidence="maker-bulletin-7")
+    other = Tools(c, store, "another-tenant")
+    assert all(f.predicate != "recall" for f in store.facts(TENANT, "tire:T-9001"))  # not in any tenant's partition
+    assert "recall" in preds(a) and "recall" in {f["predicate"] for f in other.context("tire:T-9001")["facts"]}
+    assert "recall" in [f["predicate"] for f in other.history(changed_since="2000-01-01T00:00:00Z")]
+    assert other.context("tire:T-9001")["watermark"] is not None
+    with pytest.raises(ValueError):
+        Tools(c, store, GLOBAL_TENANT)
+    with pytest.raises(ValidationError):
+        Event(tenant=GLOBAL_TENANT, type="x.y", subject="tire:1", occurred_at=datetime.now(timezone.utc), source="s")

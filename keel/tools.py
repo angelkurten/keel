@@ -13,6 +13,7 @@ They are plain functions first, so any framework can call them directly;
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
@@ -21,7 +22,7 @@ from keel.agents import resolve
 from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
-from keel.scopes import Scope
+from keel.scopes import GLOBAL_TENANT, Scope
 from keel.semantic import accepts, embed_as, fuse, render
 from keel.store.base import Entity, Fact, Relation, Store
 from keel.store.memory import changed_after, filter_facts, search_in
@@ -114,22 +115,24 @@ NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` fo
 
 class _Graph:
     """What rules may look at, read through the store at one instant. Rules are the product's
-    semantics, so they see the whole tenant whatever the calling agent's read slice is."""
+    semantics, so they see the whole tenant whatever the calling agent's read slice is (kinds and
+    relations); memory scopes still apply: another agent's private memory, or another task's, is
+    not the caller's to read, not even through a rule."""
 
     def __init__(
         self, store: Store, tenant: str, as_of: datetime, calendar: Calendar, symmetric: set[str],
         known_at: datetime | None = None, task: str | None = None,
+        fetch: Callable[..., list[Fact]] | None = None,
     ) -> None:
         self.store, self.tenant, self.as_of, self.calendar, self.symmetric = store, tenant, as_of, calendar, symmetric
         self.known_at, self.task = known_at, task
+        self.fetch = fetch or (lambda subject, task, **kw: store.facts(tenant, subject, **kw))
         self._facts: dict[str, list[Fact]] = {}
 
     def _read(self, subject: str, proposed: bool = False, **kw: Any) -> list[Fact]:
         if self.known_at is not None:
             kw["known_at"] = self.known_at  # only passed when asked: a store from before 0.9 does not take it
-        facts = self.store.facts(self.tenant, subject, **kw)
-        if self.task is not None:  # one task's memory, plus everything that belongs to no task
-            facts = [f for f in facts if f.task is None or f.task == self.task]
+        facts = self.fetch(subject, self.task, **kw)
         wanted = "proposed" if proposed else None  # accepted facts are the truth rules and agents read
         return [f for f in facts if f.status == wanted]
 
@@ -170,9 +173,13 @@ class Tools:
     ) -> None:
         self.cartridge = cartridge
         self.store = store
+        if tenant == GLOBAL_TENANT:
+            raise ValueError(f"tenant '{GLOBAL_TENANT}' is reserved for global-scope memory")
         self.tenant = tenant  # tools are always scoped to one end-customer
         self.agent_id = agent  # who is calling; the host decides, Keel records
         self.agent = resolve(cartridge.agents, agent)  # the spec to enforce; None when the cartridge declares no agents
+        # the author this caller writes as, and the only one whose agent-scope memory it reads
+        self.author = f"human:{agent}" if self.agent and self.agent.kind == "human" else agent
         self.symmetric = {rel for rel, spec in cartridge.relations.items() if isinstance(spec, dict) and spec.get("symmetric")}
         self.multi = {p for p, spec in cartridge.predicates.items() if isinstance(spec, dict) and spec.get("multi")}
         self.trace = trace  # set per request by the transport (traceparent, tool call id); stored with every write
@@ -191,7 +198,32 @@ class Tools:
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
 
     def _graph(self, now: datetime, known_at: datetime | None = None, task: str | None = None) -> _Graph:
-        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task)
+        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task, self._fetch)
+
+    # ---- memory scopes on every read: enforced here, not trusted to the caller ---------------
+
+    def _sees(self, f: Fact, task: str | None) -> bool:
+        """agent: only its author (a caller bound to no agent is nobody's agent and sees none).
+        task: a fact tied to a task only to reads of that task; one tied to none, to the tenant."""
+        if f.scope == Scope.AGENT:
+            return self.author is not None and f.source == f"annotate:{self.author}"
+        if f.scope == Scope.TASK and f.task is not None:
+            return f.task == task
+        return True
+
+    def _fetch(self, subject: str, task: str | None = None, **kw: Any) -> list[Fact]:
+        """A subject's facts in this tenant plus the global partition's, as this caller may see them."""
+        # ponytail: one extra indexed lookup per subject read; a has-global flag if it ever shows in profiles
+        glob = [f for f in self.store.facts(GLOBAL_TENANT, subject, **kw) if f.scope == Scope.GLOBAL]
+        facts = self.store.facts(self.tenant, subject, **kw)
+        if glob:
+            facts = sorted(facts + glob, key=lambda f: f.valid_from)
+        return [f for f in facts if self._sees(f, task)]
+
+    def _watermark(self) -> datetime | None:
+        wm = getattr(self.store, "watermark", None)
+        marks = [m for m in (wm(self.tenant), wm(GLOBAL_TENANT)) if m is not None] if wm else []
+        return max(marks) if marks else None
 
     def _rules_for(self, subject: str) -> dict[str, Any]:
         kind = _kind(subject)
@@ -226,7 +258,9 @@ class Tools:
         that apply to its kind, and the evaluation of every rule that carries a `when`. With
         `depth=1`, also each neighbour's entity, open facts and evaluation (up to NEIGHBOR_CAP).
         `as_known_at` answers what Keel knew then (transaction time; `as_of` defaults to it): what
-        an agent saw when it decided. `task` keeps only that task's task-scope memory. `watermark`
+        an agent saw when it decided. `task` is the task the caller works on: task-scope memory tied to
+        a task is read only by that task (memory tied to none is the tenant's), agent-scope memory only by
+        its author. Global-scope memory is every tenant's. `watermark`
         is the tenant's latest transaction time, the cursor for `history(changed_since=)`. `proposals`
         lists pending proposals; `conflicts` lists predicates with more than one open value (multi-valued
         predicates written by several authors). `detail="concise"` returns about a third of the tokens:
@@ -238,7 +272,6 @@ class Tools:
         now = as_of or as_known_at or utcnow()
         graph = self._graph(now, as_known_at, task)
         rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
-        watermark = getattr(self.store, "watermark", None)
         out: dict[str, Any] = {
             "subject": subject,
             "entity": self.store.entity(self.tenant, subject),
@@ -247,7 +280,7 @@ class Tools:
             "rules": self._rules_for(subject),
             "evaluation": self._evaluation(subject, graph),
             "as_of": now,
-            "watermark": watermark(self.tenant) if watermark else None,
+            "watermark": self._watermark(),
         }
         if as_known_at is not None:
             out["as_known_at"] = as_known_at
@@ -289,14 +322,17 @@ class Tools:
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Facts over time: valid_from/valid_to (world), recorded_at and closed_at (when we learned
-        them). Filters: one predicate, one memory scope, one task. `as_known_at`: as Keel knew them
+        them). Filters: one predicate, one memory scope, one task (only what that task wrote; without it,
+        task-scope memory tied to a task is not returned). Another agent's agent-scope memory is never
+        returned. `as_known_at`: as Keel knew them
         then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
         with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run"."""
         since, until, as_known_at, changed_since = _t(since), _t(until), _t(as_known_at), _t(changed_since)
         if subject is None:
             if changed_since is None:
                 raise ValueError("history needs a subject, or changed_since for the whole tenant")
-            facts = self.store.changes(self.tenant, changed_since)
+            facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(GLOBAL_TENANT, changed_since) if f.scope == Scope.GLOBAL], changed_since)
+            facts = [f for f in facts if self._sees(f, task)]
             if self.agent:
                 facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
             if as_known_at is not None:
@@ -306,14 +342,14 @@ class Tools:
             kw: dict[str, Any] = {"since": since, "until": until}
             if as_known_at is not None:
                 kw["known_at"] = as_known_at
-            facts = self.store.facts(self.tenant, subject, **kw)
+            facts = self._fetch(subject, task, **kw)
             if changed_since is not None:
                 facts = changed_after(facts, changed_since)
         if predicate:
             facts = [f for f in facts if f.predicate == predicate]
         if scope:
             facts = [f for f in facts if f.scope == Scope(scope)]
-        if task:
+        if task:  # only what that task wrote
             facts = [f for f in facts if f.task == task]
         if limit:  # the most recent `limit`, still oldest first; ask for limit + 1 to know whether more exist
             facts = facts[-limit:]
@@ -351,7 +387,8 @@ class Tools:
         if mode == "semantic":
             return self._semantic(text, kind, rule, limit or 10, min_score, neighbours)
         if kind is None and rule is None:
-            hits = self.store.search(self.tenant, text)
+            hits = self.store.search(self.tenant, text) + [h for h in self.store.search(GLOBAL_TENANT, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
+            hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
             if self.agent:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
             if neighbours is not None:
@@ -507,19 +544,18 @@ class Tools:
         if self.agent and status != "proposed" and not self.agent.can_write(sc):
             raise PermissionError(f"agent '{self.agent.id}' may not write scope '{sc.value}'")
         self.cartridge.policy.check_write(sc, evidence)
+        part = GLOBAL_TENANT if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
         if key is not None:
-            for f in self._all_facts(subject):
+            for f in self.store.facts(part, subject):
                 if f.idempotency_key == key:
                     if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):
                         raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
                     return _ser(f)
         ttl = self.cartridge.policy.ttl.get(sc)
         now = utcnow()
-        author = self.agent_id or by or "agent"
-        if self.agent and self.agent.kind == "human":
-            author = f"human:{self.agent.id}"
+        author = self.author or by or "agent"
         f = self.store.open_fact(
-            self.tenant,
+            part,
             subject,
             predicate,
             value,
@@ -536,14 +572,11 @@ class Tools:
             per_source=status is not None or predicate in self.multi,
         )
         if status != "proposed":  # a decision: the pending proposals on this predicate are settled
-            self.store.close_fact(self.tenant, subject, predicate, valid_to=now, status="proposed")
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed")
         if status == "rejected":  # the rejection itself is recorded, closed at once: history only
-            self.store.close_fact(self.tenant, subject, predicate, valid_to=now, status="rejected")
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected")
             f.valid_to = now
         return _ser(f)
-
-    def _all_facts(self, subject: str) -> list[Fact]:
-        return self.store.facts(self.tenant, subject)
 
     def related(self, subject: str, relation: str | None = None, as_of: Instant = None) -> list[dict[str, Any]]:
         """Neighbours by relation type, now or at `as_of`. A symmetric relation shows once, direction `both`."""

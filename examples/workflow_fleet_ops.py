@@ -173,11 +173,12 @@ def run(store: Store | None = None, quiet: bool = False) -> dict[str, Any]:
         if recs:
             task_facts = [f["evidence"] for f in human.history(unit, predicate="recommendation", task=RUN)]
             promoted[unit] = human.annotate(unit, "approved_plan", recs, scope="tenant", evidence=";".join(task_facts) or "plan")["source"]
-    changed = bots["planner-bot"].history(changed_since=datetime.fromisoformat(cursor))  # everything the run wrote
+    since = datetime.fromisoformat(cursor)  # everything the run wrote: its task memory, and what landed in the tenant
+    changed = bots["planner-bot"].history(changed_since=since, task=RUN) + bots["planner-bot"].history(changed_since=since)
     closed = store.close_task(TENANT, RUN)  # the run is over: its task memory expires, the approved plans stay
 
     # audit: provenance of the conflict, what the triage saw when it decided, everything that changed during the run
-    conflict = sorted((f["value"]["by"], f["source"]) for f in bots["planner-bot"].history("unit:MXK-4821", predicate="recommendation", as_known_at=review_started) if f["task"] == RUN)  # read back after the task closed
+    conflict = sorted((f["value"]["by"], f["source"]) for f in bots["planner-bot"].history("unit:MXK-4821", predicate="recommendation", as_known_at=review_started, task=RUN))  # read back after the task closed
     seen_by_triage = bots["triage-bot"].context("unit:MXK-4821", as_known_at=datetime.fromisoformat(triage_seen_at))["evaluation"]
     sweep = [e["id"] for e in bots["tires-bot"].search(rule="tire_critical")]
     open_conflicts = bots["planner-bot"].context("unit:MXK-4821", task=RUN, as_known_at=review_started).get("conflicts", {})

@@ -87,6 +87,10 @@ class Store(Protocol):
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]: ...
 
+    def entities(self, tenant: str, kind: str | None = None) -> list[Entity]: ...  # Tools lists kinds with it
+
+    def changes(self, tenant: str, after: datetime) -> list[Fact]: ...  # recorded or closed after a watermark
+
     # ingest bookkeeping (the Ingestor, never handlers): at-least-once delivery means duplicates arrive
     def seen(self, tenant: str, event_id: str) -> bool: ...  # was this event already applied?
 
@@ -94,3 +98,7 @@ class Store(Protocol):
 
     # maintenance (jobs and operators, never handlers)
     def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]: ...  # everything, for export and audit
+
+    def expire(self, tenant: str, now: datetime | None = None) -> int: ...  # drop facts past expires_at
+
+    def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int: ...  # expire a task's memory

@@ -1,6 +1,6 @@
 # Keel specification
 
-Version 0.1-draft · 2026-10-14 · Status: normative for the 0.0.x line; anything marked *planned* is not implemented yet.
+Version 0.15 · 2026-10-15 · Status: normative for the 0.15.x line; anything marked *planned* is not implemented yet.
 
 This document is the contract. `CLAUDE.md` says how to work on the code; `README.md` says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.
 
@@ -101,7 +101,7 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
 | `trace` | string? | The caller's W3C `traceparent` and tool call id at write time (HTTP `traceparent` / `X-Keel-Tool-Call` headers, MCP `_meta`), so a Langfuse or LangSmith trace joins the audit export. |
 
-**Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST first close any open fact with the same `(subject, predicate)` by setting its `valid_to = valid_from`, then append the new fact. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
+**Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST place the new fact in the predicate's history by `valid_from`: it closes the fact current at that instant (`valid_to = valid_from`) and, when a later fact already exists, closes itself at that fact's start. Arrival order does not change the result (§4). With `per_source=True` (multi-valued predicates and proposals) the history is kept per author. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
 ```mermaid
 sequenceDiagram
@@ -122,7 +122,7 @@ sequenceDiagram
 
 - facts true **at** a world time `t`: `valid_from <= t < valid_to` (or open).
 - facts **between** `since` and `until` (overlap).
-- facts **as learned by** a transaction time (`recorded_at <= t`) — *planned*; the in-memory store does not filter on it yet.
+- facts **as known at** a transaction time `t` (`facts(known_at=t)`): recorded by `t`, with closes counted only when `closed_at <= t` (§7.6).
 
 **Values are for what a tool compares or shows.** A long text (a comment body, a description, a document) belongs in the system of record: store a short label or a classification as the value and the pointer as `evidence` or in the entity's `ref`, not the text itself. The graph holds pointers and semantics (design rule 2).
 
@@ -135,19 +135,27 @@ upsert_entity(tenant, kind, id, ref=None, **attrs) -> Entity
 link(tenant, src, rel, dst, valid_from, source=None) -> Relation
 unlink(tenant, src, rel, dst, valid_to) -> None
 open_fact(tenant, subject, predicate, value, valid_from, **provenance) -> Fact
-close_fact(tenant, subject, predicate, valid_to) -> None
+close_fact(tenant, subject, predicate, valid_to, status=None) -> None   # status: only proposals, or only rejections
 ```
+
+`open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, and `per_source` (one history per author, §3.3).
 
 Reads:
 
 ```
 entity(tenant, key) -> Entity | None
-facts(tenant, subject, at=None, since=None, until=None) -> [Fact]
+facts(tenant, subject, at=None, since=None, until=None, known_at=None) -> [Fact]
+entities(tenant, kind=None) -> [Entity]
 relations(tenant, key, rel=None, at=None) -> [Relation]
 search(tenant, text) -> [Entity | Fact]
+changes(tenant, after) -> [Fact]               # recorded or closed after a watermark, oldest change first
+watermark(tenant) -> datetime | None           # optional: latest recorded_at or closed_at
+relation_changes(tenant, after) -> [Relation]  # optional: links recorded after a watermark (keel index)
 ```
 
-Ingest bookkeeping (called by the Ingestor, never by handlers): `seen(tenant, event_id)` and `remember(tenant, event_id)`, the dedupe behind at-least-once delivery; `reset` forgets them too. A store MAY offer `transaction()`, a context manager the Ingestor wraps each event or batch in. Maintenance (jobs and operators): `expire(tenant, now)`, `reset(tenant)`, `dump(tenant)` (everything about one tenant, closed facts included; `keel export` writes it as JSONL).
+`Tools` calls `entities` and `changes` on every store. `known_at` is passed only when a caller asks for transaction time, so a store without it still serves every other read. Global-scope memory is stored under the reserved tenant `__global__` (§6); a store needs nothing special for it.
+
+Ingest bookkeeping (called by the Ingestor, never by handlers): `seen(tenant, event_id)` and `remember(tenant, event_id)`, the dedupe behind at-least-once delivery; `reset` forgets them too. A store MAY offer `transaction()`, a context manager the Ingestor wraps each event or batch in. Maintenance (jobs and operators): `expire(tenant, now)`, `close_task(tenant, task, now)` (expires a task's memory at once), `reset(tenant)`, `dump(tenant)` (everything about one tenant, closed facts included; `keel export` writes it as JSONL).
 
 A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` unchanged. Run the suite against your own store with `KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py`, where `factory` is a zero-argument callable (or class) returning a fresh, empty store. Reference: `keel/store/memory.py` (in memory). Durable: `keel/store/sql.py` holds one plain-SQL implementation with the same filters as the reference, and `keel/store/sqlite.py` (one file, WAL) and `keel/store/mysql.py` (MySQL or MariaDB, `mysql://` URL) are its dialects; all answer identically and the conformance suite runs on SQLite and MySQL in CI. A Graphiti-backed store remains planned for graph-native queries.
 
@@ -214,7 +222,7 @@ events:                 # required: type -> spec
   <type>:
     subject: <kind>     # required: the kind of event.subject
     owner: <team>       # recommended: who owns this event's shape
-    payload: { <field>: <hint>, ... }   # the notation in §5.6; `| null` = optional
+    payload: { <field>: <hint>, ... }   # the notation in §5.5; `| null` = optional
 
 rules:                  # optional: name -> definition
   <rule>:
@@ -226,14 +234,14 @@ rules:                  # optional: name -> definition
       <op>: <operand>   # leaf operators in §5.4; compose with all / any / not; follow relations with via
 
 predicates:             # optional: write policy per predicate, for annotations
-  <predicate>: { multi: true }   # one open value per author (the `by`, else the agent) instead of last-writer-wins; context lists conflicts
+  <predicate>: { multi: true, description: <text> }   # multi: one open value per author (the `by`, else the agent) instead of last-writer-wins; context lists conflicts
 
 semantic:               # optional: what `keel index` puts in each subject's document (§7.3)
   kinds: [<kind>, ...]           # absent: every kind
   predicates: [<predicate>, ...] # what to include; or exclude: [<predicate>, ...]
   attrs: true                    # entity attributes (default); false, or a list of names
   relations: [<rel>, ...]        # open relations: the other side's key and one label
-  labels: [name, nombre]         # the attribute that labels the other side (first present wins)
+  labels: [name, nombre]         # the attribute that labels the other side (first present wins); default: name, nombre, title, titulo, label, plate, model
   lexical_weight: 0.3            # hybrid search: weight of the lexical leg (0 = dense only)
   min_score: 0.4                 # optional cosine floor; model-specific, calibrate with evals/semantic
 
@@ -253,12 +261,13 @@ calendar:               # optional: business days for `open_for_business_days` (
 agents:                 # optional: the agent registry (§6.1). Absent = no registry, any caller
   <id>:
     description: <text>
-    writes: [task, agent]                        # scopes it may annotate; never global
+    kind: agent                                  # or human: a person, signed human:<id> (§6.1)
+    writes: [task, agent]                        # scopes it may annotate; never global; absent = [task, agent]
     reads: { kinds: [<kind>, ...], relations: [<rel>, ...] }   # optional; absent = everything
 
 memory:                 # optional; defaults in §6
   ttl:
-    global: never | <n>d | <n>h | <n>m
+    global: never | forever | <n>d | <n>h | <n>m | <n>   # a bare number is days
     tenant: never | ...
     task: 14d
     agent: 1d
@@ -278,9 +287,12 @@ A cartridge is valid when:
 3. every cataloged event type has at least one handler;
 4. every handler's event type is in the catalog;
 5. every rule's `when` names a `predicate` and uses only the operators in §5.4;
-6. every agent's `writes` are known scopes other than `global`, and its `reads` name declared kinds and relations.
+6. every agent's `kind` is `agent` or `human`, its `writes` are known scopes other than `global`, and its `reads` name declared kinds and relations;
+7. every event's payload hints use the notation in §5.5;
+8. `predicates`, `semantic` and `consolidate` use only known keys, with values in range (a weight between 0 and 1, a known reducer, a known scope);
+9. every `via` names a declared relation with a valid `direction`, and duration operators (`open_for_*`, `held_for_*`) take a comparison mapping.
 
-`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared shape (§5.6; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
+`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared shape (§5.5; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
 
 ### 5.4 Rules (semantic layer)
 
@@ -322,10 +334,10 @@ Adding or changing a cartridge MUST require no change under `keel/`. The reposit
 
 | Scope | Who reads | Who writes | Default TTL | Evidence required |
 | --- | --- | --- | --- | --- |
-| `global` | every tenant's agents | a privileged process (cartridge rules, platform jobs) | never | yes |
+| `global` | every tenant's agents | a privileged process (a `Tools` bound to no registry agent; never an agent, never an event) | never | yes |
 | `tenant` | that tenant's agents | handlers (from events); agents/humans via `annotate` | never | yes |
-| `task` | agents working the same task | agents via `annotate` | 14 days | no |
-| `agent` | that agent only | that agent | 1 day | no |
+| `task` | calls that pass the fact's task (`context(task=)`, `history(task=)`); a task fact with no task id is the tenant's | agents via `annotate` | 14 days | no |
+| `agent` | the agent that wrote it (a `Tools` bound to no agent id reads none) | that agent | 1 day | no |
 
 ```mermaid
 flowchart LR
@@ -342,6 +354,8 @@ Rules:
 - Facts written by handlers from events are `tenant` scope with `evidence = event.id`.
 - Promotion to a wider scope is a new `annotate` with evidence and `by`; the narrower fact keeps its own lifetime.
 - `expires_at = now + ttl` at write time; `null` when TTL is `never`. Reads MUST exclude expired facts even before a job physically removes them.
+- Reads are enforced in `Tools`, on every path that returns facts (`context` and its neighbours, rule evaluation, `history` with or without a subject, text `search`): an `agent` fact is returned only to a caller bound to its author (its `source` is `annotate:<author>`); a `task` fact tied to a task only to calls passing that task; a `task` fact with no task id to the whole tenant. Rules evaluate on the same view, so another agent's or another task's memory never decides a verdict.
+- Global memory lives in the reserved partition `__global__`: `annotate(scope="global")` writes there and every tenant's reads merge it, so one fact is seen by every tenant. No event may carry that tenant and no `Tools` may be bound to it. It is the one deliberate exception to invariant 1, and it holds only what a privileged process wrote.
 
 ### 6.1 Agent registry
 
@@ -377,9 +391,9 @@ What is true about a subject now, or at `as_of` (world time). With `depth=1` the
 }
 ```
 
-### 7.2 `history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None) -> [Fact]`
+### 7.2 `history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None, limit=None) -> [Fact]`
 
-Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter; `limit` keeps the most recent n, still oldest first (ask for one more to know whether more exist). `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
+Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter (`task` returns only what that task wrote; without it, task memory tied to a task is not returned, §6); `limit` keeps the most recent n, still oldest first (ask for one more to know whether more exist). `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
 
 ### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None) -> [Entity | Fact]`
 
@@ -391,9 +405,9 @@ Without `kind` and `rule`: case-insensitive substring match over entity keys and
 
 `mode="semantic"` ranks subjects by meaning: subjects whose id appears verbatim in the query come first (`match: "key"`, score 1); then a dense leg (the embedded query against the vector index) and, when the index offers `text_query`, a lexical leg (BM25 over the same documents) are fused by a convex combination of min-max normalized scores, weighted by the cartridge's `semantic.lexical_weight` (default 0.3; 0 is dense only); then the optional reranker reorders the top candidates. The tenant, the agent's read slice, `kind` and `rule` always apply, inside the index when its `query` takes `where`. Each entity carries `score` and `similarity` (the cosine); `min_score` (or the cartridge's `semantic.min_score`) drops results below that cosine, and is model-specific. Default `limit` 10. Three adapter contracts make it pluggable (`keel.semantic`): `VectorIndex` (`upsert`, `delete`, `query`, `clear`, always by tenant, an index never returns another tenant's keys; optional `where` on `query` and an optional `text_query`), `Embedder` (`embed(texts)`, optionally `role="query"|"document"` for asymmetric models) and `Reranker` (`rerank(query, docs)`; bundled: the Cohere/Jina/Voyage `/rerank` shape and an LLM reranker over any `/chat/completions`). Keel ships `MemoryIndex`, `ChromaIndex` (extra `chroma`), `OpenAIEmbedder` (any `/v1/embeddings` API) and `HashEmbedder` (tests); any other is a `pkg.module:factory?param=value` spec, checked by `tests/test_semantic.py` with `KEEL_VECTOR_INDEX` / `KEEL_EMBEDDER`. The index is built by `keel index`, outside ingest (rule 10): one document per subject with its key, attributes, open accepted facts of tenant and global scope and the open relations the cartridge names, as chosen by the cartridge's `semantic:` section (§5.1); task and agent memory and proposals are never indexed; incremental from a watermark (subjects whose facts changed, and both ends of new links), `--full` rebuilds. A `rule` or `kind` filter never cuts the page: candidates are fetched in widening windows until `limit` results pass or the index runs out.
 
-### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None) -> Fact`
+### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None, status=None) -> Fact`
 
-Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task or status raises. `status="proposed"` writes a proposal: it never touches accepted facts, waits in `context.proposals`, and needs only some write right (not the right on `scope`), so an agent can propose a tenant fact a person accepts; the evidence policy of `scope` still applies. An accepted write (no `status`) or `status="rejected"` is a decision: it needs the right on `scope` and closes the predicate's open proposals; a rejection is recorded closed at once, in `history` only. Store `close_fact` takes `status` so handlers never close proposals. Returns the stored fact including `expires_at`, `status` and `trace`.
+Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task or status raises. `status="proposed"` writes a proposal: it never touches accepted facts, waits in `context.proposals`, and needs only some write right (not the right on `scope`), so an agent can propose a tenant fact a person accepts; the evidence policy of `scope` still applies. An accepted write (no `status`) or `status="rejected"` is a decision: it needs the right on `scope` and closes the predicate's open proposals; a rejection is recorded closed at once, in `history` only. Proposals are kept one open per author per predicate, in their own history beside the accepted facts. Store `close_fact` takes `status` so handlers never close proposals. Returns the stored fact including `expires_at`, `status` and `trace`.
 
 ### 7.5 `related(subject, relation=None, as_of=None) -> [{relation, direction, subject, since}]`
 
@@ -412,22 +426,23 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 ## 8. Jobs
 
 - **Expiry**: drop facts past `expires_at`, per tenant. Shipped: `store.expire(tenant)` on both stores and `keel expire <tenant> --db`; the schedule is the operator's cron. Reads exclude expired facts regardless.
-- **Consolidation**: `keel consolidate` (or `keel expire --consolidate`, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's `consolidate:` entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, window; expired-but-not-dropped ones count) are reduced into one durable fact when there are at least `min_count`. Reducers are deterministic (`mode` with ties to the latest, `latest`, `count`, `min`, `max`, `avg`, `distinct`); `summary` asks a `Summarizer` adapter (`LLMSummarizer` over any `/chat/completions`, or yours) for one sentence. The fact carries `source=consolidate:<name>`, evidence naming the count, the time span and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. The originals are kept until their TTL. A job, never part of ingest.
+- **Consolidation**: `keel consolidate` (or `keel expire --consolidate`, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's `consolidate:` entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, window; expired-but-not-dropped ones count) are reduced into one durable fact when there are at least `min_count`. Reducers are deterministic (`mode` with ties to the latest, `latest`, `count`, `min`, `max`, `avg`, `distinct`); `summary` asks a `Summarizer` adapter (`LLMSummarizer` over any `/chat/completions`, or yours) for one sentence. The fact carries `source=consolidate:<name>`, evidence naming the count, the time span and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. Proposals are never consolidated, and the written fact carries `corrected_by=job:consolidate:<name>`. The summarizer is chosen with `--summarizer llm|join|pkg.module:factory`; `llm` reads `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`. The originals are kept until their TTL. A job, never part of ingest.
 - **Replay**: rebuild a tenant from the external log. Shipped: `Ingestor.replay(tenant, events=adapter)` and `keel replay <cartridge> <stream> <tenant> --db`.
 
 ---
 
 ## 9. Invariants (what a conformance test checks)
 
-1. No record spans tenants; every read is partitioned by tenant.
+1. No record spans tenants; every read is partitioned by tenant (global memory is read from its own partition, §6).
 2. `open_fact` never overwrites: after two writes to the same predicate, both facts exist and the first is closed at the second's `valid_from`.
 3. A fact query `at=t` returns exactly the facts valid at `t`.
 4. Replay produces a graph equal to the one built incrementally.
-9. Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.
 5. `annotate` to a scope in `requires_evidence` without evidence raises.
 6. `task`/`agent` annotations carry `expires_at`; `tenant`/`global` with `never` TTL do not.
 7. The core imports nothing from `cartridges/`; every reference cartridge validates and passes after any core change.
 8. Ingest performs no I/O other than reading the adapter and writing the store.
+9. Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.
+10. Scope reads hold (§6): agent memory reaches only its author, task memory only its task, global memory every tenant.
 
 ---
 

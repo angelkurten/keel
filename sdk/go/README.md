@@ -16,4 +16,6 @@ got, err := c.Context(ctx, "tire:T-9001", nil)
 *got.Evaluation["tire_critical"] // true
 ```
 
+`keel.Options` also takes `Agent`, `Traceparent` (sent as the W3C header on every call; Keel stores it with every write) and `HTTPClient` (default: `&http.Client{Timeout: 30 * time.Second}`, so set your own for another timeout or transport). Each call also honours its `context.Context`.
+
 A refusal from the server is a `*keel.Error` with `Status` and `Detail`. The generated file is `go vet` and `gofmt` clean; keep it fresh with `keel sdk go ... --check` in CI.

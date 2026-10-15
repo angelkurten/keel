@@ -34,6 +34,7 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
+- [x] Memory scopes enforced on read (0.15.0): agent memory reaches only its author, task memory only calls that pass its task, global memory every tenant from its own partition (`__global__`)
 - [x] Consolidation (0.14.0): episodic memory into durable facts, declared in the cartridge; deterministic reducers and a Summarizer adapter; `keel consolidate`, `keel expire --consolidate`
 - [x] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule (rules carry a `when`; `context` takes `as_of`)
 - [x] Cartridge validation against event streams (`keel validate --events` reports unknown types, wrong subject kinds and bad payloads)
@@ -83,7 +84,7 @@ A second design customer: kagent, with 354 real Jira cards and 2831 events, wrot
 From a survey of the state of the art and a complex multi-agent flow run on Keel (`examples/workflow_fleet_ops.py`); the reasoning is in the [design note](docs/design/agentic-workflows.md). All inside the five tools.
 
 - [x] Transaction time: `context` / `history` with `as_known_at` (what the agent saw), with the close's own `recorded_at`
-- [x] Changes since a cursor: tenant-wide `history(since=)` with annotations, and the watermark in every `context`
+- [x] Changes since a cursor: tenant-wide `history(changed_since=)` with annotations, and the watermark in every `context`
 - [x] Task ids on task memory, `history(task=)`, `keel expire --task`
 - [x] Idempotency key on `annotate`
 - [x] `search(kind=, rule=, limit=)`: enumerate subjects by kind or by rule state, with a cursor
@@ -100,14 +101,14 @@ From research and a labeled eval bench run with real embeddings ([design note](d
 - [x] Compact relation lines; query/document roles in `Embedder`; `where` filters in `VectorIndex`; reranker adapter
 - [ ] Real agent queries from kagent and Toche in the bench
 
-## Later — 0.4+ (2027)
+## Later (2027)
 
 Goal: the hosted product and the cartridge catalog.
 
 - [ ] Postgres CDC adapter
 - [ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier
 - [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month)
-- [ ] SSO, retention policies and tenant-level data export for enterprise
+- [ ] SSO and retention policies for enterprise (tenant-level data export shipped in 0.2.0: `keel export`)
 
 ## Not planned
 

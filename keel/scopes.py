@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 
+GLOBAL_TENANT = "__global__"  # the partition global-scope facts live in; every tenant reads it, no event writes it
+
 
 class Scope(str, Enum):
     GLOBAL = "global"

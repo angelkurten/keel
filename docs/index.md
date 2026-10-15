@@ -7,7 +7,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 You describe your vertical once, in a *cartridge*: ontology, event catalog, semantic rules, memory policies. Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
 !!! note "Status"
-    0.14.0, alpha. The MCP server, the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
+    0.15.0, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
@@ -20,7 +20,7 @@ Existing memory layers ingest text and documents and model memory per user or pe
 ## How Keel is different
 
 1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
-2. **Events in, not documents.** Keel ingests structured facts with time: Postgres tables, webhooks, Kafka later. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
+2. **Events in, not documents.** Keel ingests structured facts with time: Postgres tables, webhooks, Kafka, SQS. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **Tenant of the tenant.** One subgraph per end-customer, with its own permissions and expiry.
 
@@ -55,11 +55,18 @@ Events are the truth and the graph is derived, so one tenant's subgraph can be r
 ## Five tools, any agent
 
 ```text
-context(subject, as_of?, depth?, as_known_at?, task?) -> what is true now, at as_of, or as known at a past moment; rules and their verdicts; depth=1 adds the neighbors
-history(subject?, ..., task?, changed_since?)        -> what was true and when we learned it; without a subject, what changed since a watermark
-search(text?, kind?, rule?, limit?, after?)          -> text search, or every entity of a kind / where a rule fires, paged
-annotate(subject, predicate, value, scope, evidence, task?, key?) -> an agent (or a person) writes what it learned; key makes retries safe
-related(subject, relation?, as_of?)                  -> neighbors by relation type
+context(subject, as_of?, depth?, as_known_at?, task?, detail?)
+  -> what is true now, at as_of, or as known at a past moment; rules and their verdicts;
+     depth=1 adds the neighbors; detail="concise" for about a third of the tokens
+history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
+  -> what was true and when we learned it; without a subject, what changed since a watermark
+search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?)
+  -> text or semantic search, or every entity of a kind / where a rule fires, paged;
+     related_to (and via) keeps only one subject's neighbors
+annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
+  -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
+related(subject, relation?, as_of?)
+  -> neighbors by relation type
 ```
 
 Expose them over MCP with `keel serve` and point any agent framework at them. The names and signatures are part of the public standard; see the [specification](SPEC.md).
@@ -77,8 +84,8 @@ uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 Then:
 
 - [Your first cartridge in 20 minutes](first-cartridge.md): declare your own vertical.
-- [Connect your events](connect.md): a Postgres outbox table, a webhook, or a `.jsonl` file, and the MCP server.
-- [SDKs](sdks.md): a typed client generated from your cartridge (TypeScript today), the way protoc does.
+- [Connect your events](connect.md): a Postgres outbox table, a webhook, Kafka, SQS or a `.jsonl` file; the MCP server and the HTTP JSON API; semantic search.
+- [SDKs](sdks.md): a typed client generated from your cartridge (TypeScript, Python, Go, PHP), the way protoc does.
 - [Specification](SPEC.md): the normative contract for the envelope, the graph model, cartridges, tools and scopes.
 
 ## Design rules the core enforces
@@ -86,7 +93,7 @@ Then:
 - **Events are the truth.** An append-only log. The graph is derived and can be replayed.
 - **Pointers, not copies.** The graph holds references to your rows, the semantics, and earned memory. Never a copy of your tables.
 - **Explicit time.** Facts close. They are not overwritten.
-- **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Nothing is promoted to a wider scope by accident.
+- **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Nothing is promoted to a wider scope by accident. Agent memory is read only by the agent that wrote it; task memory tied to a task id only by calls that pass that task (`context(task=)`, `history(task=)`); global memory lives in a reserved partition every tenant reads and no event writes.
 - **Five tools, and only five.** New capability goes into the semantics of the existing five.
 
 ## License

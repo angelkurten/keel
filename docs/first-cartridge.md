@@ -53,7 +53,7 @@ The shipped cartridge adds a third one, `treatment.performed`, so the `treatment
 
 ## 4. Write one handler per event (5 min)
 
-A handler maps a payload to four primitives: `upsert_entity`, `link`, `open_fact`, `close_fact`. Ten lines each.
+A handler maps a payload to five primitives: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. Ten lines each.
 
 ```python
 from keel.handlers import HandlerRegistry
@@ -92,7 +92,7 @@ rules:
     when: { predicate: status, eq: no_show }
 ```
 
-The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a `when` is also evaluated for you: `context` returns `evaluation: {appointment_missed: true}` next to the rule, so the agent neither defines nor computes it. `at_risk_patient` needs a count over 90 days, so it has no `when` and the agent applies the definition. Conditions compose with `all`, `any` and `not`, follow a relation with `via` (a patient is at risk if any of their appointments is missed: `{ via: booked_by, direction: in, any: { predicate: status, eq: no_show } }`), compare strings with `ci: true`, and measure how long a fact has been open with `open_for_days` or `open_for_business_days`. The full grammar is in the [specification](SPEC.md#54-rules-semantic-layer).
+The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a `when` is also evaluated for you: `context` returns `evaluation: {appointment_missed: true}` next to the rule, so the agent neither defines nor computes it. `at_risk_patient` needs a count over 90 days, so it has no `when` and the agent applies the definition. Conditions compose with `all`, `any` and `not`, follow a relation with `via` (a patient is at risk if any of their appointments is missed: `{ via: booked_by, direction: in, any: { predicate: status, eq: no_show } }`), compare strings with `ci: true`, and measure how long a fact has been open with `open_for_days` or `open_for_business_days` (or how long it has held one of several values, surviving a change between them, with `held_for_days` or `held_for_business_days`). The full grammar is in the [specification](SPEC.md#54-rules-semantic-layer).
 
 ## 6. Validate and run (2 min)
 
@@ -103,7 +103,7 @@ uv run keel ingest cartridges/clinics examples/events/clinics.jsonl
 uv run keel context cartridges/clinics examples/events/clinics.jsonl patient:P-1
 ```
 
-`validate` fails if an event has no handler, a handler has no event, a relation uses an undeclared kind, or a rule's `when` uses an unknown operator. With `--events` it also checks a stream against the catalog: unknown types, wrong subject kinds, missing or mistyped payload fields.
+`validate` fails if an event has no handler, a handler has no event, a relation uses an undeclared kind, a payload hint does not parse, a rule's `when` uses an unknown operator or an undeclared relation, or the `agents`, `semantic`, `consolidate` or `predicates` sections are malformed. With `--events` it also checks a stream against the catalog: unknown types, wrong subject kinds, missing or mistyped payload fields.
 
 ## 7. Point an agent at it
 
@@ -128,7 +128,7 @@ agents:
     writes: [task, agent, tenant]   # no reads: sees everything
 ```
 
-Once `agents:` exists, every `Tools(...)` and every `keel serve` needs `--agent <id>`, and an id that is not declared is refused. `annotate` is signed with the agent id, so `keel export` shows who wrote what.
+An agent with no `writes:` may write `[task, agent]`; one with `kind: human` is a person and signs as `human:<id>`. Once `agents:` exists, every `Tools(...)` and every `keel serve` needs `--agent <id>`, and an id that is not declared is refused. `annotate` is signed with the agent id, so `keel export` shows who wrote what. Agent-scope memory is read only by the agent that wrote it; task-scope memory tied to a task id only by calls that pass that task.
 
 ## The test that it worked
 

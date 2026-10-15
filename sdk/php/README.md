@@ -15,4 +15,10 @@ $keel->events([
 $keel->context(\App\Keel\Fleet\Subjects::tire('T-9001'))['evaluation']['tire_critical']; // true
 ```
 
+The generated `Keel::client()` takes base URL, tenant, secret and agent. For a timeout (seconds, default 30) or a `traceparent` (sent as the W3C header on every call; Keel stores it with every write), construct the runtime client directly:
+
+```php
+$keel = new \Keel\Sdk\Client('http://keel.internal:8000', 'acme-logistics', getenv('KEEL_SECRET'), timeout: 10, traceparent: $traceparent);
+```
+
 A refusal from the server is a `Keel\Sdk\KeelError` with `$status` and `$detail`. Payload classes are readonly value objects with `toArray()`; enums in the cartridge become PHP enums.

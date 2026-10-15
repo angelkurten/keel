@@ -71,6 +71,31 @@ await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "assessment",
 
 A refusal from the server (scope policy, agent registry) is a `KeelError` with the status and the reason. Keep the generated file fresh with `keel sdk typescript <cartridge> -o <file> --check` in CI: it exits 1 when the cartridge moved on.
 
+## Runtime options
+
+Every runtime takes the same connection options besides the base URL, tenant, secret and agent: a `traceparent` sent as the W3C header on every call (Keel stores it with every write) and a request timeout.
+
+| Runtime | Traceparent | Timeout |
+| --- | --- | --- |
+| Python `keel.client.Client` | `traceparent=` | `timeout=` seconds (30) |
+| TypeScript `client({...})` | `traceparent` | none built in; pass your own `fetch` (one that sets an `AbortSignal`, or any wrapper) |
+| Go `keel.Options` | `Traceparent` | `HTTPClient` (default `&http.Client{Timeout: 30 * time.Second}`), plus the `context.Context` of each call |
+| PHP `Keel\Sdk\Client` | `traceparent:` | `timeout:` seconds (30) |
+
+The generated Python `client()` and PHP `Keel::client()` take only base URL, tenant, secret and agent. For the other options, construct the runtime client yourself; the generated `emit` and `subjects` work with it unchanged:
+
+```python
+from keel.client import Client
+
+keel = Client("http://keel.internal:8000", "acme-logistics", secret=os.environ["KEEL_SECRET"], agent="tires-bot", timeout=10, traceparent=traceparent)
+```
+
+```php
+$keel = new \Keel\Sdk\Client('http://keel.internal:8000', 'acme-logistics', getenv('KEEL_SECRET'), 'tires-bot', timeout: 10, traceparent: $traceparent);
+```
+
+Reads follow the memory scopes: agent-scope memory comes back only to the agent that wrote it, so set `agent` to read your own, and task memory tied to a task id only to calls that pass that `task` ([details](connect.md#serve-the-tools-over-http)).
+
 ## Server side
 
 The SDK talks to `keel serve --transport http` (see [connect](connect.md#serve-the-tools-over-http)): one process for many tenants, `X-Keel-Tenant` and `X-Keel-Agent` per request behind a shared secret. The server derives event ids (a content hash) when the product sends none, so retries are safe to reason about.
