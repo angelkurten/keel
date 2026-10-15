@@ -72,14 +72,13 @@ class Ingestor:
         for chunk in _chunks(events, max(1, batch)):
             with tx() if tx else nullcontext():
                 for ev in chunk:
-                    if self.store.seen(ev.tenant, ev.id):
+                    if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
                         continue
                     self.log.append(ev)
                     try:
                         self.cartridge.registry.dispatch(ev, self.store)
                         report.processed += 1
-                        self.store.remember(ev.tenant, ev.id)  # after the handler ran: a failed event is not remembered
                     except UnhandledEvent:
                         report.unhandled.append(ev.type)
                         if strict:

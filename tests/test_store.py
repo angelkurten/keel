@@ -207,12 +207,11 @@ def test_a_failed_chunk_is_rolled_back_whole_and_redelivered(store):
     ing = Ingestor(c, store)
     with pytest.raises(KeyError):
         ing.ingest([events[0], events[1], broken], strict=True, batch=10)
-    if hasattr(store, "transaction"):  # SQL stores: the whole chunk vanished
-        assert store.entity(TENANT, "unit:MXK-4821") is None and not store.seen(TENANT, events[0].id)
-    else:  # the memory store has no transactions: the two good events stayed, and stay deduped
-        assert store.seen(TENANT, events[0].id)
+    assert not store.seen(TENANT, events[0].id)  # every store forgets the chunk's ids, so the redelivery is not a duplicate
+    if not isinstance(store, MemoryStore):  # the SQL stores roll the writes back too
+        assert store.entity(TENANT, "unit:MXK-4821") is None
     again = ing.ingest(events, strict=True, batch=10)  # the redelivery
-    assert again.processed + again.duplicates == 12 and store.entity(TENANT, "unit:MXK-4821") is not None
+    assert (again.processed, again.duplicates) == (12, 0) and store.entity(TENANT, "unit:MXK-4821") is not None
     assert Tools(c, store, TENANT).context("tire:T-9001")["evaluation"] == {"tire_critical": True}
 
 
@@ -229,3 +228,34 @@ def test_streams_are_not_buffered_and_bulk_is_batched(tmp_path):
 
     assert ing.ingest(trickle(), strict=True).processed == 12 and all(seen_during)
     assert Ingestor(c, SqliteStore(tmp_path / "bulk.db")).ingest(JsonlAdapter(EVENTS), strict=True, batch=500).processed == 12
+
+
+def test_batched_ingest_with_repeated_subjects_matches_the_reference(store):
+    """A bulk batch repeats subjects, which is what the per-transaction read cache serves; the result
+    must equal the reference store's, forwards and shuffled."""
+    import random
+    from datetime import timedelta
+
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    base = datetime(2026, 1, 1, 8, tzinfo=UTC)
+    events = []
+    for unit in range(3):
+        events.append(Event(tenant=TENANT, type="unit.registered", subject=f"unit:U{unit}", occurred_at=base, source="b", payload={"id": f"U{unit}", "plate": f"P{unit}", "model": "X"}))
+        for pos in range(4):
+            for k in range(6):
+                events.append(Event(tenant=TENANT, type="tire.depth_measured", subject=f"tire:T{unit}-{pos}", occurred_at=base + timedelta(days=7 * k + unit), source="b", payload={"unit_id": f"U{unit}", "position": f"P{pos}", "depth_mm": round(6 - 0.7 * k, 1)}))
+    reference = MemoryStore()
+    Ingestor(c, reference).ingest(events, strict=True, batch=500)
+    assert Ingestor(c, store).ingest(events, strict=True, batch=500).processed == len(events)
+    a, b = Tools(c, reference, TENANT), Tools(c, store, TENANT)
+    for unit in range(3):
+        assert _strip(a.context(f"unit:U{unit}", depth=1)) == _strip(b.context(f"unit:U{unit}", depth=1))
+        for pos in range(4):
+            assert _strip(a.history(f"tire:T{unit}-{pos}")) == _strip(b.history(f"tire:T{unit}-{pos}"))
+    shuffled = list(events)
+    random.Random(7).shuffle(shuffled)
+    Ingestor(c, store).replay(TENANT, events=shuffled)
+    for pos in range(4):
+        assert _strip(a.history(f"tire:T1-{pos}")) == _strip(b.history(f"tire:T1-{pos}"))

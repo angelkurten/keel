@@ -89,6 +89,9 @@ class SqlStore:
         self.prefix = prefix
         self._lock = threading.RLock()  # re-entrant: a transaction holds it across its statements
         self._in_tx = False
+        # ponytail: reads cached only inside a transaction (we hold the lock, nobody else writes):
+        # bulk loads repeat subjects, and every read skipped is a network round trip skipped.
+        self._cache: dict[tuple[Any, ...], Any] | None = None
         self.db = connect()
         self._prepare(self.db)
         for stmt in self.SCHEMA.split(";"):
@@ -117,6 +120,21 @@ class SqlStore:
             cur.execute(self._sql(sql), params)
             return cur.rowcount
 
+    def _insert(self, sql: str, params: tuple[Any, ...] = ()) -> int:
+        """Rows inserted; `self._last_id` holds the new autoincrement id."""
+        with self._lock:
+            cur = self._cursor(self.db)
+            cur.execute(self._sql(sql), params)
+            self._last_id = cur.lastrowid
+            return cur.rowcount
+
+    def _cached(self, key: tuple[Any, ...], load: Callable[[], Any]) -> Any:
+        if self._cache is None:
+            return load()
+        if key not in self._cache:
+            self._cache[key] = load()
+        return self._cache[key]
+
     def _rows(self, sql: str, params: tuple[Any, ...] = ()) -> list[Any]:
         with self._lock:
             cur = self._cursor(self.db)
@@ -137,7 +155,7 @@ class SqlStore:
             return
         with self._lock:
             self._exec("BEGIN")
-            self._in_tx = True
+            self._in_tx, self._cache = True, {}
             try:
                 yield
             except BaseException:
@@ -146,29 +164,41 @@ class SqlStore:
             else:
                 self._exec("COMMIT")
             finally:
-                self._in_tx = False
+                self._in_tx, self._cache = False, None
 
     # ---- writes (the primitives) -------------------------------------------------
 
     def upsert_entity(self, tenant: str, kind: str, id: str, ref: str | None = None, **attrs: Any) -> Entity:
-        ent = self.entity(tenant, f"{kind}:{id}") or Entity(tenant=tenant, kind=kind, id=id)
+        key = f"{kind}:{id}"
+        ent = self.entity(tenant, key)
+        if ent is not None and (not ref or ref == ent.ref) and all(ent.attrs.get(k) == v for k, v in attrs.items()):
+            return ent  # nothing to write
+        ent = ent or Entity(tenant=tenant, kind=kind, id=id)
         if ref:
             ent.ref = ref
         ent.attrs.update(attrs)
         self._exec(self.UPSERT_ENTITY, (tenant, kind, id, ent.ref, json.dumps(ent.attrs)))
+        if self._cache is not None:
+            self._cache[("e", tenant, key)] = ent
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation:
-        row = self._one(
-            "SELECT * FROM relations WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL", (tenant, src, rel, dst)
-        )
-        if row:
-            return _relation(row)  # already open; idempotent
+        key = ("r", tenant, src, rel, dst)
+
+        def load() -> Relation | None:
+            row = self._one("SELECT * FROM relations WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL", (tenant, src, rel, dst))
+            return _relation(row) if row else None
+
+        existing = self._cached(key, load)
+        if existing is not None:
+            return existing  # already open; idempotent
         r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
         self._exec(
             "INSERT INTO relations (tenant, src, rel, dst, valid_from, recorded_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (tenant, src, rel, dst, _ts(r.valid_from), _ts(r.recorded_at), source),
         )
+        if self._cache is not None:
+            self._cache[key] = r
         return r
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
@@ -176,22 +206,30 @@ class SqlStore:
             "UPDATE relations SET valid_to = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
             (_ts(valid_to), tenant, src, rel, dst),
         )
+        if self._cache is not None:
+            self._cache.pop(("r", tenant, src, rel, dst), None)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
         # never overwrite; the new fact takes its place by valid_from even when it arrives late (place_fact)
-        rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? AND predicate = ?", (tenant, subject, predicate))
-        same = [_fact(r) for r in rows]
-        seq_of = {id(fact): r["seq"] for fact, r in zip(same, rows)}
+        key = ("f", tenant, subject, predicate)
+
+        def load() -> list[tuple[Fact, int]]:
+            rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? AND predicate = ?", (tenant, subject, predicate))
+            return [(_fact(r), r["seq"]) for r in rows]
+
+        same = self._cached(key, load)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        closed = place_fact(f, same)
+        closed = place_fact(f, [fact for fact, _ in same])
         if closed is not None:
-            self._exec("UPDATE facts SET valid_to = ? WHERE seq = ?", (_ts(closed.valid_to), seq_of[id(closed)]))
-        self._exec(
+            seq = next(s for fact, s in same if fact is closed)
+            self._exec("UPDATE facts SET valid_to = ? WHERE seq = ?", (_ts(closed.valid_to), seq))
+        self._insert(
             "INSERT INTO facts (tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
             "corrected_by, evidence, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (tenant, subject, predicate, json.dumps(value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
              f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at)),
         )
+        same.append((f, self._last_id))
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
@@ -200,13 +238,20 @@ class SqlStore:
             "UPDATE facts SET valid_to = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND valid_to IS NULL AND valid_from <= ?",
             (_ts(valid_to), tenant, subject, predicate, _ts(valid_to)),
         )
+        if self._cache is not None:
+            for fact, _ in self._cache.get(("f", tenant, subject, predicate), []):
+                if fact.valid_to is None and fact.valid_from <= valid_to:
+                    fact.valid_to = valid_to
 
     # ---- reads -------------------------------------------------------------------
 
     def entity(self, tenant: str, key: str) -> Entity | None:
-        kind, _, id = key.partition(":")
-        row = self._one("SELECT * FROM entities WHERE tenant = ? AND kind = ? AND id = ?", (tenant, kind, id))
-        return None if row is None else _entity(row)
+        def load() -> Entity | None:
+            kind, _, id = key.partition(":")
+            row = self._one("SELECT * FROM entities WHERE tenant = ? AND kind = ? AND id = ?", (tenant, kind, id))
+            return None if row is None else _entity(row)
+
+        return self._cached(("e", tenant, key), load)
 
     def facts(
         self,
@@ -234,13 +279,15 @@ class SqlStore:
     def seen(self, tenant: str, event_id: str) -> bool:
         return self._one("SELECT 1 AS one FROM ingested WHERE tenant = ? AND id = ?", (tenant, event_id)) is not None
 
-    def remember(self, tenant: str, event_id: str) -> None:
-        self._exec(self.REMEMBER, (tenant, event_id))
+    def remember(self, tenant: str, event_id: str) -> bool:
+        return self._exec(self.REMEMBER, (tenant, event_id)) == 1  # insert-or-ignore: 0 rows means already there
 
     # ---- maintenance --------------------------------------------------------------
 
     def expire(self, tenant: str, now: datetime | None = None) -> int:
         """Drop expired memory. Called by the consolidation job; never by handlers."""
+        if self._cache is not None:
+            self._cache.clear()
         return self._exec(
             "DELETE FROM facts WHERE tenant = ? AND expires_at IS NOT NULL AND expires_at <= ?", (tenant, _ts(now or utcnow()))
         )
@@ -258,3 +305,5 @@ class SqlStore:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
         for table in ("entities", "relations", "facts", "ingested"):
             self._exec(f"DELETE FROM {table} WHERE tenant = ?", (tenant,))
+        if self._cache is not None:
+            self._cache.clear()

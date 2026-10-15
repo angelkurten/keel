@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
@@ -95,6 +96,7 @@ class MemoryStore:
         self._relations: dict[str, list[Relation]] = defaultdict(list)
         self._facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
+        self._tx: list[tuple[str, str]] | None = None
 
     # ---- writes (the primitives) -------------------------------------------------
 
@@ -164,8 +166,30 @@ class MemoryStore:
     def seen(self, tenant: str, event_id: str) -> bool:
         return event_id in self._seen[tenant]
 
-    def remember(self, tenant: str, event_id: str) -> None:
+    def remember(self, tenant: str, event_id: str) -> bool:
+        if event_id in self._seen[tenant]:
+            return False
         self._seen[tenant].add(event_id)
+        if self._tx is not None:
+            self._tx.append((tenant, event_id))
+        return True
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """No durability to protect here; this only forgets the ids remembered inside a chunk that
+        raised, so the redelivery is not skipped as a duplicate."""
+        if self._tx is not None:
+            yield
+            return
+        self._tx = []
+        try:
+            yield
+        except BaseException:
+            for tenant, event_id in self._tx:
+                self._seen[tenant].discard(event_id)
+            raise
+        finally:
+            self._tx = None
 
     # ---- maintenance --------------------------------------------------------------
 
