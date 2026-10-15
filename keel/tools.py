@@ -12,6 +12,7 @@ They are plain functions first, so any framework can call them directly;
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
@@ -21,6 +22,7 @@ from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import Scope
+from keel.semantic import accepts, embed_as, fuse, render
 from keel.store.base import Entity, Fact, Relation, Store
 from keel.store.memory import changed_after, filter_facts, search_in
 
@@ -164,7 +166,7 @@ class _Graph:
 class Tools:
     def __init__(
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
-        embedder: Any = None, index: Any = None,
+        embedder: Any = None, index: Any = None, reranker: Any = None,
     ) -> None:
         self.cartridge = cartridge
         self.store = store
@@ -174,7 +176,7 @@ class Tools:
         self.symmetric = {rel for rel, spec in cartridge.relations.items() if isinstance(spec, dict) and spec.get("symmetric")}
         self.multi = {p for p, spec in cartridge.predicates.items() if isinstance(spec, dict) and spec.get("multi")}
         self.trace = trace  # set per request by the transport (traceparent, tool call id); stored with every write
-        self.embedder, self.index = embedder, index  # keel.semantic adapters; both or neither
+        self.embedder, self.index, self.reranker = embedder, index, reranker  # keel.semantic adapters
 
     # ---- registry enforcement: the agent never polices itself -------------------------------
 
@@ -325,15 +327,17 @@ class Tools:
         limit: int | None = None,
         after: str | None = None,
         mode: str = "text",
+        min_score: float | None = None,
     ) -> list[dict[str, Any]]:
         """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
-        deployment's embedder and vector index (keel.semantic), then applies tenant, the agent's read
-        slice, `kind` and `rule` here, and returns entities with a `score` (default 10). With `kind` or `rule` it enumerates instead: the entities
+        deployment's embedder and vector index (keel.semantic): ids in the query first, then dense and
+        lexical legs fused, then the optional reranker; tenant, the agent's read slice, `kind` and `rule`
+        apply. Each entity carries `score` and `similarity` (the cosine; `min_score` drops results below it). With `kind` or `rule` it enumerates instead: the entities
         of that kind (a rule's `applies_to` when only `rule` is given) whose key or attributes match
         `text`, where the rule fires now when `rule` is given, ordered by key; page with `limit` and
         `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers."""
         if mode == "semantic":
-            return self._semantic(text, kind, rule, limit or 10)
+            return self._semantic(text, kind, rule, limit or 10, min_score)
         if mode != "text":
             raise ValueError("mode is 'text' or 'semantic'")
         if kind is None and rule is None:
@@ -365,34 +369,86 @@ class Tools:
                 break
         return _ser(found)
 
-    def _semantic(self, text: str, kind: str | None, rule: str | None, limit: int) -> list[dict[str, Any]]:
+    def _exact_keys(self, text: str, kinds: list[str] | None) -> list[str]:
+        """Subjects whose key or id appears verbatim in the query: ids are what dense vectors blur."""
+        found: list[str] = []
+        for tok in re.findall(r"[\w:.-]+", text):
+            tok = tok.strip(".:-")
+            if not any(ch.isdigit() for ch in tok):
+                continue
+            candidates = [tok] if ":" in tok else [f"{k}:{v}" for k in (kinds or self.cartridge.entities) for v in dict.fromkeys((tok, tok.upper()))]
+            for key in candidates:
+                if key not in found and self.store.entity(self.tenant, key) is not None:
+                    found.append(key)
+        return found
+
+    def _semantic(self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None) -> list[dict[str, Any]]:
         if self.embedder is None or self.index is None:
             raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
         if not text:
             raise ValueError("semantic search needs text")
+        policy = self.cartridge.semantic
         spec = self.cartridge.rules.get(rule) if rule else None
         if rule and (spec is None or not spec.get("when")):
             raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
         kind = kind or (spec or {}).get("applies_to")
+        kinds = [kind] if kind else (sorted(self.agent.kinds) if self.agent and self.agent.kinds is not None else None)
+        where = {"kind": kinds} if kinds else None
+        floor = min_score if min_score is not None else policy.get("min_score")
+        w_lex = float(policy.get("lexical_weight", 0.3))
+        lexical = getattr(self.index, "text_query", None) if w_lex > 0 else None
         graph = self._graph(utcnow()) if spec else None
-        vector = self.embedder.embed([text])[0]
+
+        def admit(key: str) -> Entity | None:
+            kk = _kind(key)
+            if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)):
+                return None
+            ent = self.store.entity(self.tenant, key)
+            if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
+                return None  # gone since indexing, or the rule does not fire
+            return ent
+
+        def ask(fn: Any, *args: Any) -> list[tuple[str, float]]:
+            return fn(self.tenant, *args, where=where) if where and accepts(fn, "where") else fn(self.tenant, *args)
+
         out: list[dict[str, Any]] = []
-        seen, k = 0, limit * 5 if (kind or spec or self.agent) else limit
-        while True:  # filters drop candidates: widen the window until the page is full or the index runs out
-            hits = self.index.query(self.tenant, vector, k)
-            for key, score in hits[seen:]:
-                kk = _kind(key)
-                if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)):
+        for key in self._exact_keys(text, kinds):
+            if (ent := admit(key)) is not None:
+                out.append({**_ser(ent), "score": 1.0, "similarity": None, "match": "key"})
+        taken = {o["key"] for o in out}
+        pool_size = max(limit, 30) if self.reranker else limit
+        vector = embed_as(self.embedder, [text], "query")[0]
+        k = max(limit * 5 if (kind or spec or self.agent) else limit, 20)
+        while True:  # filters drop candidates: widen until the pool is full or both legs run out
+            dense = ask(self.index.query, vector, k)
+            lex = ask(lexical, text, k) if lexical else []
+            similarity = dict(dense)
+            pool: list[tuple[Entity, float]] = []
+            for key, score in fuse(dense, lex, 1 - w_lex):
+                if key in taken:
                     continue
-                ent = self.store.entity(self.tenant, key)
-                if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
-                    continue  # gone since indexing, or the rule does not fire
-                out.append({**_ser(ent), "score": round(score, 6)})
-                if len(out) >= limit:
-                    return out
-            if len(hits) < k:
-                return out
-            seen, k = len(hits), k * 4
+                if floor is not None and similarity.get(key, -1.0) < float(floor):
+                    continue  # below the cosine floor (or found only lexically, so its cosine is lower still)
+                if (ent := admit(key)) is not None:
+                    pool.append((ent, score))
+                    if len(pool) >= pool_size:
+                        break
+            exhausted = len(dense) < k and (not lexical or len(lex) < k)
+            if len(pool) >= pool_size or exhausted:
+                break
+            k *= 4
+        if self.reranker and pool:
+            docs = [(e.key, render(self.store, self.tenant, e.key, policy) or e.key) for e, _ in pool]
+            order = {key: sc for key, sc in self.reranker.rerank(text, docs)}
+            pool = sorted(pool, key=lambda es: -order.get(es[0].key, -1.0))
+            ranked = [(e, order.get(e.key, 0.0)) for e, _ in pool]
+        else:
+            ranked = pool
+        for ent, score in ranked:
+            if len(out) >= limit:
+                break
+            out.append({**_ser(ent), "score": round(score, 6), "similarity": None if ent.key not in similarity else round(similarity[ent.key], 6)})
+        return out
 
     def annotate(
         self,
@@ -477,7 +533,7 @@ class Tools:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?"], "doc": self.search.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
         ]

@@ -31,19 +31,32 @@ class ChromaIndex:
 
     def upsert(self, tenant: str, items: list[tuple[str, list[float], str]]) -> None:
         if items:
-            self._col(tenant).upsert(ids=[k for k, _, _ in items], embeddings=[list(v) for _, v, _ in items], documents=[d for _, _, d in items])
+            self._col(tenant).upsert(
+                ids=[k for k, _, _ in items], embeddings=[list(v) for _, v, _ in items], documents=[d for _, _, d in items],
+                metadatas=[{"kind": k.split(":", 1)[0]} for k, _, _ in items],  # filterable inside Chroma
+            )
 
     def delete(self, tenant: str, keys: list[str]) -> None:
         if keys:
             self._col(tenant).delete(ids=keys)
 
-    def query(self, tenant: str, vector: list[float], k: int) -> list[tuple[str, float]]:
+    def query(self, tenant: str, vector: list[float], k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
         col = self._col(tenant)
         n = min(k, col.count())
         if n == 0:
             return []
-        res = col.query(query_embeddings=[list(vector)], n_results=n)
+        kinds = (where or {}).get("kind")
+        res = col.query(query_embeddings=[list(vector)], n_results=n, **({"where": {"kind": {"$in": list(kinds)}}} if kinds else {}))
         return [(key, 1.0 - dist) for key, dist in zip(res["ids"][0], res["distances"][0])]
+
+    def text_query(self, tenant: str, text: str, k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
+        # ponytail: local Chroma has no BM25; documents are pulled and ranked here. Fine for thousands of
+        # subjects per tenant; a server with native lexical search (Chroma Cloud, Qdrant sparse) scales further.
+        from keel.semantic import BM25
+
+        kinds = (where or {}).get("kind")
+        got = self._col(tenant).get(include=["documents"], **({"where": {"kind": {"$in": list(kinds)}}} if kinds else {}))
+        return BM25(dict(zip(got["ids"], got["documents"]))).rank(text)[:k]
 
     def clear(self, tenant: str) -> None:
         name = collection_name(tenant, self.prefix)

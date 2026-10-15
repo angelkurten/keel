@@ -62,6 +62,7 @@ def build_http_app(
     host: str = "127.0.0.1",
     embedder: Any = None,
     index: Any = None,
+    reranker: Any = None,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`)."""
     try:
@@ -75,7 +76,7 @@ def build_http_app(
     if tenant is not None:
         from keel.mcp_server import build_server
 
-        server = build_server(Tools(cartridge, store, tenant, agent, embedder=embedder, index=index))
+        server = build_server(Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker))
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
@@ -101,7 +102,7 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, store, t, request.headers.get("x-keel-agent") or agent, trace=trace, embedder=embedder, index=index)
+            return Tools(cartridge, store, t, request.headers.get("x-keel-agent") or agent, trace=trace, embedder=embedder, index=index, reranker=reranker)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -139,6 +140,7 @@ def build_http_app(
         limit: int | None = None
         after: str | None = None
         mode: str = "text"
+        min_score: float | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -182,7 +184,7 @@ def build_http_app(
 
     @app.post("/v1/search")
     def search(body: SearchIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after, body.mode))
+        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score))
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:

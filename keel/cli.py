@@ -259,6 +259,7 @@ def serve(
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
     index: str | None = typer.Option(None, "--index", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
     embedder: str = typer.Option("openai", "--embedder", help="With --index: the embedder spec."),
+    reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
@@ -267,9 +268,9 @@ def serve(
         Ingestor(c, store).ingest(JsonlAdapter(events))
     semantic: dict[str, Any] = {}
     if index:
-        from keel.semantic import load_embedder, load_index
+        from keel.semantic import load_embedder, load_index, load_reranker
 
-        semantic = {"embedder": load_embedder(embedder), "index": load_index(index)}
+        semantic = {"embedder": load_embedder(embedder), "index": load_index(index), "reranker": load_reranker(reranker) if reranker else None}
     if transport == "stdio":
         from keel.mcp_server import build_server
 

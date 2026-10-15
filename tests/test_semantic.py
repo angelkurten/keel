@@ -181,7 +181,8 @@ def test_cartridge_policy_chooses_kinds_predicates_and_relations(fleet):
     policy = {"kinds": ["tire", "unit"], "exclude": ["comment"], "relations": ["mounted_on"]}
     doc = render(s, TENANT, "tire:T-9001", policy)
     assert "sidewall bulge" in doc and "jira.example" not in doc  # excluded predicate
-    assert "mounted_on: unit:MXK-4821 (model: Freightliner Cascadia, plate: MXK-4821)" in doc  # the other side, labelled
+    assert "mounted_on: unit:MXK-4821 (MXK-4821)" in doc  # the other side, with one label (default: plate before model)
+    assert "mounted_on: unit:MXK-4821 (Freightliner Cascadia)" in render(s, TENANT, "tire:T-9001", {**policy, "labels": ["model"]})
     assert render(s, TENANT, "document:POL-7731", policy) is None  # not an indexed kind
     only = render(s, TENANT, "tire:T-9001", {"predicates": ["condition"], "attrs": False})
     assert only == "tire:T-9001\ncondition: sidewall bulge"
@@ -222,3 +223,129 @@ def test_rule_filter_keeps_looking_past_the_first_candidates(index):
     t = Tools(c, s, TENANT, embedder=emb, index=index)
     hits = t.search("tread depth", mode="semantic", rule="tire_critical", limit=5)
     assert [h["key"] for h in hits] == ["tire:Z-1"]  # found far down the ranking, not cut at a fixed window
+
+
+
+# ---- 0.12: key shortcut, hybrid, min_score, in-index filters, roles, rerankers ----------------
+
+
+def _cards_box():
+    from evals.semantic.sandboxes import cards
+
+    return cards()
+
+
+def test_ids_in_the_query_come_first(index):
+    box = _cards_box()
+    emb = HashEmbedder()
+    index_tenant(box.store, box.tenant, emb, index, policy=box.policy)
+    t = Tools(box.cartridge, box.store, box.tenant, embedder=emb, index=index)
+    hits = t.search("what happened with CUS-1990?", mode="semantic", limit=3)
+    assert hits[0]["key"] == "card:CUS-1990" and hits[0]["match"] == "key" and hits[0]["score"] == 1.0
+    assert t.search("bi-857", mode="semantic", limit=1)[0]["key"] == "card:BI-857"  # case-insensitive
+    assert t.search("card:CUS-1974 status", mode="semantic", limit=1)[0]["key"] == "card:CUS-1974"  # a full key too
+
+
+def test_hybrid_lexical_leg_and_its_weight(index):
+    box = _cards_box()
+    emb = HashEmbedder()
+    index_tenant(box.store, box.tenant, emb, index, policy=box.policy)
+    box.cartridge.semantic = {"lexical_weight": 0.3}
+    hybrid = Tools(box.cartridge, box.store, box.tenant, embedder=emb, index=index).search("British American Tobacco", mode="semantic", kind="card", limit=10)
+    bat = {k for k in (e.key for e in box.store.entities(box.tenant) if e.kind == "card") if box.store.relations(box.tenant, k, rel="de_cliente")[0].dst == "cliente:BAT"}
+    assert sum(h["key"] in bat for h in hybrid) >= 8  # the client's name is an exact word: the lexical leg carries it
+    assert all("similarity" in h for h in hybrid)
+    box.cartridge.semantic = {"lexical_weight": 0}
+    dense_only = Tools(box.cartridge, box.store, box.tenant, embedder=emb, index=index).search("British American Tobacco", mode="semantic", kind="card", limit=10)
+    assert len(dense_only) == 10
+
+
+def test_min_score_returns_nothing_below_the_floor(fleet, index):
+    c, s = fleet
+    emb = HashEmbedder()
+    index_tenant(s, TENANT, emb, index)
+    t = Tools(c, s, TENANT, embedder=emb, index=index)
+    assert t.search("zzz qqq xyzzy", mode="semantic", min_score=0.5) == []  # nothing relevant: silence
+    assert t.search("tread depth", mode="semantic", min_score=0.05)  # relevant results pass
+    c.semantic = {"min_score": 0.99}
+    assert Tools(c, s, TENANT, embedder=emb, index=index).search("tread depth", mode="semantic") == []  # cartridge default
+    assert t.search("T-9001", mode="semantic", min_score=0.99)[0]["key"] == "tire:T-9001"  # an exact id ignores the floor
+
+
+def test_kind_filters_go_inside_the_index_when_it_can():
+    calls = []
+
+    class Spy(MemoryIndex):
+        def query(self, tenant, vector, k, where=None):
+            calls.append(where)
+            return super().query(tenant, vector, k, where=where)
+
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS), strict=True)
+    idx, emb = Spy(), HashEmbedder()
+    index_tenant(s, TENANT, emb, idx)
+    hits = Tools(c, s, TENANT, embedder=emb, index=idx).search("tread", mode="semantic", kind="document")
+    assert calls[-1] == {"kind": ["document"]} and all(h["kind"] == "document" for h in hits)
+
+
+def test_embedders_get_the_role_when_they_take_it():
+    seen = []
+
+    class Asym:
+        def embed(self, texts, role="document"):
+            seen.append(role)
+            return HashEmbedder().embed(texts)
+
+    class Plain:
+        def embed(self, texts):
+            return HashEmbedder().embed(texts)
+
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS), strict=True)
+    for emb in (Asym(), Plain()):  # an adapter without `role` keeps working
+        idx = MemoryIndex()
+        index_tenant(s, TENANT, emb, idx)
+        assert Tools(c, s, TENANT, embedder=emb, index=idx).search("tread", mode="semantic")
+    assert seen == ["document", "query"]
+    from keel.semantic import OpenAIEmbedder
+
+    e5 = OpenAIEmbedder(query_prefix="query: ", document_prefix="passage: ")
+    assert e5.prefix == {"query": "query: ", "document": "passage: "}
+
+
+def test_rerankers_reorder_the_pool(fleet, index):
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from keel.semantic import HTTPReranker, OverlapReranker
+
+    c, s = fleet
+    emb = HashEmbedder()
+    index_tenant(s, TENANT, emb, index)
+    t = Tools(c, s, TENANT, embedder=emb, index=index, reranker=OverlapReranker())
+    hits = t.search("fuel load liters odometer", mode="semantic", limit=3)
+    assert hits[0]["key"] == "unit:MXK-4821"  # the unit's document holds the fuel load
+
+    class Fake(BaseHTTPRequestHandler):  # the Cohere / Jina / Voyage /rerank shape
+        def do_POST(self):
+            body = _json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert self.headers["Authorization"] == "Bearer k" and body["top_n"] == len(body["documents"])
+            results = [{"index": i, "relevance_score": 1.0 if "document" in d.split("\n")[0] else 0.1} for i, d in enumerate(body["documents"])]
+            raw = _json.dumps({"results": results}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), Fake)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        rr = HTTPReranker(f"http://127.0.0.1:{srv.server_port}/v1", "rerank-x", api_key="k")
+        hits = Tools(c, s, TENANT, embedder=emb, index=index, reranker=rr).search("tread depth", mode="semantic", limit=2)
+        assert hits[0]["kind"] == "document" and hits[0]["score"] == 1.0  # the reranker's order won
+    finally:
+        srv.shutdown()

@@ -36,7 +36,13 @@ from keel.store.base import Store
 
 
 class VectorIndex(Protocol):
-    """Where vectors live. Every call takes the tenant first; an index never returns another tenant's keys."""
+    """Where vectors live. Every call takes the tenant first; an index never returns another tenant's keys.
+
+    Optional, detected at runtime, so a minimal adapter keeps working:
+      query(..., where={"kind": [...]})   filter inside the index (the kind is the key's prefix); without
+                                          it Keel filters after retrieval, which an approximate index can miss
+      text_query(tenant, text, k, where)  a lexical leg (BM25 or the engine's own); enables hybrid search
+    """
 
     def upsert(self, tenant: str, items: list[tuple[str, list[float], str]]) -> None: ...  # (subject key, vector, document)
 
@@ -48,9 +54,95 @@ class VectorIndex(Protocol):
 
 
 class Embedder(Protocol):
-    """Text to vectors, one per input, in order, all of the same dimension."""
+    """Text to vectors, one per input, in order, all of the same dimension. May take `role`
+    ("query" or "document") for asymmetric models (e5's "query: "/"passage: ", Qwen3 instructions);
+    Keel passes it only when the signature accepts it."""
 
     def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+
+class Reranker(Protocol):
+    """Reorders a short list of candidates by relevance to the query: (key, score), best first."""
+
+    def rerank(self, query: str, docs: list[tuple[str, str]]) -> list[tuple[str, float]]: ...
+
+
+def accepts(fn: Any, name: str) -> bool:
+    """Does an adapter method take this keyword? Optional capabilities are detected, never required."""
+    import inspect
+
+    try:
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
+def embed_as(embedder: Embedder, texts: list[str], role: str) -> list[list[float]]:
+    return embedder.embed(texts, role=role) if accepts(embedder.embed, "role") else embedder.embed(texts)
+
+
+def kind_of(key: str) -> str:
+    return key.split(":", 1)[0]
+
+
+TOKEN = re.compile(r"[a-z0-9áéíóúñü]+(?:-[a-z0-9]+)*")
+
+
+def tokens(text: str) -> list[str]:
+    """Deterministic lexical tokens; identifiers like cus-1974 stay one token."""
+    return TOKEN.findall(text.lower())
+
+
+class BM25:
+    """Okapi BM25 over documents, the lexical leg of hybrid search."""
+
+    def __init__(self, docs: dict[str, str], k1: float = 1.2, b: float = 0.75) -> None:
+        self.docs = {key: tokens(text) for key, text in docs.items()}
+        self.avg = sum(len(d) for d in self.docs.values()) / max(1, len(self.docs))
+        self.df: dict[str, int] = {}
+        for d in self.docs.values():
+            for tok in set(d):
+                self.df[tok] = self.df.get(tok, 0) + 1
+        self.n, self.k1, self.b = len(self.docs), k1, b
+
+    def rank(self, query: str, keys: set[str] | None = None) -> list[tuple[str, float]]:
+        q = tokens(query)
+        scored = []
+        for key, d in self.docs.items():
+            if keys is not None and key not in keys:
+                continue
+            tf: dict[str, int] = {}
+            for tok in d:
+                tf[tok] = tf.get(tok, 0) + 1
+            s = 0.0
+            for tok in q:
+                if tok in tf:
+                    idf = math.log(1 + (self.n - self.df[tok] + 0.5) / (self.df[tok] + 0.5))
+                    s += idf * tf[tok] * (self.k1 + 1) / (tf[tok] + self.k1 * (1 - self.b + self.b * len(d) / max(self.avg, 1e-9)))
+            if s > 0:
+                scored.append((key, s))
+        return sorted(scored, key=lambda x: (-x[1], x[0]))
+
+
+def fuse(dense: list[tuple[str, float]], lexical: list[tuple[str, float]], w_dense: float = 0.7) -> list[tuple[str, float]]:
+    """Convex fusion of min-max normalized scores (Bruch et al.): weighted toward dense, it keeps
+    paraphrases where RRF's equal weight lets a weak lexical leg drag them down (docs/design/semantic-evals.md)."""
+
+    def norm(xs: list[tuple[str, float]]) -> dict[str, float]:
+        if not xs:
+            return {}
+        hi, lo = max(v for _, v in xs), min(v for _, v in xs)
+        return {k: (v - lo) / (hi - lo) if hi > lo else 1.0 for k, v in xs}
+
+    d, lx = norm(dense), norm(lexical)
+    w_lex = (1 - w_dense) if lexical else 0.0
+    w_d = 1 - w_lex
+    return sorted(((k, w_d * d.get(k, 0.0) + w_lex * lx.get(k, 0.0)) for k in set(d) | set(lx)), key=lambda x: (-x[1], x[0]))
+
+
+def _kinds(where: dict[str, Any] | None) -> set[str] | None:
+    return set(where["kind"]) if where and where.get("kind") else None
 
 
 def cosine(a: list[float], b: list[float]) -> float:
@@ -73,9 +165,16 @@ class MemoryIndex:
         for key in keys:
             self._data.get(tenant, {}).pop(key, None)
 
-    def query(self, tenant: str, vector: list[float], k: int) -> list[tuple[str, float]]:
-        scored = [(key, cosine(vector, v)) for key, (v, _) in self._data.get(tenant, {}).items()]
+    def query(self, tenant: str, vector: list[float], k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
+        kinds = _kinds(where)
+        scored = [(key, cosine(vector, v)) for key, (v, _) in self._data.get(tenant, {}).items() if kinds is None or kind_of(key) in kinds]
         return sorted(scored, key=lambda x: (-x[1], x[0]))[:k]
+
+    def text_query(self, tenant: str, text: str, k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
+        # ponytail: BM25 rebuilt per query over the tenant's documents; cache it per tenant if tenants grow large
+        kinds = _kinds(where)
+        docs = {key: doc for key, (_, doc) in self._data.get(tenant, {}).items() if kinds is None or kind_of(key) in kinds}
+        return BM25(docs).rank(text)[:k]
 
     def clear(self, tenant: str) -> None:
         self._data.pop(tenant, None)
@@ -88,7 +187,7 @@ class HashEmbedder:
     def __init__(self, dim: int | str = 256) -> None:
         self.dim = int(dim)  # spec params arrive as text
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], role: str = "document") -> list[list[float]]:
         out = []
         for text in texts:
             v = [0.0] * self.dim
@@ -104,9 +203,13 @@ class OpenAIEmbedder:
     From the environment: KEEL_EMBEDDINGS_BASE_URL (default https://api.openai.com/v1),
     KEEL_EMBEDDINGS_MODEL (default text-embedding-3-small), KEEL_EMBEDDINGS_API_KEY."""
 
-    def __init__(self, base_url: str = "https://api.openai.com/v1", model: str = "text-embedding-3-small", api_key: str | None = None, batch: int | str = 128, timeout: float | str = 60.0) -> None:
+    def __init__(
+        self, base_url: str = "https://api.openai.com/v1", model: str = "text-embedding-3-small", api_key: str | None = None,
+        batch: int | str = 128, timeout: float | str = 60.0, query_prefix: str = "", document_prefix: str = "",
+    ) -> None:
         self.base_url, self.model, self.api_key = base_url.rstrip("/"), model, api_key
         self.batch, self.timeout = int(batch), float(timeout)  # spec params arrive as text
+        self.prefix = {"query": query_prefix, "document": document_prefix}  # e5: "query: " / "passage: "
 
     @classmethod
     def from_env(cls, **overrides: Any) -> OpenAIEmbedder:
@@ -114,14 +217,17 @@ class OpenAIEmbedder:
             "base_url": os.environ.get("KEEL_EMBEDDINGS_BASE_URL", "https://api.openai.com/v1"),
             "model": os.environ.get("KEEL_EMBEDDINGS_MODEL", "text-embedding-3-small"),
             "api_key": os.environ.get("KEEL_EMBEDDINGS_API_KEY"),
+            "query_prefix": os.environ.get("KEEL_EMBEDDINGS_QUERY_PREFIX", ""),
+            "document_prefix": os.environ.get("KEEL_EMBEDDINGS_DOCUMENT_PREFIX", ""),
         }
         kw.update(overrides)
         return cls(**kw)
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], role: str = "document") -> list[list[float]]:
         out: list[list[float]] = []
+        prefix = self.prefix.get(role, "")
         for i in range(0, len(texts), self.batch):
-            part = texts[i : i + self.batch]
+            part = [prefix + t for t in texts[i : i + self.batch]]
             headers = {"Content-Type": "application/json"}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
@@ -135,9 +241,78 @@ class OpenAIEmbedder:
         return out
 
 
+class HTTPReranker:
+    """The /rerank shape shared by Cohere, Jina, Voyage and vLLM: {model, query, documents, top_n} ->
+    results[{index, relevance_score}]. From the environment: KEEL_RERANK_BASE_URL, KEEL_RERANK_MODEL,
+    KEEL_RERANK_API_KEY."""
+
+    def __init__(self, base_url: str, model: str, api_key: str | None = None, path: str = "/rerank", timeout: float | str = 30.0) -> None:
+        self.url, self.model, self.api_key, self.timeout = base_url.rstrip("/") + path, model, api_key, float(timeout)
+
+    @classmethod
+    def from_env(cls) -> HTTPReranker:
+        return cls(os.environ["KEEL_RERANK_BASE_URL"], os.environ["KEEL_RERANK_MODEL"], os.environ.get("KEEL_RERANK_API_KEY"))
+
+    def rerank(self, query: str, docs: list[tuple[str, str]]) -> list[tuple[str, float]]:
+        if not docs:
+            return []
+        body = {"model": self.model, "query": query, "documents": [d for _, d in docs], "top_n": len(docs)}
+        res = _post_json(self.url, body, self.api_key, self.timeout)
+        return sorted(((docs[r["index"]][0], float(r["relevance_score"])) for r in res["results"]), key=lambda x: -x[1])
+
+
+class LLMReranker:
+    """Any OpenAI-compatible /chat/completions model as a listwise reranker: it scores each candidate
+    0-10 for the query. From the environment: KEEL_RERANK_BASE_URL, KEEL_RERANK_MODEL, KEEL_RERANK_API_KEY."""
+
+    PROMPT = (
+        "Score how well each record answers the search query, 0 (unrelated) to 10 (exactly what is asked). "
+        'Reply with JSON only: {"scores": [n, n, ...]}, one number per record, in order.'
+    )
+
+    def __init__(self, base_url: str, model: str, api_key: str | None = None, timeout: float | str = 60.0) -> None:
+        self.url, self.model, self.api_key, self.timeout = base_url.rstrip("/") + "/chat/completions", model, api_key, float(timeout)
+
+    @classmethod
+    def from_env(cls) -> LLMReranker:
+        return cls(os.environ["KEEL_RERANK_BASE_URL"], os.environ["KEEL_RERANK_MODEL"], os.environ.get("KEEL_RERANK_API_KEY"))
+
+    def rerank(self, query: str, docs: list[tuple[str, str]]) -> list[tuple[str, float]]:
+        if not docs:
+            return []
+        listing = "\n\n".join(f"[{i}]\n{d[:600]}" for i, (_, d) in enumerate(docs))
+        body = {"model": self.model, "temperature": 0, "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": self.PROMPT}, {"role": "user", "content": f"Query: {query}\n\nRecords:\n{listing}"}]}
+        res = _post_json(self.url, body, self.api_key, self.timeout)
+        scores = json.loads(res["choices"][0]["message"]["content"]).get("scores", [])
+        scored = [(key, float(scores[i]) / 10 if i < len(scores) else 0.0) for i, (key, _) in enumerate(docs)]
+        return sorted(scored, key=lambda x: -x[1])
+
+
+class OverlapReranker:
+    """Deterministic, for tests: the share of query tokens found in the document."""
+
+    def rerank(self, query: str, docs: list[tuple[str, str]]) -> list[tuple[str, float]]:
+        q = set(tokens(query))
+        return sorted(((k, len(q & set(tokens(d))) / max(1, len(q))) for k, d in docs), key=lambda x: (-x[1], x[0]))
+
+
+def _post_json(url: str, body: dict[str, Any], api_key: str | None, timeout: float) -> Any:
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            return json.loads(res.read())
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"{url} {exc.code}: {exc.read()[:300].decode(errors='replace')}") from exc
+
+
 # ---- what gets indexed --------------------------------------------------------------------
 
 INDEXED_SCOPES = {Scope.GLOBAL, Scope.TENANT}
+DEFAULT_LABELS = ("name", "nombre", "title", "titulo", "label", "plate", "model")
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 MAX_VALUE_CHARS = 300
 
@@ -150,7 +325,10 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
           kinds: [card, cliente]          # absent: every kind
           predicates: [estado, resumen]   # what to include; or exclude: [comentario]
           attrs: true                     # entity attributes (default true); or a list of names
-          relations: [de_cliente]         # open relations, with the other side's attributes
+          relations: [de_cliente]         # open relations: the other side's key and its label
+          labels: [name, nombre]          # which attribute labels the other side (first present wins)
+          lexical_weight: 0.3             # hybrid search: weight of the lexical leg (0 = dense only)
+          min_score: 0.4                  # optional: drop results below this cosine (model-specific!)
 
     None when there is nothing to index (not an indexed kind, or nothing left): remove it."""
     policy = policy or {}
@@ -170,12 +348,13 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
     for f in facts:
         value = f.value if isinstance(f.value, str) else json.dumps(f.value, ensure_ascii=False)
         lines.append(f"{f.predicate}: {value[:MAX_VALUE_CHARS]}")
+    labels = policy.get("labels", DEFAULT_LABELS)
     for rel in policy.get("relations") or []:
         for r in store.relations(tenant, subject, rel=rel, at=now):
             other = r.dst if r.src == subject else r.src
-            label = store.entity(tenant, other)
-            extra = ", ".join(f"{k}: {v}" for k, v in sorted(label.attrs.items()) if v is not None) if label else ""
-            lines.append(f"{rel}: {other}" + (f" ({extra})" if extra else ""))
+            ent2 = store.entity(tenant, other)
+            label = next((str(ent2.attrs[k]) for k in labels if ent2 and ent2.attrs.get(k) is not None), None)
+            lines.append(f"{rel}: {other}" + (f" ({label})" if label else ""))
     if ent is None and len(lines) == 1:
         return None
     return "\n".join(lines)
@@ -212,7 +391,7 @@ def index_tenant(
         (docs.append((s, text)) if text is not None else gone.append(s))
     for i in range(0, len(docs), batch):
         part = docs[i : i + batch]
-        vectors = embedder.embed([t for _, t in part])
+        vectors = embed_as(embedder, [t for _, t in part], "document")
         index.upsert(tenant, [(s, v, t) for (s, t), v in zip(part, vectors)])
     if gone:
         index.delete(tenant, gone)
@@ -243,6 +422,18 @@ def load_index(spec: str) -> VectorIndex:
         if u.hostname:
             return ChromaIndex(host=u.hostname, port=u.port or 8000)
         return ChromaIndex()
+    return _factory(spec)
+
+
+def load_reranker(spec: str) -> Reranker:
+    """`http` (the Cohere/Jina/Voyage /rerank shape), `llm` (any /chat/completions model), both from
+    KEEL_RERANK_* env vars; `overlap` (tests); or `pkg.module:factory?param=value`."""
+    if spec == "http":
+        return HTTPReranker.from_env()
+    if spec == "llm":
+        return LLMReranker.from_env()
+    if spec == "overlap":
+        return OverlapReranker()
     return _factory(spec)
 
 

@@ -274,7 +274,8 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 type SearchOptions struct {
 	Text, Kind, Rule, After string
 	Limit                   int
-	Mode                    string // "semantic": ranked by meaning, each result with a "score"
+	Mode                    string  // "semantic": ranked by meaning, each result with a "score"
+	MinScore                float64 // semantic: drop results whose cosine is below this; 0 = no floor
 }
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
@@ -287,6 +288,9 @@ func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]
 	}
 	if o.Limit > 0 {
 		body["limit"] = o.Limit
+	}
+	if o.MinScore > 0 {
+		body["min_score"] = o.MinScore
 	}
 	err := c.post(ctx, "/v1/search", body, &out)
 	return out, err

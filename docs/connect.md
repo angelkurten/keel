@@ -216,6 +216,8 @@ Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Olla
 KEEL_VECTOR_INDEX=my_pkg.qdrant:make KEEL_EMBEDDER=my_pkg.emb:make uv run pytest tests/test_semantic.py
 ```
 
+Search is hybrid by default: ids in the query come first, then a dense and a lexical leg are fused (the lexical weight is `semantic.lexical_weight`, 0.3). Add `--reranker llm` (any OpenAI-compatible chat model, `KEEL_RERANK_BASE_URL` / `_MODEL` / `_API_KEY`) or `--reranker http` (the Cohere, Jina or Voyage `/rerank` API) to reorder the best candidates. For asymmetric embedders set `KEEL_EMBEDDINGS_QUERY_PREFIX` / `_DOCUMENT_PREFIX` (e5: `"query: "`, `"passage: "`). How much each piece buys, measured: `docs/design/semantic-evals.md`.
+
 Indexing never runs in ingest, so ingest stays deterministic and offline. Only tenant and global knowledge is indexed: task and agent memory and pending proposals are not. The cartridge decides the rest:
 
 ```yaml

@@ -72,8 +72,11 @@ class Cartridge:
             problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
         sem = self.semantic
-        for key in sorted(set(sem) - {"kinds", "predicates", "exclude", "attrs", "relations"}):
-            problems.append(f"semantic: unknown key '{key}' (kinds, predicates, exclude, attrs, relations)")
+        known = {"kinds", "predicates", "exclude", "attrs", "relations", "labels", "lexical_weight", "min_score"}
+        for key in sorted(set(sem) - known):
+            problems.append(f"semantic: unknown key '{key}' ({', '.join(sorted(known))})")
+        if not 0 <= float(sem.get("lexical_weight", 0.3)) <= 1:
+            problems.append("semantic: lexical_weight is between 0 and 1")
         if "predicates" in sem and "exclude" in sem:
             problems.append("semantic: use `predicates` (what to include) or `exclude`, not both")
         for k in sorted(set(sem.get("kinds") or []) - set(self.entities)):

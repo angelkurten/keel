@@ -1,6 +1,6 @@
 # Semantic search: research and evals
 
-Status: 2026-10-15. Research on vector stores, RAG and hybrid retrieval, plus a labeled eval bench (`evals/semantic/`) run with real embeddings. The findings rank the next improvements; none is implemented yet.
+Status: 2026-10-15. Research on vector stores, RAG and hybrid retrieval, plus a labeled eval bench (`evals/semantic/`) run with real embeddings. Items 1 to 7 of the ranked list shipped in 0.12.0 the same day and were measured again on the bench (end of this note); item 8 waits for real queries.
 
 ## The bench
 
@@ -68,3 +68,16 @@ Caveats: 34 positive queries and 9 negatives, written by us, so results are dire
 | 6 | Optional `where={"kind": ...}` in `VectorIndex.query`, mapped by adapters that filter natively | research: recall and round trips at scale | M |
 | 7 | Reranker adapter over the top 30 to 50 fused candidates | research: +5 to 15 nDCG points; not measured here | M |
 | 8 | Grow the bench with real agent queries from kagent and Toche | synthetic-query bias | ongoing |
+
+## After implementation (0.12.0)
+
+The bench now also runs `search(mode="semantic")` as shipped (`keel`) and with an LLM reranker (`gpt-4.1-mini` through OfoxAI, `keel+rerank`). MRR@10, all sandboxes:
+
+| Configuration | small | large | hit@1 small | relation p@10 small |
+| --- | --- | --- | --- | --- |
+| dense (0.11 behaviour, before compact relations and the key shortcut) | 0.82 | 0.85 | 0.72 | 0.50 |
+| dense in 0.12 (key shortcut and compact relations, lexical weight 0) | 0.90 | 0.97 | 0.83 | 0.62 |
+| **keel 0.12** (keys, convex fusion 0.7/0.3, compact relations) | **0.95** | **0.98** | 0.90 | 0.88 |
+| keel 0.12 + LLM reranker | 1.00 | 1.00 | 1.00 | 1.00 |
+
+What shipped matches the best prototype (`convex+key`) exactly. Compact relation lines (the other side's key and one label instead of every attribute) lifted dense relation precision from 0.50 to 0.62 on their own. The reranker cleared the remaining paraphrase misses, at one chat-model call per search (about a second with a small model) and a few cents per thousand searches. `min_score` stays off by default: on this bench the best floor (0.45, large model) still drops 17% of positives.

@@ -13,6 +13,8 @@ Configurations (rows): what Keel does today, and candidate improvements prototyp
     dense+key        exact subject-key match first, then dense (prototype)
     convex           0.7 * dense + 0.3 * bm25, both min-max normalized (prototype, Bruch et al.)
     convex+key       convex with the key shortcut
+    keel             search(mode="semantic") as shipped in 0.12: keys, convex fusion, compact relations
+    keel+rerank      the same with LLMReranker (KEEL_RERANK_* env vars), when configured
 Metrics per family: hit@1, recall@5, MRR@10; negatives report the top score instead (lower is better).
 Embeddings are cached on disk by (model, text) so reruns cost nothing.
 """
@@ -34,6 +36,11 @@ from keel import Tools
 from keel.semantic import MemoryIndex, OpenAIEmbedder, index_tenant, render
 
 CACHE = Path(os.environ.get("KEEL_EVAL_CACHE", ".keel/eval-embeddings.json"))
+RERANKER = None
+if os.environ.get("KEEL_RERANK_MODEL"):
+    from keel.semantic import LLMReranker
+
+    RERANKER = LLMReranker.from_env()
 
 
 class CachedEmbedder:
@@ -146,6 +153,8 @@ def evaluate_sandbox(box: Sandbox, embedder, label: str) -> list[dict]:
     bm25 = BM25(policy_docs)
     for q in box.queries:
         tools = {n: Tools(box.cartridge, box.store, box.tenant, embedder=embedder, index=idx) for n, idx in indexes.items()}
+        dense_policy = {**box.policy, "lexical_weight": 0}  # the dense rows stay dense-only
+        box.cartridge.semantic = dense_policy
         dense_scored = indexes["dense"].query(box.tenant, embedder.embed([q.text])[0], 500)
         dense_ok = [(k, v) for k, v in dense_scored if allowed(tools["dense"], k, q)]
         dense_rank = [k for k, _ in dense_ok]
@@ -166,6 +175,12 @@ def evaluate_sandbox(box: Sandbox, embedder, label: str) -> list[dict]:
             "convex": convex(dense_ok[:50], lex_ok[:50])[:10],
             "convex+key": key_first(q.text, keys, convex(dense_ok[:50], lex_ok[:50]))[:10],
         }
+        box.cartridge.semantic = box.policy  # shipped defaults: lexical_weight 0.3
+        ranks["keel"] = [h["key"] for h in tools["dense"].search(q.text, mode="semantic", kind=q.kind, rule=q.rule, limit=10)]
+        if RERANKER is not None:
+            rr = Tools(box.cartridge, box.store, box.tenant, embedder=embedder, index=indexes["dense"], reranker=RERANKER)
+            ranks["keel+rerank"] = [h["key"] for h in rr.search(q.text, mode="semantic", kind=q.kind, rule=q.rule, limit=10)]
+        box.cartridge.semantic = dense_policy
         top = dense_scored[0][1] if dense_scored else 0.0
         for config, ranked in ranks.items():
             row = {"sandbox": box.name, "model": label, "config": config, "family": q.family, "query": q.text}
@@ -181,7 +196,8 @@ def evaluate_sandbox(box: Sandbox, embedder, label: str) -> list[dict]:
 
 def report(rows: list[dict]) -> str:
     out = []
-    configs = ["substring", "dense", "dense-nopolicy", "dense-noise", "dense-rel", "bm25", "hybrid", "dense+key", "convex", "convex+key"]
+    configs = ["substring", "dense", "dense-nopolicy", "dense-noise", "dense-rel", "bm25", "hybrid", "dense+key", "convex", "convex+key", "keel", "keel+rerank"]
+    configs = [c for c in configs if any(r["config"] == c for r in rows)]
     for model in sorted({r["model"] for r in rows}):
         out.append(f"\n## {model}\n\nMRR@10 by query family (all sandboxes), higher is better\n")
         families = [f for f in ("paraphrase", "exact", "id", "crosslang", "relation", "rule") if any(r["family"] == f for r in rows)]
