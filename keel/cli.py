@@ -328,6 +328,9 @@ def serve(
     port: int = typer.Option(8000, help="http only."),
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
     allow_open: bool = typer.Option(False, "--allow-open", help="http only: serve without a secret on a non-loopback host (behind your own auth proxy)."),
+    http2: bool = typer.Option(False, "--http2", help="http only: serve HTTP/2 too, on Hypercorn (uv sync --extra http2): over TLS with --certfile, or cleartext h2c."),
+    certfile: Path | None = typer.Option(None, "--certfile", envvar="KEEL_CERTFILE", help="http only: TLS certificate (PEM). With --keyfile, serve https."),
+    keyfile: Path | None = typer.Option(None, "--keyfile", envvar="KEEL_KEYFILE", help="http only: TLS private key (PEM)."),
     index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="With --index: the embedder spec."),
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
@@ -357,17 +360,35 @@ def serve(
             f"{secret_env} is unset and {host} is reachable from the network: set the secret, bind 127.0.0.1, "
             "or pass --allow-open if your own proxy authenticates", param_hint="--host",
         )
+    if bool(certfile) != bool(keyfile):
+        raise typer.BadParameter("--certfile and --keyfile go together", param_hint="--certfile")
     try:
-        import uvicorn
+        if http2:
+            import hypercorn  # noqa: F401
+        else:
+            import uvicorn
     except ImportError as exc:
-        raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
+        raise SystemExit(f"The HTTP transport needs the optional dependency: uv sync --extra {'http2' if http2 else 'http'}") from exc
     from keel.http import build_http_app
 
     if not secret:
         typer.echo(f"warning: {secret_env} is unset, the API is open on {host}", err=True)
     if tenant:
         _tools(c, store, tenant, agent)  # fail now, not on the first request, if the agent is not declared
-    uvicorn.run(build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, **semantic), host=host, port=port)
+    api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, **semantic)
+    if not http2:
+        uvicorn.run(api, host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
+        return
+    import asyncio
+
+    from hypercorn.asyncio import serve as hypercorn_serve
+    from hypercorn.config import Config
+
+    config = Config()  # HTTP/1.1 and HTTP/2: h2 by ALPN over TLS, h2c (prior knowledge or Upgrade) without
+    config.bind = [f"[{host}]:{port}" if ":" in host else f"{host}:{port}"]
+    config.certfile, config.keyfile = (str(certfile), str(keyfile)) if certfile else (None, None)
+    config.accesslog = "-"
+    asyncio.run(hypercorn_serve(api, config))
 
 
 if __name__ == "__main__":

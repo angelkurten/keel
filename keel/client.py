@@ -6,17 +6,29 @@
 
 Talks to `keel serve --transport http`. A refusal (scope policy, agent registry) raises
 `KeelError(status, detail)`; so does any other non-2xx answer.
+
+One keep-alive connection per client (and thread), reused across calls: no TCP and TLS handshake
+per call. It sends `User-Agent: keel-context/<version>` (some proxies, Cloudflare among them,
+block urllib's); `headers=` adds or overrides any header.
+
+`http_client=` hands the requests to your own client instead, anything with httpx's
+`post(url, content=, headers=)`: HTTP/2 (`httpx.Client(http2=True)`, `pip install httpx[h2]`),
+a proxy, retries, mTLS. Its timeout and connection pool are then its own.
 """
 
 from __future__ import annotations
 
+import http.client
 import json
-import urllib.error
-import urllib.request
+import threading
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 
+from keel import __version__
 from keel.envelope import Event
+
+_STALE = (http.client.RemoteDisconnected, http.client.CannotSendRequest, BrokenPipeError, ConnectionResetError)
 
 
 class KeelError(Exception):
@@ -30,29 +42,77 @@ def _iso(d: datetime | str | None) -> str | None:
 
 
 class Client:
-    def __init__(self, base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0, traceparent: str | None = None) -> None:
+    def __init__(
+        self, base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0,
+        traceparent: str | None = None, headers: dict[str, str] | None = None, http_client: Any = None,
+    ) -> None:
         self.base_url, self.tenant, self.secret, self.agent, self.timeout = base_url.rstrip("/"), tenant, secret, agent, timeout
         self.traceparent = traceparent  # sent as the W3C header; Keel stores it with every write
+        self.headers = dict(headers or {})  # added to every request, over the defaults
+        self.http_client = http_client
+        url = urlsplit(self.base_url)
+        if url.scheme not in ("http", "https") or not url.hostname:
+            raise ValueError(f"base_url must be http(s)://host[:port][/prefix], got {base_url!r}")
+        self._scheme, self._netloc, self._prefix = url.scheme, url.netloc, url.path
+        self._local = threading.local()  # http.client connections are not thread-safe: one per thread
+
+    def _connection(self) -> http.client.HTTPConnection:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            cls = http.client.HTTPSConnection if self._scheme == "https" else http.client.HTTPConnection
+            conn = self._local.conn = cls(self._netloc, timeout=self.timeout)
+        return conn
+
+    def close(self) -> None:
+        """Close this thread's connection; the next call opens a new one."""
+        conn = getattr(self._local, "conn", None)
+        self._local.conn = None
+        if conn is not None:
+            conn.close()
 
     def _post(self, path: str, body: Any) -> Any:
-        headers = {"Content-Type": "application/json", "X-Keel-Tenant": self.tenant}
+        headers = {"Content-Type": "application/json", "User-Agent": f"keel-context/{__version__}", "X-Keel-Tenant": self.tenant}
         if self.agent:
             headers["X-Keel-Agent"] = self.agent
         if self.secret:
             headers["Authorization"] = f"Bearer {self.secret}"
         if self.traceparent:
             headers["traceparent"] = self.traceparent
-        req = urllib.request.Request(self.base_url + path, data=json.dumps(body).encode(), headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as res:
-                return json.loads(res.read())
-        except urllib.error.HTTPError as exc:
-            raw = exc.read()
+        headers.update(self.headers)
+        data = json.dumps(body).encode()
+        if self.http_client is not None:
+            res = self.http_client.post(self.base_url + path, content=data, headers=headers)
+            return self._answer(res.status_code, res.content, res.reason_phrase)
+        for attempt in (1, 2):
+            conn = self._connection()
+            reused = conn.sock is not None
             try:
-                detail = json.loads(raw).get("detail", raw.decode())
-            except ValueError:
-                detail = raw.decode() or exc.reason
-            raise KeelError(exc.code, detail if isinstance(detail, str) else json.dumps(detail)) from exc
+                conn.request("POST", self._prefix + path, body=data, headers=headers)
+                res = conn.getresponse()
+                raw = res.read()
+                break
+            except _STALE:
+                self.close()
+                if not reused or attempt == 2:
+                    raise
+                # ponytail: the server dropped an idle keep-alive connection before reading the
+                # request; retrying once on a fresh one is what urllib3 does too.
+            except Exception:
+                self.close()  # a half-read response leaves the connection unusable
+                raise
+        if res.getheader("Connection", "").lower() == "close":
+            self.close()
+        return self._answer(res.status, raw, res.reason)
+
+    @staticmethod
+    def _answer(status: int, raw: bytes, reason: str) -> Any:
+        if 200 <= status < 300:
+            return json.loads(raw)
+        try:
+            detail = json.loads(raw).get("detail", raw.decode())
+        except (ValueError, AttributeError):
+            detail = raw.decode() or reason
+        raise KeelError(status, detail if isinstance(detail, str) else json.dumps(detail))
 
     def context(
         self, subject: str, as_of: datetime | str | None = None, depth: int = 0,

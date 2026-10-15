@@ -109,9 +109,9 @@ def render(doc: dict[str, Any], **options: Any) -> str:
         ]
     lines += [
         "",
-        "def client(base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0, traceparent: str | None = None) -> Client:",
-        "    \"\"\"The five tools over HTTP, bound to one tenant and agent. `traceparent` joins your trace to Keel's audit.\"\"\"",
-        "    return Client(base_url, tenant, secret=secret, agent=agent, timeout=timeout, traceparent=traceparent)",
+        "def client(base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0, traceparent: str | None = None, headers: dict[str, str] | None = None, http_client: Any = None) -> Client:",
+        "    \"\"\"The five tools over HTTP, bound to one tenant and agent. `traceparent` joins your trace to Keel's audit; `headers` adds any header; `http_client` (httpx-shaped) carries the requests, HTTP/2 included.\"\"\"",
+        "    return Client(base_url, tenant, secret=secret, agent=agent, timeout=timeout, traceparent=traceparent, headers=headers, http_client=http_client)",
         "",
     ]
     return "\n".join(lines)

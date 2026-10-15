@@ -94,6 +94,18 @@ keel = Client("http://keel.internal:8000", "acme-logistics", secret=os.environ["
 $keel = new \Keel\Sdk\Client('http://keel.internal:8000', 'acme-logistics', getenv('KEEL_SECRET'), 'tires-bot', timeout: 10, traceparent: $traceparent);
 ```
 
+The Python client keeps one keep-alive connection per thread and reuses it, so only the first call pays the TCP and TLS handshake; `close()` drops it. It identifies itself as `User-Agent: keel-context/<version>`, since some proxies (Cloudflare's browser integrity check, error 1010) block urllib's default. `headers={...}` adds headers to every request or overrides the defaults, `User-Agent` included; the generated `client()` takes it too.
+
+For HTTP/2, a proxy, retries or mTLS, pass your own client: anything with httpx's `post(url, content=, headers=)` carries the requests, with its own timeout and pool. Keel stays stdlib-only; the dependency is yours.
+
+```python
+import httpx  # pip install "httpx[http2]"
+
+keel = Client("https://keel.example.com", "acme-logistics", secret=os.environ["KEEL_SECRET"], http_client=httpx.Client(http2=True, timeout=10))
+```
+
+`keel serve --transport http --http2` speaks HTTP/2 end to end (h2 over TLS, or h2c; see [connect](connect.md#serve-the-tools-over-http)); it pays off mostly for many concurrent calls from one process.
+
 Reads follow the memory scopes: agent-scope memory comes back only to the agent that wrote it, so set `agent` to read your own, and task memory tied to a task id only to calls that pass that `task` ([details](connect.md#serve-the-tools-over-http)).
 
 ## Server side

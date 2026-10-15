@@ -34,6 +34,8 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
+- [x] `keel serve --transport http --http2`: HTTP/2 on Hypercorn (`--extra http2`), h2 over TLS or cleartext h2c; `--certfile`/`--keyfile` serve https on either server (0.17.0)
+- [x] `keel.client.Client` reuses one keep-alive connection, sends `User-Agent: keel-context/<version>` (Cloudflare blocked urllib's with 1010) and takes `headers=` and `http_client=` (any httpx-shaped client: HTTP/2, proxies, retries) (0.17.0)
 - [x] Processes that open one database at once no longer race on the schema migration (`facts_key` and added columns; MySQL 1061/1060) (0.16.4)
 - [x] `annotate(key=)` is one write even across processes: a unique `facts_key` index on (tenant, subject, idempotency_key); a racing call gets the winner's fact back (`DuplicateKey` in the store protocol) (0.16.3)
 - [x] The table, Kafka and SQS adapters acknowledge only after the Ingestor commits: with `batch=N`, a batch that rolled back was skipped by the cursor and lost (0.16.2; from the kagent PoC)

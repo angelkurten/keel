@@ -11,6 +11,7 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 | `KEEL_DB` | every command with `--db` | the durable graph: a SQLite file or `mysql://user:pass@host:3306/db` |
 | `KEEL_TENANT` | every command that takes a tenant; `serve` (`--tenant`) | the default tenant; with `serve --transport http` it is used when `X-Keel-Tenant` is absent |
 | `KEEL_AGENT` | `serve`, `context`... (`--agent`) | the declared agent acting here |
+| `KEEL_CERTFILE`, `KEEL_KEYFILE` | `serve --transport http` | TLS certificate and key (PEM) to serve https (`--certfile`, `--keyfile`) |
 | `KEEL_SECRET` | `serve --transport http` | the shared bearer secret (`--secret-env` names another variable) |
 | `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
 | `KEEL_EMBEDDINGS_BASE_URL`, `_MODEL`, `_API_KEY`, `_QUERY_PREFIX`, `_DOCUMENT_PREFIX` | `--embedder openai` | any OpenAI-compatible `/v1/embeddings` endpoint |
@@ -206,6 +207,13 @@ KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --db k
 ```
 
 The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
+
+**TLS and HTTP/2.** `--certfile` and `--keyfile` (PEM; or `KEEL_CERTFILE`, `KEEL_KEYFILE`) serve https. `--http2` runs the server on Hypercorn instead of uvicorn (`uv sync --extra http2`) and speaks HTTP/1.1 and HTTP/2 on the same port: h2 negotiated by ALPN over TLS, or cleartext h2c (prior knowledge or `Upgrade`) without it, which is what a proxy in front that talks h2c to its origin uses. HTTP/1.1 clients keep working. On the client side, `keel.client.Client(..., http_client=httpx.Client(http2=True))` ([SDKs](sdks.md)).
+
+```bash
+KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --http2 --db keel.db \
+  --host 0.0.0.0 --certfile cert.pem --keyfile key.pem
+```
 
 | Call | Body (`?` optional, default in parentheses) | Returns |
 | --- | --- | --- |
