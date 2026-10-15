@@ -51,8 +51,9 @@ class Client:
                 detail = raw.decode() or exc.reason
             raise KeelError(exc.code, detail if isinstance(detail, str) else json.dumps(detail)) from exc
 
-    def context(self, subject: str, as_of: datetime | str | None = None) -> dict[str, Any]:
-        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of)})
+    def context(self, subject: str, as_of: datetime | str | None = None, depth: int = 0) -> dict[str, Any]:
+        """What is true about a subject now, or at `as_of`. `depth=1` adds each neighbour's facts and evaluation."""
+        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth})
 
     def history(self, subject: str, since: datetime | str | None = None, until: datetime | str | None = None, predicate: str | None = None, scope: str | None = None) -> list[dict[str, Any]]:
         return self._post("/v1/history", {"subject": subject, "since": _iso(since), "until": _iso(until), "predicate": predicate, "scope": scope})
@@ -63,8 +64,8 @@ class Client:
     def annotate(self, subject: str, predicate: str, value: Any, scope: str = "task", evidence: str | None = None, by: str | None = None) -> dict[str, Any]:
         return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by})
 
-    def related(self, subject: str, relation: str | None = None) -> list[dict[str, Any]]:
-        return self._post("/v1/related", {"subject": subject, "relation": relation})
+    def related(self, subject: str, relation: str | None = None, as_of: datetime | str | None = None) -> list[dict[str, Any]]:
+        return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of)})
 
     def events(self, batch: Event | dict[str, Any] | list[Event | dict[str, Any]]) -> dict[str, Any]:
         items = batch if isinstance(batch, list) else [batch]

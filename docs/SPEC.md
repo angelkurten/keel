@@ -119,6 +119,8 @@ sequenceDiagram
 - facts **between** `since` and `until` (overlap).
 - facts **as learned by** a transaction time (`recorded_at <= t`) — *planned*; the in-memory store does not filter on it yet.
 
+**Values are for what a tool compares or shows.** A long text (a comment body, a description, a document) belongs in the system of record: store a short label or a classification as the value and the pointer as `evidence` or in the entity's `ref`, not the text itself. The graph holds pointers and semantics (design rule 2).
+
 ### 3.4 Store protocol
 
 Writes (the only write path; handlers call these and nothing else):
@@ -199,6 +201,7 @@ entities:               # required: kind -> spec
 
 relations:              # optional: rel -> {from: <kind>, to: <kind>}
   <rel>: { from: <kind>, to: <kind> }
+  <rel>: { from: <kind>, to: <kind>, symmetric: true }   # recorded from either end, shown once (direction `both`)
 
 events:                 # required: type -> spec
   <type>:
@@ -213,7 +216,11 @@ rules:                  # optional: name -> definition
     <param>: <value>    # machine-readable parameters agents read
     when:               # optional: a condition the core evaluates in `context` (§5.4)
       predicate: <predicate>
-      <op>: <operand>   # lt, lte, gt, gte, eq, ne, in, within_days; a list of conditions must all hold
+      <op>: <operand>   # leaf operators in §5.4; compose with all / any / not; follow relations with via
+
+calendar:               # optional: business days for `open_for_business_days` (§5.4)
+  weekend: [saturday, sunday]
+  holidays: [2026-12-25]
 
 agents:                 # optional: the agent registry (§6.1). Absent = no registry, any caller
   <id>:
@@ -249,7 +256,15 @@ A cartridge is valid when:
 
 ### 5.4 Rules (semantic layer)
 
-Rules are authored by product, versioned with the cartridge, and returned by the `context` tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core interprets two keys: `applies_to` and `when`. A `when` is one condition or a list of conditions that must all hold. Each names a `predicate` and one or more operators: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in` (value in a list), `within_days` (a date predicate on or before `as_of + n days`, so dates already past count). `context` evaluates every applicable rule that has a `when` against the subject's open facts and returns `true`, `false`, or `null` when a predicate has no open fact. A rule without `when` (an aggregate, anything that needs more than the subject's own facts) is returned as a definition only and the agent applies it.
+Rules are authored by product, versioned with the cartridge, and returned by the `context` tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core interprets two keys: `applies_to` and `when`. `context` evaluates every applicable rule that has a `when` at `as_of` and returns `true`, `false`, or `null` (undecidable). A rule without `when` (an aggregate, a count over time) is returned as a definition only and the agent applies it.
+
+A `when` is a condition:
+
+- **Leaf**: `{ predicate: <p>, <op>: <operand>, ... }`. Operators on the subject's open fact for `<p>`: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in` (value in a list), `within_days` (a date predicate on or before `as_of + n days`, so dates already past count), `open_for_days` and `open_for_business_days` (how long the open fact has been open: a mapping of `lt`/`lte`/`gt`/`gte`/`eq`, e.g. `{ gte: 7 }`; business days skip the cartridge `calendar` weekend and holidays). `ci: true` compares strings case-insensitively. No open fact for the predicate: `null`.
+- **Composition**: `{ all: [...] }`, `{ any: [...] }`, `{ not: <condition> }`. A bare list is `all`. `null` propagates unless another branch decides: a `false` in `all`, a `true` in `any`.
+- **Neighbours**: `{ via: <relation>, direction: out | in | any, any: <condition> }` or `all:`. The condition is evaluated on each neighbour reached by that relation at `as_of` (`direction` defaults to `any`; symmetric relations ignore it). No neighbours: `any` is `false`, `all` is `true`. This is how an inherited state is expressed: `{ any: [ { predicate: status, eq: paused }, { via: relates_to, any: { predicate: status, eq: paused } } ] }`.
+
+Rules see the whole tenant's graph: they are the product's semantics, not the calling agent's view, so the agent registry's read slice does not apply inside a `when`.
 
 ### 5.5 Payload notation
 
@@ -314,9 +329,9 @@ A cartridge MAY declare `agents:` (§5.1). Without it there is no registry: any 
 
 A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge declares agents, one agent (§6.1). Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
 
-### 7.1 `context(subject, as_of=None) -> object`
+### 7.1 `context(subject, as_of=None, depth=0) -> object`
 
-What is true about a subject now, or at `as_of` (world time).
+What is true about a subject now, or at `as_of` (world time). With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
 
 ```json
 {
@@ -342,9 +357,9 @@ Case-insensitive substring match over entity keys and attrs, and fact predicates
 
 Writes earned memory. Applies the scope policy (§6). `source` is `annotate:<by or 'agent'>`; `corrected_by = by`. Returns the stored fact including `expires_at`.
 
-### 7.5 `related(subject, relation=None) -> [{relation, direction, subject, since}]`
+### 7.5 `related(subject, relation=None, as_of=None) -> [{relation, direction, subject, since}]`
 
-Open relations at now, optionally filtered by type, with direction relative to the subject.
+Open relations at now or at `as_of`, optionally filtered by type, with direction relative to the subject (`out`, `in`, or `both` for a symmetric relation, which is reported once even when the source recorded it from both ends).
 
 ### 7.6 Transport
 

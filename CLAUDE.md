@@ -42,7 +42,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 6. **The core is domain-agnostic.** No entity kind, relation name, predicate, rule or event type appears anywhere under `keel/`. The acceptance test for any core change: both `cartridges/fleet` and `cartridges/crm` still pass without edits. Adding a third cartridge must require zero changes under `keel/`.
 7. **Five tools, and only five.** New capabilities go into the semantics of these five (richer `context`, filters on `history`) before anyone adds a sixth. The tool names and signatures are part of the public standard.
 8. **One subgraph per tenant.** Every store call takes `tenant` first. Cross-tenant reads do not exist. A tool instance is bound to one tenant.
-9. **Handlers are small.** A handler maps one payload to primitives in ~10 lines. Business logic (what "critical" means) lives in `rules`, read by tools, not in handlers and not in agents.
+9. **Handlers are small.** A handler maps one payload to primitives in ~10 lines. Business logic (what "critical" means) lives in `rules`, read by tools, not in handlers and not in agents. Rules may compose (`all`/`any`/`not`), follow relations (`via`) and measure durations; what they cannot express (counts over time, aggregates) stays a definition the agent applies.
 10. **Deterministic ingest.** No network calls, no LLM calls, no randomness in the ingest path. Replay must produce an identical graph.
 
 ## Conventions

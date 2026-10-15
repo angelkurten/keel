@@ -92,7 +92,7 @@ rules:
     when: { predicate: status, eq: no_show }
 ```
 
-The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a `when` is also evaluated for you: `context` returns `evaluation: {appointment_missed: true}` next to the rule, so the agent neither defines nor computes it. `at_risk_patient` needs a count over 90 days, more than one subject's open facts, so it has no `when` and the agent applies the definition. Operators: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in`, `within_days`.
+The `context` tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a `when` is also evaluated for you: `context` returns `evaluation: {appointment_missed: true}` next to the rule, so the agent neither defines nor computes it. `at_risk_patient` needs a count over 90 days, so it has no `when` and the agent applies the definition. Conditions compose with `all`, `any` and `not`, follow a relation with `via` (a patient is at risk if any of their appointments is missed: `{ via: booked_by, direction: in, any: { predicate: status, eq: no_show } }`), compare strings with `ci: true`, and measure how long a fact has been open with `open_for_days` or `open_for_business_days`. The full grammar is in the [specification](SPEC.md#54-rules-semantic-layer).
 
 ## 6. Validate and run (2 min)
 

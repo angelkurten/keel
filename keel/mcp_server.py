@@ -54,9 +54,9 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def context(subject: str, as_of: str | None = None) -> dict[str, Any]:
-        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation."""
-        return tools.context(subject, _dt(as_of))
+    def context(subject: str, as_of: str | None = None, depth: int = 0) -> dict[str, Any]:
+        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. depth=1 adds each neighbour's facts and evaluation."""
+        return tools.context(subject, _dt(as_of), depth)
 
     @mcp.tool(**read_only)
     @guarded
@@ -84,8 +84,8 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def related(subject: str, relation: str | None = None) -> list[dict[str, Any]]:
-        """Neighbors of a subject, optionally by relation type."""
-        return tools.related(subject, relation)
+    def related(subject: str, relation: str | None = None, as_of: str | None = None) -> list[dict[str, Any]]:
+        """Neighbors of a subject, optionally by relation type, now or at an ISO datetime."""
+        return tools.related(subject, relation, _dt(as_of))
 
     return mcp

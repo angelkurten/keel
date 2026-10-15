@@ -16,9 +16,10 @@ final class Client
     }
 
     /** @return array<string, mixed> */
-    public function context(string $subject, \DateTimeInterface|string|null $asOf = null): array
+    /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`. */
+    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0): array
     {
-        return $this->post('/v1/context', ['subject' => $subject, 'as_of' => $asOf === null ? null : Envelope::iso($asOf)]);
+        return $this->post('/v1/context', ['subject' => $subject, 'as_of' => $asOf === null ? null : Envelope::iso($asOf), 'depth' => $depth]);
     }
 
     /** @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string} $filter @return list<array<string, mixed>> */
@@ -46,9 +47,9 @@ final class Client
     }
 
     /** @return list<array<string, mixed>> */
-    public function related(string $subject, ?string $relation = null): array
+    public function related(string $subject, ?string $relation = null, \DateTimeInterface|string|null $asOf = null): array
     {
-        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation]);
+        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation, 'as_of' => $asOf === null ? null : Envelope::iso($asOf)]);
     }
 
     /** @param list<array<string, mixed>> $batch @return array<string, mixed> */

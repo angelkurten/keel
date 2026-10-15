@@ -34,7 +34,7 @@ def test_fleet_ingest_and_context():
     assert {"assigned_to", "mounted_on", "has_inspection", "has_ticket", "in_workshop", "covers_unit"} <= rels
     assert "tire_critical" not in ctx["rules"]  # rule applies to tires, not units
     assert "fuel_anomaly" in ctx["rules"]
-    assert ctx["evaluation"] == {}  # fuel_anomaly has no `when`: the agent applies it
+    assert ctx["evaluation"] == {"unit_grounded": True}  # fuel_anomaly has no `when`: the agent applies it
 
 
 def test_facts_are_bitemporal_not_overwritten():

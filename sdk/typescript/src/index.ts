@@ -48,8 +48,19 @@ export type Context = {
   rules: Record<string, Record<string, unknown>>;
   evaluation: Record<string, boolean | null>;
   as_of: string;
+  /** Present with `depth: 1`: each neighbour's entity, open facts and evaluation (capped; see neighbors_truncated). */
+  neighbors?: Neighbor[];
+  neighbors_truncated?: boolean;
 };
-export type Related = { relation: string; direction: "in" | "out"; subject: string; since: string };
+export type Related = { relation: string; direction: "in" | "out" | "both"; subject: string; since: string };
+export type Neighbor = {
+  relation: string;
+  direction: "in" | "out" | "both";
+  subject: string;
+  entity: Entity | null;
+  facts: Fact[];
+  evaluation: Record<string, boolean | null>;
+};
 export type IngestReport = { processed: number; duplicates: number; unhandled: string[]; errors: Array<[string, string]> };
 
 export type ClientOptions = {
@@ -130,9 +141,9 @@ export class Client<S extends string = string> {
     return (await res.json()) as T;
   }
 
-  /** What is true about a subject now, or at `asOf`: facts, relations, rules and their verdicts. */
-  context(subject: S, asOf?: Date | string): Promise<Context> {
-    return this.post("/v1/context", { subject, as_of: asOf ? iso(asOf) : undefined });
+  /** What is true about a subject now, or at `asOf`: facts, relations, rules and their verdicts. `depth: 1` adds the neighbours. */
+  context(subject: S, asOf?: Date | string, depth = 0): Promise<Context> {
+    return this.post("/v1/context", { subject, as_of: asOf ? iso(asOf) : undefined, depth });
   }
 
   /** Facts over time, oldest first, closed ones included. */
@@ -155,8 +166,9 @@ export class Client<S extends string = string> {
     return this.post("/v1/annotate", a);
   }
 
-  related(subject: S, relation?: string): Promise<Related[]> {
-    return this.post("/v1/related", { subject, relation });
+  /** Neighbours by relation type, now or at `asOf`. */
+  related(subject: S, relation?: string, asOf?: Date | string): Promise<Related[]> {
+    return this.post("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined });
   }
 
   /** Ingest one envelope or a batch. At-least-once is yours: retry on network errors, the server dedupes nothing. */

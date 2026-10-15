@@ -19,7 +19,7 @@ from typing import Any
 from keel.agents import resolve
 from keel.cartridge import Cartridge
 from keel.envelope import utcnow
-from keel.rules import conditions, evaluate
+from keel.rules import Calendar, evaluate
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation, Store
 
@@ -43,6 +43,35 @@ def _kind(subject: str) -> str:
     return subject.split(":", 1)[0]
 
 
+NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
+
+
+class _Graph:
+    """What rules may look at, read through the store at one instant. Rules are the product's
+    semantics, so they see the whole tenant whatever the calling agent's read slice is."""
+
+    def __init__(self, store: Store, tenant: str, as_of: datetime, calendar: Calendar, symmetric: set[str]) -> None:
+        self.store, self.tenant, self.as_of, self.calendar, self.symmetric = store, tenant, as_of, calendar, symmetric
+        self._facts: dict[str, list[Fact]] = {}
+
+    def facts(self, subject: str) -> list[Fact]:
+        if subject not in self._facts:
+            self._facts[subject] = self.store.facts(self.tenant, subject, at=self.as_of)
+        return self._facts[subject]
+
+    def neighbors(self, subject: str, rel: str, direction: str) -> list[str]:
+        out: list[str] = []
+        for r in self.store.relations(self.tenant, subject, rel=rel, at=self.as_of):
+            if rel not in self.symmetric and direction == "out" and r.src != subject:
+                continue
+            if rel not in self.symmetric and direction == "in" and r.dst != subject:
+                continue
+            other = r.dst if r.src == subject else r.src
+            if other not in out:
+                out.append(other)
+        return out
+
+
 class Tools:
     def __init__(self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None) -> None:
         self.cartridge = cartridge
@@ -50,6 +79,7 @@ class Tools:
         self.tenant = tenant  # tools are always scoped to one end-customer
         self.agent_id = agent  # who is calling; the host decides, Keel records
         self.agent = resolve(cartridge.agents, agent)  # the spec to enforce; None when the cartridge declares no agents
+        self.symmetric = {rel for rel, spec in cartridge.relations.items() if isinstance(spec, dict) and spec.get("symmetric")}
 
     # ---- registry enforcement: the agent never polices itself -------------------------------
 
@@ -63,27 +93,64 @@ class Tools:
         other = r.dst if r.src == subject else r.src
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
 
-    def context(self, subject: str, as_of: datetime | None = None) -> dict[str, Any]:
-        """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
-        that apply to its kind, and the evaluation of every rule that carries a `when`."""
-        self._readable(subject)
-        ent = self.store.entity(self.tenant, subject)
-        now = as_of or utcnow()
-        facts = self.store.facts(self.tenant, subject, at=now)
-        rels = [r for r in self.store.relations(self.tenant, subject, at=now) if self._visible(r, subject)]
+    def _graph(self, now: datetime) -> _Graph:
+        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric)
+
+    def _rules_for(self, subject: str) -> dict[str, Any]:
         kind = _kind(subject)
-        rules = {k: v for k, v in self.cartridge.rules.items() if v.get("applies_to") in (None, kind)}
-        return _ser(
-            {
-                "subject": subject,
-                "entity": ent,
-                "facts": facts,
-                "relations": [asdict(r) for r in rels],
-                "rules": rules,
-                "evaluation": {k: evaluate(v, facts, now) for k, v in rules.items() if conditions(v)},
-                "as_of": now,
-            }
-        )
+        return {k: v for k, v in self.cartridge.rules.items() if v.get("applies_to") in (None, kind)}
+
+    def _evaluation(self, subject: str, graph: _Graph) -> dict[str, bool | None]:
+        return {k: evaluate(v, subject, graph.as_of, graph) for k, v in self._rules_for(subject).items() if v.get("when")}
+
+    def _dedupe(self, rels: list[Relation], subject: str) -> list[Relation]:
+        """A symmetric relation recorded from both ends is one edge."""
+        seen: set[tuple[str, frozenset[str]]] = set()
+        out = []
+        for r in rels:
+            key = (r.rel, frozenset({r.src, r.dst}))
+            if r.rel in self.symmetric:
+                if key in seen:
+                    continue
+                seen.add(key)
+            out.append(r)
+        return out
+
+    def context(self, subject: str, as_of: datetime | None = None, depth: int = 0) -> dict[str, Any]:
+        """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
+        that apply to its kind, and the evaluation of every rule that carries a `when`. With
+        `depth=1`, also each neighbour's entity, open facts and evaluation (up to NEIGHBOR_CAP)."""
+        self._readable(subject)
+        now = as_of or utcnow()
+        graph = self._graph(now)
+        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, at=now) if self._visible(r, subject)], subject)
+        out: dict[str, Any] = {
+            "subject": subject,
+            "entity": self.store.entity(self.tenant, subject),
+            "facts": graph.facts(subject),
+            "relations": [asdict(r) for r in rels],
+            "rules": self._rules_for(subject),
+            "evaluation": self._evaluation(subject, graph),
+            "as_of": now,
+        }
+        if depth >= 1:
+            neighbors = []
+            for r in rels[:NEIGHBOR_CAP]:
+                other = r.dst if r.src == subject else r.src
+                neighbors.append(
+                    {
+                        "relation": r.rel,
+                        "direction": "both" if r.rel in self.symmetric else ("out" if r.src == subject else "in"),
+                        "subject": other,
+                        "entity": self.store.entity(self.tenant, other),
+                        "facts": graph.facts(other),
+                        "evaluation": self._evaluation(other, graph),
+                    }
+                )
+            out["neighbors"] = neighbors
+            if len(rels) > NEIGHBOR_CAP:
+                out["neighbors_truncated"] = True
+        return _ser(out)
 
     def history(
         self,
@@ -141,23 +208,23 @@ class Tools:
         )
         return _ser(f)
 
-    def related(self, subject: str, relation: str | None = None) -> list[dict[str, Any]]:
+    def related(self, subject: str, relation: str | None = None, as_of: datetime | None = None) -> list[dict[str, Any]]:
+        """Neighbours by relation type, now or at `as_of`. A symmetric relation shows once, direction `both`."""
         self._readable(subject)
-        rels = self.store.relations(self.tenant, subject, rel=relation, at=utcnow())
+        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, rel=relation, at=as_of or utcnow()) if self._visible(r, subject)], subject)
         out = []
         for r in rels:
-            if not self._visible(r, subject):
-                continue
             other = r.dst if r.src == subject else r.src
-            out.append({"relation": r.rel, "direction": "out" if r.src == subject else "in", "subject": other, "since": r.valid_from.isoformat()})
+            direction = "both" if r.rel in self.symmetric else ("out" if r.src == subject else "in")
+            out.append({"relation": r.rel, "direction": direction, "subject": other, "since": r.valid_from.isoformat()})
         return out
 
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject", "as_of?"], "doc": self.context.__doc__},
+            {"name": "context", "args": ["subject", "as_of?", "depth?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject", "since?", "until?", "predicate?", "scope?"], "doc": self.history.__doc__},
             {"name": "search", "args": ["text"], "doc": "Entities and facts matching text."},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?"], "doc": self.annotate.__doc__},
-            {"name": "related", "args": ["subject", "relation?"], "doc": "Neighbors by relation type."},
+            {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
         ]

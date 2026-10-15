@@ -50,6 +50,9 @@ def test_secret_tenant_header_and_ingest():
     assert client.post("/v1/search", json={"text": "T-9001"}, headers=h).json()
     rel = client.post("/v1/related", json={"subject": "unit:MXK-4821", "relation": "mounted_on"}, headers=h).json()
     assert rel[0]["subject"] == "tire:T-9001"
+    assert client.post("/v1/related", json={"subject": "unit:MXK-4821", "relation": "mounted_on", "as_of": "2026-09-05"}, headers=h).json() == []
+    deep = client.post("/v1/context", json={"subject": "unit:MXK-4821", "depth": 1}, headers=h).json()
+    assert any(n["subject"] == "tire:T-9001" and n["evaluation"] == {"tire_critical": True} for n in deep["neighbors"])
     assert client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={**AUTH, "X-Keel-Tenant": "other"}).json()["entity"] is None
     paths = set(client.get("/openapi.json").json()["paths"])
     assert {"/v1/events", "/v1/context", "/v1/history", "/v1/search", "/v1/annotate", "/v1/related"} <= paths

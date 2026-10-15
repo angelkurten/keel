@@ -65,13 +65,25 @@ type RelationRow struct {
 }
 
 type Context struct {
-	Subject    string                    `json:"subject"`
-	Entity     *Entity                   `json:"entity"`
-	Facts      []Fact                    `json:"facts"`
-	Relations  []RelationRow             `json:"relations"`
-	Rules      map[string]map[string]any `json:"rules"`
-	Evaluation map[string]*bool          `json:"evaluation"`
-	AsOf       string                    `json:"as_of"`
+	Subject            string                    `json:"subject"`
+	Entity             *Entity                   `json:"entity"`
+	Facts              []Fact                    `json:"facts"`
+	Relations          []RelationRow             `json:"relations"`
+	Rules              map[string]map[string]any `json:"rules"`
+	Evaluation         map[string]*bool          `json:"evaluation"`
+	AsOf               string                    `json:"as_of"`
+	Neighbors          []Neighbor                `json:"neighbors,omitempty"` // with ContextDepth(..., 1)
+	NeighborsTruncated bool                      `json:"neighbors_truncated,omitempty"`
+}
+
+// Neighbor is one linked subject with its open facts and rule evaluation (ContextDepth).
+type Neighbor struct {
+	Relation   string           `json:"relation"`
+	Direction  string           `json:"direction"` // in, out or both
+	Subject    string           `json:"subject"`
+	Entity     *Entity          `json:"entity"`
+	Facts      []Fact           `json:"facts"`
+	Evaluation map[string]*bool `json:"evaluation"`
 }
 
 type Related struct {
@@ -171,8 +183,13 @@ func iso(t *time.Time) *string {
 
 // Context: what is true about a subject now, or at asOf.
 func (c *Client) Context(ctx context.Context, subject string, asOf *time.Time) (Context, error) {
+	return c.ContextDepth(ctx, subject, asOf, 0)
+}
+
+// ContextDepth is Context with depth 1: each neighbour's entity, open facts and evaluation come along.
+func (c *Client) ContextDepth(ctx context.Context, subject string, asOf *time.Time, depth int) (Context, error) {
 	var out Context
-	err := c.post(ctx, "/v1/context", map[string]any{"subject": subject, "as_of": iso(asOf)}, &out)
+	err := c.post(ctx, "/v1/context", map[string]any{"subject": subject, "as_of": iso(asOf), "depth": depth}, &out)
 	return out, err
 }
 
@@ -217,8 +234,13 @@ func (c *Client) Annotate(ctx context.Context, a Annotation) (Fact, error) {
 }
 
 func (c *Client) Related(ctx context.Context, subject, relation string) ([]Related, error) {
+	return c.RelatedAt(ctx, subject, relation, nil)
+}
+
+// RelatedAt is Related at an instant in world time.
+func (c *Client) RelatedAt(ctx context.Context, subject, relation string, asOf *time.Time) ([]Related, error) {
 	var out []Related
-	body := map[string]any{"subject": subject}
+	body := map[string]any{"subject": subject, "as_of": iso(asOf)}
 	if relation != "" {
 		body["relation"] = relation
 	}

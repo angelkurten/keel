@@ -5,11 +5,11 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     keel serve cartridges/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
-    POST /v1/context   {subject, as_of?}             -> the context object
+    POST /v1/context   {subject, as_of?, depth?}     -> the context object
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
     POST /v1/search    {text}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
-    POST /v1/related   {subject, relation?}
+    POST /v1/related   {subject, relation?, as_of?}
     GET  /openapi.json, /health
 
 Every request carries `Authorization: Bearer <secret>` (unset secret = open: localhost only),
@@ -112,6 +112,7 @@ def build_http_app(
     class ContextIn(BaseModel):
         subject: str
         as_of: str | None = None
+        depth: int = 0
 
     class HistoryIn(BaseModel):
         subject: str
@@ -134,6 +135,7 @@ def build_http_app(
     class RelatedIn(BaseModel):
         subject: str
         relation: str | None = None
+        as_of: str | None = None
 
     def dt(s: str | None):
         return parse_iso(s) if s else None
@@ -153,7 +155,7 @@ def build_http_app(
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of)))
+        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth))
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:
@@ -169,7 +171,7 @@ def build_http_app(
 
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).related(body.subject, body.relation))
+        return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of)))
 
     if mcp_app is not None:
         app.mount("/", mcp_app)

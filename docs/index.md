@@ -7,7 +7,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 You describe your vertical once, in a *cartridge*: ontology, event catalog, semantic rules, memory policies. Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
 !!! note "Status"
-    0.5.0, alpha. The MCP server, the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
+    0.6.0, alpha. The MCP server, the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
@@ -55,11 +55,11 @@ Events are the truth and the graph is derived, so one tenant's subgraph can be r
 ## Five tools, any agent
 
 ```text
-context(subject, as_of?)                             -> what is true now, or at as_of: facts, relations, rules and their verdicts
+context(subject, as_of?, depth?)                     -> what is true now, or at as_of: facts, relations, rules and their verdicts; depth=1 adds the neighbors
 history(subject, since?, until?, predicate?, scope?)  -> what was true, and when we learned it
 search(text)                                         -> entities and facts matching text
 annotate(subject, predicate, value, scope, evidence)  -> an agent (or a human) writes what it learned
-related(subject, relation?)                          -> neighbors by relation type
+related(subject, relation?, as_of?)                  -> neighbors by relation type
 ```
 
 Expose them over MCP with `keel serve` and point any agent framework at them. The names and signatures are part of the public standard; see the [specification](SPEC.md).

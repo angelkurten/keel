@@ -186,3 +186,14 @@ def test_ingest_is_idempotent_and_order_independent(store):
     assert balances[0]["valid_to"] == balances[1]["valid_from"]
     status = t.history("due:visa-2026-10", predicate="status")
     assert [f["value"] for f in status] == ["pending", "paid"] and status[0]["valid_to"] == status[1]["valid_from"]
+
+
+def test_table_prefix_keeps_a_shared_database_tidy(tmp_path):
+    store = SqliteStore(tmp_path / "shared.db", prefix="keel_")
+    c = load_cartridge(FLEET)
+    assert Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True).processed == 12
+    names = {r["name"] for r in store._rows("SELECT name FROM sqlite_master WHERE type IN ('table', 'index')")}
+    assert {"keel_entities", "keel_relations", "keel_facts", "keel_ingested", "keel_facts_subject"} <= names
+    assert not {"entities", "facts"} & names
+    assert Tools(c, store, TENANT).context("tire:T-9001")["evaluation"] == {"tire_critical": True}
+    assert len(list(store.dump(TENANT))) > 20 and store.expire(TENANT) == 0

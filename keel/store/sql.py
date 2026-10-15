@@ -14,6 +14,7 @@ ponytail: one connection per store; a pool if a deployment ever shows contention
 from __future__ import annotations
 
 import json
+import re
 import threading
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
@@ -80,8 +81,11 @@ class SqlStore:
     UPSERT_ENTITY = ""  # (tenant, kind, id, ref, attrs); on conflict update ref and attrs
     REMEMBER = ""  # (tenant, id); insert or ignore
     ENTITY_ORDER = "rowid"
+    _NAMES = re.compile(r"\b(entities_key|relations_src|relations_dst|facts_subject|facts_predicate|entities|relations|facts|ingested)\b")
 
-    def __init__(self, connect: Callable[[], Any]) -> None:
+    def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
+        """`prefix` names the tables `<prefix>entities`, `<prefix>facts`... for a database shared with an application."""
+        self.prefix = prefix
         self._lock = threading.Lock()
         self.db = connect()
         self._prepare(self.db)
@@ -101,6 +105,8 @@ class SqlStore:
     # ---- plumbing --------------------------------------------------------------------
 
     def _sql(self, sql: str) -> str:
+        if self.prefix:
+            sql = self._NAMES.sub(self.prefix + r"\1", sql)
         return sql if self.PLACEHOLDER == "?" else sql.replace("?", self.PLACEHOLDER)
 
     def _exec(self, sql: str, params: tuple[Any, ...] = ()) -> int:

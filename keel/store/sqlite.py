@@ -40,7 +40,7 @@ class SqliteStore(SqlStore):
     )
     REMEMBER = "INSERT OR IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
 
-    def __init__(self, path: str | Path = ":memory:") -> None:
+    def __init__(self, path: str | Path = ":memory:", prefix: str = "") -> None:
         def connect() -> sqlite3.Connection:
             # autocommit: one primitive, one transaction. check_same_thread off because the store
             # serializes statements itself and Python's sqlite3 is built serialized.
@@ -48,7 +48,7 @@ class SqliteStore(SqlStore):
             conn.row_factory = sqlite3.Row
             return conn
 
-        super().__init__(connect)
+        super().__init__(connect, prefix)
 
     def _prepare(self, conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA journal_mode=WAL")

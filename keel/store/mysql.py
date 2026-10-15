@@ -5,7 +5,7 @@ too: pass your own `connect` callable.
 
     store = MysqlStore.from_url("mysql://keel:secret@db.internal:3306/keel")
     store = MysqlStore(lambda: pymysql.connect(host=..., user=..., password=..., database=..., autocommit=True))
-    keel serve cartridges/fleet --transport http --db mysql://keel:secret@db.internal:3306/keel
+    keel serve cartridges/fleet --transport http --db mysql://keel:secret@db.internal:3306/keel?prefix=keel_
 
 Tables are created on first use (CREATE TABLE IF NOT EXISTS). Timestamps are ISO 8601 strings in
 UTC; JSON columns hold attrs and fact values. The SQL lives in `keel.store.sql.SqlStore`.
@@ -16,7 +16,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from keel.store.sql import SqlStore
 
@@ -45,18 +45,20 @@ class MysqlStore(SqlStore):
     )
     REMEMBER = "INSERT IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
 
-    def __init__(self, connect: Callable[[], Any]) -> None:
+    def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
         self._last_ping = time.monotonic()
-        super().__init__(connect)
+        super().__init__(connect, prefix)
 
     @classmethod
-    def from_url(cls, url: str) -> MysqlStore:
-        """mysql://user:password@host:3306/database, with PyMySQL."""
+    def from_url(cls, url: str, prefix: str | None = None) -> MysqlStore:
+        """mysql://user:password@host:3306/database[?prefix=keel_], with PyMySQL."""
         try:
             import pymysql
         except ImportError as exc:
             raise SystemExit("MysqlStore.from_url needs the optional dependency: uv sync --extra mysql") from exc
         u = urlparse(url)
+        if prefix is None:
+            prefix = parse_qs(u.query).get("prefix", [""])[0]
         return cls(
             lambda: pymysql.connect(
                 host=u.hostname or "127.0.0.1",
@@ -66,7 +68,8 @@ class MysqlStore(SqlStore):
                 database=u.path.lstrip("/"),
                 autocommit=True,
                 charset="utf8mb4",
-            )
+            ),
+            prefix,
         )
 
     def _prepare(self, conn: Any) -> None:

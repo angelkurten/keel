@@ -27,6 +27,7 @@ from keel.agents import AgentSpec, parse_agents
 from keel.agents import problems as agent_problems
 from keel.envelope import Event
 from keel.handlers import HandlerRegistry
+from keel.rules import Calendar
 from keel.rules import problems as rule_problems
 from keel.schema import check, parse, payload_schema
 from keel.scopes import MemoryPolicy, Scope
@@ -43,6 +44,7 @@ class Cartridge:
     policy: MemoryPolicy = field(default_factory=MemoryPolicy.default)
     registry: HandlerRegistry = field(default_factory=HandlerRegistry)
     agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
+    calendar: Calendar = field(default_factory=Calendar)  # business days for duration rules
     version: str | None = None
 
     def validate(self) -> list[str]:
@@ -65,7 +67,7 @@ class Cartridge:
             except ValueError as exc:
                 problems.append(f"event '{etype}': {exc}")
         for name, rule in self.rules.items():
-            problems += rule_problems(name, rule)
+            problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
         return problems
 
@@ -172,4 +174,5 @@ def load_cartridge(path: str | Path) -> Cartridge:
         policy=_policy_from(raw.get("memory")),
         registry=_load_registry(path),
         agents=parse_agents(raw.get("agents")),
+        calendar=Calendar.parse(raw.get("calendar")),
     )

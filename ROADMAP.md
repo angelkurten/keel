@@ -63,6 +63,18 @@ Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge 
 - [x] Go module `github.com/angelkurten/keel/sdk/go` tagged `sdk/go/v0.1.0`; PHP runtime split to github.com/angelkurten/keel-sdk-php for Composer
 - [ ] Packagist listing of `keel-context/sdk` from that repo (Angel's Packagist account)
 
+## 0.6 — what the kagent proof of concept asked for (2026-10-14)
+
+A second design customer: kagent, with 354 real Jira cards and 2831 events, wrote up what Keel answered well and what blocked production. Each item below was a row in that list.
+
+- [x] MySQL / MariaDB store with a table prefix for a shared database (0.5.0, prefix in 0.6.0)
+- [x] Rules that follow a relation (`via` with `any`/`all`), compose (`all`/`any`/`not`) and compare strings case-insensitively (`ci: true`)
+- [x] Duration operators on the open fact: `open_for_days`, `open_for_business_days` with a cartridge `calendar`
+- [x] Symmetric relations declared in the cartridge, shown once with direction `both`
+- [x] `context(depth=1)` with each neighbour's facts and evaluation; `related(as_of=)`
+- [x] Spec guidance: long text is a pointer, not a fact value
+- [ ] Semantic `search` (planned since 0.0.x; kagent has embeddings to plug in)
+
 ## Later — 0.4+ (2027)
 
 Goal: the hosted product and the cartridge catalog.
