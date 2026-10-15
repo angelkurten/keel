@@ -204,7 +204,7 @@ curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Kee
 `search(text, mode="semantic")` finds subjects by meaning ("worn-out tyre" finds a tire at 2.6 mm), filtered by tenant, the agent's read slice, `kind` and `rule`. Two adapters, both replaceable: where vectors live and where embeddings come from.
 
 ```bash
-uv sync --extra chroma        # only for the bundled Chroma adapter
+uv sync --extra chroma        # only for the bundled Chroma adapter; Python 3.11+ (chromadb needs onnxruntime)
 export KEEL_EMBEDDINGS_BASE_URL=https://api.openai.com/v1 KEEL_EMBEDDINGS_MODEL=text-embedding-3-small KEEL_EMBEDDINGS_API_KEY=...
 uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db --index chroma:///var/keel/vectors   # cron it: incremental
 uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
