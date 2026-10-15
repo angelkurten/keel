@@ -17,7 +17,17 @@ from keel.tools import Tools
 
 app = typer.Typer(help="Keel: a context layer for AI agents in vertical SaaS.", no_args_is_help=True)
 
-DB = typer.Option(None, "--db", help="SQLite file for a durable graph. Without it the graph lives in memory and ends with the command.")
+DB = typer.Option(None, "--db", help="A durable graph: a SQLite file, or mysql://user:pass@host:3306/db (uv sync --extra mysql). Without it the graph lives in memory and ends with the command.")
+
+
+def _store(db: str | None):
+    if not db:
+        return MemoryStore()
+    if db.startswith(("mysql://", "mariadb://")):
+        from keel.store.mysql import MysqlStore
+
+        return MysqlStore.from_url(db)
+    return SqliteStore(db)
 AGENT = typer.Option(None, "--agent", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
 
 
@@ -139,16 +149,16 @@ def sdk(
     typer.echo(f"wrote {out}")
 
 
-def _run(cartridge: Path, events: Path | None, strict: bool = False, db: Path | None = None):
+def _run(cartridge: Path, events: Path | None, strict: bool = False, db: str | None = None):
     c = load_cartridge(cartridge)
-    store = SqliteStore(db) if db else MemoryStore()
+    store = _store(db)
     ing = Ingestor(c, store)
     report = ing.ingest(JsonlAdapter(events), strict=strict) if events else IngestReport()
     return c, store, ing, report
 
 
 @app.command()
-def ingest(cartridge: Path, events: Path, strict: bool = False, db: Path | None = DB):
+def ingest(cartridge: Path, events: Path, strict: bool = False, db: str | None = DB):
     """Ingest a .jsonl event stream into the graph (in memory, or the --db file) and report."""
     _, _, _, report = _run(cartridge, events, strict, db)
     typer.echo(f"processed={report.processed} duplicates={report.duplicates} unhandled={len(report.unhandled)} errors={len(report.errors)}")
@@ -157,7 +167,7 @@ def ingest(cartridge: Path, events: Path, strict: bool = False, db: Path | None 
 
 
 @app.command()
-def replay(cartridge: Path, events: Path, tenant: str, db: Path | None = DB):
+def replay(cartridge: Path, events: Path, tenant: str, db: str | None = DB):
     """Rebuild one tenant's subgraph from the event log (recovery path). With --db, the file is wiped for that tenant first."""
     _, _, ing, _ = _run(cartridge, None, db=db)
     report = ing.replay(tenant, events=JsonlAdapter(events))
@@ -165,16 +175,16 @@ def replay(cartridge: Path, events: Path, tenant: str, db: Path | None = DB):
 
 
 @app.command()
-def expire(tenant: str, db: Path = typer.Option(..., "--db", help="The durable graph to clean.")):
+def expire(tenant: str, db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL.")):
     """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
-    n = SqliteStore(db).expire(tenant)
+    n = _store(db).expire(tenant)
     typer.echo(f"expired tenant={tenant} dropped={n}")
 
 
 @app.command()
 def export(
     tenant: str,
-    db: Path = typer.Option(..., "--db", help="The durable graph to export from."),
+    db: str = typer.Option(..., "--db", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
     out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
 ):
     """Audit trail for one tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what."""
@@ -182,7 +192,7 @@ def export(
 
     from keel.tools import _ser
 
-    lines = (json.dumps({"record": type(o).__name__.lower(), **_ser(asdict(o))}, ensure_ascii=False) for o in SqliteStore(db).dump(tenant))
+    lines = (json.dumps({"record": type(o).__name__.lower(), **_ser(asdict(o))}, ensure_ascii=False) for o in _store(db).dump(tenant))
     if out:
         n = 0
         with out.open("w", encoding="utf-8") as fh:
@@ -208,7 +218,7 @@ def serve(
     cartridge: Path,
     tenant: str | None = typer.Option(None, help="The end-customer this server is bound to. Required with stdio; with http it also enables /mcp."),
     events: Path | None = None,
-    db: Path | None = DB,
+    db: str | None = DB,
     agent: str | None = AGENT,
     transport: str = typer.Option("stdio", help="stdio: MCP for one tenant. http: the /v1 JSON API for any tenant (X-Keel-Tenant), plus /mcp when --tenant is given."),
     host: str = typer.Option("127.0.0.1", help="http only."),
@@ -217,7 +227,7 @@ def serve(
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
-    store = SqliteStore(db) if db else MemoryStore()
+    store = _store(db)
     if events:
         Ingestor(c, store).ingest(JsonlAdapter(events))
     if transport == "stdio":

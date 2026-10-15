@@ -10,7 +10,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: 0.4.1, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store or the SQLite store (`--db keel.db`, stdlib, no server to run).
+> Status: 0.5.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 

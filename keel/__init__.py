@@ -10,6 +10,7 @@ from keel.handlers import HandlerRegistry
 from keel.ingest import Ingestor
 from keel.scopes import Scope
 from keel.store.memory import MemoryStore
+from keel.store.mysql import MysqlStore
 from keel.store.sqlite import SqliteStore
 from keel.tools import Tools
 
@@ -19,10 +20,11 @@ __all__ = [
     "HandlerRegistry",
     "Ingestor",
     "MemoryStore",
+    "MysqlStore",
     "Scope",
     "SqliteStore",
     "Tools",
     "load_cartridge",
 ]
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"

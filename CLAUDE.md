@@ -24,7 +24,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Event envelope (keel/envelope.py)        tenant, type, subject, occurred_at, recorded_at, source, payload
    -> Ingestor (keel/ingest.py)                 reads an adapter, dispatches by event.type
    -> HandlerRegistry (keel/handlers.py)        cartridge handlers map payload -> store primitives
-   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory or sqlite)
+   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory, sqlite or mysql: dialects of sql.py)
    -> Tools (keel/tools.py)                     context / history / search / annotate / related; bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers

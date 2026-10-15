@@ -30,6 +30,24 @@ jobs:
           done
       - run: uv run python examples/agent_minimal.py
 
+  store-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: keel
+          MYSQL_DATABASE: keel
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pkeel --silent"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev --extra mysql
+      - run: KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3306/keel uv run pytest -q tests/test_store.py
+
   sdk-typescript:
     runs-on: ubuntu-latest
     steps:

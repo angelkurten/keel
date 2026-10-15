@@ -868,7 +868,7 @@ wheels = [
 
 [[package]]
 name = "keel-context"
-version = "0.4.1"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
@@ -903,6 +903,9 @@ kafka = [
 mcp = [
     { name = "mcp" },
 ]
+mysql = [
+    { name = "pymysql" },
+]
 postgres = [
     { name = "psycopg", extra = ["binary"] },
 ]
@@ -930,6 +933,7 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.6" },
+    { name = "pymysql", marker = "extra == 'mysql'", specifier = ">=1.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
@@ -938,7 +942,7 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.27" },
     { name = "uvicorn", marker = "extra == 'webhook'", specifier = ">=0.27" },
 ]
-provides-extras = ["mcp", "postgres", "webhook", "http", "kafka", "sqs", "docs", "graphiti", "dev"]
+provides-extras = ["mcp", "postgres", "webhook", "http", "kafka", "sqs", "mysql", "docs", "graphiti", "dev"]
 
 [[package]]
 name = "markdown"
@@ -1892,6 +1896,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9a/0a/d8c8535346f63ff85c8743383438a74b5c0e3394d90e898b2cd1a2fac705/pymdown_extensions-12.2.tar.gz", hash = "sha256:02da896c362b548d85123e7a377a40024ea6ea938b4e45ca064e408afd994b64", size = 870226, upload-time = "2026-10-10T13:01:20.494Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/a5/30b1a3d82219cbe5e6661cd7053791dc3a3743547ebf31f3366429d84516/pymdown_extensions-12.2-py3-none-any.whl", hash = "sha256:caea66e916b4cfe987b5dabb0a78558e3506988f6353812b0b0288be8f976c16", size = 277518, upload-time = "2026-10-10T13:01:18.601Z" },
+]
+
+[[package]]
+name = "pymysql"
+version = "1.2.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/d4/c15b459e25a23767d2f4065ef40968920320f04e302889574310c21c96a3/pymysql-1.2.3.tar.gz", hash = "sha256:d5b288529782e536ae171866df3ca9dc4f6cbfb3cc2f18e6f837fbb90dbc262b", size = 50629, upload-time = "2026-09-17T12:22:49.146Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/4b/0a906d8184f011ff8dbd4722743783867589b33269d2c5fff238d636fdcb/pymysql-1.2.3-py3-none-any.whl", hash = "sha256:14f1c68e2ed859243ae5ca41ffbe677027fc46bc136a9f0be8a4e928e5e7415a", size = 46740, upload-time = "2026-09-17T12:22:47.826Z" },
 ]
 
 [[package]]

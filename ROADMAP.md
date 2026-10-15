@@ -31,6 +31,7 @@ Exit: the post is published, the demo runs, and the fleet slice runs against a r
 Goal: durable, replayable, and used by two SaaS products that are not ours.
 
 - [x] Durable store: SQLite (`keel/store/sqlite.py`, stdlib, same filters as the reference store, `--db` in the CLI). Graphiti stays a candidate for graph-native queries once a pilot needs them
+- [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
 - [ ] Consolidation: summarize old episodic facts into durable ones (design open; see CLAUDE.md)

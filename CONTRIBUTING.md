@@ -46,6 +46,16 @@ KEEL_PG_DSN=postgresql://postgres:keel@127.0.0.1:5435/postgres uv run --extra po
 docker rm -f keel-pg
 ```
 
+## Against MySQL
+
+The store conformance suite runs on MySQL too (CI does it with a service container). Locally:
+
+```bash
+docker run -d --rm --name keel-mysql -e MYSQL_ROOT_PASSWORD=keel -e MYSQL_DATABASE=keel -p 127.0.0.1:3307:3306 mysql:8.4
+KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3307/keel uv run --extra mysql pytest -q tests/test_store.py
+docker rm -f keel-mysql
+```
+
 ## Your own store
 
 The core talks to a `Store` protocol (`keel/store/base.py`); `MemoryStore` is the reference and `SqliteStore` the default durable one. A third store (Postgres, Graphiti, anything) is a separate package, never a core change. Run the conformance suite against it:

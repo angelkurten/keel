@@ -29,14 +29,22 @@ def _strip(o):  # recorded_at and as_of are transaction time: they differ betwee
 
 
 EXTERNAL = os.environ.get("KEEL_STORE")  # "pkg.module:factory"
+MYSQL = os.environ.get("KEEL_MYSQL_URL")  # mysql://root:keel@127.0.0.1:3306/keel, see CONTRIBUTING
 
 
-@pytest.fixture(params=["memory", "sqlite"] + (["external"] if EXTERNAL else []))
+@pytest.fixture(params=["memory", "sqlite"] + (["mysql"] if MYSQL else []) + (["external"] if EXTERNAL else []))
 def store(request, tmp_path):
     if request.param == "memory":
         return MemoryStore()
     if request.param == "sqlite":
         return SqliteStore(tmp_path / "keel.db")
+    if request.param == "mysql":
+        from keel.store.mysql import MysqlStore
+
+        s = MysqlStore.from_url(MYSQL)
+        for table in ("entities", "relations", "facts", "ingested"):
+            s._exec(f"DELETE FROM {table}")  # a clean database per test
+        return s
     module, _, factory = EXTERNAL.partition(":")
     return getattr(importlib.import_module(module), factory)()
 
