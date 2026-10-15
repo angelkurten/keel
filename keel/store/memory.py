@@ -91,10 +91,14 @@ def search_in(entities: Iterable[Entity], facts: Iterable[Fact], text: str) -> l
 
 
 class MemoryStore:
+    """Indexed by subject: every read a handler makes is a dict lookup, not a scan of the tenant."""
+
     def __init__(self) -> None:
         self._entities: dict[str, dict[str, Entity]] = defaultdict(dict)  # tenant -> key -> entity
-        self._relations: dict[str, list[Relation]] = defaultdict(list)
-        self._facts: dict[str, list[Fact]] = defaultdict(list)
+        self._rels: dict[str, dict[str, list[Relation]]] = defaultdict(lambda: defaultdict(list))  # tenant -> key -> touching
+        self._all_rels: dict[str, list[Relation]] = defaultdict(list)  # tenant -> insertion order, for dump
+        self._facts: dict[str, dict[str, list[Fact]]] = defaultdict(lambda: defaultdict(list))  # tenant -> subject -> facts
+        self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
         self._tx: list[tuple[str, str]] | None = None
 
@@ -113,15 +117,18 @@ class MemoryStore:
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation:
-        for r in self._relations[tenant]:
+        for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 return r  # already open; idempotent
         r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
-        self._relations[tenant].append(r)
+        self._rels[tenant][src].append(r)
+        if dst != src:
+            self._rels[tenant][dst].append(r)
+        self._all_rels[tenant].append(r)
         return r
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
-        for r in self._relations[tenant]:
+        for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 r.valid_to = valid_to
 
@@ -129,15 +136,16 @@ class MemoryStore:
         # the old value keeps its history, it is never overwritten; and the new fact takes its
         # place by valid_from even when it arrives late (see place_fact)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        place_fact(f, [x for x in self._facts[tenant] if x.subject == subject and x.predicate == predicate])
-        self._facts[tenant].append(f)
+        place_fact(f, [x for x in self._facts[tenant][subject] if x.predicate == predicate])
+        self._facts[tenant][subject].append(f)
+        self._all_facts[tenant].append(f)
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone
-        for f in self._facts[tenant]:
-            if f.subject == subject and f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
+        for f in self._facts[tenant][subject]:
+            if f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
                 f.valid_to = valid_to
 
     # ---- reads -------------------------------------------------------------------
@@ -153,13 +161,13 @@ class MemoryStore:
         since: datetime | None = None,
         until: datetime | None = None,
     ) -> list[Fact]:
-        return filter_facts((f for f in self._facts[tenant] if f.subject == subject), at, since, until)
+        return filter_facts(self._facts[tenant].get(subject, ()), at, since, until)
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
-        return filter_relations((r for r in self._relations[tenant] if r.src == key or r.dst == key), rel, at)
+        return filter_relations(self._rels[tenant].get(key, ()), rel, at)
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]:
-        return search_in(self._entities[tenant].values(), self._facts[tenant], text)
+        return search_in(self._entities[tenant].values(), self._all_facts[tenant], text)
 
     # ---- ingest bookkeeping -----------------------------------------------------------
 
@@ -196,19 +204,19 @@ class MemoryStore:
     def expire(self, tenant: str, now: datetime | None = None) -> int:
         """Drop expired memory. Called by the consolidation job; never by handlers."""
         now = now or utcnow()
-        before = len(self._facts[tenant])
-        self._facts[tenant] = [f for f in self._facts[tenant] if f.expires_at is None or f.expires_at > now]
-        return before - len(self._facts[tenant])
+        before = len(self._all_facts[tenant])
+        self._all_facts[tenant] = [f for f in self._all_facts[tenant] if f.expires_at is None or f.expires_at > now]
+        for subject, facts in self._facts[tenant].items():
+            self._facts[tenant][subject] = [f for f in facts if f.expires_at is None or f.expires_at > now]
+        return before - len(self._all_facts[tenant])
 
     def dump(self, tenant: str) -> Iterator[Entity | Relation | Fact]:
         """Everything about one tenant, closed facts included: the audit trail."""
         yield from self._entities[tenant].values()
-        yield from self._relations[tenant]
-        yield from self._facts[tenant]
+        yield from self._all_rels[tenant]
+        yield from self._all_facts[tenant]
 
     def reset(self, tenant: str) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
-        self._entities.pop(tenant, None)
-        self._relations.pop(tenant, None)
-        self._facts.pop(tenant, None)
-        self._seen.pop(tenant, None)
+        for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen):
+            d.pop(tenant, None)
