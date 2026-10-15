@@ -18,7 +18,42 @@ from keel.tools import Tools
 
 app = typer.Typer(help="Keel: a context layer for AI agents in vertical SaaS.", no_args_is_help=True)
 
-DB = typer.Option(None, "--db", help="A durable graph: a SQLite file, or mysql://user:pass@host:3306/db (uv sync --extra mysql). Without it the graph lives in memory and ends with the command.")
+
+def load_env_file(path: Path) -> list[str]:
+    """KEY=VALUE lines into the environment, never over a variable already set (the real environment
+    wins). Blank lines and # comments are skipped; `export ` and matching quotes are accepted; no
+    interpolation. Returns the keys it set."""
+    loaded = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = line.removeprefix("export ").lstrip()
+        key, sep, value = line.partition("=")
+        key, value = key.strip(), value.strip()
+        if not sep or not key or not key.replace("_", "").isalnum():
+            continue
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        else:
+            value = value.split(" #", 1)[0].rstrip()  # an inline comment after an unquoted value
+        if key not in os.environ:
+            os.environ[key] = value
+            loaded.append(key)
+    return loaded
+
+
+@app.callback()
+def _config(
+    env_file: Path = typer.Option(Path(".env"), "--env-file", envvar="KEEL_ENV_FILE", help="Configuration as KEY=VALUE lines (KEEL_SECRET, KEEL_DB, KEEL_EMBEDDINGS_*...). Variables already set win."),
+) -> None:
+    """Keel: a context layer for AI agents in vertical SaaS."""
+    if env_file.is_file():
+        load_env_file(env_file)
+    elif env_file != Path(".env"):  # the default is optional; a file you named is not
+        raise typer.BadParameter(f"{env_file} does not exist", param_hint="--env-file")
+
+DB = typer.Option(None, "--db", envvar="KEEL_DB", help="A durable graph: a SQLite file, or mysql://user:pass@host:3306/db (uv sync --extra mysql). Without it the graph lives in memory and ends with the command.")
 
 
 def _store(db: str | None):
@@ -29,7 +64,7 @@ def _store(db: str | None):
 
         return MysqlStore.from_url(db)
     return SqliteStore(db)
-AGENT = typer.Option(None, "--agent", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
+AGENT = typer.Option(None, "--agent", envvar="KEEL_AGENT", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
 
 
 def _tools(c, store, tenant: str, agent: str | None, **semantic: Any) -> Tools:
@@ -242,8 +277,8 @@ def index_cmd(
     cartridge: Path,
     tenant: str = typer.Option(..., help="The end-customer to index."),
     db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
-    index: str = typer.Option(..., "--index", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
-    embedder: str = typer.Option("openai", "--embedder", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
+    index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
+    embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
     full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),
     cursor: Path | None = typer.Option(None, "--cursor", help="Where the watermark of the last run is kept (default .keel/index-<tenant>.cursor)."),
 ):
@@ -269,6 +304,17 @@ def context(cartridge: Path, events: Path, subject: str, tenant: str | None = No
     typer.echo(json.dumps(_tools(c, store, tenant, agent).context(subject), indent=2, ensure_ascii=False))
 
 
+def _loopback(host: str) -> bool:
+    import ipaddress
+
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False  # a hostname: assume it is reachable
+
+
 @app.command()
 def serve(
     cartridge: Path,
@@ -280,8 +326,9 @@ def serve(
     host: str = typer.Option("127.0.0.1", help="http only."),
     port: int = typer.Option(8000, help="http only."),
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
-    index: str | None = typer.Option(None, "--index", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
-    embedder: str = typer.Option("openai", "--embedder", help="With --index: the embedder spec."),
+    allow_open: bool = typer.Option(False, "--allow-open", help="http only: serve without a secret on a non-loopback host (behind your own auth proxy)."),
+    index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
+    embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="With --index: the embedder spec."),
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
@@ -303,15 +350,20 @@ def serve(
         return
     if transport != "http":
         raise typer.BadParameter("stdio or http", param_hint="--transport")
+    secret = os.environ.get(secret_env)
+    if not secret and not _loopback(host) and not allow_open:
+        raise typer.BadParameter(
+            f"{secret_env} is unset and {host} is reachable from the network: set the secret, bind 127.0.0.1, "
+            "or pass --allow-open if your own proxy authenticates", param_hint="--host",
+        )
     try:
         import uvicorn
     except ImportError as exc:
         raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
     from keel.http import build_http_app
 
-    secret = os.environ.get(secret_env)
     if not secret:
-        typer.echo(f"warning: {secret_env} is unset, the API is open; keep it on localhost", err=True)
+        typer.echo(f"warning: {secret_env} is unset, the API is open on {host}", err=True)
     if tenant:
         _tools(c, store, tenant, agent)  # fail now, not on the first request, if the agent is not declared
     uvicorn.run(build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, **semantic), host=host, port=port)

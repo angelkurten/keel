@@ -101,10 +101,11 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False))
     @guarded
     def annotate(
-        subject: str, predicate: str, value: str, scope: str = "task", evidence: str | None = None, by: str | None = None,
+        # int stays apart from float so pydantic keeps 3 as 3, not 3.0
+        subject: str, predicate: str, value: str | int | float | bool | list[Any] | dict[str, Any], scope: str = "task", evidence: str | None = None, by: str | None = None,  # noqa: PYI041
         task: str | None = None, key: str | None = None, status: str | None = None, ctx: Context | None = None,
     ) -> dict[str, Any]:
-        """Write what you learned. tenant/global scopes require evidence. task ties it to one job; key makes a retried write return the first one. status="proposed" proposes it for a person or authorized agent to accept."""
+        """Write what you learned; value is any JSON (text, number, boolean, list or object). tenant/global scopes require evidence. task ties it to one job; key makes a retried write return the first one. status="proposed" proposes it for a person or authorized agent to accept."""
         tools.trace = _trace(ctx)
         return tools.annotate(subject, predicate, value, scope, evidence, by, task, key, status)
 

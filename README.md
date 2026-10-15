@@ -10,7 +10,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: 0.15.3, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
+> Status: 0.16.0, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -57,7 +57,7 @@ uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
 uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 ```
 
-Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes).
+Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes). Settings (database, secret, embeddings keys) go in a `.env`: copy [`.env.example`](.env.example) ([reference](docs/connect.md#configuration)).
 
 In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php cartridges/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
 
@@ -118,7 +118,7 @@ The table shape and the envelope fields are in `keel/adapters/postgres.py` and `
 
 Design rules the core enforces:
 
-- **Events are the truth.** An append-only log; the graph is derived and can be replayed.
+- **Events are the truth.** An append-only log; the graph is derived and can be replayed. What agents and people wrote is kept across a replay.
 - **Pointers, not copies.** The graph holds references to your rows, the semantics, and earned memory. Never a copy of your tables.
 - **Explicit time.** Facts close, they are not overwritten.
 - **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Nothing is promoted to a wider scope by accident. Agent memory is read only by the agent that wrote it; task memory tied to a task id only by calls that pass that task (`context(task=)`, `history(task=)`); global memory lives in a reserved partition every tenant reads and no event writes.

@@ -18,6 +18,15 @@ from keel.handlers import UnhandledEvent
 from keel.store.base import Store
 
 
+def _accepts(fn: object, name: str) -> bool:
+    import inspect
+
+    try:
+        return name in inspect.signature(fn).parameters  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+
+
 class Adapter(Iterable[Event]):
     """Anything that yields Events. See keel.adapters for Postgres, webhook, Kafka."""
 
@@ -92,14 +101,17 @@ class Ingestor:
         return report
 
     def replay(self, tenant: str, events: Iterable[Event] | None = None) -> IngestReport:
-        """Recovery path: wipe the tenant's subgraph and rebuild it from the log.
+        """Recovery path: wipe the tenant's event-derived subgraph and rebuild it from the log. What
+        agents and people wrote through `annotate` (and consolidations of it) is kept and the events
+        land around it, as they did when they first arrived.
 
         `events` is the external log (the bus, the outbox table, a .jsonl file): the truth a
         deployment replays from. Without it, the in-memory log of this process is used.
         """
         reset = getattr(self.store, "reset", None)
         if reset:
-            reset(tenant)
+            # annotations are earned memory, not derived from events: the log cannot rebuild them, so they stay
+            reset(tenant, keep_annotations=True) if _accepts(reset, "keep_annotations") else reset(tenant)
         if events is None:
             events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
         return self.ingest((e for e in events if e.tenant == tenant), batch=500)

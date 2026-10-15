@@ -78,7 +78,11 @@ class KafkaAdapter(BusAdapter):
         self.poll_timeout = poll_timeout
 
     @classmethod
-    def connect(cls, bootstrap_servers: str, topic: str, group_id: str = "keel", **config: Any) -> KafkaAdapter:  # pragma: no cover - needs a broker
+    def connect(
+        cls, bootstrap_servers: str, topic: str, group_id: str = "keel", *, poll_timeout: float = 1.0,
+        dead_letter: DeadLetter | None = None, **config: Any,
+    ) -> KafkaAdapter:
+        """`config` is passed to the confluent-kafka Consumer (librdkafka keys, e.g. `**{"security.protocol": "SASL_SSL"}`)."""
         try:
             from confluent_kafka import Consumer
         except ImportError as exc:
@@ -87,7 +91,7 @@ class KafkaAdapter(BusAdapter):
             {"bootstrap.servers": bootstrap_servers, "group.id": group_id, "enable.auto.commit": False, "auto.offset.reset": "earliest", **config}
         )
         consumer.subscribe([topic])
-        return cls(consumer)
+        return cls(consumer, poll_timeout=poll_timeout, dead_letter=dead_letter)
 
     def _fetch(self) -> list[tuple[bytes | str, Ack]]:
         msg = self.consumer.poll(self.poll_timeout)
@@ -112,12 +116,16 @@ class SqsAdapter(BusAdapter):
         self.wait_seconds = wait_seconds
 
     @classmethod
-    def connect(cls, queue_url: str, **boto3_kwargs: Any) -> SqsAdapter:  # pragma: no cover - needs AWS
+    def connect(
+        cls, queue_url: str, *, batch_size: int = 10, wait_seconds: int = 10, dead_letter: DeadLetter | None = None,
+        **boto3_kwargs: Any,
+    ) -> SqsAdapter:
+        """`boto3_kwargs` go to `boto3.client("sqs", ...)` (region_name, endpoint_url, credentials)."""
         try:
             import boto3
         except ImportError as exc:
             raise SystemExit("SqsAdapter needs the optional dependency: uv sync --extra sqs") from exc
-        return cls(boto3.client("sqs", **boto3_kwargs), queue_url)
+        return cls(boto3.client("sqs", **boto3_kwargs), queue_url, batch_size=batch_size, wait_seconds=wait_seconds, dead_letter=dead_letter)
 
     def _fetch(self) -> list[tuple[bytes | str, Ack]]:
         res = self.client.receive_message(

@@ -81,9 +81,14 @@ def _compact_facts(facts: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def _concise(ctx: dict[str, Any]) -> dict[str, Any]:
+def _direction(rel: str, src: str, subject: str, symmetric: set[str]) -> str:
+    """One answer everywhere: `both` for a symmetric relation, else relative to the subject."""
+    return "both" if rel in symmetric else ("out" if src == subject else "in")
+
+
+def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str, Any]:
     """The same answer in about a third of the tokens: what an LLM needs to act, ids kept."""
-    rel = lambda r, s: {"relation": r["rel"], "direction": "out" if r["src"] == s else "in", "subject": r["dst"] if r["src"] == s else r["src"]}
+    rel = lambda r, s: {"relation": r["rel"], "direction": _direction(r["rel"], r["src"], s, symmetric), "subject": r["dst"] if r["src"] == s else r["src"]}
     out: dict[str, Any] = {
         "subject": ctx["subject"],
         "attrs": (ctx["entity"] or {}).get("attrs", {}),
@@ -297,7 +302,7 @@ class Tools:
                 neighbors.append(
                     {
                         "relation": r.rel,
-                        "direction": "both" if r.rel in self.symmetric else ("out" if r.src == subject else "in"),
+                        "direction": _direction(r.rel, r.src, subject, self.symmetric),
                         "subject": other,
                         "entity": self.store.entity(self.tenant, other),
                         "facts": graph.facts(other),
@@ -307,7 +312,7 @@ class Tools:
             out["neighbors"] = neighbors
             if len(rels) > NEIGHBOR_CAP:
                 out["neighbors_truncated"] = True
-        return _concise(_ser(out)) if detail == "concise" else _ser(out)
+        return _concise(_ser(out), self.symmetric) if detail == "concise" else _ser(out)
 
     def history(
         self,
@@ -586,7 +591,7 @@ class Tools:
         out = []
         for r in rels:
             other = r.dst if r.src == subject else r.src
-            direction = "both" if r.rel in self.symmetric else ("out" if r.src == subject else "in")
+            direction = _direction(r.rel, r.src, subject, self.symmetric)
             out.append({"relation": r.rel, "direction": direction, "subject": other, "since": r.valid_from.isoformat()})
         return out
 

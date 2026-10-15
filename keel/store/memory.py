@@ -47,6 +47,12 @@ def author(f: Fact) -> str | None:
     return f.corrected_by or f.source
 
 
+def is_annotation(f: Fact) -> bool:
+    """Memory written through the tools (annotate) or a job over it (consolidate): not derived from
+    events, so a replay keeps it instead of wiping it."""
+    return bool(f.source) and f.source.startswith(("annotate:", "consolidate:"))
+
+
 def in_scope(f: Fact, scope: Scope | str | None) -> bool:
     """close_fact's scope filter: None is every scope."""
     return scope is None or Scope(f.scope) == Scope(scope)
@@ -308,7 +314,14 @@ class MemoryStore:
         yield from self._all_rels[tenant]
         yield from self._all_facts[tenant]
 
-    def reset(self, tenant: str) -> None:
-        """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
+    def reset(self, tenant: str, keep_annotations: bool = False) -> None:
+        """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With
+        `keep_annotations`, what agents and people wrote (and consolidated) stays, closed history included."""
+        kept = [f for f in self._all_facts.get(tenant, []) if is_annotation(f)] if keep_annotations else []
         for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen, self._watermark):
             d.pop(tenant, None)
+        for f in kept:
+            self._facts[tenant][f.subject].append(f)
+            self._all_facts[tenant].append(f)
+            self._mark(tenant, f.recorded_at)
+            self._mark(tenant, f.closed_at)

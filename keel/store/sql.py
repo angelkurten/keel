@@ -435,10 +435,13 @@ class SqlStore:
         for row in self._rows("SELECT * FROM facts WHERE tenant = ? ORDER BY seq", (tenant,)):
             yield _fact(row)
 
-    def reset(self, tenant: str) -> None:
-        """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it."""
-        for table in ("entities", "relations", "facts", "ingested"):
+    def reset(self, tenant: str, keep_annotations: bool = False) -> None:
+        """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With
+        `keep_annotations`, what agents and people wrote (and consolidated) stays, closed history included."""
+        for table in ("entities", "relations", "ingested"):
             self._exec(f"DELETE FROM {table} WHERE tenant = ?", (tenant,))
+        keep = " AND (source IS NULL OR (source NOT LIKE ? AND source NOT LIKE ?))" if keep_annotations else ""
+        self._exec(f"DELETE FROM facts WHERE tenant = ?{keep}", (tenant, "annotate:%", "consolidate:%") if keep_annotations else (tenant,))
         if self._cache is not None:
             self._cache.clear()
 

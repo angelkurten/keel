@@ -747,3 +747,20 @@ def test_close_fact_scope_in_a_bulk_batch(store):
         store.close_fact(TENANT, "tire:T-9001", "depth_mm", valid_to=now)
     vals = sorted((Scope(f.scope).value, f.value) for f in store.facts(TENANT, "tire:T-9001", at=now) if f.predicate == "depth_mm")
     assert vals == [("agent", 1.0)]
+
+
+def test_replay_keeps_what_agents_and_people_wrote(store):
+    """Annotations are earned memory, not derived from events: replay rebuilds around them."""
+    c = load_cartridge(FLEET)
+    ing = Ingestor(c, store)
+    ing.ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT, agent="bot")
+    t.annotate("tire:T-9001", "assessment", "replace", task="run-1")
+    t.annotate("tire:T-9001", "scratch", "thinking", scope="agent")
+    t.annotate("tire:T-9001", "approved", "replace", scope="tenant", evidence="human ok")
+    t.annotate("tire:T-9001", "depth_mm", 2.4, scope="tenant", evidence="re-measured")  # a correction of an event fact
+    view = lambda: (_strip(t.context("tire:T-9001", task="run-1")), sorted((f["predicate"], str(f["value"]), f["valid_to"] is None) for f in t.history("tire:T-9001")))
+    before = view()
+    report = ing.replay(TENANT, events=JsonlAdapter(EVENTS))
+    assert report.processed > 0 and view() == before
+    assert [f["value"] for f in t.context("tire:T-9001")["facts"] if f["predicate"] == "depth_mm"] == [2.4]  # the correction still wins

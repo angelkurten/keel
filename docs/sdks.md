@@ -82,7 +82,7 @@ Every runtime takes the same connection options besides the base URL, tenant, se
 | Go `keel.Options` | `Traceparent` | `HTTPClient` (default `&http.Client{Timeout: 30 * time.Second}`), plus the `context.Context` of each call |
 | PHP `Keel\Sdk\Client` | `traceparent:` | `timeout:` seconds (30) |
 
-The generated Python `client()` and PHP `Keel::client()` take only base URL, tenant, secret and agent. For the other options, construct the runtime client yourself; the generated `emit` and `subjects` work with it unchanged:
+The generated Python `client()` and PHP `Keel::client()` take `timeout` and `traceparent` too (`m.client(url, tenant, secret=..., timeout=10, traceparent=tp)`, `Keel::client($url, $tenant, $secret, $agent, 10, $tp)`). The runtime client works the same, and the generated `emit` and `subjects` work with it unchanged:
 
 ```python
 from keel.client import Client

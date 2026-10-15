@@ -2,6 +2,22 @@
 
 Keel ingests envelopes, never raw rows. Every source produces the same shape, and the cartridge's handlers are the only code that reads a payload. Pick the source that matches where your events already are.
 
+## Configuration
+
+Every setting the CLI reads from the environment can live in a `.env` file: `keel` loads `./.env` when it exists, or the file named by `--env-file` (or `KEEL_ENV_FILE`). Variables already set in the environment win, so a deployment can override the file. `KEY=VALUE` lines, `#` comments, optional `export ` and quotes; no interpolation. Copy [`.env.example`](https://github.com/angelkurten/keel/blob/master/.env.example) and fill in what you use; keep `.env` out of git (it holds secrets).
+
+| Variable | Used by | What |
+| --- | --- | --- |
+| `KEEL_DB` | every command with `--db` | the durable graph: a SQLite file or `mysql://user:pass@host:3306/db` |
+| `KEEL_AGENT` | `serve`, `context`... (`--agent`) | the declared agent acting here |
+| `KEEL_SECRET` | `serve --transport http` | the shared bearer secret (`--secret-env` names another variable) |
+| `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
+| `KEEL_EMBEDDINGS_BASE_URL`, `_MODEL`, `_API_KEY`, `_QUERY_PREFIX`, `_DOCUMENT_PREFIX` | `--embedder openai` | any OpenAI-compatible `/v1/embeddings` endpoint |
+| `KEEL_RERANK_BASE_URL`, `_MODEL`, `_API_KEY` | `serve --reranker http\|llm` | the reranker endpoint |
+| `KEEL_SUMMARIZER_BASE_URL`, `_MODEL`, `_API_KEY` | `consolidate --summarizer llm` | the chat model that writes summaries |
+
+A flag on the command line beats both. The Python API reads nothing from `.env`: a program that embeds Keel passes its settings itself.
+
 ## The envelope
 
 One event, as the development adapter reads it from `examples/events/fleet.jsonl`:
@@ -133,7 +149,7 @@ ingestor.ingest(adapter)            # drain what is there now, then stop
 ingestor.ingest(adapter.follow())   # consume forever
 ```
 
-Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the handler ran, so a crash mid-event re-delivers it. A message that is not a valid envelope raises and stays on the bus; pass `dead_letter=lambda body, error: ...` to log it somewhere and move on. `KafkaAdapter.connect(..., **config)` merges extra keys into the confluent-kafka consumer config (dotted keys go through a dict: `**{"security.protocol": "SSL"}`); `SqsAdapter.connect(queue_url, **kwargs)` passes them to `boto3.client("sqs", ...)`. `connect` uses the defaults for the rest; to change them, or to pass `dead_letter`, build the adapter from your own client: `KafkaAdapter(consumer, poll_timeout=1.0, dead_letter=...)`, `SqsAdapter(client, queue_url, batch_size=10, wait_seconds=10, dead_letter=...)`. Both adapters only need two calls from their client (`poll`/`commit`, `receive_message`/`delete_message`), which is how the tests run them on fakes and how you would wrap another client.
+Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the handler ran, so a crash mid-event re-delivers it. A message that is not a valid envelope raises and stays on the bus; pass `dead_letter=lambda body, error: ...` to log it somewhere and move on. `KafkaAdapter.connect(..., **config)` merges extra keys into the confluent-kafka consumer config (dotted keys go through a dict: `**{"security.protocol": "SSL"}`); `SqsAdapter.connect(queue_url, **kwargs)` passes them to `boto3.client("sqs", ...)`. `connect` also takes the adapter's own options as keywords: `KafkaAdapter.connect(..., poll_timeout=1.0, dead_letter=...)`, `SqsAdapter.connect(queue_url, batch_size=10, wait_seconds=10, dead_letter=...)`; or build the adapter from your own client with the same keywords: `KafkaAdapter(consumer, ...)`, `SqsAdapter(client, queue_url, ...)`. Both adapters only need two calls from their client (`poll`/`commit`, `receive_message`/`delete_message`), which is how the tests run them on fakes and how you would wrap another client.
 
 ## Serve the tools over MCP
 
@@ -174,7 +190,7 @@ Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an 
     uv run keel replay cartridges/fleet examples/events/fleet.jsonl acme-logistics --db keel.db   # wipe one tenant, rebuild it from the log
     ```
 
-    The log is the truth and the file is derived: `replay` rebuilds one tenant from the external log (your outbox table, your bus, a `.jsonl`) and never from the file itself. The store is pluggable: `SqliteStore` is the default, and any store that passes `tests/test_store.py` (see [contributing](contributing.md)) can take its place.
+    The log is the truth and the file is derived: `replay` rebuilds one tenant from the external log (your outbox table, your bus, a `.jsonl`) and never from the file itself. What agents and people wrote through `annotate`, and consolidations of it, is not in the log, so `replay` keeps it and the events land around it. The store is pluggable: `SqliteStore` is the default, and any store that passes `tests/test_store.py` (see [contributing](contributing.md)) can take its place.
 
 ## Serve the tools over HTTP
 
@@ -184,7 +200,7 @@ For a backend, or for many tenants from one process, serve the same five operati
 KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
 ```
 
-The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server prints a warning and starts anyway with the API open to any caller, so keep that on localhost.
+The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
 
 | Call | Body (`?` optional, default in parentheses) | Returns |
 | --- | --- | --- |

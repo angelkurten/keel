@@ -110,6 +110,11 @@ def test_mcp_server_exposes_exactly_the_five_tools():
             tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
             res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "replace"}, meta={"traceparent": tp})
             assert json.loads(res.content[0].text)["trace"] == tp  # MCP carries W3C trace context in _meta
+            value = {"priority": "high", "reasons": ["tire_critical"], "depth_mm": 2.6}
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "triage", "value": value})
+            assert json.loads(res.content[0].text)["value"] == value  # any JSON, as over HTTP and in Python
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "depth_seen", "value": 2.6})
+            assert json.loads(res.content[0].text)["value"] == 2.6
 
     anyio.run(run)
 
@@ -263,3 +268,25 @@ def test_table_adapter_on_real_postgres(tmp_path):
     Ingestor(c, reference).ingest(JsonlAdapter(FLEET_EVENTS))
     for subject in ("unit:MXK-4821", "tire:T-9001", "ticket:TK-3608"):
         assert _shape(Tools(c, store, TENANT), subject) == _shape(Tools(c, reference, TENANT), subject)
+
+
+def test_bus_connect_passes_every_option(monkeypatch):
+    import types
+
+    from keel.adapters.bus import KafkaAdapter, SqsAdapter
+
+    class Consumer:
+        def __init__(self, conf):
+            self.conf = conf
+
+        def subscribe(self, topics):
+            self.topics = topics
+
+    monkeypatch.setitem(sys.modules, "confluent_kafka", types.SimpleNamespace(Consumer=Consumer))
+    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(client=lambda service, **kw: (service, kw)))
+    dl = lambda raw, exc: None
+    k = KafkaAdapter.connect("b:9092", "events", poll_timeout=0.2, dead_letter=dl, **{"security.protocol": "SASL_SSL"})
+    assert k.poll_timeout == 0.2 and k.dead_letter is dl and k.consumer.topics == ["events"]
+    assert k.consumer.conf["security.protocol"] == "SASL_SSL" and k.consumer.conf["enable.auto.commit"] is False
+    s = SqsAdapter.connect("https://q", batch_size=5, wait_seconds=1, dead_letter=dl, region_name="us-east-1")
+    assert (s.batch_size, s.wait_seconds, s.dead_letter, s.client) == (5, 1, dl, ("sqs", {"region_name": "us-east-1"}))

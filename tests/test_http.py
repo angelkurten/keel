@@ -124,3 +124,14 @@ def test_mcp_over_http_for_one_tenant():
         assert httpx.post(url, json={}).status_code == 401  # the secret guards /mcp too
     finally:
         server.should_exit = True
+
+
+def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
+    from typer.testing import CliRunner
+
+    from keel.cli import _loopback, app
+
+    monkeypatch.delenv("KEEL_SECRET", raising=False)
+    res = CliRunner().invoke(app, ["serve", "cartridges/fleet", "--transport", "http", "--host", "0.0.0.0"], env={"COLUMNS": "400"})
+    assert res.exit_code != 0 and "reachable from the network" in res.output
+    assert _loopback("127.0.0.1") and _loopback("::1") and _loopback("localhost") and not _loopback("0.0.0.0") and not _loopback("keel.internal")

@@ -16,7 +16,7 @@ Goal: a repo a stranger can run in ten minutes and a post that names the problem
 - [x] Docs: *Your first cartridge in 20 minutes*
 - [x] Docs site: MkDocs Material on GitHub Pages, built from the repo's markdown
 - [x] MCP server tested end to end with Claude via MCP (`tests/test_adapters.py` drives it with the MCP client; `claude -p --mcp-config` answered from the three tool calls)
-- [x] MCP server tested end to end with one non-Anthropic client: Codex CLI with `openai/gpt-5.2-codex`, seven tool calls, right answers (see [docs/connect.md](docs/connect.md))
+- [x] MCP server tested end to end with one non-Anthropic client: Codex CLI with `openai/gpt-5.2-codex`, seven tool calls, right answers (see [docs/connect.md](https://github.com/angelkurten/keel/blob/master/docs/connect.md))
 - [x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest
 - [x] Webhook adapter (FastAPI, optional extra)
 - [x] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates
@@ -34,6 +34,11 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
+- [x] `replay` keeps annotations and consolidations; the events land around them (0.16.0)
+- [x] Configuration in a `.env` file (`--env-file`, `KEEL_ENV_FILE`), and `KEEL_DB`, `KEEL_AGENT`, `KEEL_INDEX`, `KEEL_EMBEDDER` for the matching flags (0.16.0)
+- [x] `keel serve --transport http` refuses an open API on a non-loopback host unless `--allow-open` (0.16.0)
+- [x] Generated Python and PHP `client()` pass `timeout` and `traceparent`; Kafka and SQS `connect` take every adapter option; the unused `graphiti` extra is gone (0.16.0)
+- [x] MCP `annotate` takes any JSON `value`, and `detail="concise"` reports symmetric relations as `both` (0.16.0)
 - [x] A handler's `close_fact` closes tenant facts only; `scope=None` closes every scope (0.15.3)
 - [x] Scopes never close each other, and consolidation keeps agent memory private and uses world time (0.15.2; from the kagent PoC)
 - [x] Memory scopes enforced on read (0.15.0): agent memory reaches only its author, task memory only calls that pass its task, global memory every tenant from its own partition (`__global__`)
@@ -52,11 +57,11 @@ Pulled forward from Later on 2026-10-14 and shipped the same day, while the post
 
 - [x] Exportable audit trail per tenant: `keel export <tenant> --db` (entities, relations and facts with provenance, corrections, who annotated what)
 - [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
-- [x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in `Tools` (`agents:` in the cartridge, `--agent` on `serve`; [design note](docs/design/agent-registry.md), SPEC §6.1)
+- [x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in `Tools` (`agents:` in the cartridge, `--agent` on `serve`; [design note](https://github.com/angelkurten/keel/blob/master/docs/design/agent-registry.md), SPEC §6.1)
 
 ## 0.3 — SDKs generated from the cartridge (0.3.0 with TypeScript and 0.4.0 with Python, Go and PHP, both 2026-10-14)
 
-Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
+Decided 2026-10-14 ([design note](https://github.com/angelkurten/keel/blob/master/docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
 
 - [x] Payload notation as a JSON Schema subset (enums, nested objects, arrays) and `keel schema <cartridge>`
 - [x] HTTP transport: `/v1/*` JSON API with OpenAPI, tenant and agent per request, one process for many tenants; MCP over HTTP for one tenant (`--tenant`)
@@ -79,11 +84,11 @@ A second design customer: kagent, with 354 real Jira cards and 2831 events, wrot
 - [x] Second round (revalidated on the same 354 cards, 0 differences on the pause rules): `held_for_days` / `held_for_business_days`, the waiting clock that survives a change between waiting states; transactions per event or per batch in the SQL stores, for MySQL ingest speed
 - [x] Optional enums in the payload notation: `[new, done, null]` (third round of the kagent report, 0.8.1)
 - [x] Semantic `search` (0.11.0): `search(mode="semantic")` over pluggable `VectorIndex` and `Embedder` adapters (Chroma and any OpenAI-compatible embeddings bundled), built by `keel index` outside ingest
-- [x] Bulk ingest: set-based batch flush for the SQL stores ([design note](docs/design/bulk-ingest.md)); 101 000 events in 8.4 s on MySQL, a million in under a minute and a half, against 45 minutes before
+- [x] Bulk ingest: set-based batch flush for the SQL stores ([design note](https://github.com/angelkurten/keel/blob/master/docs/design/bulk-ingest.md)); 101 000 events in 8.4 s on MySQL, a million in under a minute and a half, against 45 minutes before
 
 ## 0.9 — what agentic workflows demand (0.9.0 shipped 2026-10-15)
 
-From a survey of the state of the art and a complex multi-agent flow run on Keel (`examples/workflow_fleet_ops.py`); the reasoning is in the [design note](docs/design/agentic-workflows.md). All inside the five tools.
+From a survey of the state of the art and a complex multi-agent flow run on Keel (`examples/workflow_fleet_ops.py`); the reasoning is in the [design note](https://github.com/angelkurten/keel/blob/master/docs/design/agentic-workflows.md). All inside the five tools.
 
 - [x] Transaction time: `context` / `history` with `as_known_at` (what the agent saw), with the close's own `recorded_at`
 - [x] Changes since a cursor: tenant-wide `history(changed_since=)` with annotations, and the watermark in every `context`
@@ -95,7 +100,7 @@ From a survey of the state of the art and a complex multi-agent flow run on Keel
 
 ## 0.12 — semantic search, from the evals (0.12.0 shipped 2026-10-15: MRR 0.82 to 0.95, 1.00 with a reranker)
 
-From research and a labeled eval bench run with real embeddings ([design note](docs/design/semantic-evals.md), `evals/semantic/`).
+From research and a labeled eval bench run with real embeddings ([design note](https://github.com/angelkurten/keel/blob/master/docs/design/semantic-evals.md), `evals/semantic/`).
 
 - [x] Exact-key shortcut in semantic search (id MRR 0.45 to 1.00)
 - [x] Hybrid with convex fusion and a lexical leg (overall MRR 0.82 to 0.93)

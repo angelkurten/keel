@@ -106,6 +106,8 @@ def test_symmetric_relations_show_once_in_both_directions():
     t = Tools(c, s, "acme-logistics")
     assert t.related("unit:A") == [{"relation": "pairs_with", "direction": "both", "subject": "unit:B", "since": T0.isoformat()}]
     assert t.related("unit:B")[0]["subject"] == "unit:A" and len(t.context("unit:A")["relations"]) == 1
+    assert t.context("unit:B", detail="concise")["relations"] == [{"relation": "pairs_with", "direction": "both", "subject": "unit:A"}]
+    assert t.context("unit:A", depth=1)["neighbors"][0]["direction"] == "both"
 
 
 def test_held_for_counts_across_consecutive_waiting_states():

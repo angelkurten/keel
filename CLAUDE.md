@@ -34,7 +34,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 
 ## Design rules (enforce these in review)
 
-1. **Events are the truth.** The log is append-only; the graph is derived and must be rebuildable with `Ingestor.replay(tenant)`. Any state that cannot be rebuilt from events is a bug.
+1. **Events are the truth.** The log is append-only; the graph is derived and must be rebuildable with `Ingestor.replay(tenant)`. Any state that cannot be rebuilt from events is a bug, with one exception: annotations (earned memory written through `annotate`, and consolidations of it) are not events, so replay keeps them and rebuilds around them.
 2. **Pointers, not copies.** An entity carries `ref` to the row in the system of record and the few attributes a tool needs to label it. If a PR copies a whole row or table into the graph, reject it.
 3. **Explicit time, bitemporal.** `valid_from`/`valid_to` = world time. `recorded_at` = when Keel learned it; `closed_at` = when Keel learned it ended (both feed `as_known_at`). Facts close; they are never mutated or deleted by handlers. "The tire was critical on Oct 3" and "the tire is critical" are different queries and both must work.
 4. **Provenance on every fact.** `source`, `evidence` (event id, row ref, photo), and `corrected_by` when a human or agent corrected it.

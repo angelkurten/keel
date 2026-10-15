@@ -1,6 +1,6 @@
 # Keel specification
 
-Version 0.15 · 2026-10-15 · Status: normative for the 0.15.x line; anything marked *planned* is not implemented yet.
+Version 0.16 · 2026-10-15 · Status: normative for the 0.16.x line; anything marked *planned* is not implemented yet.
 
 This document is the contract. `CLAUDE.md` says how to work on the code; `README.md` says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.
 
@@ -170,7 +170,7 @@ The ingestor reads envelopes from an adapter and dispatches each to the handlers
 - The event log is the source of truth. Keel's own copy of the log (`Ingestor.log`) is a development convenience; in production the bus holds it.
 - Dispatch is **deterministic**: no network, no LLM, no randomness in the ingest path. Replaying the same log in the same order MUST produce an identical graph.
 - An event with no handler is reported as unhandled; in strict mode it raises. A handler exception is reported with the event id and does not stop the stream, unless strict.
-- `replay(tenant, events=None)` wipes that tenant's subgraph and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log. It is the recovery path, not the update path.
+- `replay(tenant, events=None)` wipes that tenant's event-derived subgraph (entities, relations, facts from handlers, dedupe marks) and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log. It keeps annotations (facts whose `source` is `annotate:...` or `consolidate:...`, closed history included): they are earned memory, not in the log, and the events land around them as they did the first time (a store's `reset(tenant, keep_annotations=True)`). It is the recovery path, not the update path.
 - Ordering: adapters SHOULD deliver events in `occurred_at` order per subject, but the result MUST NOT depend on it for facts: `open_fact` places a fact in its predicate's history by `valid_from`, closing the fact current at that instant and closing itself at the next fact's start, so a late event lands in its slot instead of closing a newer fact backwards. Relations (`link`/`unlink`) still assume order per subject.
 - Transactions: when the store has them (the SQL stores do), each event is applied in one, so the handler's primitives and the dedupe mark land together (`remember` runs first, in the same transaction, and is one statement); a bulk caller passes `batch=` to commit every n events (the CLI and the HTTP batch do), and a chunk that raises in strict mode is rolled back whole and redelivered whole. A streaming adapter is never buffered.
 - Batches: a store MAY offer `bulk(events)`, a context manager the Ingestor uses for chunks larger than one event. The SQL stores read the state of the chunk's subjects in a few statements, serve the handlers from memory, and write back in a few multi-row statements; the result is the same as event by event (the conformance suite checks it on every store, forwards and shuffled), about a thousand times fewer round trips.
@@ -377,7 +377,7 @@ A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge
 
 ### 7.1 `context(subject, as_of=None, depth=0, as_known_at=None, task=None, detail="full") -> object`
 
-`facts` holds accepted facts only. `proposals` (present when any) holds the open proposals; `conflicts` (present when any) maps each predicate that has more than one open value to those values and their authors, which happens for `multi` predicates (§5.1) written by several agents. `detail="concise"` returns the same answer for a prompt in about a third of the tokens: `attrs`, `facts` as `{predicate: value}` (a list of `{value, by}` for a multi-valued one), `relations` as `{relation, direction, subject}`, `evaluation`, `as_of`, `watermark`, proposals and conflicts, and compact neighbours; rule definitions are left out (their names are in `evaluation`).
+`facts` holds accepted facts only. `proposals` (present when any) holds the open proposals; `conflicts` (present when any) maps each predicate that has more than one open value to those values and their authors, which happens for `multi` predicates (§5.1) written by several agents. `detail="concise"` returns the same answer for a prompt in about a third of the tokens: `attrs`, `facts` as `{predicate: value}` (a list of `{value, by}` for a multi-valued one), `relations` as `{relation, direction, subject}` (direction `both` for a symmetric relation, as everywhere else), `evaluation`, `as_of`, `watermark`, proposals and conflicts, and compact neighbours; rule definitions are left out (their names are in `evaluation`).
 
 What is true about a subject now, or at `as_of` (world time). With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
 
@@ -421,7 +421,7 @@ Open relations at now or at `as_of`, optionally filtered by type, with direction
 
 ### 7.7 Transport
 
-The tools are plain functions first. `keel serve` exposes the same five over MCP (stdio, or streamable HTTP at `/mcp` with `--transport http --tenant`) and as a JSON API (`POST /v1/<tool>`, one process for many tenants, tenant and agent from `X-Keel-Tenant` and `X-Keel-Agent` behind a shared bearer secret). The names and semantics MUST NOT change per transport.
+The tools are plain functions first. `keel serve` exposes the same five over MCP (stdio, or streamable HTTP at `/mcp` with `--transport http --tenant`) and as a JSON API (`POST /v1/<tool>`, one process for many tenants, tenant and agent from `X-Keel-Tenant` and `X-Keel-Agent` behind a shared bearer secret). The names and semantics MUST NOT change per transport: `annotate`'s `value` is any JSON over MCP, HTTP and in Python alike.
 
 ---
 

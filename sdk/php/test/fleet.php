@@ -53,6 +53,8 @@ ok(count($keel->history(null, ['changed_since' => '2000-01-01T00:00:00Z', 'task'
 ok($keel->annotate(Subjects::tire('T-9001'), 'swap', true, 'task', null, null, null, null, 'proposed')['status'] === 'proposed', 'proposal');
 ok($keel->context(Subjects::tire('T-9001'), null, 0, null, null, 'concise')['facts']['depth_mm'] === 2.6, 'concise');
 ok(Keel::client($base, 'someone-else', $secret)->context('tire:T-9001')['entity'] === null, 'tenant isolation');
+$tp = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+ok(Keel::client($base, $tenant, $secret, null, 5, $tp)->annotate('tire:T-9001', 'traced', 'yes')['trace'] === $tp, 'client() passes traceparent');
 try {
     Keel::client($base, $tenant, 'wrong')->search('x');
     ok(false, 'expected 401');

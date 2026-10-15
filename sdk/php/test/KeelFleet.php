@@ -384,8 +384,8 @@ final class Emit
 final class Keel
 {
     /** The five tools over HTTP, bound to one tenant and agent. */
-    public static function client(string $baseUrl, string $tenant, ?string $secret = null, ?string $agent = null): Client
+    public static function client(string $baseUrl, string $tenant, ?string $secret = null, ?string $agent = null, int $timeout = 30, ?string $traceparent = null): Client
     {
-        return new Client($baseUrl, $tenant, $secret, $agent);
+        return new Client($baseUrl, $tenant, $secret, $agent, $timeout, $traceparent);
     }
 }
