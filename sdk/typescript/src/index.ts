@@ -33,6 +33,10 @@ export type Fact = {
   idempotency_key?: string | null;
   /** When Keel learned the fact closed (transaction time). */
   closed_at?: string | null;
+  /** null = accepted; "proposed" waits for a decision; "rejected" records one. */
+  status?: "proposed" | "rejected" | null;
+  /** The caller's traceparent / tool call id at write time. */
+  trace?: string | null;
 };
 export type RelationRow = {
   tenant: string;
@@ -56,8 +60,27 @@ export type Context = {
   as_known_at?: string;
   /** The tenant's latest transaction time: pass it to `history(null, { changedSince })` next run. */
   watermark?: string | null;
+  /** Pending proposals on this subject. */
+  proposals?: Fact[];
+  /** Predicates with more than one open value (multi-valued predicates written by several authors). */
+  conflicts?: Record<string, Array<{ value: unknown; source: string | null; recorded_at: string | null }>>;
   /** Present with `depth: 1`: each neighbour's entity, open facts and evaluation (capped; see neighbors_truncated). */
   neighbors?: Neighbor[];
+  neighbors_truncated?: boolean;
+};
+/** `contextConcise`: the same answer in about a third of the tokens, for a prompt. */
+export type ConciseContext = {
+  subject: string;
+  attrs: Record<string, unknown>;
+  facts: Record<string, unknown>;
+  relations: Array<{ relation: string; direction: "in" | "out"; subject: string }>;
+  evaluation: Record<string, boolean | null>;
+  as_of: string;
+  watermark: string | null;
+  as_known_at?: string;
+  proposals?: Array<{ predicate: string; value: unknown; by: string | null; evidence: string | null }>;
+  conflicts?: Context["conflicts"];
+  neighbors?: Array<{ relation: string; direction: string; subject: string; facts: Record<string, unknown>; evaluation: Record<string, boolean | null> }>;
   neighbors_truncated?: boolean;
 };
 export type Related = { relation: string; direction: "in" | "out" | "both"; subject: string; since: string };
@@ -80,6 +103,8 @@ export type ClientOptions = {
   secret?: string;
   /** The declared agent acting (X-Keel-Agent); required when the cartridge declares agents. */
   agent?: string;
+  /** W3C traceparent sent with every call; Keel stores it with every write. */
+  traceparent?: string;
   fetch?: typeof fetch;
 };
 
@@ -134,6 +159,7 @@ export class Client<S extends string = string> {
         "x-keel-tenant": o.tenant,
         ...(o.agent ? { "x-keel-agent": o.agent } : {}),
         ...(o.secret ? { authorization: `Bearer ${o.secret}` } : {}),
+        ...(o.traceparent ? { traceparent: o.traceparent } : {}),
       },
       body: JSON.stringify(body),
     });
@@ -161,6 +187,18 @@ export class Client<S extends string = string> {
     });
   }
 
+  /** `context` in about a third of the tokens: facts as {predicate: value}, no rule definitions. For prompts. */
+  contextConcise(subject: S, asOf?: Date | string, depth = 0, opts: { asKnownAt?: Date | string; task?: string } = {}): Promise<ConciseContext> {
+    return this.post("/v1/context", {
+      subject,
+      as_of: asOf ? iso(asOf) : undefined,
+      depth,
+      as_known_at: opts.asKnownAt ? iso(opts.asKnownAt) : undefined,
+      task: opts.task,
+      detail: "concise",
+    });
+  }
+
   /** Facts over time, oldest first, closed ones included. `subject: null` with `changedSince` lists the tenant's changes. */
   history(
     subject: S | null,
@@ -172,6 +210,7 @@ export class Client<S extends string = string> {
       asKnownAt?: Date | string;
       task?: string;
       changedSince?: Date | string;
+      limit?: number;
     } = {},
   ): Promise<Fact[]> {
     return this.post("/v1/history", {
@@ -183,6 +222,7 @@ export class Client<S extends string = string> {
       as_known_at: f.asKnownAt ? iso(f.asKnownAt) : undefined,
       task: f.task,
       changed_since: f.changedSince ? iso(f.changedSince) : undefined,
+      limit: f.limit,
     });
   }
 
@@ -202,6 +242,8 @@ export class Client<S extends string = string> {
     by?: string;
     task?: string;
     key?: string;
+    /** "proposed" waits for a decision; "rejected" settles a proposal. */
+    status?: "proposed" | "rejected";
   }): Promise<Fact> {
     return this.post("/v1/annotate", a);
   }

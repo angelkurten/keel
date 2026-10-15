@@ -12,13 +12,14 @@ final class Client
         private readonly ?string $secret = null,
         private readonly ?string $agent = null,
         private readonly int $timeout = 30,
+        private readonly ?string $traceparent = null,
     ) {
     }
 
     /** @return array<string, mixed> */
     /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`; `$asKnownAt` answers
      * what Keel knew then; `$task` keeps one task's memory. The result's `watermark` is the changes cursor. */
-    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null): array
+    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full'): array
     {
         return $this->post('/v1/context', [
             'subject' => $subject,
@@ -26,6 +27,7 @@ final class Client
             'depth' => $depth,
             'as_known_at' => $asKnownAt === null ? null : Envelope::iso($asKnownAt),
             'task' => $task,
+            'detail' => $detail,
         ]);
     }
 
@@ -43,6 +45,7 @@ final class Client
             'as_known_at' => $iso('as_known_at'),
             'task' => $filter['task'] ?? null,
             'changed_since' => $iso('changed_since'),
+            'limit' => $filter['limit'] ?? null,
         ]);
     }
 
@@ -54,9 +57,9 @@ final class Client
     }
 
     /** `$task` ties the fact to a job; `$key` makes a retried write return the first one. @return array<string, mixed> */
-    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null, ?string $task = null, ?string $key = null): array
+    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null, ?string $task = null, ?string $key = null, ?string $status = null): array
     {
-        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key]);
+        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key, 'status' => $status]);
     }
 
     /** @return list<array<string, mixed>> */
@@ -79,6 +82,9 @@ final class Client
         }
         if ($this->secret !== null) {
             $headers[] = "Authorization: Bearer {$this->secret}";
+        }
+        if ($this->traceparent !== null) {
+            $headers[] = "traceparent: {$this->traceparent}";
         }
         $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $url = rtrim($this->baseUrl, '/') . $path;

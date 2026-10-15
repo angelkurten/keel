@@ -55,6 +55,8 @@ type Fact struct {
 	Task        *string `json:"task,omitempty"`
 	Key         *string `json:"idempotency_key,omitempty"`
 	ClosedAt    *string `json:"closed_at,omitempty"` // transaction time of the close
+	Status      *string `json:"status,omitempty"`    // nil = accepted, "proposed", "rejected"
+	Trace       *string `json:"trace,omitempty"`
 }
 
 type RelationRow struct {
@@ -78,6 +80,8 @@ type Context struct {
 	AsOf               string                    `json:"as_of"`
 	AsKnownAt          string                    `json:"as_known_at,omitempty"`
 	Watermark          *string                   `json:"watermark,omitempty"` // cursor for HistoryFilter.ChangedSince
+	Proposals          []Fact                    `json:"proposals,omitempty"`
+	Conflicts          map[string][]any          `json:"conflicts,omitempty"`
 	Neighbors          []Neighbor                `json:"neighbors,omitempty"` // with ContextDepth(..., 1)
 	NeighborsTruncated bool                      `json:"neighbors_truncated,omitempty"`
 }
@@ -116,11 +120,12 @@ func (e *Error) Error() string { return fmt.Sprintf("keel %d: %s", e.Status, e.D
 
 // Options bind a Client to one server, one tenant and optionally one agent.
 type Options struct {
-	BaseURL    string
-	Tenant     string
-	Secret     string
-	Agent      string
-	HTTPClient *http.Client
+	BaseURL     string
+	Tenant      string
+	Secret      string
+	Agent       string
+	Traceparent string // W3C trace context sent with every call; Keel stores it with every write
+	HTTPClient  *http.Client
 }
 
 type Client struct{ o Options }
@@ -149,6 +154,9 @@ func (c *Client) post(ctx context.Context, path string, body any, out any) error
 	}
 	if c.o.Secret != "" {
 		req.Header.Set("Authorization", "Bearer "+c.o.Secret)
+	}
+	if c.o.Traceparent != "" {
+		req.Header.Set("traceparent", c.o.Traceparent)
 	}
 	res, err := c.o.HTTPClient.Do(req)
 	if err != nil {
@@ -214,12 +222,26 @@ func (c *Client) ContextWith(ctx context.Context, subject string, o ContextOptio
 	return out, err
 }
 
+// ContextConcise is the same answer in about a third of the tokens, for an LLM prompt: facts as
+// {predicate: value}, relations as {relation, direction, subject}, no rule definitions. Its shape
+// differs from Context, so it comes back as a map.
+func (c *Client) ContextConcise(ctx context.Context, subject string, o ContextOptions) (map[string]any, error) {
+	var out map[string]any
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt), "detail": "concise"}
+	if o.Task != "" {
+		body["task"] = o.Task
+	}
+	err := c.post(ctx, "/v1/context", body, &out)
+	return out, err
+}
+
 type HistoryFilter struct {
 	Since, Until            *time.Time
 	Predicate               string
 	Scope                   string
 	AsKnownAt, ChangedSince *time.Time // ChangedSince with an empty subject: the tenant's changes since a watermark
 	Task                    string
+	Limit                   int // the most recent n
 }
 
 func (c *Client) History(ctx context.Context, subject string, f HistoryFilter) ([]Fact, error) {
@@ -236,6 +258,9 @@ func (c *Client) History(ctx context.Context, subject string, f HistoryFilter) (
 	}
 	if f.Task != "" {
 		body["task"] = f.Task
+	}
+	if f.Limit > 0 {
+		body["limit"] = f.Limit
 	}
 	err := c.post(ctx, "/v1/history", body, &out)
 	return out, err
@@ -274,7 +299,8 @@ type Annotation struct {
 	Evidence  string `json:"evidence,omitempty"`
 	By        string `json:"by,omitempty"`
 	Task      string `json:"task,omitempty"`
-	Key       string `json:"key,omitempty"` // a retried write with the same key returns the first fact
+	Key       string `json:"key,omitempty"`    // a retried write with the same key returns the first fact
+	Status    string `json:"status,omitempty"` // "proposed" or "rejected"; empty = accepted
 }
 
 func (c *Client) Annotate(ctx context.Context, a Annotation) (Fact, error) {

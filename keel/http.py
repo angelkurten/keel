@@ -96,8 +96,10 @@ def build_http_app(
         t = request.headers.get("x-keel-tenant") or tenant
         if not t:
             raise HTTPException(400, "X-Keel-Tenant header required")
+        parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
+        trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, store, t, request.headers.get("x-keel-agent") or agent)
+            return Tools(cartridge, store, t, request.headers.get("x-keel-agent") or agent, trace=trace)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -115,6 +117,7 @@ def build_http_app(
         depth: int = 0
         as_known_at: str | None = None
         task: str | None = None
+        detail: str = "full"
 
     class HistoryIn(BaseModel):
         subject: str | None = None
@@ -125,6 +128,7 @@ def build_http_app(
         as_known_at: str | None = None
         task: str | None = None
         changed_since: str | None = None
+        limit: int | None = None
 
     class SearchIn(BaseModel):
         text: str = ""
@@ -142,6 +146,7 @@ def build_http_app(
         by: str | None = None
         task: str | None = None
         key: str | None = None
+        status: str | None = None
 
     class RelatedIn(BaseModel):
         subject: str
@@ -166,11 +171,11 @@ def build_http_app(
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task))
+        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task, body.detail))
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since)))
+        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since), body.limit))
 
     @app.post("/v1/search")
     def search(body: SearchIn, request: Request) -> list[dict[str, Any]]:
@@ -178,7 +183,7 @@ def build_http_app(
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key))
+        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key, body.status))
 
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:

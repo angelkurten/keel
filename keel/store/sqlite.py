@@ -31,7 +31,7 @@ class SqliteStore(SqlStore):
       seq INTEGER PRIMARY KEY, tenant TEXT NOT NULL, subject TEXT NOT NULL, predicate TEXT NOT NULL,
       value TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT,
       scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT,
-      task TEXT, idempotency_key TEXT, closed_at TEXT);
+      task TEXT, idempotency_key TEXT, closed_at TEXT, status TEXT, trace TEXT);
     CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
     CREATE INDEX IF NOT EXISTS facts_recorded ON facts (tenant, recorded_at);
     CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id))
@@ -45,6 +45,8 @@ class SqliteStore(SqlStore):
     ADDED_FACT_COLUMNS = (
         ("task", "TEXT", "CREATE INDEX IF NOT EXISTS facts_task ON facts (tenant, task)"),
         ("idempotency_key", "TEXT", None),
+        ("status", "TEXT", None),
+        ("trace", "TEXT", None),
         ("closed_at", "TEXT", "CREATE INDEX IF NOT EXISTS facts_closed ON facts (tenant, closed_at)"),
     )
 

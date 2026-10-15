@@ -102,6 +102,12 @@ func TestGeneratedClient(t *testing.T) {
 	if tires, err := c.SearchWith(ctx, keel.SearchOptions{Kind: "tire"}); err != nil || len(tires) != 1 {
 		t.Fatalf("search kind: %v %+v", err, tires)
 	}
+	if p, err := c.Annotate(ctx, keel.Annotation{Subject: "tire:T-9001", Predicate: "swap", Value: true, Status: "proposed"}); err != nil || p.Status == nil || *p.Status != "proposed" {
+		t.Fatalf("proposal: %v %+v", err, p)
+	}
+	if got, err := c.ContextConcise(ctx, "tire:T-9001", keel.ContextOptions{}); err != nil || got["facts"].(map[string]any)["depth_mm"] != 2.6 {
+		t.Fatalf("concise: %v %+v", err, got)
+	}
 	other := NewClient(keel.Options{BaseURL: base, Tenant: "someone-else", Secret: secret})
 	if got, err := other.Context(ctx, "tire:T-9001", nil); err != nil || got.Entity != nil {
 		t.Fatalf("tenant isolation: %v %+v", err, got.Entity)

@@ -70,8 +70,12 @@ def test_registry_and_policy_refusals_are_403():
     assert client.post("/v1/context", json={"subject": "ticket:TK-3608"}, headers=h).status_code == 403
     res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical", "scope": "tenant", "evidence": "e"}, headers=h)
     assert res.status_code == 403 and "may not write scope 'tenant'" in res.json()["detail"]
-    res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical"}, headers=h)
+    tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical"}, headers={**h, "traceparent": tp, "X-Keel-Tool-Call": "call_9"})
     assert res.status_code == 200 and res.json()["source"] == "annotate:tires-bot"
+    assert res.json()["trace"] == f"{tp}; tool_call_id=call_9"  # joins the caller's trace to the audit export
+    short = client.post("/v1/context", json={"subject": "tire:T-9001", "detail": "concise"}, headers=h).json()
+    assert short["facts"]["depth_mm"] == 2.6 and "rules" not in short
     assert client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "x", "value": 1, "scope": "nope"}, headers=h).status_code == 400
 
 

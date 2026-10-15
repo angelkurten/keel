@@ -36,7 +36,7 @@ class MysqlStore(SqlStore):
       seq BIGINT AUTO_INCREMENT PRIMARY KEY, tenant VARCHAR(191) NOT NULL, subject VARCHAR(191) NOT NULL, predicate VARCHAR(191) NOT NULL,
       value JSON NOT NULL, valid_from VARCHAR(40) NOT NULL, valid_to VARCHAR(40), recorded_at VARCHAR(40), source TEXT,
       scope VARCHAR(16) NOT NULL, corrected_by TEXT, evidence TEXT, expires_at VARCHAR(40),
-      task VARCHAR(191), idempotency_key VARCHAR(191), closed_at VARCHAR(40),
+      task VARCHAR(191), idempotency_key VARCHAR(191), closed_at VARCHAR(40), status VARCHAR(16), trace TEXT,
       KEY facts_subject (tenant, subject), KEY facts_predicate (tenant, subject, predicate),
       KEY facts_recorded (tenant, recorded_at), KEY facts_closed (tenant, closed_at), KEY facts_task (tenant, task));
     CREATE TABLE IF NOT EXISTS ingested (tenant VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL, PRIMARY KEY (tenant, id))
@@ -49,6 +49,8 @@ class MysqlStore(SqlStore):
     ADDED_FACT_COLUMNS = (
         ("task", "VARCHAR(191)", "CREATE INDEX facts_task ON facts (tenant, task)"),
         ("idempotency_key", "VARCHAR(191)", None),
+        ("status", "VARCHAR(16)", None),
+        ("trace", "TEXT", None),
         ("closed_at", "VARCHAR(40)", "CREATE INDEX facts_closed ON facts (tenant, closed_at)"),
     )
 

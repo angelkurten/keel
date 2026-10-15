@@ -107,6 +107,9 @@ def test_mcp_server_exposes_exactly_the_five_tools():
             res = await session.call_tool("history", {"subject": "tire:T-9001", "since": "2026-10-01T00:00:00+00:00"})
             facts = [json.loads(c.text) for c in res.content]  # a list return is one content item per element
             assert facts and all(f["subject"] == "tire:T-9001" for f in facts)
+            tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "replace"}, meta={"traceparent": tp})
+            assert json.loads(res.content[0].text)["trace"] == tp  # MCP carries W3C trace context in _meta
 
     anyio.run(run)
 

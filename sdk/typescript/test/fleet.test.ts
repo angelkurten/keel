@@ -53,6 +53,8 @@ test("typed events in, context with the rule's verdict out", async () => {
   expect((await keel.annotate(keyed)).recorded_at).toBe((await keel.annotate(keyed)).recorded_at);
   expect((await keel.search("", { kind: "tire" })).map((e) => (e as { key: string }).key)).toEqual(["tire:T-9001"]);
   expect((await keel.history(null, { changedSince: "2000-01-01T00:00:00Z", task: "run-1" })).map((f) => f.predicate)).toEqual(["plan"]);
+  expect((await keel.contextConcise(subjects.tire("T-9001"))).facts).toMatchObject({ depth_mm: 2.6 });
+  expect((await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "swap", value: true, status: "proposed" })).status).toBe("proposed");
   const other = client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant: "someone-else", secret: SECRET });
   expect((await other.context(subjects.tire("T-9001"))).entity).toBeNull();
   await expect(client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant, secret: "wrong" }).search("x")).rejects.toMatchObject({ status: 401 });

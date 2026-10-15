@@ -98,6 +98,8 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `closed_at` | datetime? | Transaction time of the close: when Keel learned `valid_to`. With `recorded_at` it makes "as known at" queries possible. |
 | `task` | string? | The job a task-scope annotation belongs to (`annotate(task=)`). |
 | `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. |
+| `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
+| `trace` | string? | The caller's W3C `traceparent` and tool call id at write time (HTTP `traceparent` / `X-Keel-Tool-Call` headers, MCP `_meta`), so a Langfuse or LangSmith trace joins the audit export. |
 
 **Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST first close any open fact with the same `(subject, predicate)` by setting its `valid_to = valid_from`, then append the new fact. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
@@ -223,6 +225,9 @@ rules:                  # optional: name -> definition
       predicate: <predicate>
       <op>: <operand>   # leaf operators in §5.4; compose with all / any / not; follow relations with via
 
+predicates:             # optional: write policy per predicate, for annotations
+  <predicate>: { multi: true }   # one open value per author instead of last-writer-wins; context lists conflicts
+
 calendar:               # optional: business days for `open_for_business_days` (§5.4)
   weekend: [saturday, sunday]
   holidays: [2026-12-25]
@@ -336,7 +341,9 @@ A cartridge MAY declare `agents:` (§5.1). Without it there is no registry: any 
 
 A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge declares agents, one agent (§6.1). Cross-tenant access does not exist at this layer. These five names and argument orders are part of the public standard; adding a sixth is a spec change.
 
-### 7.1 `context(subject, as_of=None, depth=0, as_known_at=None, task=None) -> object`
+### 7.1 `context(subject, as_of=None, depth=0, as_known_at=None, task=None, detail="full") -> object`
+
+`facts` holds accepted facts only. `proposals` (present when any) holds the open proposals; `conflicts` (present when any) maps each predicate that has more than one open value to those values and their authors, which happens for `multi` predicates (§5.1) written by several agents. `detail="concise"` returns the same answer for a prompt in about a third of the tokens: `attrs`, `facts` as `{predicate: value}` (a list of `{value, by}` for a multi-valued one), `relations` as `{relation, direction, subject}`, `evaluation`, `as_of`, `watermark`, proposals and conflicts, and compact neighbours; rule definitions are left out (their names are in `evaluation`).
 
 What is true about a subject now, or at `as_of` (world time). With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
 
@@ -354,7 +361,7 @@ What is true about a subject now, or at `as_of` (world time). With `depth=1` the
 
 ### 7.2 `history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None) -> [Fact]`
 
-Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter. `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
+Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter; `limit` keeps the most recent n, still oldest first (ask for one more to know whether more exist). `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
 
 ### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None) -> [Entity | Fact]`
 
@@ -364,7 +371,7 @@ Without `kind` and `rule`: case-insensitive substring match over entity keys and
 
 ### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None) -> Fact`
 
-Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value or task raises. Returns the stored fact including `expires_at`.
+Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task or status raises. `status="proposed"` writes a proposal: it never touches accepted facts, waits in `context.proposals`, and needs only some write right (not the right on `scope`), so an agent can propose a tenant fact a person accepts; the evidence policy of `scope` still applies. An accepted write (no `status`) or `status="rejected"` is a decision: it needs the right on `scope` and closes the predicate's open proposals; a rejection is recorded closed at once, in `history` only. Store `close_fact` takes `status` so handlers never close proposals. Returns the stored fact including `expires_at`, `status` and `trace`.
 
 ### 7.5 `related(subject, relation=None, as_of=None) -> [{relation, direction, subject, since}]`
 

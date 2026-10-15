@@ -45,6 +45,7 @@ class Cartridge:
     registry: HandlerRegistry = field(default_factory=HandlerRegistry)
     agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
     calendar: Calendar = field(default_factory=Calendar)  # business days for duration rules
+    predicates: dict[str, dict[str, Any]] = field(default_factory=dict)  # write policy per predicate: {multi: true}
     version: str | None = None
 
     def validate(self) -> list[str]:
@@ -69,6 +70,9 @@ class Cartridge:
         for name, rule in self.rules.items():
             problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
+        for name, spec in self.predicates.items():
+            if not isinstance(spec, dict) or set(spec) - {"multi", "description"}:
+                problems.append(f"predicate '{name}': only `multi` (true/false) and `description` are understood")
         return problems
 
     def schema(self) -> dict[str, Any]:
@@ -94,6 +98,7 @@ class Cartridge:
                 for t, s in self.events.items()
             },
             "rules": self.rules,
+            "predicates": self.predicates,
             "agents": {
                 a.id: {
                     **asdict(a),
@@ -175,4 +180,5 @@ def load_cartridge(path: str | Path) -> Cartridge:
         registry=_load_registry(path),
         agents=parse_agents(raw.get("agents")),
         calendar=Calendar.parse(raw.get("calendar")),
+        predicates=raw.get("predicates") or {},
     )

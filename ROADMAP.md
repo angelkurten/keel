@@ -88,7 +88,7 @@ From a survey of the state of the art and a complex multi-agent flow run on Keel
 - [x] Idempotency key on `annotate`
 - [x] `search(kind=, rule=, limit=)`: enumerate subjects by kind or by rule state, with a cursor
 - [x] People as principals in the registry (`kind: human`)
-- [ ] Next: detail levels and budgets, conflict policy per predicate, proposed vs accepted annotations, trace propagation into the audit log
+- [x] Detail levels and budgets (`context(detail="concise")`, `history(limit=)`), conflict policy per predicate (`predicates: {p: {multi: true}}`, `context.conflicts`), proposed vs accepted annotations (`annotate(status=)`, `context.proposals`), trace propagation into the audit log (`traceparent` / `X-Keel-Tool-Call` / MCP `_meta`) — 0.10.0
 
 ## Later — 0.4+ (2027)
 

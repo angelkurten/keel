@@ -61,6 +61,8 @@ class Fact:
     task: str | None = None  # the job this memory belongs to (task scope); see history(task=)
     idempotency_key: str | None = None  # annotate(key=): a replayed write returns this fact
     closed_at: datetime | None = None  # transaction time of the close: when Keel learned valid_to
+    status: str | None = None  # None = accepted; "proposed" waits for a decision; "rejected" records one
+    trace: str | None = None  # the caller's W3C traceparent / tool call id, joining traces to the audit
 
 
 class Store(Protocol):
@@ -74,7 +76,7 @@ class Store(Protocol):
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None: ...
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None: ...
 
     # reads
     def entity(self, tenant: str, key: str) -> Entity | None: ...

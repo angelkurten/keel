@@ -30,6 +30,7 @@ from keel.store.memory import (
     filter_relations,
     new_fact,
     place_fact,
+    same_slot,
     search_in,
 )
 
@@ -83,19 +84,21 @@ def _fact(row: Any) -> Fact:
         task=row["task"],
         idempotency_key=row["idempotency_key"],
         closed_at=_dt(row["closed_at"]),
+        status=row["status"],
+        trace=row["trace"],
     )
 
 
 FACT_COLUMNS = (
     "tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
-    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at"
+    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace"
 )
-INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(15))})"
+INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(17))})"
 
 
 def _fact_row(f: Fact) -> tuple[Any, ...]:
     return (f.tenant, f.subject, f.predicate, json.dumps(f.value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
-            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at))
+            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at), f.status, f.trace)
 
 
 class SqlStore:
@@ -305,7 +308,7 @@ class SqlStore:
 
         same = self._cached(key, load)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        closed = place_fact(f, [fact for fact, _ in same])
+        closed = place_fact(f, same_slot((fact for fact, _ in same), f, kw.get("per_source", False)))
         if closed is not None:
             seq = next(s for fact, s in same if fact is closed)
             self._exec("UPDATE facts SET valid_to = ?, closed_at = ? WHERE seq = ?", (_ts(closed.valid_to), _ts(closed.closed_at), seq))
@@ -313,19 +316,21 @@ class SqlStore:
         same.append((f, self._last_id))
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
         if self._bulk is not None:
-            self._bulk.close_fact(tenant, subject, predicate, valid_to)
+            self._bulk.close_fact(tenant, subject, predicate, valid_to, status)
             return
-        # a close that predates a fact's start is about an earlier period and leaves this fact alone
+        # a close that predates a fact's start is about an earlier period and leaves this fact alone;
+        # `status` picks accepted facts (None) or proposals
         now = utcnow()
+        which = "status IS NULL" if status is None else "status = ?"
         self._exec(
-            "UPDATE facts SET valid_to = ?, closed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND valid_to IS NULL AND valid_from <= ?",
-            (_ts(valid_to), _ts(now), tenant, subject, predicate, _ts(valid_to)),
+            f"UPDATE facts SET valid_to = ?, closed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND {which} AND valid_to IS NULL AND valid_from <= ?",
+            (_ts(valid_to), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), _ts(valid_to)),
         )
         if self._cache is not None:
             for fact, _ in self._cache.get(("f", tenant, subject, predicate), []):
-                if fact.valid_to is None and fact.valid_from <= valid_to:
+                if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to:
                     fact.valid_to, fact.closed_at = valid_to, now
 
     # ---- reads -------------------------------------------------------------------
@@ -570,7 +575,7 @@ class _Bulk:
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, kw: dict[str, Any]) -> Fact:
         same = self._facts(tenant, subject)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        closed = place_fact(f, [x for x, _ in same if x.predicate == predicate])
+        closed = place_fact(f, same_slot((x for x, _ in same), f, kw.get("per_source", False)))
         if closed is not None:
             seq = next(s for x, s in same if x is closed)
             if seq is not None:
@@ -579,10 +584,10 @@ class _Bulk:
         self.new_facts.append(f)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
         now = utcnow()
         for f, seq in self._facts(tenant, subject):
-            if f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
+            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
                 f.valid_to, f.closed_at = valid_to, now
                 if seq is not None:
                     self.closed_facts[seq] = f

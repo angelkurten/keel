@@ -36,7 +36,15 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
         expires_at=kw.get("expires_at"),
         task=kw.get("task"),
         idempotency_key=kw.get("idempotency_key"),
+        status=kw.get("status"),
+        trace=kw.get("trace"),
     )
+
+
+def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> list[Fact]:
+    """The facts `new` takes its place among: same predicate and status, and with `per_source`
+    (a multi-valued predicate, a proposal) the same author. One open fact per slot."""
+    return [x for x in facts if x.predicate == new.predicate and x.status == new.status and (not per_source or x.source == new.source)]
 
 
 def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
@@ -164,18 +172,18 @@ class MemoryStore:
         # the old value keeps its history, it is never overwritten; and the new fact takes its
         # place by valid_from even when it arrives late (see place_fact)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        place_fact(f, [x for x in self._facts[tenant][subject] if x.predicate == predicate])
+        place_fact(f, same_slot(self._facts[tenant][subject], f, kw.get("per_source", False)))
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
         self._mark(tenant, f.recorded_at)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
-        # earlier period and leaves this fact alone
+        # earlier period and leaves this fact alone. `status` picks accepted facts (None) or proposals.
         now = utcnow()
         for f in self._facts[tenant][subject]:
-            if f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
+            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
                 f.valid_to, f.closed_at = valid_to, now
                 self._mark(tenant, now)
 

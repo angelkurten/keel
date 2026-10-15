@@ -30,4 +30,5 @@ def test_fleet_ops_workflow(make):
     assert report["task_facts_closed"] > 10
     assert {"triage", "recommendation", "plan", "approved_plan"} <= set(report["changed_during_run"])
     assert report["critical_tires"] == ["T-MXK-4821-P1", "T-VAN-0073-P2"]
+    assert report["conflicted_predicates"] == ["recommendation"]  # both specialists' advice, visible as a conflict
     assert report["export_records"] > 40

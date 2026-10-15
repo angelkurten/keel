@@ -30,8 +30,9 @@ def _iso(d: datetime | str | None) -> str | None:
 
 
 class Client:
-    def __init__(self, base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0) -> None:
+    def __init__(self, base_url: str, tenant: str, secret: str | None = None, agent: str | None = None, timeout: float = 30.0, traceparent: str | None = None) -> None:
         self.base_url, self.tenant, self.secret, self.agent, self.timeout = base_url.rstrip("/"), tenant, secret, agent, timeout
+        self.traceparent = traceparent  # sent as the W3C header; Keel stores it with every write
 
     def _post(self, path: str, body: Any) -> Any:
         headers = {"Content-Type": "application/json", "X-Keel-Tenant": self.tenant}
@@ -39,6 +40,8 @@ class Client:
             headers["X-Keel-Agent"] = self.agent
         if self.secret:
             headers["Authorization"] = f"Bearer {self.secret}"
+        if self.traceparent:
+            headers["traceparent"] = self.traceparent
         req = urllib.request.Request(self.base_url + path, data=json.dumps(body).encode(), headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as res:
@@ -53,21 +56,21 @@ class Client:
 
     def context(
         self, subject: str, as_of: datetime | str | None = None, depth: int = 0,
-        as_known_at: datetime | str | None = None, task: str | None = None,
+        as_known_at: datetime | str | None = None, task: str | None = None, detail: str = "full",
     ) -> dict[str, Any]:
         """What is true about a subject now, or at `as_of`. `depth=1` adds each neighbour; `as_known_at`
         answers what Keel knew then; `task` keeps one task's memory. `watermark` is the changes cursor."""
-        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task})
+        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task, "detail": detail})
 
     def history(
         self, subject: str | None = None, since: datetime | str | None = None, until: datetime | str | None = None,
         predicate: str | None = None, scope: str | None = None, as_known_at: datetime | str | None = None,
-        task: str | None = None, changed_since: datetime | str | None = None,
+        task: str | None = None, changed_since: datetime | str | None = None, limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Facts over time. Without a subject, `changed_since` (a watermark) lists the tenant's changes."""
         return self._post("/v1/history", {
             "subject": subject, "since": _iso(since), "until": _iso(until), "predicate": predicate, "scope": scope,
-            "as_known_at": _iso(as_known_at), "task": task, "changed_since": _iso(changed_since),
+            "as_known_at": _iso(as_known_at), "task": task, "changed_since": _iso(changed_since), "limit": limit,
         })
 
     def search(self, text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None) -> list[dict[str, Any]]:
@@ -76,10 +79,10 @@ class Client:
 
     def annotate(
         self, subject: str, predicate: str, value: Any, scope: str = "task", evidence: str | None = None,
-        by: str | None = None, task: str | None = None, key: str | None = None,
+        by: str | None = None, task: str | None = None, key: str | None = None, status: str | None = None,
     ) -> dict[str, Any]:
         """Write memory. `task` ties it to a job; `key` makes a retried write return the first one."""
-        return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by, "task": task, "key": key})
+        return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by, "task": task, "key": key, "status": status})
 
     def related(self, subject: str, relation: str | None = None, as_of: datetime | str | None = None) -> list[dict[str, Any]]:
         return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of)})

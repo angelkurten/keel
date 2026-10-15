@@ -390,7 +390,7 @@ def test_old_databases_gain_the_new_columns(tmp_path):
     conn.commit()
     conn.close()
     store = SqliteStore(path)  # a 0.8 database: the columns are added on open, rows kept
-    assert {"task", "idempotency_key", "closed_at"} <= store._columns("facts")
+    assert {"task", "idempotency_key", "closed_at", "status", "trace"} <= store._columns("facts")
     assert [f.value for f in store.facts("t", "tire:T-1")] == [4.0]
 
 
@@ -413,3 +413,75 @@ def test_time_arguments_accept_what_the_tools_return(store):
     assert t.context("tire:T-9001", as_of="2026-09-20")["evaluation"] == {"tire_critical": False}
     assert t.history("tire:T-9001", since="2026-10-01", until="2026-10-31Z")
     assert t.related("unit:MXK-4821", "mounted_on", as_of="2026-09-05") == []
+
+
+# ---- 0.10: detail, conflicts, proposals, traces -------------------------------------------
+
+
+def test_multi_valued_predicates_keep_every_author_and_show_the_conflict(store):
+    c = load_cartridge(FLEET)
+    c.predicates = {"recommendation": {"multi": True}}
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    tires_bot = Tools(c, store, TENANT, agent="tires-bot")
+    compliance_bot = Tools(c, store, TENANT, agent="compliance-bot")
+    tires_bot.annotate("unit:MXK-4821", "recommendation", "replace tire", task="r1")
+    compliance_bot.annotate("unit:MXK-4821", "recommendation", "renew policy", task="r1")
+    tires_bot.annotate("unit:MXK-4821", "recommendation", "replace both tires", task="r1")  # its own second word closes its first
+    ctx = Tools(c, store, TENANT).context("unit:MXK-4821")
+    open_recs = sorted((f["source"], f["value"]) for f in ctx["facts"] if f["predicate"] == "recommendation")
+    assert open_recs == [("annotate:compliance-bot", "renew policy"), ("annotate:tires-bot", "replace both tires")]
+    assert sorted(x["value"] for x in ctx["conflicts"]["recommendation"]) == ["renew policy", "replace both tires"]
+    plain = Tools(c, store, TENANT)  # `assessment` is not multi: last writer wins, no conflict
+    plain.annotate("tire:T-9001", "assessment", "a", by="x")
+    plain.annotate("tire:T-9001", "assessment", "b", by="y")
+    assert "conflicts" not in plain.context("tire:T-9001")
+
+
+def test_proposals_wait_for_a_decision(store):
+    from keel.agents import parse_agents
+
+    c = load_cartridge(FLEET)
+    c.agents = parse_agents({"tires-bot": {"writes": ["task"]}, "dispatcher": {"kind": "human", "writes": ["task", "tenant"]}})
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    bot, person = Tools(c, store, TENANT, agent="tires-bot"), Tools(c, store, TENANT, agent="dispatcher")
+    with pytest.raises(PermissionError):
+        bot.annotate("tire:T-9001", "condition", "replace", scope="tenant", evidence="ev-1")  # it may not decide
+    p = bot.annotate("tire:T-9001", "condition", "replace", scope="tenant", evidence="ev-1", status="proposed")  # but it may propose
+    assert p["status"] == "proposed" and p["source"] == "annotate:tires-bot"
+    ctx = person.context("tire:T-9001")
+    assert [x["value"] for x in ctx["proposals"]] == ["replace"] and all(f["predicate"] != "condition" for f in ctx["facts"])
+    accepted = person.annotate("tire:T-9001", "condition", "replace", scope="tenant", evidence=f"proposal by {p['source']}; photo:9")
+    after = person.context("tire:T-9001")
+    assert "proposals" not in after and [f["value"] for f in after["facts"] if f["predicate"] == "condition"] == ["replace"]
+    assert accepted["corrected_by"] == "human:dispatcher"
+    bot.annotate("tire:T-9001", "note", "rotate", scope="tenant", evidence="ev-2", status="proposed")
+    person.annotate("tire:T-9001", "note", "no", scope="tenant", evidence="not needed", status="rejected")
+    final = person.context("tire:T-9001")
+    assert "proposals" not in final and all(f["predicate"] != "note" for f in final["facts"])  # rejected: history only
+    statuses = [(f["value"], f["status"], f["valid_to"] is not None) for f in person.history("tire:T-9001", predicate="note")]
+    assert statuses == [("rotate", "proposed", True), ("no", "rejected", True)]
+
+
+def test_concise_detail_and_history_limit(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    full = t.context("unit:MXK-4821", depth=1)
+    short = t.context("unit:MXK-4821", depth=1, detail="concise")
+    assert short["evaluation"] == full["evaluation"] and "rules" not in short
+    assert {"relation": "mounted_on", "direction": "in", "subject": "tire:T-9001"} in short["relations"]
+    tire = next(n for n in short["neighbors"] if n["subject"] == "tire:T-9001")
+    assert tire["facts"] == {"depth_mm": 2.6} and tire["evaluation"] == {"tire_critical": True}
+    assert len(json.dumps(short)) * 2.5 < len(json.dumps(full))  # well under half the size
+    assert [f["value"] for f in t.history("tire:T-9001", predicate="depth_mm", limit=1)] == [2.6]  # the most recent
+    with pytest.raises(ValueError):
+        t.context("unit:MXK-4821", detail="verbose")
+
+
+def test_writes_carry_the_callers_trace(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    Tools(c, store, TENANT, trace=f"{tp}; tool_call_id=call_7").annotate("tire:T-9001", "assessment", "replace")
+    exported = [o for o in store.dump(TENANT) if getattr(o, "predicate", None) == "assessment"]
+    assert exported[0].trace == f"{tp}; tool_call_id=call_7"

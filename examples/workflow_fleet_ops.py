@@ -128,6 +128,7 @@ def verify(t: Tools, plan_: dict[str, list[dict[str, Any]]]) -> str | None:
 def run(store: Store | None = None, quiet: bool = False) -> dict[str, Any]:
     c = load_cartridge("cartridges/fleet")
     c.agents = parse_agents(AGENTS)  # declared here instead of in cartridge.yaml so the reference cartridge stays open
+    c.predicates = {"recommendation": {"multi": True}}  # every specialist keeps its own open recommendation
     store = store or SqliteStore()
     events = stream()
     Ingestor(c, store).ingest(events, strict=True, batch=500)
@@ -179,10 +180,11 @@ def run(store: Store | None = None, quiet: bool = False) -> dict[str, Any]:
     conflict = sorted((f["value"]["by"], f["source"]) for f in bots["planner-bot"].history("unit:MXK-4821", predicate="recommendation", as_known_at=review_started) if f["task"] == RUN)  # read back after the task closed
     seen_by_triage = bots["triage-bot"].context("unit:MXK-4821", as_known_at=datetime.fromisoformat(triage_seen_at))["evaluation"]
     sweep = [e["id"] for e in bots["tires-bot"].search(rule="tire_critical")]
+    open_conflicts = bots["planner-bot"].context("unit:MXK-4821", task=RUN, as_known_at=review_started).get("conflicts", {})
     export = list(store.dump(TENANT))
     return {"ranked": ranked, "orders": orders, "flagged": flagged, "rounds": rounds, "promoted": promoted, "conflict": conflict,
             "refusals": log, "triage_saw": seen_by_triage, "task_facts_closed": closed, "changed_during_run": sorted({f["predicate"] for f in changed}),
-            "critical_tires": sweep, "export_records": len(export)}
+            "critical_tires": sweep, "conflicted_predicates": sorted(open_conflicts), "export_records": len(export)}
 
 
 FINDINGS = """
@@ -193,7 +195,8 @@ What this flow taught about Keel (docs/design/agentic-workflows.md), and what 0.
 4. "What did the agent see" was only valid time (as_of)                -> context/history(as_known_at=), closed_at
 5. "What changed since my last run" was per subject                    -> history(changed_since=) and context's watermark
 6. A replayed step would write twice                                    -> annotate(key=)
-Still open: which of two agents' recommendations wins (a conflict policy per predicate), detail levels, trace ids.
+And 0.10: `recommendation` is multi-valued, so context lists both specialists' advice as a conflict instead of
+keeping the last writer's; the dispatcher could take proposals (annotate(status="proposed")); context(detail="concise").
 """
 
 if __name__ == "__main__":
