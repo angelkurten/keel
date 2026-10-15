@@ -56,7 +56,7 @@ Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge 
 
 - [x] Payload notation as a JSON Schema subset (enums, nested objects, arrays) and `keel schema <cartridge>`
 - [x] HTTP transport: `/v1/*` JSON API with OpenAPI, tenant and agent per request, one process for many tenants; MCP over HTTP for one tenant (`--tenant`)
-- [ ] `keel sdk typescript`, runtime `@keel-context/sdk`, validated against Toche
+- [x] `keel sdk typescript`, runtime `@keel-context/sdk` (sdk/typescript), validated end to end from Bun against the HTTP server with the fleet and finance cartridges; Toche's own cartridge is the next real test
 - [ ] Python, Go and PHP templates and runtimes
 - [ ] Publishing to npm, a Go module and Packagist
 

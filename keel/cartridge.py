@@ -28,7 +28,7 @@ from keel.agents import problems as agent_problems
 from keel.envelope import Event
 from keel.handlers import HandlerRegistry
 from keel.rules import problems as rule_problems
-from keel.schema import check, parse
+from keel.schema import check, parse, payload_schema
 from keel.scopes import MemoryPolicy, Scope
 
 
@@ -43,6 +43,7 @@ class Cartridge:
     policy: MemoryPolicy = field(default_factory=MemoryPolicy.default)
     registry: HandlerRegistry = field(default_factory=HandlerRegistry)
     agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
+    version: str | None = None
 
     def validate(self) -> list[str]:
         problems: list[str] = []
@@ -67,6 +68,44 @@ class Cartridge:
             problems += rule_problems(name, rule)
         problems += agent_problems(self.agents, self.entities, self.relations)
         return problems
+
+    def schema(self) -> dict[str, Any]:
+        """The cartridge as one JSON document: envelope schema, events with payload schemas (§5.5),
+        kinds, relations, rules, agents, memory policy. What `keel schema` prints and every SDK
+        template reads."""
+        from dataclasses import asdict
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            keel_version = version("keel-context")
+        except PackageNotFoundError:  # pragma: no cover
+            keel_version = "0"
+        return {
+            "cartridge": self.name,
+            "version": self.version,
+            "keel": keel_version,
+            "envelope": Event.model_json_schema(),
+            "entities": self.entities,
+            "relations": self.relations,
+            "events": {
+                t: {**{k: v for k, v in s.items() if k != "payload"}, "payload": payload_schema(s.get("payload"))}
+                for t, s in self.events.items()
+            },
+            "rules": self.rules,
+            "agents": {
+                a.id: {
+                    **asdict(a),
+                    "writes": sorted(a.writes),
+                    "kinds": sorted(a.kinds) if a.kinds is not None else None,
+                    "relations": sorted(a.relations) if a.relations is not None else None,
+                }
+                for a in self.agents.values()
+            },
+            "memory": {
+                "ttl": {s.value: (None if d is None else d.total_seconds()) for s, d in self.policy.ttl.items()},
+                "requires_evidence": sorted(s.value for s in self.policy.requires_evidence),
+            },
+        }
 
     def check_event(self, event: Event) -> list[str]:
         """One event against the catalog: known type, right subject kind, declared payload fields
@@ -125,6 +164,7 @@ def load_cartridge(path: str | Path) -> Cartridge:
     return Cartridge(
         name=raw.get("name", path.name),
         path=path,
+        version=str(raw["version"]) if raw.get("version") is not None else None,
         entities=raw.get("entities") or {},
         relations=raw.get("relations") or {},
         events=raw.get("events") or {},

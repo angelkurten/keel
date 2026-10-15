@@ -7,3 +7,5 @@ dist/
 *.egg-info/
 .env
 site/
+sdk/typescript/node_modules/
+sdk/typescript/dist/

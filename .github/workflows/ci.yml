@@ -29,3 +29,21 @@ jobs:
             uv run keel validate cartridges/$c --events examples/events/$c.jsonl
           done
       - run: uv run python examples/agent_minimal.py
+
+  sdk-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: oven-sh/setup-bun@v2
+      - run: uv sync --extra dev
+      - name: generated clients are fresh
+        run: |
+          uv run keel sdk typescript cartridges/fleet -o sdk/typescript/test/keel-fleet.ts --check
+          uv run keel sdk typescript cartridges/finance -o sdk/typescript/test/keel-finance.ts --check
+      - run: bun install --frozen-lockfile
+        working-directory: sdk/typescript
+      - run: bun run typecheck
+        working-directory: sdk/typescript
+      - run: bun test
+        working-directory: sdk/typescript

@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, schema, ingest, replay, expire, export, context, serve."""
+"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, export, context, serve."""
 
 from __future__ import annotations
 
@@ -7,9 +7,7 @@ import os
 from pathlib import Path
 
 import typer
-import yaml
 
-from keel import __version__
 from keel.cartridge import load_cartridge
 from keel.envelope import Event
 from keel.ingest import Ingestor, IngestReport, JsonlAdapter
@@ -111,24 +109,33 @@ def validate(
 @app.command()
 def schema(cartridge: Path):
     """The cartridge as JSON Schema: envelope, events with payload schemas, kinds, relations, rules, agents, memory. The input of every SDK template."""
-    from dataclasses import asdict
+    typer.echo(json.dumps(load_cartridge(cartridge).schema(), indent=2, ensure_ascii=False))
 
-    from keel.schema import payload_schema
 
-    c = load_cartridge(cartridge)
-    doc = {
-        "cartridge": c.name,
-        "version": yaml.safe_load((cartridge / "cartridge.yaml").read_text(encoding="utf-8")).get("version"),
-        "keel": __version__,
-        "envelope": Event.model_json_schema(),
-        "entities": c.entities,
-        "relations": c.relations,
-        "events": {t: {**{k: v for k, v in s.items() if k != "payload"}, "payload": payload_schema(s.get("payload"))} for t, s in c.events.items()},
-        "rules": c.rules,
-        "agents": {a.id: {**asdict(a), "writes": sorted(a.writes), "kinds": sorted(a.kinds) if a.kinds is not None else None, "relations": sorted(a.relations) if a.relations is not None else None} for a in c.agents.values()},
-        "memory": {"ttl": {s.value: (None if d is None else d.total_seconds()) for s, d in c.policy.ttl.items()}, "requires_evidence": sorted(s.value for s in c.policy.requires_evidence)},
-    }
-    typer.echo(json.dumps(doc, indent=2, ensure_ascii=False))
+@app.command()
+def sdk(
+    language: str = typer.Argument(..., help="typescript (python, go and php are next)."),
+    cartridge: Path = typer.Argument(...),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Write here; stdout when absent."),
+    check: bool = typer.Option(False, "--check", help="Exit 1 if --out exists and differs from what would be generated (for CI)."),
+):
+    """Generate the typed client for a cartridge: event payload types, emit constructors, subject helpers, constants."""
+    from keel.sdk import generate
+
+    text = generate(language, load_cartridge(cartridge))
+    if out is None:
+        typer.echo(text, nl=False)
+        return
+    if check:
+        current = out.read_text(encoding="utf-8") if out.exists() else None
+        if current != text:
+            typer.echo(f"{out} is stale: regenerate with `keel sdk {language} {cartridge} -o {out}`")
+            raise typer.Exit(code=1)
+        typer.echo(f"{out} is up to date")
+        return
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    typer.echo(f"wrote {out}")
 
 
 def _run(cartridge: Path, events: Path | None, strict: bool = False, db: Path | None = None):

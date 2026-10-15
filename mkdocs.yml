@@ -32,6 +32,7 @@ nav:
   - Home: index.md
   - Your first cartridge: first-cartridge.md
   - Connect your events: connect.md
+  - SDKs: sdks.md
   - Specification: SPEC.md
   - Roadmap: roadmap.md
   - Contributing: contributing.md

@@ -78,6 +78,7 @@ Then:
 
 - [Your first cartridge in 20 minutes](first-cartridge.md): declare your own vertical.
 - [Connect your events](connect.md): a Postgres outbox table, a webhook, or a `.jsonl` file, and the MCP server.
+- [SDKs](sdks.md): a typed client generated from your cartridge (TypeScript today), the way protoc does.
 - [Specification](SPEC.md): the normative contract for the envelope, the graph model, cartridges, tools and scopes.
 
 ## Design rules the core enforces
