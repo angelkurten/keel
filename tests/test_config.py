@@ -34,3 +34,15 @@ def test_cli_reads_db_and_more_from_an_env_file(tmp_path, monkeypatch):
     assert res.exit_code == 0 and (tmp_path / "from-env.db").exists(), res.output
     res = CliRunner().invoke(app, ["--env-file", "missing.env", "validate", f"{root}/cartridges/fleet"], env={"COLUMNS": "300"})
     assert res.exit_code != 0 and "does not exist" in res.output
+
+
+def test_keel_tenant_is_the_default_tenant(tmp_path, monkeypatch):
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    db = str(tmp_path / "k.db")
+    res = CliRunner().invoke(app, ["ingest", f"{root}/cartridges/fleet", f"{root}/examples/events/fleet.jsonl", "--db", db])
+    assert res.exit_code == 0, res.output
+    monkeypatch.setenv("KEEL_TENANT", "acme-logistics")
+    res = CliRunner().invoke(app, ["export", "--db", db])
+    assert res.exit_code == 0 and '"tenant": "acme-logistics"' in res.output, res.output
+    res = CliRunner().invoke(app, ["export", "nobody", "--db", db])  # an explicit tenant wins
+    assert res.exit_code == 0 and res.output.strip() == "", res.output

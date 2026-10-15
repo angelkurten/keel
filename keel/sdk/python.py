@@ -17,7 +17,7 @@ class _Types:
     def expr(self, schema: dict[str, Any], name: str) -> str:
         if "enum" in schema:
             values = [v for v in schema["enum"] if v is not None]
-            expr = "Literal[" + ", ".join(json.dumps(v) for v in values) + "]"
+            expr = "Literal[" + ", ".join(json.dumps(v) if isinstance(v, str) else repr(v) for v in values) + "]"
             return expr + (" | None" if None in schema["enum"] else "")
         t = schema.get("type")
         if t is None:
@@ -75,7 +75,7 @@ def render(doc: dict[str, Any], **options: Any) -> str:
         f"CARTRIDGE = {json.dumps(name)}",
         f"KINDS = {tuple(kinds)!r}",
         f"RELATIONS = {tuple(relations)!r}",
-        f"RULES: dict[str, Any] = {json.dumps(doc['rules'], ensure_ascii=False)}",
+        f"RULES: dict[str, Any] = {doc['rules']!r}",  # a Python literal: JSON's true/null are not Python
         f"AGENTS = {tuple(doc['agents'])!r}",
         'SCOPES = ("global", "tenant", "task", "agent")',
         "",

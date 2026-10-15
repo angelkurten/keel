@@ -9,6 +9,7 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 | Variable | Used by | What |
 | --- | --- | --- |
 | `KEEL_DB` | every command with `--db` | the durable graph: a SQLite file or `mysql://user:pass@host:3306/db` |
+| `KEEL_TENANT` | every command that takes a tenant; `serve` (`--tenant`) | the default tenant; with `serve --transport http` it is used when `X-Keel-Tenant` is absent |
 | `KEEL_AGENT` | `serve`, `context`... (`--agent`) | the declared agent acting here |
 | `KEEL_SECRET` | `serve --transport http` | the shared bearer secret (`--secret-env` names another variable) |
 | `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
@@ -16,7 +17,11 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 | `KEEL_RERANK_BASE_URL`, `_MODEL`, `_API_KEY` | `serve --reranker http\|llm` | the reranker endpoint |
 | `KEEL_SUMMARIZER_BASE_URL`, `_MODEL`, `_API_KEY` | `consolidate --summarizer llm` | the chat model that writes summaries |
 
-A flag on the command line beats both. The Python API reads nothing from `.env`: a program that embeds Keel passes its settings itself.
+A flag on the command line beats both.
+
+**No end-customers?** Keel keys everything on a tenant, but nothing forces you to have many. Pick one fixed value, put it in every envelope's `tenant` and in `KEEL_TENANT=default`, and stop passing `--tenant`: every command, `keel serve` and the HTTP API (no `X-Keel-Tenant` needed) use it. The `tenant` scope then simply means "shared by every agent".
+
+The Python API reads nothing from `.env`: a program that embeds Keel passes its settings itself.
 
 ## The envelope
 
@@ -213,7 +218,7 @@ The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from an
 | `GET /health` | | `{"ok", "cartridge", "mcp"}` |
 | `GET /openapi.json` | | the contract, for generated clients |
 
-Times are ISO 8601 strings. Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. `/health`, `/openapi.json`, `/docs` and `/redoc` need no token. Two optional headers are stored with every write the request makes: `traceparent` (W3C trace context) and `X-Keel-Tool-Call` (the agent's tool call id).
+Times are ISO 8601 strings. Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` (optional when the server is bound with `--tenant` or `KEEL_TENANT`, which is then the default) and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. `/health`, `/openapi.json`, `/docs` and `/redoc` need no token. Two optional headers are stored with every write the request makes: `traceparent` (W3C trace context) and `X-Keel-Tool-Call` (the agent's tool call id).
 
 On `/v1/events`, `X-Keel-Tenant` is optional: each envelope names its tenant, and when the header is present every envelope must match it. The agent registry does not apply to ingest.
 

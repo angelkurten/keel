@@ -6,3 +6,5 @@ import tempfile
 fd, path = tempfile.mkstemp(prefix="keel-test-", suffix=".env")
 os.close(fd)
 os.environ["KEEL_ENV_FILE"] = path
+for _k in ("KEEL_TENANT", "KEEL_AGENT", "KEEL_DB", "KEEL_INDEX", "KEEL_EMBEDDER"):
+    os.environ.pop(_k, None)  # nor do the variables of a developer's shell

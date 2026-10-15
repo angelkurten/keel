@@ -93,3 +93,12 @@ def test_generated_python_is_valid_for_every_cartridge(tmp_path):
         m = _load(tmp_path, code, f"keel_{cart}")
         assert m.CARTRIDGE == cart and len(m.KINDS) >= 3
     assert json.loads(json.dumps(m.RULES))  # rules survive as plain data
+
+
+def test_generated_python_rules_with_true_and_null(tmp_path):
+    from keel.sdk.python import render
+
+    doc = load_cartridge(FLEET).schema()
+    doc["rules"] = {**doc["rules"], "flags": {"when": {"active": True, "closed_at": None}}}
+    m = _load(tmp_path, render(doc), "keel_flags")
+    assert m.RULES["flags"] == {"when": {"active": True, "closed_at": None}}

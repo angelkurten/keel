@@ -64,6 +64,7 @@ def _store(db: str | None):
 
         return MysqlStore.from_url(db)
     return SqliteStore(db)
+TENANT = typer.Argument(..., envvar="KEEL_TENANT", help="The end-customer (KEEL_TENANT when omitted). A product with no end-customers sets one fixed value.", show_default=False)
 AGENT = typer.Option(None, "--agent", envvar="KEEL_AGENT", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
 
 
@@ -203,7 +204,7 @@ def ingest(cartridge: Path, events: Path, strict: bool = False, db: str | None =
 
 
 @app.command()
-def replay(cartridge: Path, events: Path, tenant: str, db: str | None = DB):
+def replay(cartridge: Path, events: Path, tenant: str = TENANT, db: str | None = DB):
     """Rebuild one tenant's subgraph from the event log (recovery path). With --db, the file is wiped for that tenant first."""
     _, _, ing, _ = _run(cartridge, None, db=db)
     report = ing.replay(tenant, events=JsonlAdapter(events))
@@ -212,7 +213,7 @@ def replay(cartridge: Path, events: Path, tenant: str, db: str | None = DB):
 
 @app.command()
 def expire(
-    tenant: str,
+    tenant: str = TENANT,
     db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
     task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
     consolidate: Path | None = typer.Option(None, "--consolidate", help="Consolidate first, with this cartridge's `consolidate:` section, so nothing is dropped unsummarized."),
@@ -239,7 +240,7 @@ def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
 @app.command(name="consolidate")
 def consolidate_cmd(
     cartridge: Path,
-    tenant: str = typer.Option(..., help="The end-customer to consolidate."),
+    tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to consolidate."),
     db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="For `reduce: summary`: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
 ):
@@ -249,7 +250,7 @@ def consolidate_cmd(
 
 @app.command()
 def export(
-    tenant: str,
+    tenant: str = TENANT,
     db: str = typer.Option(..., "--db", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
     out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
 ):
@@ -275,7 +276,7 @@ def export(
 @app.command(name="index")
 def index_cmd(
     cartridge: Path,
-    tenant: str = typer.Option(..., help="The end-customer to index."),
+    tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to index."),
     db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
     index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
@@ -297,7 +298,7 @@ def index_cmd(
 
 
 @app.command()
-def context(cartridge: Path, events: Path, subject: str, tenant: str | None = None, agent: str | None = AGENT):
+def context(cartridge: Path, events: Path, subject: str, tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="Default: KEEL_TENANT, else the first tenant in the log."), agent: str | None = AGENT):
     """Ingest, then print what the `context` tool returns for a subject."""
     c, store, ing, _ = _run(cartridge, events)
     tenant = tenant or next(iter({e.tenant for e in ing.log}), "")
@@ -318,7 +319,7 @@ def _loopback(host: str) -> bool:
 @app.command()
 def serve(
     cartridge: Path,
-    tenant: str | None = typer.Option(None, help="The end-customer this server is bound to. Required with stdio; with http it also enables /mcp."),
+    tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer this server is bound to. Required with stdio; with http it is the default when X-Keel-Tenant is absent and enables /mcp."),
     events: Path | None = None,
     db: str | None = DB,
     agent: str | None = AGENT,
