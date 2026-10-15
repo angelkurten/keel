@@ -349,3 +349,15 @@ def test_rerankers_reorder_the_pool(fleet, index):
         assert hits[0]["kind"] == "document" and hits[0]["score"] == 1.0  # the reranker's order won
     finally:
         srv.shutdown()
+
+
+def test_global_memory_is_indexed_for_every_tenant_that_knows_the_subject(fleet):
+    """0.15.0 moved global memory to its own partition; the index must still read it."""
+    c, s = fleet
+    emb, idx = HashEmbedder(), MemoryIndex()
+    first = index_tenant(s, TENANT, emb, idx)
+    Tools(c, s, TENANT).annotate("tire:T-9001", "recall", "manufacturer recall on this batch", scope="global", evidence="bulletin-7")
+    assert "manufacturer recall" in render(s, TENANT, "tire:T-9001")
+    again = index_tenant(s, TENANT, emb, idx, since=first.cursor)  # incremental: the global change is seen
+    assert again.indexed == 1 and again.cursor > first.cursor
+    assert index_tenant(s, "nobody-knows-it", emb, MemoryIndex(), since=first.cursor).indexed == 0
