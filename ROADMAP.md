@@ -34,7 +34,7 @@ Goal: durable, replayable, and used by two SaaS products that are not ours.
 - [x] MySQL / MariaDB store (`keel/store/mysql.py`, requested 2026-10-14; `--db mysql://...`), a dialect of the shared `SqlStore`, same conformance suite in CI
 - [x] Replay from an external log (`Ingestor.replay(tenant, events=adapter)`; `keel replay ... --db` wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance
 - [x] Expire task/agent memory: `keel expire <tenant> --db` (reads already hide expired facts)
-- [ ] Consolidation: summarize old episodic facts into durable ones (design open; see CLAUDE.md)
+- [x] Consolidation (0.14.0): episodic memory into durable facts, declared in the cartridge; deterministic reducers and a Summarizer adapter; `keel consolidate`, `keel expire --consolidate`
 - [x] `history` filters by predicate and scope; `context` returns the rule evaluation, not only the rule (rules carry a `when`; `context` takes `as_of`)
 - [x] Cartridge validation against event streams (`keel validate --events` reports unknown types, wrong subject kinds and bad payloads)
 - [x] Third and fourth cartridges: `finance` (modeled on Toche) and `clinics` (the tutorial's result), zero core changes

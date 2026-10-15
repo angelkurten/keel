@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import pytest
 from typer.testing import CliRunner
 
-from keel import Ingestor, MemoryStore, SqliteStore, Tools, load_cartridge
+from keel import Ingestor, MemoryStore, Scope, SqliteStore, Tools, load_cartridge
 from keel.cli import app
 from keel.ingest import JsonlAdapter
 
@@ -533,3 +533,101 @@ def test_search_by_neighbour_and_one_format_for_after(store):
         t.search(kind="tire", after="unit:MXK-4821")  # a key of another kind
     with pytest.raises(ValueError):
         t.search("x", after="tire:T-9001")  # text search does not page by key
+
+
+# ---- 0.14: consolidation ----------------------------------------------------------------
+
+
+def _with_notes(store, c, notes, subject="tire:T-9001", predicate="assessment", scope="task"):
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    for value, by in notes:
+        t.annotate(subject, predicate, value, scope=scope, by=by, evidence=f"note-by-{by}")
+    return t
+
+
+def test_consolidation_summarizes_episodic_memory_into_a_durable_fact(store):
+    from keel.consolidate import consolidate_tenant
+
+    c = load_cartridge(FLEET)
+    c.consolidate = {"recurring": {"from": {"predicate": "assessment"}, "applies_to": "tire", "min_count": 3, "reduce": "mode", "into": {"predicate": "recurring_issue"}}}
+    assert c.validate() == []
+    t = _with_notes(store, c, [("slow leak", "a"), ("ok", "b"), ("slow leak", "c"), ("slow leak", "a")])
+    report = consolidate_tenant(c, store, TENANT)
+    assert report.written == {"recurring": 1}
+    fact = next(f for f in t.context("tire:T-9001")["facts"] if f["predicate"] == "recurring_issue")
+    assert fact["value"] == "slow leak" and fact["scope"] == "tenant" and fact["source"] == "consolidate:recurring"
+    assert fact["evidence"].startswith("4 assessment facts") and "note-by-a" in fact["evidence"]
+    assert len(t.history("tire:T-9001", predicate="assessment")) == 4  # every original stays (consolidation deletes nothing)
+    again = consolidate_tenant(c, store, TENANT)
+    assert again.written == {"recurring": 0} and again.unchanged == {"recurring": 1}  # idempotent
+    t.annotate("tire:T-9001", "assessment", "sidewall bulge", by="d")
+    t.annotate("tire:T-9001", "assessment", "sidewall bulge", by="e")
+    t.annotate("tire:T-9001", "assessment", "sidewall bulge", by="f")
+    assert consolidate_tenant(c, store, TENANT).written == {"recurring": 1}  # new inputs: a new value closes the old
+    values = [f["value"] for f in t.history("tire:T-9001", predicate="recurring_issue")]
+    assert values[-1] == "sidewall bulge" and values[0] == "slow leak"
+
+
+def test_consolidation_reducers_window_and_thresholds(store):
+    from datetime import timedelta
+
+    from keel.consolidate import JoinSummarizer, consolidate_tenant
+
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    now = datetime.now(UTC)
+    for i, v in enumerate([3.1, 2.9, 2.4]):
+        store.open_fact(TENANT, "tire:T-9001", "reading_mm", v, valid_from=now - timedelta(hours=3 - i), scope=Scope.TASK, recorded_at=now - timedelta(hours=3 - i), source=f"annotate:probe{i}")
+    store.open_fact(TENANT, "tire:T-9001", "reading_mm", 9.9, valid_from=now - timedelta(days=60), scope=Scope.TASK, recorded_at=now - timedelta(days=60), source="annotate:old")
+    base = {"from": {"predicate": "reading_mm"}, "within": "7d", "min_count": 2}
+    c.consolidate = {r: {**base, "reduce": r, "into": {"predicate": f"reading_{r}"}} for r in ("latest", "count", "min", "max", "avg", "distinct", "summary")}
+    consolidate_tenant(c, store, TENANT, summarizer=JoinSummarizer())
+    got = {f.predicate: f.value for f in store.facts(TENANT, "tire:T-9001") if f.predicate.startswith("reading_") and f.predicate != "reading_mm"}
+    assert got == {"reading_latest": 2.4, "reading_count": 3, "reading_min": 2.4, "reading_max": 3.1, "reading_avg": 2.8,
+                   "reading_distinct": [3.1, 2.9, 2.4], "reading_summary": "3.1; 2.9; 2.4"}  # the 60-day-old 9.9 is outside the window
+    c.consolidate = {"strict": {**base, "min_count": 5, "reduce": "count", "into": {"predicate": "reading_strict"}}}
+    assert consolidate_tenant(c, store, TENANT).written == {"strict": 0}
+    c.consolidate = {"needs": {**base, "reduce": "summary", "into": {"predicate": "reading_x"}}}
+    with pytest.raises(ValueError, match="summarizer"):
+        consolidate_tenant(c, store, TENANT)
+
+
+def test_consolidation_validation(store):
+    c = load_cartridge(FLEET)
+    c.consolidate = {"bad": {"from": {"predicate": "a", "scopes": ["galaxy"]}, "reduce": "median", "into": {"predicate": "a", "scope": "x"}, "applies_to": "spaceship"}}
+    msgs = c.validate()
+    for expected in ("reduce is one of", "unknown scope 'galaxy'", "unknown scope 'x'", "applies_to 'spaceship'", "must differ"):
+        assert any(expected in m for m in msgs), msgs
+
+
+def test_expire_consolidates_first_so_nothing_is_dropped_unsummarized(tmp_path):
+    import shutil
+
+    cart = tmp_path / "fleet"
+    shutil.copytree(FLEET, cart)
+    with (cart / "cartridge.yaml").open("a", encoding="utf-8") as fh:
+        fh.write("\nconsolidate:\n  recurring:\n    from: { predicate: assessment }\n    min_count: 2\n    reduce: mode\n    into: { predicate: recurring_issue }\n")
+    db = str(tmp_path / "keel.db")
+    CliRunner().invoke(app, ["ingest", str(cart), EVENTS, "--db", db])
+    store = SqliteStore(db)
+    past = datetime(2026, 1, 1, tzinfo=UTC)
+    for i in range(2):  # agent memory that has already expired, not yet dropped
+        store.open_fact(TENANT, "tire:T-9001", "assessment", "slow leak", valid_from=past, scope=Scope.AGENT, recorded_at=past, expires_at=past, source=f"annotate:a{i}", corrected_by=f"a{i}")
+    res = CliRunner().invoke(app, ["expire", TENANT, "--db", db, "--consolidate", str(cart)])
+    assert res.exit_code == 0 and "consolidated recurring: written=1" in res.output and "dropped=2" in res.output, res.output
+    assert [f.value for f in SqliteStore(db).facts(TENANT, "tire:T-9001") if f.predicate == "recurring_issue"] == ["slow leak"]
+    res = CliRunner().invoke(app, ["consolidate", str(cart), "--tenant", TENANT, "--db", db])
+    assert res.exit_code == 0 and "written=0" in res.output, res.output
+
+
+@pytest.mark.skipif(not os.environ.get("KEEL_SUMMARIZER_API_KEY"), reason="set KEEL_SUMMARIZER_API_KEY/_BASE_URL/_MODEL for a live summarizer")
+def test_live_llm_summarizer(store):
+    from keel.consolidate import consolidate_tenant, load_summarizer
+
+    c = load_cartridge(FLEET)
+    c.consolidate = {"story": {"from": {"predicate": "assessment"}, "min_count": 3, "reduce": "summary", "into": {"predicate": "assessment_summary"}}}
+    _with_notes(store, c, [("pressure dropped 0.4 bar since Monday", "a"), ("pressure low again, refilled", "b"), ("slow leak suspected near the valve", "c")])
+    consolidate_tenant(c, store, TENANT, summarizer=load_summarizer("llm"))
+    text = next(f.value for f in store.facts(TENANT, "tire:T-9001") if f.predicate == "assessment_summary")
+    assert isinstance(text, str) and 3 < len(text.split()) <= 40 and any(w in text.lower() for w in ("leak", "pressure"))

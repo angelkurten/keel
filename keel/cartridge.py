@@ -47,6 +47,7 @@ class Cartridge:
     calendar: Calendar = field(default_factory=Calendar)  # business days for duration rules
     predicates: dict[str, dict[str, Any]] = field(default_factory=dict)  # write policy per predicate: {multi: true}
     semantic: dict[str, Any] = field(default_factory=dict)  # what keel index renders: kinds, predicates|exclude, attrs, relations
+    consolidate: dict[str, Any] = field(default_factory=dict)  # episodic memory -> durable facts (keel.consolidate)
     version: str | None = None
 
     def validate(self) -> list[str]:
@@ -83,6 +84,9 @@ class Cartridge:
             problems.append(f"semantic: kind '{k}' is not a declared entity kind")
         for r in sorted(set(sem.get("relations") or []) - set(self.relations)):
             problems.append(f"semantic: relation '{r}' is not declared")
+        from keel.consolidate import problems as consolidate_problems
+
+        problems += consolidate_problems(self)
         for name, spec in self.predicates.items():
             if not isinstance(spec, dict) or set(spec) - {"multi", "description"}:
                 problems.append(f"predicate '{name}': only `multi` (true/false) and `description` are understood")
@@ -113,6 +117,7 @@ class Cartridge:
             "rules": self.rules,
             "predicates": self.predicates,
             "semantic": self.semantic,
+            "consolidate": self.consolidate,
             "agents": {
                 a.id: {
                     **asdict(a),
@@ -196,4 +201,5 @@ def load_cartridge(path: str | Path) -> Cartridge:
         calendar=Calendar.parse(raw.get("calendar")),
         predicates=raw.get("predicates") or {},
         semantic=raw.get("semantic") or {},
+        consolidate=raw.get("consolidate") or {},
     )

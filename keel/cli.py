@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, export, index, context, serve."""
+"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, consolidate, export, index, context, serve."""
 
 from __future__ import annotations
 
@@ -180,13 +180,36 @@ def expire(
     tenant: str,
     db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
     task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
+    consolidate: Path | None = typer.Option(None, "--consolidate", help="Consolidate first, with this cartridge's `consolidate:` section, so nothing is dropped unsummarized."),
+    summarizer: str | None = typer.Option(None, "--summarizer", help="With --consolidate: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
 ):
     """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
     store = _store(db)
+    if consolidate:
+        _consolidate(load_cartridge(consolidate), store, tenant, summarizer)
     if task:
         typer.echo(f"closed task={task} facts={store.close_task(tenant, task)}")
     n = store.expire(tenant)
     typer.echo(f"expired tenant={tenant} dropped={n}")
+
+
+def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
+    from keel.consolidate import consolidate_tenant, load_summarizer
+
+    report = consolidate_tenant(c, store, tenant, summarizer=load_summarizer(summarizer) if summarizer else None)
+    for name in report.written:
+        typer.echo(f"consolidated {name}: written={report.written[name]} unchanged={report.unchanged[name]}")
+
+
+@app.command(name="consolidate")
+def consolidate_cmd(
+    cartridge: Path,
+    tenant: str = typer.Option(..., help="The end-customer to consolidate."),
+    db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
+    summarizer: str | None = typer.Option(None, "--summarizer", help="For `reduce: summary`: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
+):
+    """Summarize episodic memory into durable facts, as the cartridge's `consolidate:` section declares. Idempotent; a job, never ingest."""
+    _consolidate(load_cartridge(cartridge), _store(db), tenant, summarizer)
 
 
 @app.command()

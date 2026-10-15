@@ -237,6 +237,15 @@ semantic:               # optional: what `keel index` puts in each subject's doc
   lexical_weight: 0.3            # hybrid search: weight of the lexical leg (0 = dense only)
   min_score: 0.4                 # optional cosine floor; model-specific, calibrate with evals/semantic
 
+consolidate:            # optional: episodic memory summarized into durable facts (§8)
+  <name>:
+    from: { predicate: <p>, scopes: [task, agent] }
+    applies_to: <kind>             # optional
+    within: 30d                    # optional window on recorded_at
+    min_count: 3                   # default 2
+    reduce: mode                   # mode | latest | count | min | max | avg | distinct | summary
+    into: { predicate: <q>, scope: tenant }
+
 calendar:               # optional: business days for `open_for_business_days` (§5.4)
   weekend: [saturday, sunday]
   holidays: [2026-12-25]
@@ -403,7 +412,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 ## 8. Jobs
 
 - **Expiry**: drop facts past `expires_at`, per tenant. Shipped: `store.expire(tenant)` on both stores and `keel expire <tenant> --db`; the schedule is the operator's cron. Reads exclude expired facts regardless.
-- **Consolidation**: summarize old `task`/`agent` facts into a durable `tenant` fact with evidence pointing at the originals. Not designed yet; see CLAUDE.md open decisions.
+- **Consolidation**: `keel consolidate` (or `keel expire --consolidate`, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's `consolidate:` entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, window; expired-but-not-dropped ones count) are reduced into one durable fact when there are at least `min_count`. Reducers are deterministic (`mode` with ties to the latest, `latest`, `count`, `min`, `max`, `avg`, `distinct`); `summary` asks a `Summarizer` adapter (`LLMSummarizer` over any `/chat/completions`, or yours) for one sentence. The fact carries `source=consolidate:<name>`, evidence naming the count, the time span and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. The originals are kept until their TTL. A job, never part of ingest.
 - **Replay**: rebuild a tenant from the external log. Shipped: `Ingestor.replay(tenant, events=adapter)` and `keel replay <cartridge> <stream> <tenant> --db`.
 
 ---

@@ -10,7 +10,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
-> Status: 0.13.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
+> Status: 0.14.0, alpha. The MCP server (`keel serve`), the Postgres table adapter and the webhook adapter run against the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -132,7 +132,7 @@ Shipped:
 
 - [x] Event envelope, handler registry, deterministic ingest with dedupe by event id and replay
 - [x] Bitemporal store: in memory, SQLite and MySQL, behind a store protocol with a conformance suite
-- [x] Memory scopes with TTL, evidence policy and expiry (`keel expire`, `--task`)
+- [x] Memory scopes with TTL, evidence policy, expiry and consolidation into durable facts (`keel expire`, `keel consolidate`)
 - [x] The five tools over MCP (stdio and HTTP) and a JSON API, with an agent registry (people included)
 - [x] Adapters: Postgres outbox, webhook, Kafka, SQS
 - [x] Rules that compose, follow relations and measure durations
@@ -143,7 +143,6 @@ Shipped:
 
 Open:
 
-- [ ] Consolidation: summarizing old episodic memory into durable facts (waiting for a pilot's real case)
 - [ ] Real agent queries from pilots in the semantic-search eval bench
 - [ ] Postgres CDC adapter
 - [ ] Cartridge catalog, hosted Keel, enterprise features (2027)
