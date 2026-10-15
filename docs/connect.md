@@ -216,7 +216,14 @@ Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Olla
 KEEL_VECTOR_INDEX=my_pkg.qdrant:make KEEL_EMBEDDER=my_pkg.emb:make uv run pytest tests/test_semantic.py
 ```
 
-Indexing never runs in ingest, so ingest stays deterministic and offline. Only tenant and global knowledge is indexed: task and agent memory and pending proposals are not.
+Indexing never runs in ingest, so ingest stays deterministic and offline. Only tenant and global knowledge is indexed: task and agent memory and pending proposals are not. The cartridge decides the rest:
+
+```yaml
+semantic:
+  kinds: [card, cliente]
+  exclude: [comentario]      # comments full of URLs and technical noise stay out
+  relations: [de_cliente]    # "de_cliente: cliente:BAT (nombre: ...)" goes into the card's document
+```
 
 ## Export the audit trail
 

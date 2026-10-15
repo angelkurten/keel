@@ -46,6 +46,7 @@ class Cartridge:
     agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
     calendar: Calendar = field(default_factory=Calendar)  # business days for duration rules
     predicates: dict[str, dict[str, Any]] = field(default_factory=dict)  # write policy per predicate: {multi: true}
+    semantic: dict[str, Any] = field(default_factory=dict)  # what keel index renders: kinds, predicates|exclude, attrs, relations
     version: str | None = None
 
     def validate(self) -> list[str]:
@@ -70,6 +71,15 @@ class Cartridge:
         for name, rule in self.rules.items():
             problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
+        sem = self.semantic
+        for key in sorted(set(sem) - {"kinds", "predicates", "exclude", "attrs", "relations"}):
+            problems.append(f"semantic: unknown key '{key}' (kinds, predicates, exclude, attrs, relations)")
+        if "predicates" in sem and "exclude" in sem:
+            problems.append("semantic: use `predicates` (what to include) or `exclude`, not both")
+        for k in sorted(set(sem.get("kinds") or []) - set(self.entities)):
+            problems.append(f"semantic: kind '{k}' is not a declared entity kind")
+        for r in sorted(set(sem.get("relations") or []) - set(self.relations)):
+            problems.append(f"semantic: relation '{r}' is not declared")
         for name, spec in self.predicates.items():
             if not isinstance(spec, dict) or set(spec) - {"multi", "description"}:
                 problems.append(f"predicate '{name}': only `multi` (true/false) and `description` are understood")
@@ -99,6 +109,7 @@ class Cartridge:
             },
             "rules": self.rules,
             "predicates": self.predicates,
+            "semantic": self.semantic,
             "agents": {
                 a.id: {
                     **asdict(a),
@@ -181,4 +192,5 @@ def load_cartridge(path: str | Path) -> Cartridge:
         agents=parse_agents(raw.get("agents")),
         calendar=Calendar.parse(raw.get("calendar")),
         predicates=raw.get("predicates") or {},
+        semantic=raw.get("semantic") or {},
     )

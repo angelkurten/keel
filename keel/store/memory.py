@@ -163,6 +163,7 @@ class MemoryStore:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 return r  # already open; idempotent
         r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
+        self._mark(tenant, r.recorded_at)
         self._rels[tenant][src].append(r)
         if dst != src:
             self._rels[tenant][dst].append(r)
@@ -217,6 +218,10 @@ class MemoryStore:
         """Facts recorded or closed after a watermark, across subjects."""
         now = utcnow()
         return [f for f in changed_after(self._all_facts[tenant], after) if f.expires_at is None or f.expires_at > now]
+
+    def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
+        """Relations recorded after a watermark (links; an unlink carries no transaction time yet)."""
+        return [r for r in self._all_rels[tenant] if r.recorded_at and r.recorded_at > after]
 
     def watermark(self, tenant: str) -> datetime | None:
         """The latest transaction time in the tenant: a cursor for `changes`."""

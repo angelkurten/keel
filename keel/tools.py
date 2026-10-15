@@ -375,20 +375,24 @@ class Tools:
             raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
         kind = kind or (spec or {}).get("applies_to")
         graph = self._graph(utcnow()) if spec else None
-        filtered = bool(kind or spec or self.agent)
-        hits = self.index.query(self.tenant, self.embedder.embed([text])[0], limit * 5 if filtered else limit)
+        vector = self.embedder.embed([text])[0]
         out: list[dict[str, Any]] = []
-        for key, score in hits:
-            k = _kind(key)
-            if (kind and k != kind) or (self.agent and not self.agent.sees_kind(k)):
-                continue
-            ent = self.store.entity(self.tenant, key)
-            if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
-                continue  # gone since indexing, or the rule does not fire
-            out.append({**_ser(ent), "score": round(score, 6)})
-            if len(out) >= limit:
-                break
-        return out
+        seen, k = 0, limit * 5 if (kind or spec or self.agent) else limit
+        while True:  # filters drop candidates: widen the window until the page is full or the index runs out
+            hits = self.index.query(self.tenant, vector, k)
+            for key, score in hits[seen:]:
+                kk = _kind(key)
+                if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)):
+                    continue
+                ent = self.store.entity(self.tenant, key)
+                if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
+                    continue  # gone since indexing, or the rule does not fire
+                out.append({**_ser(ent), "score": round(score, 6)})
+                if len(out) >= limit:
+                    return out
+            if len(hits) < k:
+                return out
+            seen, k = len(hits), k * 4
 
     def annotate(
         self,

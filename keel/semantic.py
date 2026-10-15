@@ -142,19 +142,42 @@ EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 MAX_VALUE_CHARS = 300
 
 
-def render(store: Store, tenant: str, subject: str) -> str | None:
-    """One subject as a short document: key, attributes, open accepted facts of tenant/global scope.
-    None when there is nothing left to index (the subject should be removed from the index)."""
-    ent = store.entity(tenant, subject)
-    facts = [f for f in store.facts(tenant, subject, at=datetime.now(timezone.utc)) if f.status is None and f.scope in INDEXED_SCOPES]
-    if ent is None and not facts:
+def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | None = None) -> str | None:
+    """One subject as a short document: key, attributes, open accepted facts of tenant/global scope,
+    and the open relations the cartridge names. `policy` is the cartridge's `semantic:` section:
+
+        semantic:
+          kinds: [card, cliente]          # absent: every kind
+          predicates: [estado, resumen]   # what to include; or exclude: [comentario]
+          attrs: true                     # entity attributes (default true); or a list of names
+          relations: [de_cliente]         # open relations, with the other side's attributes
+
+    None when there is nothing to index (not an indexed kind, or nothing left): remove it."""
+    policy = policy or {}
+    kind = subject.split(":", 1)[0]
+    if policy.get("kinds") and kind not in policy["kinds"]:
         return None
+    now = datetime.now(timezone.utc)
+    ent = store.entity(tenant, subject)
+    facts = [f for f in store.facts(tenant, subject, at=now) if f.status is None and f.scope in INDEXED_SCOPES]
+    if "predicates" in policy:
+        facts = [f for f in facts if f.predicate in policy["predicates"]]
+    facts = [f for f in facts if f.predicate not in (policy.get("exclude") or [])]
     lines = [subject]
-    if ent is not None:
-        lines += [f"{k}: {v}" for k, v in sorted(ent.attrs.items()) if v is not None]
+    attrs = policy.get("attrs", True)
+    if ent is not None and attrs:
+        lines += [f"{k}: {v}" for k, v in sorted(ent.attrs.items()) if v is not None and (attrs is True or k in attrs)]
     for f in facts:
         value = f.value if isinstance(f.value, str) else json.dumps(f.value, ensure_ascii=False)
         lines.append(f"{f.predicate}: {value[:MAX_VALUE_CHARS]}")
+    for rel in policy.get("relations") or []:
+        for r in store.relations(tenant, subject, rel=rel, at=now):
+            other = r.dst if r.src == subject else r.src
+            label = store.entity(tenant, other)
+            extra = ", ".join(f"{k}: {v}" for k, v in sorted(label.attrs.items()) if v is not None) if label else ""
+            lines.append(f"{rel}: {other}" + (f" ({extra})" if extra else ""))
+    if ent is None and len(lines) == 1:
+        return None
     return "\n".join(lines)
 
 
@@ -165,19 +188,27 @@ class IndexReport:
     cursor: datetime | None  # pass it back as `since` next time
 
 
-def index_tenant(store: Store, tenant: str, embedder: Embedder, index: VectorIndex, since: datetime | None = None, batch: int = 64) -> IndexReport:
-    """Bring the index up to date for one tenant. `since=None` rebuilds it; a watermark updates only
-    the subjects whose facts changed after it. Entity attributes are not bitemporal, so a change to
-    attributes alone is picked up by the next full rebuild."""
+def index_tenant(
+    store: Store, tenant: str, embedder: Embedder, index: VectorIndex, since: datetime | None = None, batch: int = 64,
+    policy: dict[str, Any] | None = None,
+) -> IndexReport:
+    """Bring the index up to date for one tenant. `since=None` rebuilds it; a watermark updates the
+    subjects whose facts changed after it, and both ends of every link recorded after it (an indexed
+    relation names the other side). `policy` is the cartridge's `semantic:` section. Entity attributes
+    and unlinks carry no transaction time, so changes to them alone are picked up by `--full`."""
     cursor = store.watermark(tenant)
     if since is None:
         index.clear(tenant)
         subjects = sorted({e.key for e in store.entities(tenant)} | {f.subject for f in store.changes(tenant, EPOCH)})
     else:
-        subjects = sorted({f.subject for f in store.changes(tenant, since)})
+        changed = {f.subject for f in store.changes(tenant, since)}
+        if (policy or {}).get("relations"):
+            for r in store.relation_changes(tenant, since):
+                changed |= {r.src, r.dst}
+        subjects = sorted(changed)
     docs, gone = [], []
     for s in subjects:
-        text = render(store, tenant, s)
+        text = render(store, tenant, s, policy)
         (docs.append((s, text)) if text is not None else gone.append(s))
     for i in range(0, len(docs), batch):
         part = docs[i : i + batch]

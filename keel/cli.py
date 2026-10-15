@@ -228,10 +228,10 @@ def index_cmd(
     from keel.envelope import parse_iso
     from keel.semantic import index_tenant, load_embedder, load_index
 
-    load_cartridge(cartridge)  # fail early on a broken cartridge
+    c = load_cartridge(cartridge)
     path = cursor or Path(".keel") / f"index-{tenant}.cursor"
     since = None if full or not path.exists() else parse_iso(path.read_text(encoding="utf-8").strip())
-    report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since)
+    report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since, policy=c.semantic)
     if report.cursor is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(report.cursor.isoformat(), encoding="utf-8")

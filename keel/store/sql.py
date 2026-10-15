@@ -375,10 +375,15 @@ class SqlStore:
         now = utcnow()
         return [f for f in changed_after((_fact(r) for r in rows), after) if f.expires_at is None or f.expires_at > now]
 
+    def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
+        """Relations recorded after a watermark (links; an unlink carries no transaction time yet)."""
+        return [_relation(r) for r in self._rows("SELECT * FROM relations WHERE tenant = ? AND recorded_at > ? ORDER BY seq", (tenant, _ts(after)))]
+
     def watermark(self, tenant: str) -> datetime | None:
-        """The latest transaction time in the tenant: a cursor for `changes`."""
+        """The latest transaction time in the tenant (facts and links): a cursor for `changes`."""
         row = self._one("SELECT MAX(recorded_at) AS r, MAX(closed_at) AS c FROM facts WHERE tenant = ?", (tenant,))
-        times = [_dt(row[k]) for k in ("r", "c") if row and row[k]]
+        rel = self._one("SELECT MAX(recorded_at) AS r FROM relations WHERE tenant = ?", (tenant,))
+        times = [_dt(row[k]) for k in ("r", "c") if row and row[k]] + ([_dt(rel["r"])] if rel and rel["r"] else [])
         return max(times) if times else None
 
     def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int:

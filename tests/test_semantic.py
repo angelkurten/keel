@@ -168,3 +168,57 @@ def test_live_openai_compatible_embedder_finds_synonyms(fleet):
     assert t.search("worn-out tyre", mode="semantic", limit=1)[0]["key"] == "tire:T-9001"  # no shared word with the document
     assert t.search("insurance about to lapse", mode="semantic", kind="document", limit=1)[0]["key"] == "document:POL-7731"
     assert datetime.now(timezone.utc)  # keeps the import used when skipped
+
+
+# ---- 0.11.1: the cartridge chooses what is indexed; relations; filters never cut the page ----
+
+
+def test_cartridge_policy_chooses_kinds_predicates_and_relations(fleet):
+    c, s = fleet
+    t = Tools(c, s, TENANT)
+    t.annotate("tire:T-9001", "comment", "see https://jira.example/T-9001 rev 42f9", scope="tenant", evidence="jira:1")
+    t.annotate("tire:T-9001", "condition", "sidewall bulge", scope="tenant", evidence="photo:1")
+    policy = {"kinds": ["tire", "unit"], "exclude": ["comment"], "relations": ["mounted_on"]}
+    doc = render(s, TENANT, "tire:T-9001", policy)
+    assert "sidewall bulge" in doc and "jira.example" not in doc  # excluded predicate
+    assert "mounted_on: unit:MXK-4821 (model: Freightliner Cascadia, plate: MXK-4821)" in doc  # the other side, labelled
+    assert render(s, TENANT, "document:POL-7731", policy) is None  # not an indexed kind
+    only = render(s, TENANT, "tire:T-9001", {"predicates": ["condition"], "attrs": False})
+    assert only == "tire:T-9001\ncondition: sidewall bulge"
+    c.semantic = {"kinds": ["spaceship"], "relations": ["flies"], "predicates": ["a"], "exclude": ["b"], "colour": 1}
+    msgs = c.validate()
+    for expected in ("kind 'spaceship'", "relation 'flies'", "not both", "unknown key 'colour'"):
+        assert any(expected in m for m in msgs), msgs
+
+
+def test_a_new_link_reindexes_both_ends(fleet, index):
+    import time
+
+    c, s = fleet
+    emb, policy = HashEmbedder(), {"relations": ["in_workshop"]}
+    first = index_tenant(s, TENANT, emb, index, policy=policy)
+    time.sleep(0.01)
+    s.upsert_entity(TENANT, "workshop", "W-99", name="Taller Norte")
+    s.link(TENANT, "unit:MXK-4821", "in_workshop", "workshop:W-99", datetime.now(timezone.utc))  # no fact changed
+    second = index_tenant(s, TENANT, emb, index, since=first.cursor, policy=policy)
+    assert second.indexed == 2  # the unit and the workshop
+    t = Tools(c, s, TENANT, embedder=emb, index=index)
+    assert t.search("Taller Norte", mode="semantic", kind="unit", limit=1)[0]["key"] == "unit:MXK-4821"
+
+
+def test_rule_filter_keeps_looking_past_the_first_candidates(index):
+    c = load_cartridge(FLEET)
+    s = MemoryStore()
+    now = datetime.now(timezone.utc)
+    for i in range(120):  # 120 healthy tires that match the query better than the critical one
+        s.upsert_entity(TENANT, "tire", f"H-{i:03d}", position="P1")
+        s.open_fact(TENANT, f"tire:H-{i:03d}", "condition", "tread depth tread depth tread depth fine", valid_from=now)
+        s.open_fact(TENANT, f"tire:H-{i:03d}", "depth_mm", 7.0, valid_from=now)
+    s.upsert_entity(TENANT, "tire", "Z-1", position="P2")
+    s.open_fact(TENANT, "tire:Z-1", "condition", "worn", valid_from=now)
+    s.open_fact(TENANT, "tire:Z-1", "depth_mm", 1.5, valid_from=now)
+    emb = HashEmbedder()
+    index_tenant(s, TENANT, emb, index)
+    t = Tools(c, s, TENANT, embedder=emb, index=index)
+    hits = t.search("tread depth", mode="semantic", rule="tire_critical", limit=5)
+    assert [h["key"] for h in hits] == ["tire:Z-1"]  # found far down the ranking, not cut at a fixed window
