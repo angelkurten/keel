@@ -16,7 +16,7 @@ from typing import Any
 
 from keel.envelope import utcnow
 from keel.scopes import Scope
-from keel.store.base import Entity, Fact, Relation
+from keel.store.base import DuplicateKey, Entity, Fact, Relation
 
 # ---- shared by every store: build a fact, filter rows the bitemporal way, search ---------
 
@@ -201,6 +201,11 @@ class MemoryStore:
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
         # the old value keeps its history, it is never overwritten; and the new fact takes its
         # place by valid_from even when it arrives late (see place_fact)
+        key = kw.get("idempotency_key")
+        if key is not None:  # ponytail: atomic under the GIL only; one process, as this store always is
+            for x in self._facts[tenant][subject]:
+                if x.idempotency_key == key:
+                    raise DuplicateKey(x)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
         place_fact(f, same_slot(self._facts[tenant][subject], f, kw.get("per_source", False)))
         self._facts[tenant][subject].append(f)

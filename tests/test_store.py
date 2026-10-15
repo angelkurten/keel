@@ -338,6 +338,46 @@ def test_annotate_with_a_key_is_idempotent(store):
         t.annotate("tire:T-9001", "assessment", "keep", task="run-A", key="step-7")
 
 
+def test_a_store_refuses_a_key_twice_on_one_subject(store):
+    from keel.store.base import DuplicateKey
+
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    first = store.open_fact(TENANT, "tire:T-1", "plan", "swap", now, scope=Scope.TASK, idempotency_key="k")
+    with pytest.raises(DuplicateKey) as dup:
+        store.open_fact(TENANT, "tire:T-1", "plan", "swap", now, scope=Scope.TASK, idempotency_key="k")
+    assert dup.value.fact.value == first.value == "swap"
+    store.open_fact(TENANT, "tire:T-2", "plan", "swap", now, scope=Scope.TASK, idempotency_key="k")  # per subject
+    store.open_fact(TENANT, "tire:T-1", "plan", "keep", now, scope=Scope.TASK)  # no key, no limit
+    assert [f.value for f in store.facts(TENANT, "tire:T-1") if f.predicate == "plan"] == ["swap", "keep"]
+
+
+def test_annotate_with_a_key_is_one_write_across_processes(tmp_path, monkeypatch):
+    """Two servers on one database: B writes between A's check and A's write. A gets B's fact back."""
+    c = load_cartridge(FLEET)
+    a, b = SqliteStore(tmp_path / "keel.db"), SqliteStore(tmp_path / "keel.db")
+    Ingestor(c, a).ingest(JsonlAdapter(EVENTS), strict=True)
+    won = Tools(c, b, TENANT).annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7")
+    monkeypatch.setattr(a, "facts", lambda *args, **kw: [])  # A's check ran before B's write landed
+    ta = Tools(c, a, TENANT)
+    assert ta.annotate("tire:T-9001", "assessment", "replace", task="run-A", key="step-7") == won
+    with pytest.raises(ValueError):
+        ta.annotate("tire:T-9001", "assessment", "keep", task="run-A", key="step-7")
+    monkeypatch.undo()
+    assert len(Tools(c, a, TENANT).history("tire:T-9001", predicate="assessment", task="run-A")) == 1
+
+
+def test_a_database_with_a_key_already_written_twice_still_opens(tmp_path):
+    path = tmp_path / "keel.db"
+    s = SqliteStore(path)
+    s._exec("DROP INDEX facts_key")  # as before 0.16.2, when the race could write a key twice
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    for _ in range(2):
+        s.open_fact(TENANT, "tire:T-1", "plan", "swap", now, scope=Scope.TASK, idempotency_key="k")
+    with pytest.warns(UserWarning, match="facts_key"):
+        again = SqliteStore(path)
+    assert len(again.facts(TENANT, "tire:T-1")) == 2
+
+
 def test_search_enumerates_by_kind_and_rule_with_pages(store):
     c = load_cartridge(FLEET)
     Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)

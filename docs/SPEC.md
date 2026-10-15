@@ -140,7 +140,7 @@ close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant") ->
     # The tenant default is what a handler means: it never closes agent or task memory.
 ```
 
-`open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, and `per_source` (one history per author, §3.3).
+`open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, and `per_source` (one history per author, §3.3). A store MUST reject a second fact with the same `idempotency_key` on a subject by raising `DuplicateKey` (carrying the fact already written), atomically, so two writers racing on one key write once; the SQL stores do it with a unique index.
 
 Reads:
 

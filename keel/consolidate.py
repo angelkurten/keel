@@ -29,7 +29,7 @@ from typing import Any, Protocol
 
 from keel.cartridge import Cartridge, _parse_ttl
 from keel.scopes import Scope
-from keel.store.base import Fact, Store
+from keel.store.base import DuplicateKey, Fact, Store
 
 REDUCERS = ("mode", "latest", "count", "min", "max", "avg", "distinct", "summary")
 
@@ -195,10 +195,14 @@ def consolidate_tenant(
             evidence = f"{len(group)} {src['predicate']} facts, {first.isoformat()} to {last.isoformat()}"
             if evidences:
                 evidence += "; evidence: " + ", ".join(evidences[:20]) + (" ..." if len(evidences) > 20 else "")
-            store.open_fact(
-                tenant, subject, dst["predicate"], value, valid_from=now, source=f"consolidate:{name}",
-                scope=Scope(dst.get("scope", "tenant")), evidence=evidence, idempotency_key=key, corrected_by=f"job:consolidate:{name}",
-            )
+            try:
+                store.open_fact(
+                    tenant, subject, dst["predicate"], value, valid_from=now, source=f"consolidate:{name}",
+                    scope=Scope(dst.get("scope", "tenant")), evidence=evidence, idempotency_key=key, corrected_by=f"job:consolidate:{name}",
+                )
+            except DuplicateKey:  # another run of the job wrote it first
+                unchanged += 1
+                continue
             written += 1
         report.written[name], report.unchanged[name] = written, unchanged
     return report

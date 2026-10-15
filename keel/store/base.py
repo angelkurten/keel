@@ -65,6 +65,15 @@ class Fact:
     trace: str | None = None  # the caller's W3C traceparent / tool call id, joining traces to the audit
 
 
+class DuplicateKey(ValueError):
+    """open_fact with an idempotency_key the subject already has. `fact` is the one already written,
+    so a caller that lost a race returns it instead of writing twice."""
+
+    def __init__(self, fact: Fact) -> None:
+        super().__init__(f"idempotency key '{fact.idempotency_key}' is already on {fact.subject}")
+        self.fact = fact
+
+
 class Store(Protocol):
     """Primitives. Handlers call these; nothing else writes to the graph."""
 
@@ -74,7 +83,7 @@ class Store(Protocol):
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None: ...
 
-    def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...
+    def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...  # may raise DuplicateKey
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None: ...  # scope None: every scope
 

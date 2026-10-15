@@ -24,7 +24,7 @@ from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import GLOBAL_TENANT, Scope
 from keel.semantic import accepts, embed_as, fuse, render
-from keel.store.base import Entity, Fact, Relation, Store
+from keel.store.base import DuplicateKey, Entity, Fact, Relation, Store
 from keel.store.memory import changed_after, filter_facts, search_in
 
 
@@ -550,32 +550,39 @@ class Tools:
             raise PermissionError(f"agent '{self.agent.id}' may not write scope '{sc.value}'")
         self.cartridge.policy.check_write(sc, evidence)
         part = GLOBAL_TENANT if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
+
+        def replayed(f: Fact) -> dict[str, Any]:
+            if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):
+                raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
+            return _ser(f)
+
         if key is not None:
             for f in self.store.facts(part, subject):
                 if f.idempotency_key == key:
-                    if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):
-                        raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
-                    return _ser(f)
+                    return replayed(f)
         ttl = self.cartridge.policy.ttl.get(sc)
         now = utcnow()
         author = self.author or by or "agent"
-        f = self.store.open_fact(
-            part,
-            subject,
-            predicate,
-            value,
-            valid_from=now,
-            source=f"annotate:{author}",
-            scope=sc,
-            corrected_by=by or (author if self.agent_id else None),
-            evidence=evidence,
-            expires_at=(now + ttl) if ttl else None,
-            task=task,
-            idempotency_key=key,
-            status=status,
-            trace=self.trace,
-            per_source=status is not None or predicate in self.multi,
-        )
+        try:
+            f = self.store.open_fact(
+                part,
+                subject,
+                predicate,
+                value,
+                valid_from=now,
+                source=f"annotate:{author}",
+                scope=sc,
+                corrected_by=by or (author if self.agent_id else None),
+                evidence=evidence,
+                expires_at=(now + ttl) if ttl else None,
+                task=task,
+                idempotency_key=key,
+                status=status,
+                trace=self.trace,
+                per_source=status is not None or predicate in self.multi,
+            )
+        except DuplicateKey as dup:  # a concurrent call with the same key wrote first
+            return replayed(dup.fact)
         every_scope = {"scope": None} if accepts(self.store.close_fact, "scope") else {}  # a decision settles proposals in any scope
         if status != "proposed":  # a decision: the pending proposals on this predicate are settled
             self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed", **every_scope)

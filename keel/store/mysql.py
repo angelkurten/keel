@@ -90,6 +90,9 @@ class MysqlStore(SqlStore):
     def _columns(self, table: str) -> set[str]:
         return {r["Field"] for r in self._rows(f"SHOW COLUMNS FROM {table}")}
 
+    def _has_index(self, table: str, name: str) -> bool:
+        return self._one(f"SHOW INDEX FROM {table} WHERE Key_name = ?", (self.prefix + name,)) is not None
+
     def _cursor(self, conn: Any) -> Any:
         pymysql = type(conn).__module__.startswith("pymysql")
         now = time.monotonic()

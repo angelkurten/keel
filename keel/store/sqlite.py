@@ -65,3 +65,6 @@ class SqliteStore(SqlStore):
 
     def _columns(self, table: str) -> set[str]:
         return {r["name"] for r in self._rows(f"PRAGMA table_info({table})")}
+
+    def _has_index(self, table: str, name: str) -> bool:
+        return self._one("SELECT 1 AS one FROM sqlite_master WHERE type = 'index' AND name = ?", (self.prefix + name,)) is not None

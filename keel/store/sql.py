@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import warnings
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ from typing import Any
 
 from keel.envelope import Event, utcnow
 from keel.scopes import Scope
-from keel.store.base import Entity, Fact, Relation
+from keel.store.base import DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
     changed_after,
     filter_facts,
@@ -108,7 +109,7 @@ class SqlStore:
     UPSERT_ENTITY = ""  # (tenant, kind, id, ref, attrs); on conflict update ref and attrs
     REMEMBER = ""  # (tenant, id); insert or ignore
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|relations_src|relations_dst|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -133,9 +134,20 @@ class SqlStore:
                 self._exec(f"ALTER TABLE facts ADD COLUMN {name} {sqltype}")
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
                 self._exec(index)
+        if not self._has_index("facts", "facts_key"):  # annotate(key=) stays one write even across processes
+            try:
+                self._exec("CREATE UNIQUE INDEX facts_key ON facts (tenant, subject, idempotency_key)")
+            except Exception as exc:  # an older database may already hold a key written twice
+                if type(exc).__name__ != "IntegrityError":  # every driver's name for it
+                    raise
+                warnings.warn(f"facts_key not created, so annotate(key=) is not race-safe here: {exc}", stacklevel=2)
 
     def _columns(self, table: str) -> set[str]:
         """Column names of a table (dialect hook)."""
+        raise NotImplementedError
+
+    def _has_index(self, table: str, name: str) -> bool:
+        """Whether the (prefixed) index exists (dialect hook)."""
         raise NotImplementedError
 
     # ---- dialect hooks ---------------------------------------------------------------
@@ -310,10 +322,18 @@ class SqlStore:
         same = self._cached(key, load)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
         closed = place_fact(f, same_slot((fact for fact, _ in same), f, kw.get("per_source", False)))
+        try:  # insert before closing the previous fact: a refused insert leaves nothing half done
+            self._insert(INSERT_FACT, _fact_row(f))
+        except Exception as exc:  # each driver has its own IntegrityError; the key decides if it is ours
+            row = f.idempotency_key and self._one(
+                "SELECT * FROM facts WHERE tenant = ? AND subject = ? AND idempotency_key = ?", (tenant, subject, f.idempotency_key)
+            )
+            if not row:
+                raise
+            raise DuplicateKey(_fact(row)) from exc
         if closed is not None:
             seq = next(s for fact, s in same if fact is closed)
             self._exec("UPDATE facts SET valid_to = ?, closed_at = ? WHERE seq = ?", (_ts(closed.valid_to), _ts(closed.closed_at), seq))
-        self._insert(INSERT_FACT, _fact_row(f))
         same.append((f, self._last_id))
         return f
 
