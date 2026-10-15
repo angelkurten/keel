@@ -1,0 +1,95 @@
+<?php
+declare(strict_types=1);
+
+namespace Keel\Sdk;
+
+/** The five tools plus `events` (ingest), bound to one tenant and optionally one agent. Talks to `keel serve --transport http`. */
+final class Client
+{
+    public function __construct(
+        private readonly string $baseUrl,
+        private readonly string $tenant,
+        private readonly ?string $secret = null,
+        private readonly ?string $agent = null,
+        private readonly int $timeout = 30,
+    ) {
+    }
+
+    /** @return array<string, mixed> */
+    public function context(string $subject, \DateTimeInterface|string|null $asOf = null): array
+    {
+        return $this->post('/v1/context', ['subject' => $subject, 'as_of' => $asOf === null ? null : Envelope::iso($asOf)]);
+    }
+
+    /** @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string} $filter @return list<array<string, mixed>> */
+    public function history(string $subject, array $filter = []): array
+    {
+        return $this->post('/v1/history', [
+            'subject' => $subject,
+            'since' => isset($filter['since']) ? Envelope::iso($filter['since']) : null,
+            'until' => isset($filter['until']) ? Envelope::iso($filter['until']) : null,
+            'predicate' => $filter['predicate'] ?? null,
+            'scope' => $filter['scope'] ?? null,
+        ]);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function search(string $text): array
+    {
+        return $this->post('/v1/search', ['text' => $text]);
+    }
+
+    /** @return array<string, mixed> */
+    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null): array
+    {
+        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by]);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function related(string $subject, ?string $relation = null): array
+    {
+        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation]);
+    }
+
+    /** @param list<array<string, mixed>> $batch @return array<string, mixed> */
+    public function events(array $batch): array
+    {
+        return $this->post('/v1/events', $batch);
+    }
+
+    private function post(string $path, mixed $body): mixed
+    {
+        $headers = ["Content-Type: application/json", "X-Keel-Tenant: {$this->tenant}"];
+        if ($this->agent !== null) {
+            $headers[] = "X-Keel-Agent: {$this->agent}";
+        }
+        if ($this->secret !== null) {
+            $headers[] = "Authorization: Bearer {$this->secret}";
+        }
+        $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $url = rtrim($this->baseUrl, '/') . $path;
+        if (function_exists('curl_init')) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $json, CURLOPT_HTTPHEADER => $headers, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $this->timeout]);
+            $raw = curl_exec($ch);
+            if ($raw === false) {
+                throw new \RuntimeException('keel: ' . curl_error($ch));
+            }
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            curl_close($ch);
+        } else {
+            $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => implode("\r\n", $headers), 'content' => $json, 'timeout' => $this->timeout, 'ignore_errors' => true]]);
+            $raw = file_get_contents($url, false, $ctx);
+            if ($raw === false) {
+                throw new \RuntimeException("keel: no answer from $url");
+            }
+            $status = isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m) ? (int) $m[1] : 0;
+        }
+        if ($status < 200 || $status >= 300) {
+            $decoded = json_decode((string) $raw, true);
+            $detail = is_array($decoded) && isset($decoded['detail']) ? $decoded['detail'] : (string) $raw;
+            throw new KeelError($status, is_string($detail) ? $detail : json_encode($detail));
+        }
+        return json_decode((string) $raw, true, 512, JSON_THROW_ON_ERROR);
+    }
+}

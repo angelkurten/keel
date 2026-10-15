@@ -114,15 +114,16 @@ def schema(cartridge: Path):
 
 @app.command()
 def sdk(
-    language: str = typer.Argument(..., help="typescript (python, go and php are next)."),
+    language: str = typer.Argument(..., help="typescript, python, go or php."),
     cartridge: Path = typer.Argument(...),
     out: Path | None = typer.Option(None, "--out", "-o", help="Write here; stdout when absent."),
     check: bool = typer.Option(False, "--check", help="Exit 1 if --out exists and differs from what would be generated (for CI)."),
+    package: str | None = typer.Option(None, "--package", help="Go: the package name (default keel<name>). PHP: the namespace (default Keel\\<Name>)."),
 ):
     """Generate the typed client for a cartridge: event payload types, emit constructors, subject helpers, constants."""
     from keel.sdk import generate
 
-    text = generate(language, load_cartridge(cartridge))
+    text = generate(language, load_cartridge(cartridge), package=package)
     if out is None:
         typer.echo(text, nl=False)
         return

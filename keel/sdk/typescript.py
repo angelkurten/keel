@@ -6,14 +6,7 @@ import json
 import re
 from typing import Any
 
-
-def pascal(name: str) -> str:
-    return "".join(p[:1].upper() + p[1:] for p in re.split(r"[._\-\s]+", name) if p)
-
-
-def camel(name: str) -> str:
-    p = pascal(name)
-    return p[:1].lower() + p[1:]
+from keel.sdk.naming import camel, pascal
 
 
 def ts_type(schema: dict[str, Any]) -> str:
@@ -52,7 +45,7 @@ def _ts_object(schema: dict[str, Any]) -> str:
     return "{ " + "; ".join(fields) + " }"
 
 
-def render(doc: dict[str, Any]) -> str:
+def render(doc: dict[str, Any], **options: Any) -> str:
     name, kinds, relations = doc["cartridge"], list(doc["entities"]), list(doc["relations"])
     events: dict[str, dict[str, Any]] = doc["events"]
     lines = [

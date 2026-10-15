@@ -50,7 +50,7 @@ uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
 
 Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes).
 
-In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript cartridges/fleet -o src/keel-fleet.ts` with the runtime `@keel-context/sdk` (see [docs/sdks.md](docs/sdks.md)).
+In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php cartridges/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
 
 ## Connect a real event stream
 

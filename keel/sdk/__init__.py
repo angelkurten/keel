@@ -9,15 +9,25 @@ constants. The runtime (HTTP client, envelope) is a published package per langua
 
 from __future__ import annotations
 
+from typing import Any
+
 from keel.cartridge import Cartridge
-from keel.sdk import typescript
+from keel.sdk import go, php, python, typescript
 
-TEMPLATES = {"typescript": typescript.render, "ts": typescript.render}
+TEMPLATES = {
+    "typescript": typescript.render,
+    "ts": typescript.render,
+    "python": python.render,
+    "py": python.render,
+    "go": go.render,
+    "php": php.render,
+}
 
 
-def generate(language: str, cartridge: Cartridge) -> str:
+def generate(language: str, cartridge: Cartridge, **options: Any) -> str:
+    """`options`: `package` (Go package name, PHP namespace)."""
     try:
         render = TEMPLATES[language.lower()]
     except KeyError as exc:
-        raise SystemExit(f"no template for '{language}' yet (have: typescript)") from exc
-    return render(cartridge.schema())
+        raise SystemExit(f"no template for '{language}' (have: typescript, python, go, php)") from exc
+    return render(cartridge.schema(), **options)

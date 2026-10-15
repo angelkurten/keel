@@ -5,9 +5,45 @@ The cartridge is the interface definition. `keel sdk <language> <cartridge>` wri
 | Language | Generator | Runtime | Status |
 | --- | --- | --- | --- |
 | TypeScript | `keel sdk typescript` | `@keel-context/sdk` (npm) | shipped; tested end to end from Bun against `keel serve --transport http` |
-| Python | `keel sdk python` | inside `keel-context` | next |
-| Go | `keel sdk go` | a Go module | next |
-| PHP | `keel sdk php` | Packagist | next |
+| Python | `keel sdk python` | `keel.client` inside `keel-context` (stdlib only) | shipped; tested end to end in pytest |
+| Go | `keel sdk go --package <pkg>` | `github.com/angelkurten/keel/sdk/go` | shipped; tested end to end with `go test` |
+| PHP | `keel sdk php --package '<Namespace>'` | `keel-context/sdk` (Composer; Packagist listing pending) | shipped; tested end to end on PHP 8.3 |
+
+Every generator reads the same `keel schema` document and writes the same things: a type per event payload, an `emit` constructor per cataloged event, subject helpers, the rules and constants, and a client factory. `--check` on any of them exits 1 when the cartridge moved on, for CI.
+
+## Python
+
+```bash
+keel sdk python cartridges/fleet -o app/keel_fleet.py
+```
+
+```python
+from app import keel_fleet as kf
+
+keel = kf.client("http://keel.internal:8000", "acme-logistics", secret=os.environ["KEEL_SECRET"])
+keel.events([kf.emit.tire_depth_measured("acme-logistics", kf.subjects.tire("T-9001"), datetime.now(timezone.utc), "tires", {"unit_id": "MXK-4821", "position": "P3", "depth_mm": 2.6})])
+keel.context(kf.subjects.tire("T-9001"))["evaluation"]["tire_critical"]   # True
+```
+
+Payloads are `TypedDict`s, so your editor checks the keys; a refusal raises `keel.client.KeelError` with `status` and `detail`. A Python product that already imports `keel` can skip HTTP and call `Tools` directly; the generated module is for the ones that want the server boundary.
+
+## Go
+
+```bash
+go get github.com/angelkurten/keel/sdk/go
+keel sdk go cartridges/fleet -o internal/keelfleet/keel_fleet.go --package keelfleet
+```
+
+Payloads are structs with JSON tags, enums are typed string constants, nullable fields are pointers, and `Emit<Event>(tenant, subject, occurredAt, source, payload)` returns a `keel.Envelope`. Errors are `*keel.Error` with `Status` and `Detail`. The output is `gofmt` and `go vet` clean.
+
+## PHP
+
+```bash
+composer require keel-context/sdk
+keel sdk php cartridges/fleet -o src/Keel/Fleet.php --package 'App\Keel\Fleet'
+```
+
+Payloads are readonly value objects with `toArray()`, enums become PHP 8.1 enums, `Emit::<event>(...)` returns the envelope as an array and `Keel::client(...)` the client. Errors are `Keel\Sdk\KeelError`.
 
 ## TypeScript
 
