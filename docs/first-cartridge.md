@@ -130,6 +130,27 @@ agents:
 
 An agent with no `writes:` may write `[task, agent]`; one with `kind: human` is a person and signs as `human:<id>`. Once `agents:` exists, every `Tools(...)` and every `keel serve` needs `--agent <id>`, and an id that is not declared is refused. `annotate` is signed with the agent id, so `keel export` shows who wrote what. Agent-scope memory is read only by the agent that wrote it; task-scope memory tied to a task id only by calls that pass that task.
 
+## 9. Search by meaning (optional)
+
+`search(text, mode="semantic")` finds subjects by meaning instead of by substring. Say what goes into each subject's searchable document:
+
+```yaml
+semantic:
+  kinds: [patient, appointment]
+  relations: [booked_by]          # an appointment's document names its patient
+```
+
+Index outside ingest, from a durable store, and serve with the same index and embedder:
+
+```bash
+uv run keel ingest cartridges/clinics examples/events/clinics.jsonl --db clinic.db
+export KEEL_EMBEDDINGS_API_KEY=...    # any OpenAI-compatible embeddings endpoint (KEEL_EMBEDDINGS_BASE_URL, _MODEL)
+uv run keel index cartridges/clinics --tenant clinic-centro --db clinic.db --index "examples.custom_adapters:make_index?path=vectors.db"
+uv run keel serve cartridges/clinics --tenant clinic-centro --db clinic.db --index "examples.custom_adapters:make_index?path=vectors.db"
+```
+
+`--embedder hash` runs it offline for a try. The index here is the SQLite example adapter; `chroma:///path` is the bundled one, and your own vector database is an adapter you write ([Connect, semantic search](connect.md#semantic-search)). Run `keel index` from cron: it only re-indexes what changed.
+
 ## The test that it worked
 
 Did you edit anything under `keel/`? If yes, some domain leaked into the core. Open an issue; that is exactly the kind of thing we want to fix.

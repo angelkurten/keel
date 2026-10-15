@@ -361,3 +361,11 @@ def test_global_memory_is_indexed_for_every_tenant_that_knows_the_subject(fleet)
     again = index_tenant(s, TENANT, emb, idx, since=first.cursor)  # incremental: the global change is seen
     assert again.indexed == 1 and again.cursor > first.cursor
     assert index_tenant(s, "nobody-knows-it", emb, MemoryIndex(), since=first.cursor).indexed == 0
+
+
+def test_custom_adapters_example_runs_and_honours_the_index_contract():
+    """docs/connect.md points at examples/custom_adapters.py; it must keep working."""
+    import runpy
+
+    mod = runpy.run_path("examples/custom_adapters.py", run_name="__main__")
+    test_index_contract(mod["make_index"]())

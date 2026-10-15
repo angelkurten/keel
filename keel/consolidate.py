@@ -2,9 +2,9 @@
 
     consolidate:
       recurring_issue:
-        from: { predicate: assessment, scopes: [task, agent] }   # the episodic memory (scopes default: task, agent)
+        from: { predicate: assessment, scopes: [task] }          # the episodic memory (default: task; agent only when listed)
         applies_to: tire                                         # optional: one kind
-        within: 30d                                              # optional: only memory recorded in this window
+        within: 30d                                              # optional: only memory whose valid_from is in this window
         min_count: 3                                             # how many observations make a pattern (default 2)
         reduce: mode                                             # mode | latest | count | min | max | avg | distinct | summary
         into: { predicate: recurring_issue, scope: tenant }      # the durable fact (scope default: tenant)
@@ -91,6 +91,10 @@ def load_summarizer(spec: str) -> Summarizer:
     return _factory(spec)
 
 
+# agent memory is private: it is consolidated (and so promoted) only when a cartridge lists it
+DEFAULT_SCOPES = ["task"]
+
+
 def problems(cartridge: Cartridge) -> list[str]:
     """Shape errors in the `consolidate:` section, reported by `keel validate`."""
     out = []
@@ -105,7 +109,7 @@ def problems(cartridge: Cartridge) -> list[str]:
             out.append(f"{p}: `from.predicate` and `into.predicate` are required")
         if spec.get("reduce", "mode") not in REDUCERS:
             out.append(f"{p}: reduce is one of {', '.join(REDUCERS)}")
-        for s in src.get("scopes", ["task", "agent"]):
+        for s in src.get("scopes", DEFAULT_SCOPES):
             if s not in scopes:
                 out.append(f"{p}: unknown scope '{s}'")
         if dst.get("scope", "tenant") not in scopes:
@@ -143,7 +147,7 @@ def _value(reduce: str, facts: list[Fact], subject: str, predicate: str, summari
     if reduce == "summary":
         if summarizer is None:
             raise ValueError("reduce: summary needs a summarizer (keel consolidate --summarizer llm, or your adapter)")
-        return summarizer.summarize(subject, predicate, [(f.recorded_at.isoformat() if f.recorded_at else "", f.value, f.source) for f in facts])
+        return summarizer.summarize(subject, predicate, [(f.valid_from.isoformat(), f.value, f.source) for f in facts])
     counts = Counter(json.dumps(v, sort_keys=True, default=str) for v in values)  # mode; a tie goes to the latest
     best = max(counts.values())
     return next(v for v in reversed(values) if counts[json.dumps(v, sort_keys=True, default=str)] == best)
@@ -161,7 +165,7 @@ def consolidate_tenant(
         if only and name not in only:
             continue
         src, dst = spec["from"], spec["into"]
-        scopes = {Scope(s) for s in src.get("scopes", ["task", "agent"])}
+        scopes = {Scope(s) for s in src.get("scopes", DEFAULT_SCOPES)}
         window = _parse_ttl(spec["within"]) if spec.get("within") else None
         since = now - window if window else None
         kind = spec.get("applies_to")
@@ -171,7 +175,7 @@ def consolidate_tenant(
                 continue
             if kind and f.subject.split(":", 1)[0] != kind:
                 continue
-            if since and (f.recorded_at is None or f.recorded_at < since):
+            if since and f.valid_from < since:  # world time: a reingested history keeps its dates
                 continue
             by_subject.setdefault(f.subject, []).append(f)
         written = unchanged = 0
@@ -179,16 +183,16 @@ def consolidate_tenant(
         for subject, group in sorted(by_subject.items()):
             if len(group) < int(spec.get("min_count", 2)):
                 continue
-            group.sort(key=lambda f: (f.recorded_at or now, f.valid_from))
-            digest = hashlib.sha256(json.dumps([(f.recorded_at.isoformat() if f.recorded_at else "", f.source, f.value) for f in group], default=str).encode()).hexdigest()[:16]
+            group.sort(key=lambda f: (f.valid_from, f.recorded_at or now))
+            digest = hashlib.sha256(json.dumps([(f.valid_from.isoformat(), f.source, f.value) for f in group], default=str).encode()).hexdigest()[:16]
             key = f"consolidate:{name}:{digest}"
             if any(f.idempotency_key == key for f in store.facts(tenant, subject)):
                 unchanged += 1
                 continue
             value = _value(reduce, group, subject, src["predicate"], summarizer)
             evidences = list(dict.fromkeys(f.evidence for f in group if f.evidence))
-            first, last = group[0].recorded_at, group[-1].recorded_at
-            evidence = f"{len(group)} {src['predicate']} facts, {first.isoformat() if first else '?'} to {last.isoformat() if last else '?'}"
+            first, last = group[0].valid_from, group[-1].valid_from
+            evidence = f"{len(group)} {src['predicate']} facts, {first.isoformat()} to {last.isoformat()}"
             if evidences:
                 evidence += "; evidence: " + ", ".join(evidences[:20]) + (" ..." if len(evidences) > 20 else "")
             store.open_fact(

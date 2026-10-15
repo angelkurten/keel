@@ -38,6 +38,10 @@ rules:
     definition: "An appointment is missed when its status is no_show."
     when: { predicate: status, eq: no_show }
 
+semantic:
+  kinds: [patient, appointment]
+  relations: [booked_by]          # an appointment's document names its patient
+
 memory:
   ttl:
     task: 14d

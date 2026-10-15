@@ -607,7 +607,7 @@ def test_expire_consolidates_first_so_nothing_is_dropped_unsummarized(tmp_path):
     cart = tmp_path / "fleet"
     shutil.copytree(FLEET, cart)
     with (cart / "cartridge.yaml").open("a", encoding="utf-8") as fh:
-        fh.write("\nconsolidate:\n  recurring:\n    from: { predicate: assessment }\n    min_count: 2\n    reduce: mode\n    into: { predicate: recurring_issue }\n")
+        fh.write("\nconsolidate:\n  recurring:\n    from: { predicate: assessment, scopes: [agent] }\n    min_count: 2\n    reduce: mode\n    into: { predicate: recurring_issue }\n")
     db = str(tmp_path / "keel.db")
     CliRunner().invoke(app, ["ingest", str(cart), EVENTS, "--db", db])
     store = SqliteStore(db)
@@ -666,3 +666,52 @@ def test_memory_scopes_are_enforced_on_read(store):
         Tools(c, store, GLOBAL_TENANT)
     with pytest.raises(ValidationError):
         Event(tenant=GLOBAL_TENANT, type="x.y", subject="tire:1", occurred_at=datetime.now(timezone.utc), source="s")
+
+
+def test_scopes_never_close_each_other(store):
+    """kagent (5): an evaluator's private note closed its shared task diagnosis on the same multi predicate."""
+    c = load_cartridge(FLEET)
+    c.predicates = {"diagnosis": {"multi": True}}
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    ev, alexa = Tools(c, store, TENANT, agent="evaluator"), Tools(c, store, TENANT, agent="alexa")
+    ev.annotate("unit:MXK-4821", "diagnosis", "alternator", task="CUS-1998")
+    alexa.annotate("unit:MXK-4821", "diagnosis", "battery", task="CUS-1998")
+    ev.annotate("unit:MXK-4821", "diagnosis", "I doubt my own call", scope="agent")  # private
+    dev = Tools(c, store, TENANT, agent="dev")
+    ctx = dev.context("unit:MXK-4821", task="CUS-1998")
+    assert sorted(f["value"] for f in ctx["facts"] if f["predicate"] == "diagnosis") == ["alternator", "battery"]
+    assert "diagnosis" in ctx["conflicts"]
+    ev.annotate("unit:MXK-4821", "diagnosis", "alternator, again", task="CUS-2001")  # another task keeps its own slot
+    assert sorted(f["value"] for f in dev.context("unit:MXK-4821", task="CUS-1998")["facts"] if f["predicate"] == "diagnosis") == ["alternator", "battery"]
+    # not multi: a private note no longer ends the tenant's truth, nor one agent's note another's
+    ev.annotate("tire:T-9001", "depth_mm", 1.0, scope="agent")
+    alexa.annotate("tire:T-9001", "depth_mm", 9.0, scope="agent")
+    assert [f["value"] for f in dev.context("tire:T-9001")["facts"] if f["predicate"] == "depth_mm"] == [2.6]
+    assert [f["value"] for f in ev.context("tire:T-9001")["facts"] if f["predicate"] == "depth_mm" and f["scope"] == "agent"] == [1.0]
+    # a promotion leaves the narrower fact to its own lifetime
+    ev.annotate("tire:T-9001", "assessment", "replace", task="t1")
+    Tools(c, store, TENANT).annotate("tire:T-9001", "assessment", "replace", scope="tenant", evidence="photo:9")
+    assert len([f for f in ev.history("tire:T-9001", predicate="assessment", task="t1") if f["valid_to"] is None]) == 1
+
+
+def test_consolidation_keeps_agent_memory_private_and_uses_world_time(store):
+    """kagent (5): private notes were promoted by default, and within/evidence used the ingest time."""
+    from datetime import timedelta
+
+    from keel.consolidate import consolidate_tenant
+
+    c = load_cartridge(FLEET)
+    c.consolidate = {"recurring": {"from": {"predicate": "assessment"}, "within": "30d", "min_count": 2, "reduce": "count", "into": {"predicate": "times"}}}
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    now = datetime(2026, 10, 15, tzinfo=UTC)
+    for i, days in enumerate((60, 10, 5)):  # one outside the 30-day window by world time, all recorded today
+        store.open_fact(TENANT, "tire:T-9001", "assessment", "leak", valid_from=now - timedelta(days=days), scope=Scope.TASK, task="r", source=f"annotate:a{i}", corrected_by=f"a{i}", recorded_at=now)
+    for i in range(3):
+        store.open_fact(TENANT, "tire:T-9001", "assessment", "private", valid_from=now - timedelta(days=1), scope=Scope.AGENT, source=f"annotate:p{i}", recorded_at=now)
+    consolidate_tenant(c, store, TENANT, now=now)
+    (fact,) = [f for f in store.facts(TENANT, "tire:T-9001") if f.predicate == "times"]
+    assert fact.value == 2  # the two task notes in the window; agent memory not read unless listed
+    assert fact.evidence.startswith(f"2 assessment facts, {(now - timedelta(days=10)).isoformat()} to {(now - timedelta(days=5)).isoformat()}")
+    c.consolidate["recurring"]["from"]["scopes"] = ["task", "agent"]  # asked for explicitly
+    consolidate_tenant(c, store, TENANT, now=now)
+    assert [f.value for f in store.facts(TENANT, "tire:T-9001", at=now) if f.predicate == "times"] == [5]

@@ -101,7 +101,7 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
 | `trace` | string? | The caller's W3C `traceparent` and tool call id at write time (HTTP `traceparent` / `X-Keel-Tool-Call` headers, MCP `_meta`), so a Langfuse or LangSmith trace joins the audit export. |
 
-**Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST place the new fact in the predicate's history by `valid_from`: it closes the fact current at that instant (`valid_to = valid_from`) and, when a later fact already exists, closes itself at that fact's start. Arrival order does not change the result (§4). With `per_source=True` (multi-valued predicates and proposals) the history is kept per author. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
+**Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST place the new fact in the predicate's history by `valid_from`: it closes the fact current at that instant (`valid_to = valid_from`) and, when a later fact already exists, closes itself at that fact's start. Arrival order does not change the result (§4). A predicate's history is one slot per memory scope: a fact never closes one of another scope, so a private note does not end a shared diagnosis and a promotion leaves the narrower fact to its own lifetime. Task memory has one slot per task, agent memory one per writing agent, and with `per_source=True` (multi-valued predicates and proposals) one per author. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
 ```mermaid
 sequenceDiagram
@@ -247,9 +247,9 @@ semantic:               # optional: what `keel index` puts in each subject's doc
 
 consolidate:            # optional: episodic memory summarized into durable facts (§8)
   <name>:
-    from: { predicate: <p>, scopes: [task, agent] }
+    from: { predicate: <p>, scopes: [task] }   # default [task]; agent memory is read only when listed
     applies_to: <kind>             # optional
-    within: 30d                    # optional window on recorded_at
+    within: 30d                    # optional window on valid_from (world time)
     min_count: 3                   # default 2
     reduce: mode                   # mode | latest | count | min | max | avg | distinct | summary
     into: { predicate: <q>, scope: tenant }
@@ -426,7 +426,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 ## 8. Jobs
 
 - **Expiry**: drop facts past `expires_at`, per tenant. Shipped: `store.expire(tenant)` on both stores and `keel expire <tenant> --db`; the schedule is the operator's cron. Reads exclude expired facts regardless.
-- **Consolidation**: `keel consolidate` (or `keel expire --consolidate`, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's `consolidate:` entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, window; expired-but-not-dropped ones count) are reduced into one durable fact when there are at least `min_count`. Reducers are deterministic (`mode` with ties to the latest, `latest`, `count`, `min`, `max`, `avg`, `distinct`); `summary` asks a `Summarizer` adapter (`LLMSummarizer` over any `/chat/completions`, or yours) for one sentence. The fact carries `source=consolidate:<name>`, evidence naming the count, the time span and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. Proposals are never consolidated, and the written fact carries `corrected_by=job:consolidate:<name>`. The summarizer is chosen with `--summarizer llm|join|pkg.module:factory`; `llm` reads `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`. The originals are kept until their TTL. A job, never part of ingest.
+- **Consolidation**: `keel consolidate` (or `keel expire --consolidate`, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's `consolidate:` entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, a window on `valid_from`; expired-but-not-dropped ones count; agent memory only when `from.scopes` lists it, since consolidating it promotes private memory) are reduced into one durable fact when there are at least `min_count`. Reducers are deterministic (`mode` with ties to the latest, `latest`, `count`, `min`, `max`, `avg`, `distinct`); `summary` asks a `Summarizer` adapter (`LLMSummarizer` over any `/chat/completions`, or yours) for one sentence. The fact carries `source=consolidate:<name>`, evidence naming the count, the span of their `valid_from` and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. Proposals are never consolidated, and the written fact carries `corrected_by=job:consolidate:<name>`. The summarizer is chosen with `--summarizer llm|join|pkg.module:factory`; `llm` reads `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`. The originals are kept until their TTL. A job, never part of ingest.
 - **Replay**: rebuild a tenant from the external log. Shipped: `Ingestor.replay(tenant, events=adapter)` and `keel replay <cartridge> <stream> <tenant> --db`.
 
 ---

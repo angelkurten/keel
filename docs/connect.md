@@ -230,11 +230,35 @@ uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:
 
 `keel index` keeps the time of its last run in a cursor file, `.keel/index-<tenant>.cursor` unless `--cursor` names another, and indexes only what changed since; `--full` rebuilds the tenant's index. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
 
-Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM). Another vector database or embedder is your own adapter: a class with the four `VectorIndex` methods (or `embed`), named by a spec like `--index my_pkg.qdrant:make?url=http://qdrant:6333`, and checked against the same conformance suite as the bundled ones:
+Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM).
+
+### Your own vector store or embedding model
+
+Another vector database (pgvector, Qdrant, Pinecone, OpenSearch...) or your own model is an adapter you write: a plain class, nothing to inherit or register. `examples/custom_adapters.py` is a complete, tested one, a vector index on SQLite and an embedder wrapping any encode function. Run it with `uv run python examples/custom_adapters.py`.
+
+```python
+class MyIndex:                                                     # keel.semantic.VectorIndex
+    def upsert(self, tenant, items): ...                           # items: [(subject key, vector, document)]
+    def delete(self, tenant, keys): ...
+    def query(self, tenant, vector, k, where=None): ...            # [(key, cosine)], best first, this tenant only
+    def clear(self, tenant): ...
+
+class MyEmbedder:                                                  # keel.semantic.Embedder
+    def embed(self, texts, role="document"): ...                   # one vector per text, same dimension
+```
+
+The rules an index must keep: every call is scoped by tenant and never returns another tenant's keys; `query` returns `(key, score)` with the score a cosine in [-1, 1], best first, at most `k`. Two capabilities are optional and detected from the signature: `where={"kind": [...]}` on `query` filters inside the index (without it Keel filters after retrieval, which an approximate index can miss), and a `text_query(tenant, text, k, where=None)` method adds the lexical leg for hybrid search. An embedder that takes `role` gets `"query"` for questions and `"document"` for what it indexes.
+
+Name them by a spec, `module:factory?param=value` (parameters arrive as text), on `index` and `serve` alike, and check them with the same conformance suite as the bundled adapters:
 
 ```bash
-KEEL_VECTOR_INDEX=my_pkg.qdrant:make KEEL_EMBEDDER=my_pkg.emb:make uv run pytest tests/test_semantic.py
+uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db \
+  --index "examples.custom_adapters:make_index?path=vectors.db" --embedder examples.custom_adapters:make_embedder
+KEEL_VECTOR_INDEX="examples.custom_adapters:make_index?path=/tmp/v.db" KEEL_EMBEDDER=examples.custom_adapters:make_embedder \
+  uv run pytest tests/test_semantic.py
 ```
+
+**Vectors you already compute.** Keel embeds the document it renders for each subject (key, attributes, open facts, the relations the cartridge names) and the query text, with the same embedder, so both sides live in one vector space. It does not take precomputed vectors. To use your own model, wrap it as the embedder: a function from texts to vectors is enough (`ModelEmbedder` in the example). Vectors you computed elsewhere, from other text, would not match the documents Keel searches.
 
 Search is hybrid by default: ids in the query come first, then a dense and a lexical leg are fused (the lexical weight is `semantic.lexical_weight`, 0.3). Add `--reranker llm` (any OpenAI-compatible chat model, `KEEL_RERANK_BASE_URL` / `_MODEL` / `_API_KEY`) or `--reranker http` (the Cohere, Jina or Voyage `/rerank` API) to reorder the best candidates. For asymmetric embedders set `KEEL_EMBEDDINGS_QUERY_PREFIX` / `_DOCUMENT_PREFIX` (e5: `"query: "`, `"passage: "`). How much each piece buys, measured: `docs/design/semantic-evals.md`.
 
@@ -249,7 +273,7 @@ semantic:
 
 ## Consolidate episodic memory
 
-Agents write task and agent memory that expires. A cartridge's `consolidate:` section declares which of it becomes a durable fact: the source predicate and scopes, how many observations make a pattern, a reducer (`mode`, `latest`, `count`, `min`, `max`, `avg`, `distinct` or `summary`) and the predicate and scope to write. It runs as a job, never in ingest:
+Agents write task and agent memory that expires. A cartridge's `consolidate:` section declares which of it becomes a durable fact: the source predicate and scopes (task memory by default; agent memory is private and is read only when `from.scopes` lists it), an optional `within:` window on world time (`valid_from`, so a reingested history keeps its dates), how many observations make a pattern, a reducer (`mode`, `latest`, `count`, `min`, `max`, `avg`, `distinct` or `summary`) and the predicate and scope to write. It runs as a job, never in ingest:
 
 ```bash
 uv run keel consolidate cartridges/fleet --tenant acme-logistics --db keel.db

@@ -7,7 +7,7 @@ Keel is a context layer for AI agents inside vertical SaaS products. Domain even
 You describe your vertical once, in a *cartridge*: ontology, event catalog, semantic rules, memory policies. Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
 !!! note "Status"
-    0.15.1, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
+    0.15.2, alpha. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite or MySQL (`--db`). See the [roadmap](roadmap.md).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
@@ -68,6 +68,8 @@ annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?
 related(subject, relation?, as_of?)
   -> neighbors by relation type
 ```
+
+`search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](connect.md#semantic-search), [example](https://github.com/angelkurten/keel/blob/master/examples/custom_adapters.py)).
 
 Expose them over MCP with `keel serve` and point any agent framework at them. The names and signatures are part of the public standard; see the [specification](SPEC.md).
 

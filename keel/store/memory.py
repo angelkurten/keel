@@ -48,9 +48,21 @@ def author(f: Fact) -> str | None:
 
 
 def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> list[Fact]:
-    """The facts `new` takes its place among: same predicate and status, and with `per_source`
-    (a multi-valued predicate, a proposal) the same author. One open fact per slot."""
-    return [x for x in facts if x.predicate == new.predicate and x.status == new.status and (not per_source or author(x) == author(new))]
+    """The facts `new` takes its place among: same predicate, status and memory scope, and with
+    `per_source` (a multi-valued predicate, a proposal) the same author. One open fact per slot.
+    Scopes never close each other: a private note does not end a shared diagnosis, and a promotion
+    leaves the narrower fact to its own lifetime. Task memory is per task; agent memory per agent."""
+
+    def same(x: Fact) -> bool:
+        if x.predicate != new.predicate or x.status != new.status or Scope(x.scope) != Scope(new.scope):
+            return False
+        if Scope(new.scope) == Scope.TASK and x.task != new.task:
+            return False
+        if Scope(new.scope) == Scope.AGENT and x.source != new.source:  # agent memory is its writer's
+            return False
+        return not per_source or author(x) == author(new)
+
+    return [x for x in facts if same(x)]
 
 
 def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
