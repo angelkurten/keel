@@ -50,7 +50,7 @@ Pulled forward from Later on 2026-10-14 and shipped the same day, while the post
 - [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
 - [x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in `Tools` (`agents:` in the cartridge, `--agent` on `serve`; [design note](docs/design/agent-registry.md), SPEC §6.1)
 
-## 0.3 — SDKs generated from the cartridge (0.3.0 shipped 2026-10-14 with TypeScript; Python, Go and PHP follow)
+## 0.3 — SDKs generated from the cartridge (0.3.0 with TypeScript and 0.4.0 with Python, Go and PHP, both 2026-10-14)
 
 Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
 
@@ -59,7 +59,8 @@ Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge 
 - [x] `keel sdk typescript`, runtime `@keel-context/sdk` (sdk/typescript), validated end to end from Bun against the HTTP server with the fleet and finance cartridges; Toche's own cartridge is the next real test
 - [x] Python, Go and PHP templates and runtimes, each tested end to end against the HTTP server
 - [x] `@keel-context/sdk` 0.1.0 on npm (2026-10-14)
-- [ ] Packagist listing for `keel-context/sdk` (Angel's Composer account); the Go module is served from this repo (`sdk/go`, tag `sdk/go/vX.Y.Z`)
+- [x] Go module `github.com/angelkurten/keel/sdk/go` tagged `sdk/go/v0.1.0`; PHP runtime split to github.com/angelkurten/keel-sdk-php for Composer
+- [ ] Packagist listing of `keel-context/sdk` from that repo (Angel's Packagist account)
 
 ## Later — 0.4+ (2027)
 
