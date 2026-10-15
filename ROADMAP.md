@@ -50,7 +50,7 @@ Pulled forward from Later on 2026-10-14 and shipped the same day, while the post
 - [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
 - [x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in `Tools` (`agents:` in the cartridge, `--agent` on `serve`; [design note](docs/design/agent-registry.md), SPEC §6.1)
 
-## 0.3 — SDKs generated from the cartridge (October–November 2026)
+## 0.3 — SDKs generated from the cartridge (0.3.0 shipped 2026-10-14 with TypeScript; Python, Go and PHP follow)
 
 Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
 
@@ -58,7 +58,8 @@ Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge 
 - [x] HTTP transport: `/v1/*` JSON API with OpenAPI, tenant and agent per request, one process for many tenants; MCP over HTTP for one tenant (`--tenant`)
 - [x] `keel sdk typescript`, runtime `@keel-context/sdk` (sdk/typescript), validated end to end from Bun against the HTTP server with the fleet and finance cartridges; Toche's own cartridge is the next real test
 - [ ] Python, Go and PHP templates and runtimes
-- [ ] Publishing to npm, a Go module and Packagist
+- [x] `@keel-context/sdk` 0.1.0 on npm (2026-10-14)
+- [ ] A Go module and Packagist, with the Go and PHP templates
 
 ## Later — 0.4+ (2027)
 

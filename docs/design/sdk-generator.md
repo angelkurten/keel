@@ -51,7 +51,7 @@ Errors: 401 wrong secret, 403 a refusal (scope policy, agent registry), 400 bad 
 2. HTTP transport: the API above, MCP over HTTP for one tenant, headers, OpenAPI. Shipped.
 3. TypeScript template and `@keel-context/sdk` runtime. Shipped: generated for `fleet` and `finance`, exercised from Bun against `keel serve --transport http`; Toche's own cartridge is the next real test.
 4. Python, Go and PHP templates and runtimes from the same model.
-5. Publishing: npm, PyPI (inside `keel-context`), a Go module, Packagist. Registry accounts are Angel's step.
+5. Publishing: npm (`@keel-context/sdk` 0.1.0, 2026-10-14), PyPI (inside `keel-context`), a Go module, Packagist. Registry accounts are Angel's step.
 
 ## Open
 
