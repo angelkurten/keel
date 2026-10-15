@@ -203,7 +203,7 @@ events:                 # required: type -> spec
   <type>:
     subject: <kind>     # required: the kind of event.subject
     owner: <team>       # recommended: who owns this event's shape
-    payload: { <field>: <type-hint>, ... }   # string | int | number | bool | date | datetime; `| null` = optional
+    payload: { <field>: <hint>, ... }   # the notation in §5.6; `| null` = optional
 
 rules:                  # optional: name -> definition
   <rule>:
@@ -244,13 +244,30 @@ A cartridge is valid when:
 5. every rule's `when` names a `predicate` and uses only the operators in §5.4;
 6. every agent's `writes` are known scopes other than `global`, and its `reads` name declared kinds and relations.
 
-`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared type (`string`, `int`, `number`, `bool`, `date`, `datetime`; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
+`keel validate <cartridge> --events <stream.jsonl>` also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's `subject`, and each declared payload field is present with its declared shape (§5.6; `| null` makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.
 
 ### 5.4 Rules (semantic layer)
 
 Rules are authored by product, versioned with the cartridge, and returned by the `context` tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core interprets two keys: `applies_to` and `when`. A `when` is one condition or a list of conditions that must all hold. Each names a `predicate` and one or more operators: `lt`, `lte`, `gt`, `gte`, `eq`, `ne`, `in` (value in a list), `within_days` (a date predicate on or before `as_of + n days`, so dates already past count). `context` evaluates every applicable rule that has a `when` against the subject's open facts and returns `true`, `false`, or `null` when a predicate has no open fact. A rule without `when` (an aggregate, anything that needs more than the subject's own facts) is returned as a definition only and the agent applies it.
 
-### 5.5 The generality test
+### 5.5 Payload notation
+
+The `payload:` mapping of an event is a schema in a short notation. Keel checks streams against it (`keel validate --events`) and prints it as JSON Schema draft 2020-12 (`keel schema <cartridge>`), which is what SDK templates read.
+
+| Written as | Means | JSON Schema |
+| --- | --- | --- |
+| `string`, `int`, `number`, `bool` | a scalar | `type` string / integer / number / boolean |
+| `date`, `datetime` | an ISO 8601 string | `type: string` with `format` |
+| `any` | anything | `{}` |
+| `<hint> \| null` | optional and nullable | `type: [<type>, "null"]`, not in `required` |
+| `string[]` (any scalar) | array of scalars | `type: array`, `items` |
+| `[pending, paid]` | enum of literals | `enum` |
+| `[ { id: string, qty: int } ]` | array of objects | `type: array`, `items: object` |
+| `{ source: string, score: number }` | nested object | `type: object`, `properties`, `required` |
+
+Extra fields in a payload are allowed: the catalog documents what handlers need, not everything the source sends. An unknown hint is a validation error, so a typo never passes as `any`; `[string]` is rejected in favour of `string[]`.
+
+### 5.6 The generality test
 
 Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps four cartridges (`fleet`, `crm`, `finance`, `clinics`) and all MUST pass the test suite after any core change.
 

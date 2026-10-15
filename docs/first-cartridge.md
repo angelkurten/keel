@@ -49,7 +49,7 @@ events:
     payload: {}
 ```
 
-The shipped cartridge adds a third one, `treatment.performed`, so the `treatment` kind gets used.
+The shipped cartridge adds a third one, `treatment.performed`, so the `treatment` kind gets used. Payload hints can be richer than scalars: `status: [booked, done]` is an enum, `tags: string[]` an array, `items: [ { code: string, qty: int } ]` an array of objects, `{ ... }` a nested object (see the [specification](SPEC.md#55-payload-notation)).
 
 ## 4. Write one handler per event (5 min)
 

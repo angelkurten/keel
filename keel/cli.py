@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, ingest, replay, expire, export, context, serve."""
+"""keel CLI: init, validate, schema, ingest, replay, expire, export, context, serve."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 
 import typer
+import yaml
 
+from keel import __version__
 from keel.cartridge import load_cartridge
 from keel.envelope import Event
 from keel.ingest import Ingestor, IngestReport, JsonlAdapter
@@ -103,6 +105,29 @@ def validate(
     typer.echo(f"{c.name}: {len(c.entities)} entity kinds, {len(c.relations)} relations, {len(c.events)} events, all handled")
     if events:
         typer.echo(f"{events}: {checked} events match the catalog")
+
+
+@app.command()
+def schema(cartridge: Path):
+    """The cartridge as JSON Schema: envelope, events with payload schemas, kinds, relations, rules, agents, memory. The input of every SDK template."""
+    from dataclasses import asdict
+
+    from keel.schema import payload_schema
+
+    c = load_cartridge(cartridge)
+    doc = {
+        "cartridge": c.name,
+        "version": yaml.safe_load((cartridge / "cartridge.yaml").read_text(encoding="utf-8")).get("version"),
+        "keel": __version__,
+        "envelope": Event.model_json_schema(),
+        "entities": c.entities,
+        "relations": c.relations,
+        "events": {t: {**{k: v for k, v in s.items() if k != "payload"}, "payload": payload_schema(s.get("payload"))} for t, s in c.events.items()},
+        "rules": c.rules,
+        "agents": {a.id: {**asdict(a), "writes": sorted(a.writes), "kinds": sorted(a.kinds) if a.kinds is not None else None, "relations": sorted(a.relations) if a.relations is not None else None} for a in c.agents.values()},
+        "memory": {"ttl": {s.value: (None if d is None else d.total_seconds()) for s, d in c.policy.ttl.items()}, "requires_evidence": sorted(s.value for s in c.policy.requires_evidence)},
+    }
+    typer.echo(json.dumps(doc, indent=2, ensure_ascii=False))
 
 
 def _run(cartridge: Path, events: Path | None, strict: bool = False, db: Path | None = None):

@@ -37,6 +37,7 @@ nav:
   - Contributing: contributing.md
   - Design notes:
       - Agent registry: design/agent-registry.md
+      - SDKs from the cartridge: design/sdk-generator.md
 
 markdown_extensions:
   - admonition

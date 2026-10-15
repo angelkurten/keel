@@ -50,7 +50,17 @@ Pulled forward from Later on 2026-10-14 and shipped the same day, while the post
 - [x] Kafka and SQS adapters as optional extras (`keel.adapters.bus`), tested against fake consumers until a pilot runs a real broker
 - [x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in `Tools` (`agents:` in the cartridge, `--agent` on `serve`; [design note](docs/design/agent-registry.md), SPEC §6.1)
 
-## Later — 0.3+ (2027)
+## 0.3 — SDKs generated from the cartridge (October–November 2026)
+
+Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
+
+- [x] Payload notation as a JSON Schema subset (enums, nested objects, arrays) and `keel schema <cartridge>`
+- [ ] HTTP transport: `/v1/*` JSON API with OpenAPI, MCP over HTTP, tenant and agent per request, one process for many tenants
+- [ ] `keel sdk typescript`, runtime `@keel-context/sdk`, validated against Toche
+- [ ] Python, Go and PHP templates and runtimes
+- [ ] Publishing to npm, a Go module and Packagist
+
+## Later — 0.4+ (2027)
 
 Goal: the hosted product and the cartridge catalog.
 
