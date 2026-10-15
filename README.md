@@ -126,15 +126,27 @@ tests/
 
 ## Roadmap
 
-- [x] Event envelope and handler registry
-- [x] In-memory bitemporal store
-- [x] Memory scopes with expiry
-- [x] Five tools as plain functions
-- [x] MCP server (`keel serve`)
-- [x] Durable store: SQLite (Graphiti still planned for graph-native queries)
-- [x] Postgres (table + polling) and webhook adapters
-- [ ] Consolidation and decay jobs
-- [ ] Cartridge catalog
+A summary; the full plan, with what each release shipped, is in [ROADMAP.md](ROADMAP.md).
+
+Shipped:
+
+- [x] Event envelope, handler registry, deterministic ingest with dedupe by event id and replay
+- [x] Bitemporal store: in memory, SQLite and MySQL, behind a store protocol with a conformance suite
+- [x] Memory scopes with TTL, evidence policy and expiry (`keel expire`, `--task`)
+- [x] The five tools over MCP (stdio and HTTP) and a JSON API, with an agent registry (people included)
+- [x] Adapters: Postgres outbox, webhook, Kafka, SQS
+- [x] Rules that compose, follow relations and measure durations
+- [x] Transaction time (`as_known_at`), changes since a watermark, task ids, idempotent writes, proposals, conflicts, traces
+- [x] SDKs generated from the cartridge: TypeScript, Python, Go, PHP
+- [x] Bulk ingest (a million events in under a minute and a half on MySQL)
+- [x] Semantic search: hybrid, ids first, rerankers, pluggable vector index and embedder, with an eval bench
+
+Open:
+
+- [ ] Consolidation: summarizing old episodic memory into durable facts (waiting for a pilot's real case)
+- [ ] Real agent queries from pilots in the semantic-search eval bench
+- [ ] Postgres CDC adapter
+- [ ] Cartridge catalog, hosted Keel, enterprise features (2027)
 
 ## License
 
