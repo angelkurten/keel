@@ -358,6 +358,8 @@ Facts over time, oldest first, including closed ones. `predicate`, `scope` and `
 
 ### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None) -> [Entity | Fact]`
 
+Every entity the tools return (here, in `context.entity`, in `neighbors`, and in `keel export`) carries `key`, the `<kind>:<id>` that every other call takes and that `after` expects.
+
 Without `kind` and `rule`: case-insensitive substring match over entity keys and attrs, and fact predicates and values. With `kind`, or `rule` (whose `applies_to` gives the kind, and which must carry a `when`): the entities of that kind matching `text`, and with `rule` only those where the rule evaluates true now, ordered by key; `limit` caps the page and `after` (the last key received) continues it. This is the work list of a sweep, a router or an orchestrator. *Planned:* semantic search over the same set.
 
 ### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None) -> Fact`

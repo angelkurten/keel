@@ -34,6 +34,7 @@ type Entity struct {
 	Tenant string         `json:"tenant"`
 	Kind   string         `json:"kind"`
 	ID     string         `json:"id"`
+	Key    string         `json:"key"` // '<kind>:<id>', the subject every other call takes
 	Ref    *string        `json:"ref"`
 	Attrs  map[string]any `json:"attrs"`
 }

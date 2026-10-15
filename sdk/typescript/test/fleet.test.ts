@@ -51,7 +51,7 @@ test("typed events in, context with the rule's verdict out", async () => {
   await expect(keel.annotate({ subject: subjects.tire("T-9001"), predicate: "assessment", value: "x", scope: "tenant" })).rejects.toBeInstanceOf(KeelError);
   const keyed = { subject: subjects.tire("T-9001"), predicate: "plan", value: "swap", task: "run-1", key: "k1" };
   expect((await keel.annotate(keyed)).recorded_at).toBe((await keel.annotate(keyed)).recorded_at);
-  expect((await keel.search("", { kind: "tire" })).length).toBe(1);
+  expect((await keel.search("", { kind: "tire" })).map((e) => (e as { key: string }).key)).toEqual(["tire:T-9001"]);
   expect((await keel.history(null, { changedSince: "2000-01-01T00:00:00Z", task: "run-1" })).map((f) => f.predicate)).toEqual(["plan"]);
   const other = client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant: "someone-else", secret: SECRET });
   expect((await other.context(subjects.tire("T-9001"))).entity).toBeNull();

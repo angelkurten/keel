@@ -15,7 +15,7 @@ export type Envelope = {
   payload: Record<string, unknown>;
 };
 
-export type Entity = { tenant: string; kind: string; id: string; ref: string | null; attrs: Record<string, unknown> };
+export type Entity = { tenant: string; kind: string; id: string; key: string; ref: string | null; attrs: Record<string, unknown> };
 export type Fact = {
   tenant: string;
   subject: string;

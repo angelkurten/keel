@@ -127,6 +127,7 @@ def test_cli_export_is_the_audit_trail(tmp_path):
     res = CliRunner().invoke(app, ["export", TENANT, "--db", db, "--out", str(out)])
     assert res.exit_code == 0 and "records=" in res.output, res.output
     records = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    assert all(r["key"] == f"{r['kind']}:{r['id']}" for r in records if r["record"] == "entity")
     kinds = {r["record"] for r in records}
     assert kinds == {"entity", "relation", "fact"}
     facts = [r for r in records if r["record"] == "fact"]
@@ -344,6 +345,12 @@ def test_search_enumerates_by_kind_and_rule_with_pages(store):
         store.upsert_entity(TENANT, "tire", tire, position="P1")
     t = Tools(c, store, TENANT)
     assert [e["id"] for e in t.search(kind="tire")] == ["T-9001", "T-9002", "T-9003"]
+    page_keys = [e["key"] for e in t.search(kind="tire", limit=2)]
+    assert page_keys == ["tire:T-9001", "tire:T-9002"]  # the key every other call takes, and what `after` expects
+    assert [e["key"] for e in t.search(kind="tire", after=page_keys[-1])] == ["tire:T-9003"]
+    assert all(e["key"] == f"{e['kind']}:{e['id']}" for e in t.search("T-900"))  # text search too
+    assert t.context("unit:MXK-4821")["entity"]["key"] == "unit:MXK-4821"
+    assert {n["entity"]["key"] for n in t.context("unit:MXK-4821", depth=1)["neighbors"] if n["entity"]} >= {"tire:T-9001"}
     page = t.search(kind="tire", limit=2)
     assert [e["id"] for e in page] == ["T-9001", "T-9002"] and [e["id"] for e in t.search(kind="tire", after="tire:T-9002")] == ["T-9003"]
     assert [e["id"] for e in t.search(rule="tire_critical")] == ["T-9001"]  # kind from the rule's applies_to

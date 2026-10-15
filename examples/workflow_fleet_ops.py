@@ -68,7 +68,7 @@ def triage(t: Tools) -> tuple[dict[str, Any], str]:
     """Every unit, with its neighbours in one call, ranked by the cartridge's own verdicts. Returns
     the ranking and the time it decided, so an audit can ask what it saw."""
     ranked, seen_at = {}, ""
-    for unit in [f"unit:{e['id']}" for e in t.search(kind="unit")]:
+    for unit in [e["key"] for e in t.search(kind="unit")]:
         ctx = t.context(unit, depth=1)
         seen_at = ctx["as_of"]
         reasons = [k for k, v in ctx["evaluation"].items() if v]

@@ -26,7 +26,11 @@ from keel.store.memory import changed_after, filter_facts, search_in
 
 
 def _ser(o: Any) -> Any:
-    if isinstance(o, (Entity, Fact)):
+    if isinstance(o, Entity):
+        d = asdict(o)
+        out = {k: _ser(v) for k, v in d.items() if k != "attrs"}
+        return {**out, "key": o.key, "attrs": _ser(d["attrs"])}  # the '<kind>:<id>' every other call takes
+    if isinstance(o, Fact):
         d = asdict(o)
         return {k: _ser(v) for k, v in d.items()}
     if isinstance(o, datetime):

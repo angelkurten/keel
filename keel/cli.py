@@ -197,9 +197,10 @@ def export(
     """Audit trail for one tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what."""
     from dataclasses import asdict
 
+    from keel.store.base import Entity, Fact
     from keel.tools import _ser
 
-    lines = (json.dumps({"record": type(o).__name__.lower(), **_ser(asdict(o))}, ensure_ascii=False) for o in _store(db).dump(tenant))
+    lines = (json.dumps({"record": type(o).__name__.lower(), **(_ser(o) if isinstance(o, (Entity, Fact)) else _ser(asdict(o)))}, ensure_ascii=False) for o in _store(db).dump(tenant))  # entities carry their key, as everywhere
     if out:
         n = 0
         with out.open("w", encoding="utf-8") as fh:
