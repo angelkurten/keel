@@ -212,7 +212,7 @@ def test_rule_filter_keeps_looking_past_the_first_candidates(index):
     now = datetime.now(timezone.utc)
     for i in range(120):  # 120 healthy tires that match the query better than the critical one
         s.upsert_entity(TENANT, "tire", f"H-{i:03d}", position="P1")
-        s.open_fact(TENANT, f"tire:H-{i:03d}", "condition", "tread depth tread depth tread depth fine", valid_from=now)
+        s.open_fact(TENANT, f"tire:H-{i:03d}", "condition", f"tread depth fine at check {i} bay {i % 7}", valid_from=now)  # distinct docs: identical vectors degrade an approximate index
         s.open_fact(TENANT, f"tire:H-{i:03d}", "depth_mm", 7.0, valid_from=now)
     s.upsert_entity(TENANT, "tire", "Z-1", position="P2")
     s.open_fact(TENANT, "tire:Z-1", "condition", "worn", valid_from=now)

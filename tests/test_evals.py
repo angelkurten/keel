@@ -16,7 +16,7 @@ def test_sandboxes_build_and_have_labeled_queries():
 
 def test_fusion_helpers():
     assert rrf(["a", "b"], ["b", "c"])[0] == "b"
-    assert convex([("a", 0.9), ("b", 0.5)], [("b", 3.0), ("c", 1.0)], w=0.5)[0] == "b"
+    assert convex([("a", 0.9), ("b", 0.8), ("c", 0.1)], [("b", 3.0), ("c", 1.0)], w=0.5)[0] == "b"  # no ties
     assert key_first("status of CUS-1990?", ["card:CUS-1974", "card:CUS-1990"], ["card:CUS-1974"])[0] == "card:CUS-1990"
     assert BM25({"x:1": "tread worn", "x:2": "slow leak"}).rank("leak")[0][0] == "x:2"
 

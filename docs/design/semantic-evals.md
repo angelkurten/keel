@@ -50,6 +50,7 @@ Caveats: 34 positive queries and 9 negatives, written by us, so results are dire
 ## What the research adds (sources in the research summary)
 
 - Hybrid search is standard in production stores: Weaviate relativeScoreFusion, Elasticsearch RRF retriever, Qdrant sparse vectors, turbopuffer BM25. Anthropic's Contextual Retrieval: adding BM25 to contextual embeddings cut top-20 failures from 3.7% to 2.9%, a reranker on top to 1.9%.
+- **Seen in our own tests:** with 121 vectors, Chroma's HNSW returned at most 90 results however large `k` was, and which 90 varied when many documents were identical. Keel's widening post-filter loop stops when the index returns fewer than asked, so with an approximate index a filtered match can still be missed. Filtering inside the index (item 6 below) is the real fix.
 - Filtering belongs in the store when a kind is a small slice of a tenant: pgvector 0.8 iterative scans, Qdrant filterable HNSW (99.8% recall at 1% selectivity) and `is_tenant` payload indexes, sqlite-vec metadata columns. Keel's widening post-filter loop is correct but costs round trips at scale.
 - Asymmetric embedders (multilingual-e5 "query:" / "passage:", Qwen3 instructions) lose 1 to 5% recall without their prefixes; Keel's `Embedder.embed(texts)` cannot express the role yet.
 - MySQL 9 Community has the VECTOR type but no distance function or index (HeatWave only): not a backend.
