@@ -485,3 +485,20 @@ def test_writes_carry_the_callers_trace(store):
     Tools(c, store, TENANT, trace=f"{tp}; tool_call_id=call_7").annotate("tire:T-9001", "assessment", "replace")
     exported = [o for o in store.dump(TENANT) if getattr(o, "predicate", None) == "assessment"]
     assert exported[0].trace == f"{tp}; tool_call_id=call_7"
+
+
+def test_multi_valued_authors_are_the_by_when_given(store):
+    """Feedback: two people writing through one agent were one author (same source) and overwrote each other."""
+    c = load_cartridge(FLEET)
+    c.predicates = {"diagnosis": {"multi": True}}
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    console = Tools(c, store, TENANT, agent="dev-console")
+    console.annotate("unit:MXK-4821", "diagnosis", "alternator", by="human:ana")
+    console.annotate("unit:MXK-4821", "diagnosis", "battery", by="human:luis")
+    console.annotate("unit:MXK-4821", "diagnosis", "alternator belt", by="human:ana")  # ana revises her own
+    ctx = console.context("unit:MXK-4821")
+    open_ = sorted((f["corrected_by"], f["value"]) for f in ctx["facts"] if f["predicate"] == "diagnosis")
+    assert open_ == [("human:ana", "alternator belt"), ("human:luis", "battery")]
+    assert sorted((x["by"], x["value"]) for x in ctx["conflicts"]["diagnosis"]) == open_
+    short = console.context("unit:MXK-4821", detail="concise")["facts"]["diagnosis"]
+    assert sorted((x["by"], x["value"]) for x in short) == open_

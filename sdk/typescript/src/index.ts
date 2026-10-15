@@ -15,7 +15,7 @@ export type Envelope = {
   payload: Record<string, unknown>;
 };
 
-export type Entity = { tenant: string; kind: string; id: string; key: string; ref: string | null; attrs: Record<string, unknown> };
+export type Entity = { tenant: string; kind: string; id: string; key: string; ref: string | null; attrs: Record<string, unknown>; /** with mode: "semantic" */ score?: number };
 export type Fact = {
   tenant: string;
   subject: string;
@@ -227,7 +227,7 @@ export class Client<S extends string = string> {
   }
 
   /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`. */
-  search(text = "", opts: { kind?: string; rule?: string; limit?: number; after?: string } = {}): Promise<Array<Entity | Fact>> {
+  search(text = "", opts: { kind?: string; rule?: string; limit?: number; after?: string; mode?: "text" | "semantic" } = {}): Promise<Array<Entity | Fact>> {
     return this.post("/v1/search", { text, ...opts });
   }
 

@@ -1,10 +1,11 @@
-"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, export, context, serve."""
+"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, export, index, context, serve."""
 
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -31,9 +32,9 @@ def _store(db: str | None):
 AGENT = typer.Option(None, "--agent", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
 
 
-def _tools(c, store, tenant: str, agent: str | None) -> Tools:
+def _tools(c, store, tenant: str, agent: str | None, **semantic: Any) -> Tools:
     try:
-        return Tools(c, store, tenant, agent)
+        return Tools(c, store, tenant, agent, **semantic)
     except PermissionError as exc:
         raise typer.BadParameter(str(exc), param_hint="--agent") from exc
 
@@ -213,6 +214,30 @@ def export(
             typer.echo(line)
 
 
+@app.command(name="index")
+def index_cmd(
+    cartridge: Path,
+    tenant: str = typer.Option(..., help="The end-customer to index."),
+    db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
+    index: str = typer.Option(..., "--index", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
+    embedder: str = typer.Option("openai", "--embedder", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
+    full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),
+    cursor: Path | None = typer.Option(None, "--cursor", help="Where the watermark of the last run is kept (default .keel/index-<tenant>.cursor)."),
+):
+    """Bring the semantic index up to date for one tenant, outside ingest: only subjects changed since the last run."""
+    from keel.envelope import parse_iso
+    from keel.semantic import index_tenant, load_embedder, load_index
+
+    load_cartridge(cartridge)  # fail early on a broken cartridge
+    path = cursor or Path(".keel") / f"index-{tenant}.cursor"
+    since = None if full or not path.exists() else parse_iso(path.read_text(encoding="utf-8").strip())
+    report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since)
+    if report.cursor is not None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(report.cursor.isoformat(), encoding="utf-8")
+    typer.echo(f"indexed tenant={tenant} subjects={report.indexed} removed={report.deleted} mode={'full' if since is None else 'incremental'}")
+
+
 @app.command()
 def context(cartridge: Path, events: Path, subject: str, tenant: str | None = None, agent: str | None = AGENT):
     """Ingest, then print what the `context` tool returns for a subject."""
@@ -232,18 +257,25 @@ def serve(
     host: str = typer.Option("127.0.0.1", help="http only."),
     port: int = typer.Option(8000, help="http only."),
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
+    index: str | None = typer.Option(None, "--index", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
+    embedder: str = typer.Option("openai", "--embedder", help="With --index: the embedder spec."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
     store = _store(db)
     if events:
         Ingestor(c, store).ingest(JsonlAdapter(events))
+    semantic: dict[str, Any] = {}
+    if index:
+        from keel.semantic import load_embedder, load_index
+
+        semantic = {"embedder": load_embedder(embedder), "index": load_index(index)}
     if transport == "stdio":
         from keel.mcp_server import build_server
 
         if not tenant:
             raise typer.BadParameter("--tenant is required with the stdio transport", param_hint="--tenant")
-        build_server(_tools(c, store, tenant, agent)).run()
+        build_server(_tools(c, store, tenant, agent, **semantic)).run()
         return
     if transport != "http":
         raise typer.BadParameter("stdio or http", param_hint="--transport")
@@ -258,7 +290,7 @@ def serve(
         typer.echo(f"warning: {secret_env} is unset, the API is open; keep it on localhost", err=True)
     if tenant:
         _tools(c, store, tenant, agent)  # fail now, not on the first request, if the agent is not declared
-    uvicorn.run(build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host), host=host, port=port)
+    uvicorn.run(build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, **semantic), host=host, port=port)
 
 
 if __name__ == "__main__":

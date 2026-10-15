@@ -48,6 +48,14 @@ jobs:
       - run: uv sync --extra dev --extra mysql
       - run: KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3306/keel uv run pytest -q tests/test_store.py
 
+  semantic-chroma:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev --extra chroma
+      - run: uv run pytest -q tests/test_semantic.py
+
   sdk-typescript:
     runs-on: ubuntu-latest
     steps:

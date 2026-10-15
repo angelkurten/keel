@@ -50,7 +50,8 @@ final class Client
     }
 
     /** With `kind` or `rule`: the entities of a kind, or where a rule fires now, paged by `limit`/`after`.
-     * @param array{kind?: string, rule?: string, limit?: int, after?: string} $filter @return list<array<string, mixed>> */
+     * `mode` => 'semantic' ranks by meaning, each result with a `score`.
+     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string} $filter @return list<array<string, mixed>> */
     public function search(string $text = '', array $filter = []): array
     {
         return $this->post('/v1/search', ['text' => $text] + $filter);

@@ -75,7 +75,7 @@ A second design customer: kagent, with 354 real Jira cards and 2831 events, wrot
 - [x] Spec guidance: long text is a pointer, not a fact value
 - [x] Second round (revalidated on the same 354 cards, 0 differences on the pause rules): `held_for_days` / `held_for_business_days`, the waiting clock that survives a change between waiting states; transactions per event or per batch in the SQL stores, for MySQL ingest speed
 - [x] Optional enums in the payload notation: `[new, done, null]` (third round of the kagent report, 0.8.1)
-- [ ] Semantic `search` (planned since 0.0.x; kagent has embeddings to plug in)
+- [x] Semantic `search` (0.11.0): `search(mode="semantic")` over pluggable `VectorIndex` and `Embedder` adapters (Chroma and any OpenAI-compatible embeddings bundled), built by `keel index` outside ingest
 - [x] Bulk ingest: set-based batch flush for the SQL stores ([design note](docs/design/bulk-ingest.md)); 101 000 events in 8.4 s on MySQL, a million in under a minute and a half, against 45 minutes before
 
 ## 0.9 — what agentic workflows demand (0.9.0 shipped 2026-10-15)

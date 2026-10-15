@@ -41,10 +41,16 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
     )
 
 
+def author(f: Fact) -> str | None:
+    """Who said it: `corrected_by` (the `by` of an annotation, or the agent) before the source, so two
+    people writing through one agent are two authors."""
+    return f.corrected_by or f.source
+
+
 def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> list[Fact]:
     """The facts `new` takes its place among: same predicate and status, and with `per_source`
     (a multi-valued predicate, a proposal) the same author. One open fact per slot."""
-    return [x for x in facts if x.predicate == new.predicate and x.status == new.status and (not per_source or x.source == new.source)]
+    return [x for x in facts if x.predicate == new.predicate and x.status == new.status and (not per_source or author(x) == author(new))]
 
 
 def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:

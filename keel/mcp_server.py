@@ -94,9 +94,9 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def search(text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None) -> list[dict[str, Any]]:
-        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after."""
-        return tools.search(text, kind, rule, limit, after)
+    def search(text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: str = "text") -> list[dict[str, Any]]:
+        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after. mode="semantic": subjects ranked by meaning, with a score."""
+        return tools.search(text, kind, rule, limit, after, mode)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False))
     @guarded

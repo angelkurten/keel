@@ -274,12 +274,13 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 type SearchOptions struct {
 	Text, Kind, Rule, After string
 	Limit                   int
+	Mode                    string // "semantic": ranked by meaning, each result with a "score"
 }
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
 	var out []map[string]any
 	body := map[string]any{"text": o.Text}
-	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After} {
+	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode} {
 		if v != "" {
 			body[k] = v
 		}

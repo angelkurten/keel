@@ -226,7 +226,7 @@ rules:                  # optional: name -> definition
       <op>: <operand>   # leaf operators in §5.4; compose with all / any / not; follow relations with via
 
 predicates:             # optional: write policy per predicate, for annotations
-  <predicate>: { multi: true }   # one open value per author instead of last-writer-wins; context lists conflicts
+  <predicate>: { multi: true }   # one open value per author (the `by`, else the agent) instead of last-writer-wins; context lists conflicts
 
 calendar:               # optional: business days for `open_for_business_days` (§5.4)
   weekend: [saturday, sunday]
@@ -367,7 +367,9 @@ Facts over time, oldest first, including closed ones. `predicate`, `scope` and `
 
 Every entity the tools return (here, in `context.entity`, in `neighbors`, and in `keel export`) carries `key`, the `<kind>:<id>` that every other call takes and that `after` expects.
 
-Without `kind` and `rule`: case-insensitive substring match over entity keys and attrs, and fact predicates and values. With `kind`, or `rule` (whose `applies_to` gives the kind, and which must carry a `when`): the entities of that kind matching `text`, and with `rule` only those where the rule evaluates true now, ordered by key; `limit` caps the page and `after` (the last key received) continues it. This is the work list of a sweep, a router or an orchestrator. *Planned:* semantic search over the same set.
+Without `kind` and `rule`: case-insensitive substring match over entity keys and attrs, and fact predicates and values. With `kind`, or `rule` (whose `applies_to` gives the kind, and which must carry a `when`): the entities of that kind matching `text`, and with `rule` only those where the rule evaluates true now, ordered by key; `limit` caps the page and `after` (the last key received) continues it. This is the work list of a sweep, a router or an orchestrator.
+
+`mode="semantic"` ranks subjects by meaning: the query is embedded, candidates come from the deployment's vector index, and Keel then applies the tenant, the agent's read slice, `kind` and `rule`, returning entities with a `score` (default `limit` 10). Two adapter contracts make it pluggable (`keel.semantic`): `VectorIndex` (`upsert`, `delete`, `query`, `clear`, always by tenant; an index never returns another tenant's keys) and `Embedder` (`embed(texts)`). Keel ships `MemoryIndex`, `ChromaIndex` (extra `chroma`), `OpenAIEmbedder` (any `/v1/embeddings` API) and `HashEmbedder` (tests); any other is a `pkg.module:factory?param=value` spec, checked by `tests/test_semantic.py` with `KEEL_VECTOR_INDEX` / `KEEL_EMBEDDER`. The index is built by `keel index`, outside ingest (rule 10): one document per subject with its key, attributes and open accepted facts of tenant and global scope; task and agent memory and proposals are never indexed; incremental from a watermark, `--full` rebuilds.
 
 ### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None) -> Fact`
 

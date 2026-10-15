@@ -58,7 +58,7 @@ def _conflicts(facts: list[Fact]) -> dict[str, list[dict[str, Any]]]:
     for f in facts:
         by.setdefault(f.predicate, []).append(f)
     return {
-        p: [{"value": f.value, "source": f.source, "recorded_at": f.recorded_at} for f in fs]
+        p: [{"value": f.value, "by": f.corrected_by, "source": f.source, "recorded_at": f.recorded_at} for f in fs]
         for p, fs in by.items()
         if len({repr(f.value) for f in fs}) > 1
     }
@@ -66,12 +66,15 @@ def _conflicts(facts: list[Fact]) -> dict[str, list[dict[str, Any]]]:
 
 def _compact_facts(facts: list[dict[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
+    by_pred: dict[str, Any] = {}
     for f in facts:
         if f["predicate"] in out:  # a multi-valued predicate: every author's value
             prev = out[f["predicate"]]
-            out[f["predicate"]] = (prev if isinstance(prev, list) and prev and isinstance(prev[0], dict) and "by" in prev[0] else [{"value": prev, "by": None}]) + [{"value": f["value"], "by": f["source"]}]
+            first = by_pred[f["predicate"]]
+            out[f["predicate"]] = (prev if isinstance(prev, list) and prev and isinstance(prev[0], dict) and "by" in prev[0] else [{"value": prev, "by": first}]) + [{"value": f["value"], "by": f.get("corrected_by") or f["source"]}]
         else:
             out[f["predicate"]] = f["value"]
+            by_pred[f["predicate"]] = f.get("corrected_by") or f["source"]
     return out
 
 
@@ -91,7 +94,7 @@ def _concise(ctx: dict[str, Any]) -> dict[str, Any]:
         if k in ctx:
             out[k] = ctx[k]
     if "proposals" in ctx:
-        out["proposals"] = [{"predicate": f["predicate"], "value": f["value"], "by": f["source"], "evidence": f["evidence"]} for f in ctx["proposals"]]
+        out["proposals"] = [{"predicate": f["predicate"], "value": f["value"], "by": f.get("corrected_by") or f["source"], "evidence": f["evidence"]} for f in ctx["proposals"]]
     if "neighbors" in ctx:
         out["neighbors"] = [
             {"relation": n["relation"], "direction": n["direction"], "subject": n["subject"], "facts": _compact_facts(n["facts"]), "evaluation": n["evaluation"]}
@@ -159,7 +162,10 @@ class _Graph:
 
 
 class Tools:
-    def __init__(self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None) -> None:
+    def __init__(
+        self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
+        embedder: Any = None, index: Any = None,
+    ) -> None:
         self.cartridge = cartridge
         self.store = store
         self.tenant = tenant  # tools are always scoped to one end-customer
@@ -168,6 +174,7 @@ class Tools:
         self.symmetric = {rel for rel, spec in cartridge.relations.items() if isinstance(spec, dict) and spec.get("symmetric")}
         self.multi = {p for p, spec in cartridge.predicates.items() if isinstance(spec, dict) and spec.get("multi")}
         self.trace = trace  # set per request by the transport (traceparent, tool call id); stored with every write
+        self.embedder, self.index = embedder, index  # keel.semantic adapters; both or neither
 
     # ---- registry enforcement: the agent never polices itself -------------------------------
 
@@ -317,11 +324,18 @@ class Tools:
         rule: str | None = None,
         limit: int | None = None,
         after: str | None = None,
+        mode: str = "text",
     ) -> list[dict[str, Any]]:
-        """Entities and facts matching text. With `kind` or `rule` it enumerates instead: the entities
+        """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
+        deployment's embedder and vector index (keel.semantic), then applies tenant, the agent's read
+        slice, `kind` and `rule` here, and returns entities with a `score` (default 10). With `kind` or `rule` it enumerates instead: the entities
         of that kind (a rule's `applies_to` when only `rule` is given) whose key or attributes match
         `text`, where the rule fires now when `rule` is given, ordered by key; page with `limit` and
         `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers."""
+        if mode == "semantic":
+            return self._semantic(text, kind, rule, limit or 10)
+        if mode != "text":
+            raise ValueError("mode is 'text' or 'semantic'")
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text)
             if self.agent:
@@ -350,6 +364,31 @@ class Tools:
             if limit and len(found) >= limit:
                 break
         return _ser(found)
+
+    def _semantic(self, text: str, kind: str | None, rule: str | None, limit: int) -> list[dict[str, Any]]:
+        if self.embedder is None or self.index is None:
+            raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
+        if not text:
+            raise ValueError("semantic search needs text")
+        spec = self.cartridge.rules.get(rule) if rule else None
+        if rule and (spec is None or not spec.get("when")):
+            raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
+        kind = kind or (spec or {}).get("applies_to")
+        graph = self._graph(utcnow()) if spec else None
+        filtered = bool(kind or spec or self.agent)
+        hits = self.index.query(self.tenant, self.embedder.embed([text])[0], limit * 5 if filtered else limit)
+        out: list[dict[str, Any]] = []
+        for key, score in hits:
+            k = _kind(key)
+            if (kind and k != kind) or (self.agent and not self.agent.sees_kind(k)):
+                continue
+            ent = self.store.entity(self.tenant, key)
+            if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
+                continue  # gone since indexing, or the rule does not fire
+            out.append({**_ser(ent), "score": round(score, 6)})
+            if len(out) >= limit:
+                break
+        return out
 
     def annotate(
         self,
@@ -434,7 +473,7 @@ class Tools:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?"], "doc": self.search.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
         ]

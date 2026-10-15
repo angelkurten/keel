@@ -199,6 +199,25 @@ curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Kee
   -H "Content-Type: application/json" -d '{"subject": "tire:T-9001"}'
 ```
 
+## Semantic search
+
+`search(text, mode="semantic")` finds subjects by meaning ("worn-out tyre" finds a tire at 2.6 mm), filtered by tenant, the agent's read slice, `kind` and `rule`. Two adapters, both replaceable: where vectors live and where embeddings come from.
+
+```bash
+uv sync --extra chroma        # only for the bundled Chroma adapter
+export KEEL_EMBEDDINGS_BASE_URL=https://api.openai.com/v1 KEEL_EMBEDDINGS_MODEL=text-embedding-3-small KEEL_EMBEDDINGS_API_KEY=...
+uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db --index chroma:///var/keel/vectors   # cron it: incremental
+uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
+```
+
+Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM). Another vector database or embedder is your own adapter: a class with the four `VectorIndex` methods (or `embed`), named by a spec like `--index my_pkg.qdrant:make?url=http://qdrant:6333`, and checked against the same conformance suite as the bundled ones:
+
+```bash
+KEEL_VECTOR_INDEX=my_pkg.qdrant:make KEEL_EMBEDDER=my_pkg.emb:make uv run pytest tests/test_semantic.py
+```
+
+Indexing never runs in ingest, so ingest stays deterministic and offline. Only tenant and global knowledge is indexed: task and agent memory and pending proposals are not.
+
 ## Export the audit trail
 
 One tenant, everything Keel knows about it, as JSONL: entities, relations and facts, closed ones included, each with `source`, `evidence`, `scope`, `recorded_at` and `corrected_by`. Hand it to the customer, an auditor, or a diff.
