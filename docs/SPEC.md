@@ -280,6 +280,7 @@ The `payload:` mapping of an event is a schema in a short notation. Keel checks 
 | `<hint> \| null` | optional and nullable | `type: [<type>, "null"]`, not in `required` |
 | `string[]` (any scalar) | array of scalars | `type: array`, `items` |
 | `[pending, paid]` | enum of literals | `enum` |
+| `[new, done, null]` | optional enum (`null` is a literal in the list; `| null` is not YAML here) | `enum` with `null`, not in `required` |
 | `[ { id: string, qty: int } ]` | array of objects | `type: array`, `items: object` |
 | `{ source: string, score: number }` | nested object | `type: object`, `properties`, `required` |
 

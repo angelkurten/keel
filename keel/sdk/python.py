@@ -16,7 +16,9 @@ class _Types:
 
     def expr(self, schema: dict[str, Any], name: str) -> str:
         if "enum" in schema:
-            return "Literal[" + ", ".join(json.dumps(v) for v in schema["enum"]) + "]"
+            values = [v for v in schema["enum"] if v is not None]
+            expr = "Literal[" + ", ".join(json.dumps(v) for v in values) + "]"
+            return expr + (" | None" if None in schema["enum"] else "")
         t = schema.get("type")
         if t is None:
             return "Any"

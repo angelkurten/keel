@@ -73,3 +73,11 @@ def test_keel_schema_prints_the_generator_input():
     assert opened == {"type": ["string", "null"]}
     assert doc["rules"]["tire_critical"]["when"] == {"predicate": "depth_mm", "lt": 3}
     assert doc["memory"]["ttl"]["task"] == 14 * 86400
+
+
+def test_null_in_an_enum_list_is_an_optional_enum():
+    s = payload_schema({"stage": ["new", "done", None], "kind": ["a", "b"]})
+    assert s["properties"]["stage"] == {"enum": ["new", "done", None]} and s["required"] == ["kind"]
+    h = parse({"stage": ["new", "done", None]})
+    assert check({}, h, "") == [] and check({"stage": None}, h, "") == [] and check({"stage": "done"}, h, "") == []
+    assert check({"stage": "x"}, h, "") == [("stage", "should be one of new, done, or null, got 'x'")]

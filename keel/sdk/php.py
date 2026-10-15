@@ -33,17 +33,19 @@ class _Types:
 
     def expr(self, schema: dict[str, Any], name: str) -> tuple[str, str, str]:
         """(php type, docblock type, toArray expression template with `$v`)"""
-        if "enum" in schema:
-            cases = "\n".join(f"    case {pascal(identifier(str(v)))} = {php_literal(v)};" for v in schema["enum"])
-            self.defs.append(f"enum {name}: string\n{{\n{cases}\n}}\n")
-            return name, name, "$v->value"
-        t = schema.get("type")
-        if t is None:
-            return "mixed", "mixed", "$v"
-        types = [x for x in (t if isinstance(t, list) else [t]) if x != "null"]
-        nullable = isinstance(t, list) and "null" in t
-        ty = types[0] if types else "null"
         php, doc, conv = "mixed", "mixed", "$v"
+        if "enum" in schema:
+            values = [v for v in schema["enum"] if v is not None]
+            cases = "\n".join(f"    case {pascal(identifier(str(v)))} = {php_literal(v)};" for v in values)
+            self.defs.append(f"enum {name}: string\n{{\n{cases}\n}}\n")
+            php, doc, conv, nullable, ty = name, name, "$v->value", None in schema["enum"], "enum"
+        else:
+            t = schema.get("type")
+            if t is None:
+                return "mixed", "mixed", "$v"
+            types = [x for x in (t if isinstance(t, list) else [t]) if x != "null"]
+            nullable = isinstance(t, list) and "null" in t
+            ty = types[0] if types else "null"
         if ty == "string":
             php = doc = "string"
         elif ty == "integer":

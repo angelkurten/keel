@@ -17,9 +17,10 @@ class _Types:
     def expr(self, schema: dict[str, Any], name: str) -> tuple[str, bool]:
         """(type expression, nullable)"""
         if "enum" in schema:
-            rows = [[f"{name}{pascal(identifier(str(v)))}", name, f"= {json.dumps(v)}"] for v in schema["enum"]]
+            values = [v for v in schema["enum"] if v is not None]
+            rows = [[f"{name}{pascal(identifier(str(v)))}", name, f"= {json.dumps(v)}"] for v in values]
             self.defs.append(f"type {name} string\n\nconst (\n" + "\n".join(_align(rows)) + "\n)\n")
-            return name, False
+            return name, None in schema["enum"]
         t = schema.get("type")
         if t is None:
             return "any", False

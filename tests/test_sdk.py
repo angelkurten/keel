@@ -41,3 +41,24 @@ def test_sdk_command_writes_and_checks(tmp_path):
     res = CliRunner().invoke(app, ["sdk", "typescript", "cartridges/fleet", "-o", str(out), "--check"])
     assert res.exit_code == 1 and "stale" in res.output
     assert CliRunner().invoke(app, ["sdk", "rust", "cartridges/fleet"]).exit_code != 0
+
+
+def test_optional_enum_in_every_template(tmp_path):
+    cart = tmp_path / "jira"
+    cart.mkdir()
+    (cart / "cartridge.yaml").write_text(
+        "name: jira\nentities:\n  card: {description: x}\nevents:\n  card.moved:\n    subject: card\n    payload: { status: string, category: [new, indeterminate, done, null] }\n",
+        encoding="utf-8",
+    )
+    (cart / "handlers.py").write_text("from keel.handlers import HandlerRegistry\nregistry = HandlerRegistry()\n\n@registry.on('card.moved')\ndef moved(event, store):\n    pass\n", encoding="utf-8")
+    c = load_cartridge(cart)
+    assert c.validate() == []
+    ts = generate("typescript", c)
+    assert 'export type CardMovedPayload = { status: string; category?: "new" | "indeterminate" | "done" | null };' in ts
+    py = generate("python", c)
+    assert 'class CardMovedPayload(_CardMovedPayloadRequired, total=False):\n    category: Literal["new", "indeterminate", "done"] | None' in py
+    go = generate("go", c, package="jira")
+    assert "type CardMovedPayloadCategory string" in go and '\tCategory *CardMovedPayloadCategory `json:"category,omitempty"`' in go and "CardMovedPayloadCategoryNull" not in go
+    php = generate("php", c)
+    assert "enum CardMovedPayloadCategory: string" in php and "case Null" not in php
+    assert "public readonly ?CardMovedPayloadCategory $category = null," in php and "'category' => ($this->category === null ? null : $this->category->value)," in php

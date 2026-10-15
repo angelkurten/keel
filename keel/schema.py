@@ -4,6 +4,7 @@
       id: string                           # string | int | number | bool | date | datetime | any
       amount: number | null                # `| null`: optional and nullable
       status: [pending, paid]              # a list of literals: enum
+      stage: [new, done, null]             # `null` in the list: an optional enum (`| null` is not YAML here)
       tags: string[]                       # array of scalars
       lines: [ { id: string, qty: int } ]  # a one-element list holding a mapping: array of objects
       meta: { source: string, score: number }   # a mapping: nested object
@@ -48,10 +49,13 @@ def parse(spec: Any) -> Hint:
     if isinstance(spec, list):
         if len(spec) == 1 and isinstance(spec[0], dict):
             return Hint("array", "array of objects", items=parse(spec[0]))
-        if spec and all(isinstance(v, (str, int, float, bool)) for v in spec):
-            if all(isinstance(v, str) and v in SCALARS for v in spec):
-                raise ValueError(f"unsupported payload hint {spec!r}: an array of {spec[0]} is written '{spec[0]}[]'; a list is an enum of literal values")
-            return Hint("enum", "one of " + ", ".join(map(str, spec)), values=tuple(spec))
+        literals = [v for v in spec if v is not None]
+        if literals and all(isinstance(v, (str, int, float, bool)) for v in literals):
+            if all(isinstance(v, str) and v in SCALARS for v in literals):
+                raise ValueError(f"unsupported payload hint {spec!r}: an array of {literals[0]} is written '{literals[0]}[]'; a list is an enum of literal values")
+            nullable = len(literals) < len(spec)
+            text = "one of " + ", ".join(map(str, literals)) + (", or null" if nullable else "")
+            return Hint("enum", text, nullable, values=tuple(literals))
         raise ValueError(f"unsupported payload hint {spec!r}: a list is an enum of literals or [ {{...}} ] for an array of objects")
     text = str(spec).strip()
     parts = [p.strip() for p in text.split("|")]
@@ -74,7 +78,7 @@ def _scalar(name: str, text: str, nullable: bool = False) -> Hint:
 def to_schema(h: Hint) -> dict[str, Any]:
     """JSON Schema (draft 2020-12) for a Hint."""
     if h.kind == "enum":
-        schema: dict[str, Any] = {"enum": list(h.values)}
+        schema: dict[str, Any] = {"enum": list(h.values) + ([None] if h.nullable else [])}
     elif h.kind == "object":
         schema = {
             "type": "object",
