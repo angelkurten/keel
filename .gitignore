@@ -9,3 +9,4 @@ dist/
 site/
 sdk/typescript/node_modules/
 sdk/typescript/dist/
+.keel/

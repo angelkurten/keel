@@ -90,6 +90,16 @@ From a survey of the state of the art and a complex multi-agent flow run on Keel
 - [x] People as principals in the registry (`kind: human`)
 - [x] Detail levels and budgets (`context(detail="concise")`, `history(limit=)`), conflict policy per predicate (`predicates: {p: {multi: true}}`, `context.conflicts`), proposed vs accepted annotations (`annotate(status=)`, `context.proposals`), trace propagation into the audit log (`traceparent` / `X-Keel-Tool-Call` / MCP `_meta`) — 0.10.0
 
+## 0.12 — semantic search, from the evals (proposed 2026-10-15)
+
+From research and a labeled eval bench run with real embeddings ([design note](docs/design/semantic-evals.md), `evals/semantic/`).
+
+- [ ] Exact-key shortcut in semantic search (id MRR 0.45 to 1.00)
+- [ ] Hybrid with convex fusion and a lexical leg (overall MRR 0.82 to 0.93)
+- [ ] `min_score`, model-specific, off by default
+- [ ] Compact relation lines; query/document roles in `Embedder`; `where` filters in `VectorIndex`; reranker adapter
+- [ ] Real agent queries from kagent and Toche in the bench
+
 ## Later — 0.4+ (2027)
 
 Goal: the hosted product and the cartridge catalog.

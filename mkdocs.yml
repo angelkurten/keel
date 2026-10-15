@@ -41,6 +41,7 @@ nav:
       - SDKs from the cartridge: design/sdk-generator.md
       - Ingesting millions of events: design/bulk-ingest.md
       - What agentic workflows demand: design/agentic-workflows.md
+      - Semantic search, research and evals: design/semantic-evals.md
 
 markdown_extensions:
   - admonition
