@@ -28,6 +28,7 @@ from keel.store.memory import (
     changed_after,
     filter_facts,
     filter_relations,
+    in_scope,
     new_fact,
     place_fact,
     same_slot,
@@ -316,21 +317,23 @@ class SqlStore:
         same.append((f, self._last_id))
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
         if self._bulk is not None:
-            self._bulk.close_fact(tenant, subject, predicate, valid_to, status)
+            self._bulk.close_fact(tenant, subject, predicate, valid_to, status, scope)
             return
         # a close that predates a fact's start is about an earlier period and leaves this fact alone;
         # `status` picks accepted facts (None) or proposals
         now = utcnow()
         which = "status IS NULL" if status is None else "status = ?"
+        if scope is not None:  # tenant by default: a handler never closes agent or task memory
+            which += " AND scope = ?"
         self._exec(
             f"UPDATE facts SET valid_to = ?, closed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND {which} AND valid_to IS NULL AND valid_from <= ?",
-            (_ts(valid_to), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), _ts(valid_to)),
+            (_ts(valid_to), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), *(() if scope is None else (Scope(scope).value,)), _ts(valid_to)),
         )
         if self._cache is not None:
             for fact, _ in self._cache.get(("f", tenant, subject, predicate), []):
-                if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to:
+                if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to and in_scope(fact, scope):
                     fact.valid_to, fact.closed_at = valid_to, now
 
     # ---- reads -------------------------------------------------------------------
@@ -589,10 +592,10 @@ class _Bulk:
         self.new_facts.append(f)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
         now = utcnow()
         for f, seq in self._facts(tenant, subject):
-            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
+            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
                 f.valid_to, f.closed_at = valid_to, now
                 if seq is not None:
                     self.closed_facts[seq] = f

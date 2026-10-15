@@ -715,3 +715,35 @@ def test_consolidation_keeps_agent_memory_private_and_uses_world_time(store):
     c.consolidate["recurring"]["from"]["scopes"] = ["task", "agent"]  # asked for explicitly
     consolidate_tenant(c, store, TENANT, now=now)
     assert [f.value for f in store.facts(TENANT, "tire:T-9001", at=now) if f.predicate == "times"] == [5]
+
+
+def test_close_fact_closes_tenant_facts_only_unless_asked(store):
+    """A handler's close_fact ends the tenant's truth, never an agent's or a task's memory."""
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT, agent="bot")
+    t.annotate("tire:T-9001", "depth_mm", 1.0, scope="agent")
+    t.annotate("tire:T-9001", "depth_mm", 1.5, task="r")
+    now = datetime.now(UTC)
+    open_ = lambda: sorted((Scope(f.scope).value, f.value) for f in store.facts(TENANT, "tire:T-9001", at=now) if f.predicate == "depth_mm")
+    assert open_() == [("agent", 1.0), ("task", 1.5), ("tenant", 2.6)]
+    store.close_fact(TENANT, "tire:T-9001", "depth_mm", valid_to=now)  # what a handler does
+    assert open_() == [("agent", 1.0), ("task", 1.5)]
+    store.close_fact(TENANT, "tire:T-9001", "depth_mm", valid_to=now, scope=None)  # every scope, when asked
+    assert open_() == []
+
+
+def test_close_fact_scope_in_a_bulk_batch(store):
+    if not hasattr(store, "bulk"):
+        pytest.skip("store has no bulk path")
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    Tools(c, store, TENANT, agent="bot").annotate("tire:T-9001", "depth_mm", 1.0, scope="agent")
+    now = datetime.now(UTC)
+    ev = [Event(tenant=TENANT, type="tire.depth_measured", subject="tire:T-9001", occurred_at=now, source="t", payload={"unit_id": "MXK-4821", "position": "P3", "depth_mm": 2.0})] * 2
+    with store.bulk(ev):
+        store.close_fact(TENANT, "tire:T-9001", "depth_mm", valid_to=now)
+    vals = sorted((Scope(f.scope).value, f.value) for f in store.facts(TENANT, "tire:T-9001", at=now) if f.predicate == "depth_mm")
+    assert vals == [("agent", 1.0)]

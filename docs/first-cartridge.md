@@ -53,7 +53,7 @@ The shipped cartridge adds a third one, `treatment.performed`, so the `treatment
 
 ## 4. Write one handler per event (5 min)
 
-A handler maps a payload to five primitives: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. Ten lines each.
+A handler maps a payload to five primitives: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. Ten lines each. `close_fact` ends the tenant's fact on a predicate; what agents remembered about it (task and agent memory) keeps its own lifetime.
 
 ```python
 from keel.handlers import HandlerRegistry

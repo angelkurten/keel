@@ -135,7 +135,9 @@ upsert_entity(tenant, kind, id, ref=None, **attrs) -> Entity
 link(tenant, src, rel, dst, valid_from, source=None) -> Relation
 unlink(tenant, src, rel, dst, valid_to) -> None
 open_fact(tenant, subject, predicate, value, valid_from, **provenance) -> Fact
-close_fact(tenant, subject, predicate, valid_to, status=None) -> None   # status: only proposals, or only rejections
+close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant") -> None
+    # status: only proposals, or only rejections; scope: only that scope's facts (None: every scope).
+    # The tenant default is what a handler means: it never closes agent or task memory.
 ```
 
 `open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, and `per_source` (one history per author, §3.3).

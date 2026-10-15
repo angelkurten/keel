@@ -571,10 +571,11 @@ class Tools:
             trace=self.trace,
             per_source=status is not None or predicate in self.multi,
         )
+        every_scope = {"scope": None} if accepts(self.store.close_fact, "scope") else {}  # a decision settles proposals in any scope
         if status != "proposed":  # a decision: the pending proposals on this predicate are settled
-            self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed")
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed", **every_scope)
         if status == "rejected":  # the rejection itself is recorded, closed at once: history only
-            self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected")
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected", **every_scope)
             f.valid_to = now
         return _ser(f)
 

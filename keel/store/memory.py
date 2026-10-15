@@ -47,6 +47,11 @@ def author(f: Fact) -> str | None:
     return f.corrected_by or f.source
 
 
+def in_scope(f: Fact, scope: Scope | str | None) -> bool:
+    """close_fact's scope filter: None is every scope."""
+    return scope is None or Scope(f.scope) == Scope(scope)
+
+
 def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> list[Fact]:
     """The facts `new` takes its place among: same predicate, status and memory scope, and with
     `per_source` (a multi-valued predicate, a proposal) the same author. One open fact per slot.
@@ -197,12 +202,13 @@ class MemoryStore:
         self._mark(tenant, f.recorded_at)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone. `status` picks accepted facts (None) or proposals.
+        # `scope` (tenant by default, what handlers write) keeps a handler from closing agent or task memory.
         now = utcnow()
         for f in self._facts[tenant][subject]:
-            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
+            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
                 f.valid_to, f.closed_at = valid_to, now
                 self._mark(tenant, now)
 
