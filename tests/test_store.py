@@ -197,3 +197,35 @@ def test_table_prefix_keeps_a_shared_database_tidy(tmp_path):
     assert not {"entities", "facts"} & names
     assert Tools(c, store, TENANT).context("tire:T-9001")["evaluation"] == {"tire_critical": True}
     assert len(list(store.dump(TENANT))) > 20 and store.expire(TENANT) == 0
+
+
+def test_a_failed_chunk_is_rolled_back_whole_and_redelivered(store):
+    """In strict mode a chunk that raises leaves nothing behind: no facts, no remembered ids."""
+    c = load_cartridge(FLEET)
+    events = list(JsonlAdapter(EVENTS))
+    broken = events[4].model_copy(update={"payload": {k: v for k, v in events[4].payload.items() if k != "depth_mm"}})
+    ing = Ingestor(c, store)
+    with pytest.raises(KeyError):
+        ing.ingest([events[0], events[1], broken], strict=True, batch=10)
+    if hasattr(store, "transaction"):  # SQL stores: the whole chunk vanished
+        assert store.entity(TENANT, "unit:MXK-4821") is None and not store.seen(TENANT, events[0].id)
+    else:  # the memory store has no transactions: the two good events stayed, and stay deduped
+        assert store.seen(TENANT, events[0].id)
+    again = ing.ingest(events, strict=True, batch=10)  # the redelivery
+    assert again.processed + again.duplicates == 12 and store.entity(TENANT, "unit:MXK-4821") is not None
+    assert Tools(c, store, TENANT).context("tire:T-9001")["evaluation"] == {"tire_critical": True}
+
+
+def test_streams_are_not_buffered_and_bulk_is_batched(tmp_path):
+    store = SqliteStore(tmp_path / "keel.db")
+    c = load_cartridge(FLEET)
+    ing = Ingestor(c, store)
+    seen_during = []
+
+    def trickle():
+        for ev in JsonlAdapter(EVENTS):
+            yield ev
+            seen_during.append(store.seen(TENANT, ev.id))  # visible before the next event arrives
+
+    assert ing.ingest(trickle(), strict=True).processed == 12 and all(seen_during)
+    assert Ingestor(c, SqliteStore(tmp_path / "bulk.db")).ingest(JsonlAdapter(EVENTS), strict=True, batch=500).processed == 12

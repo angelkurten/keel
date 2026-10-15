@@ -73,6 +73,7 @@ A second design customer: kagent, with 354 real Jira cards and 2831 events, wrot
 - [x] Symmetric relations declared in the cartridge, shown once with direction `both`
 - [x] `context(depth=1)` with each neighbour's facts and evaluation; `related(as_of=)`
 - [x] Spec guidance: long text is a pointer, not a fact value
+- [x] Second round (revalidated on the same 354 cards, 0 differences on the pause rules): `held_for_days` / `held_for_business_days`, the waiting clock that survives a change between waiting states; transactions per event or per batch in the SQL stores, for MySQL ingest speed
 - [ ] Semantic `search` (planned since 0.0.x; kagent has embeddings to plug in)
 
 ## Later — 0.4+ (2027)

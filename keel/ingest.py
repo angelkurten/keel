@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Iterator
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,31 +44,50 @@ class IngestReport:
     errors: list[tuple[str, str]] = field(default_factory=list)
 
 
+def _chunks(events: Iterable[Event], size: int) -> Iterator[list[Event]]:
+    """Lists of up to `size` events. With size 1 a streaming adapter is never buffered."""
+    buf: list[Event] = []
+    for ev in events:
+        buf.append(ev)
+        if len(buf) >= size:
+            yield buf
+            buf = []
+    if buf:
+        yield buf
+
+
 class Ingestor:
     def __init__(self, cartridge: Cartridge, store: Store) -> None:
         self.cartridge = cartridge
         self.store = store
         self.log: list[Event] = []  # append-only; a real deployment keeps this in the bus
 
-    def ingest(self, events: Iterable[Event], strict: bool = False) -> IngestReport:
+    def ingest(self, events: Iterable[Event], strict: bool = False, batch: int = 1) -> IngestReport:
+        """Dispatch every event. When the store has transactions, each event is one (its primitives and
+        `remember` land together); a bulk caller (a file, an HTTP batch) passes `batch` to commit every
+        `batch` events instead, which is what makes a networked database fast. A chunk that raises in
+        strict mode is rolled back whole and will be redelivered whole; dedupe takes care of the rest."""
         report = IngestReport()
-        for ev in events:
-            if self.store.seen(ev.tenant, ev.id):
-                report.duplicates += 1
-                continue
-            self.log.append(ev)
-            try:
-                self.cartridge.registry.dispatch(ev, self.store)
-                report.processed += 1
-                self.store.remember(ev.tenant, ev.id)  # after the handler ran: a failed event is not remembered
-            except UnhandledEvent:
-                report.unhandled.append(ev.type)
-                if strict:
-                    raise
-            except Exception as exc:
-                report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
-                if strict:
-                    raise
+        tx = getattr(self.store, "transaction", None)
+        for chunk in _chunks(events, max(1, batch)):
+            with tx() if tx else nullcontext():
+                for ev in chunk:
+                    if self.store.seen(ev.tenant, ev.id):
+                        report.duplicates += 1
+                        continue
+                    self.log.append(ev)
+                    try:
+                        self.cartridge.registry.dispatch(ev, self.store)
+                        report.processed += 1
+                        self.store.remember(ev.tenant, ev.id)  # after the handler ran: a failed event is not remembered
+                    except UnhandledEvent:
+                        report.unhandled.append(ev.type)
+                        if strict:
+                            raise
+                    except Exception as exc:
+                        report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
+                        if strict:
+                            raise
         return report
 
     def replay(self, tenant: str, events: Iterable[Event] | None = None) -> IngestReport:
@@ -81,4 +101,4 @@ class Ingestor:
             reset(tenant)
         if events is None:
             events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
-        return self.ingest(e for e in events if e.tenant == tenant)
+        return self.ingest((e for e in events if e.tenant == tenant), batch=500)

@@ -59,6 +59,9 @@ class _Graph:
             self._facts[subject] = self.store.facts(self.tenant, subject, at=self.as_of)
         return self._facts[subject]
 
+    def history(self, subject: str, predicate: str) -> list[Fact]:
+        return [f for f in self.store.facts(self.tenant, subject, until=self.as_of) if f.predicate == predicate]
+
     def neighbors(self, subject: str, rel: str, direction: str) -> list[str]:
         out: list[str] = []
         for r in self.store.relations(self.tenant, subject, rel=rel, at=self.as_of):

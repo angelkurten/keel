@@ -150,7 +150,7 @@ def build_http_app(
         t = request.headers.get("x-keel-tenant")
         if t and any(e.tenant != t for e in batch):
             raise HTTPException(400, f"every envelope must belong to tenant '{t}'")
-        report = ingestor.ingest(batch)
+        report = ingestor.ingest(batch, batch=len(batch))
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors}
 
     @app.post("/v1/context")

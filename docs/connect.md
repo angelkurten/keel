@@ -68,7 +68,7 @@ ingestor.ingest(adapter)                      # one pass over everything after t
 ingestor.ingest(adapter.follow(interval=5))   # or poll forever
 ```
 
-Delivery is at-least-once: the cursor advances after the consumer has taken an event, so a crash mid-event re-delivers it. The table name, the cursor column and the batch size are parameters. Any DB-API 2.0 connection works; pass `placeholder="?"` for sqlite3.
+Delivery is at-least-once: the cursor advances after the consumer has taken an event, so a crash mid-event re-delivers it, and the store applies each event in one transaction, so a redelivery is skipped as a duplicate. The table name, the cursor column and the batch size are parameters. Any DB-API 2.0 connection works; pass `placeholder="?"` for sqlite3.
 
 ```mermaid
 sequenceDiagram

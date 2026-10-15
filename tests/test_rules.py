@@ -17,14 +17,17 @@ class _Graph:
         self._facts, self.edges, self.calendar = facts, edges or {}, calendar or Calendar()
 
     def facts(self, subject):
-        return self._facts.get(subject, [])
+        return [f for f in self._facts.get(subject, []) if f.valid_to is None]
+
+    def history(self, subject, predicate):
+        return [f for f in self._facts.get(subject, []) if f.predicate == predicate]
 
     def neighbors(self, subject, rel, direction):
         return self.edges.get((subject, rel), [])
 
 
-def _fact(subject, predicate, value, since=T0):
-    return Fact(tenant="t", subject=subject, predicate=predicate, value=value, valid_from=since)
+def _fact(subject, predicate, value, since=T0, until=None):
+    return Fact(tenant="t", subject=subject, predicate=predicate, value=value, valid_from=since, valid_to=until)
 
 
 def test_composition_null_propagation_and_case_insensitive_strings():
@@ -103,3 +106,19 @@ def test_symmetric_relations_show_once_in_both_directions():
     t = Tools(c, s, "acme-logistics")
     assert t.related("unit:A") == [{"relation": "pairs_with", "direction": "both", "subject": "unit:B", "since": T0.isoformat()}]
     assert t.related("unit:B")[0]["subject"] == "unit:A" and len(t.context("unit:A")["relations"]) == 1
+
+
+def test_held_for_counts_across_consecutive_waiting_states():
+    sep20, oct1, oct8 = (datetime(2026, m, d, tzinfo=UTC) for m, d in ((9, 20), (10, 1), (10, 8)))
+    g = _Graph({"card:1": [
+        _fact("card:1", "estado", "To Do", since=sep20, until=oct1),
+        _fact("card:1", "estado", "On Hold", since=oct1, until=oct8),
+        _fact("card:1", "estado", "Customer | On-Hold", since=oct8),
+    ]})
+    waiting = {"predicate": "estado", "in": ["on hold", "customer | on-hold"], "ci": True}
+    assert evaluate({"when": {**waiting, "open_for_days": {"gte": 13}}}, "card:1", AT, g) is False  # the clock restarted on Oct 8
+    assert evaluate({"when": {**waiting, "held_for_days": {"gte": 13}}}, "card:1", AT, g) is True  # waiting since Oct 1
+    assert evaluate({"when": {**waiting, "held_for_days": {"gte": 25}}}, "card:1", AT, g) is False  # To Do does not count
+    assert evaluate({"when": {**waiting, "held_for_business_days": {"eq": 9}}}, "card:1", AT, g) is True  # Oct 1 to 13, weekdays
+    assert evaluate({"when": {"predicate": "estado", "held_for_days": {"gte": 20}}}, "card:1", AT, g) is True  # no comparison: any value
+    assert evaluate({"when": {"predicate": "estado", "eq": "Done", "held_for_days": {"gte": 1}}}, "card:1", AT, g) is False

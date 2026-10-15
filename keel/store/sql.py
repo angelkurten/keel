@@ -17,6 +17,7 @@ import json
 import re
 import threading
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
@@ -86,7 +87,8 @@ class SqlStore:
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
         """`prefix` names the tables `<prefix>entities`, `<prefix>facts`... for a database shared with an application."""
         self.prefix = prefix
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()  # re-entrant: a transaction holds it across its statements
+        self._in_tx = False
         self.db = connect()
         self._prepare(self.db)
         for stmt in self.SCHEMA.split(";"):
@@ -124,6 +126,27 @@ class SqlStore:
     def _one(self, sql: str, params: tuple[Any, ...] = ()) -> Any | None:
         rows = self._rows(sql, params)
         return rows[0] if rows else None
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """One commit for everything inside, rolled back whole on an exception. The Ingestor wraps
+        each event (or each batch) in one: the handler's primitives and `remember` land together,
+        and a database that syncs per statement does it once instead of once per primitive."""
+        if self._in_tx:  # nested: the outer one owns it
+            yield
+            return
+        with self._lock:
+            self._exec("BEGIN")
+            self._in_tx = True
+            try:
+                yield
+            except BaseException:
+                self._exec("ROLLBACK")
+                raise
+            else:
+                self._exec("COMMIT")
+            finally:
+                self._in_tx = False
 
     # ---- writes (the primitives) -------------------------------------------------
 

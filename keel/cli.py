@@ -153,7 +153,7 @@ def _run(cartridge: Path, events: Path | None, strict: bool = False, db: str | N
     c = load_cartridge(cartridge)
     store = _store(db)
     ing = Ingestor(c, store)
-    report = ing.ingest(JsonlAdapter(events), strict=strict) if events else IngestReport()
+    report = ing.ingest(JsonlAdapter(events), strict=strict, batch=500) if events else IngestReport()
     return c, store, ing, report
 
 

@@ -12,6 +12,9 @@ stays in the cartridge.
     when: { predicate: status, in: [On Hold, Blocked], ci: true }        # strings compared case-insensitively
     when: { predicate: status, eq: open, open_for_days: { gte: 7 } }     # how long the open fact has been open
     when: { predicate: status, eq: waiting, open_for_business_days: { gte: 3 } }  # weekdays minus `calendar.holidays`
+    when: { predicate: status, in: [On Hold, Customer On-Hold], held_for_business_days: { gte: 10 } }
+          # how long the comparison has held across consecutive facts: a waiting clock that survives a
+          # change from one waiting status to another; `open_for_*` restarts at every change of value
 
 Composition: `all` / `any` (lists), `not` (one condition). Neighbours: `via: <relation>` with
 `direction: out | in | any` (default any) and `any:` or `all:` holding the condition each
@@ -66,6 +69,8 @@ class Graph(Protocol):
 
     def facts(self, subject: str) -> list[Fact]: ...
 
+    def history(self, subject: str, predicate: str) -> list[Fact]: ...  # that predicate's facts up to as_of, oldest first
+
     def neighbors(self, subject: str, rel: str, direction: str) -> list[str]: ...
 
 
@@ -85,7 +90,7 @@ _OPS = {
     "in": lambda v, a, now: v in a,
     "within_days": lambda v, a, now: _as_datetime(v) <= now + timedelta(days=a),  # includes dates already past
 }
-DURATION_OPS = {"open_for_days", "open_for_business_days"}
+DURATION_OPS = {"open_for_days", "open_for_business_days", "held_for_days", "held_for_business_days"}
 OPERATORS = frozenset(_OPS) | DURATION_OPS
 LEAF_KEYS = {"predicate", "ci"}
 COMPARISONS = {"lt", "lte", "gt", "gte", "eq"}
@@ -187,25 +192,48 @@ def _eval(cond: dict[str, Any], subject: str, as_of: datetime, graph: Graph) -> 
     fact = current.get(cond["predicate"])
     if fact is None:
         return None
+    ci = bool(cond.get("ci"))
+    comparisons = {op: arg for op, arg in cond.items() if op in _OPS}
     try:
-        return all(_holds(op, fact, arg, as_of, graph.calendar, bool(cond.get("ci"))) for op, arg in cond.items() if op not in LEAF_KEYS)
+        if not _matches(fact, comparisons, as_of, ci):
+            return False
+        for op in DURATION_OPS & set(cond):
+            since = fact.valid_from
+            if op.startswith("held_for"):
+                since = _held_since(fact, graph.history(subject, cond["predicate"]), comparisons, as_of, ci)
+            days = calendar_days = (as_of - since).total_seconds() / 86400
+            if op.endswith("business_days"):
+                days = graph.calendar.business_days(since, as_of)
+            if not _compare(days if op.endswith("business_days") else calendar_days, cond[op]):
+                return False
+        return True
     except (TypeError, ValueError):
         return None
 
 
-def _holds(op: str, fact: Fact, arg: Any, as_of: datetime, calendar: Calendar, ci: bool) -> bool:
-    if op == "open_for_days":
-        return _compare((as_of - fact.valid_from).total_seconds() / 86400, arg)
-    if op == "open_for_business_days":
-        return _compare(calendar.business_days(fact.valid_from, as_of), arg)
+def _matches(fact: Fact, comparisons: dict[str, Any], as_of: datetime, ci: bool) -> bool:
     value = fact.value
     if ci and isinstance(value, str):
         value = value.casefold()
-        if op == "in":
-            arg = [a.casefold() if isinstance(a, str) else a for a in arg]
-        elif isinstance(arg, str):
-            arg = arg.casefold()
-    return bool(_OPS[op](value, arg, as_of))
+    for op, arg in comparisons.items():
+        if ci and isinstance(fact.value, str):
+            if op == "in":
+                arg = [a.casefold() if isinstance(a, str) else a for a in arg]
+            elif isinstance(arg, str):
+                arg = arg.casefold()
+        if not _OPS[op](value, arg, as_of):
+            return False
+    return True
+
+
+def _held_since(fact: Fact, history: list[Fact], comparisons: dict[str, Any], as_of: datetime, ci: bool) -> datetime:
+    """Walk back through consecutive earlier facts that also satisfy the comparison: the start of the run."""
+    since = fact.valid_from
+    for prev in sorted((f for f in history if f.valid_from < fact.valid_from), key=lambda f: f.valid_from, reverse=True):
+        if prev.valid_to != since or not _matches(prev, comparisons, as_of, ci):
+            break
+        since = prev.valid_from
+    return since
 
 
 def _compare(x: float, spec: dict[str, Any]) -> bool:
