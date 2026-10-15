@@ -328,22 +328,34 @@ class Tools:
         after: str | None = None,
         mode: str = "text",
         min_score: float | None = None,
+        related_to: str | None = None,
+        via: str | None = None,
     ) -> list[dict[str, Any]]:
         """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
         deployment's embedder and vector index (keel.semantic): ids in the query first, then dense and
         lexical legs fused, then the optional reranker; tenant, the agent's read slice, `kind` and `rule`
-        apply. Each entity carries `score` and `similarity` (the cosine; `min_score` drops results below it). With `kind` or `rule` it enumerates instead: the entities
+        apply. Each entity carries `score` and `similarity` (the cosine; `min_score` drops results below it).
+        `related_to` (a subject key) keeps only that subject's neighbours, through relation `via` when given:
+        "cards of this client where this rule holds" is one call, in every mode. `after` is always a key
+        (an id alone is accepted when the kind is known) and applies to the kind/rule listing. With `kind` or `rule` it enumerates instead: the entities
         of that kind (a rule's `applies_to` when only `rule` is given) whose key or attributes match
         `text`, where the rule fires now when `rule` is given, ordered by key; page with `limit` and
         `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers."""
-        if mode == "semantic":
-            return self._semantic(text, kind, rule, limit or 10, min_score)
-        if mode != "text":
+        if mode not in ("text", "semantic"):
             raise ValueError("mode is 'text' or 'semantic'")
+        if via and not related_to:
+            raise ValueError("`via` needs `related_to`")
+        neighbours = self._neighbours(related_to, via) if related_to else None
+        if after is not None and (mode == "semantic" or (kind is None and rule is None)):
+            raise ValueError("`after` pages the kind/rule listing; semantic and text search rank, page them with `limit`")
+        if mode == "semantic":
+            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours)
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text)
             if self.agent:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
+            if neighbours is not None:
+                hits = [h for h in hits if (h.key if isinstance(h, Entity) else h.subject) in neighbours]
             return _ser(hits[:limit] if limit else hits)
         spec = None
         if rule is not None:
@@ -357,7 +369,14 @@ class Tools:
             raise PermissionError(f"agent '{self.agent.id}' may not read kind '{kind}'")
         found: list[Entity] = []
         graph = self._graph(utcnow()) if spec else None
-        for e in self.store.entities(self.tenant, kind):
+        if after is not None and ":" not in after:
+            after = f"{kind}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
+        elif after is not None and _kind(after) != kind:
+            raise ValueError(f"`after` is a key of kind '{kind}' (the last key received), got '{after}'")
+        entities = self.store.entities(self.tenant, kind)
+        if neighbours is not None:  # walk the neighbours, not the whole kind
+            entities = sorted((e for k in neighbours if _kind(k) == kind and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
+        for e in entities:
             if after is not None and e.key <= after:
                 continue
             if text and not search_in([e], [], text):
@@ -368,6 +387,13 @@ class Tools:
             if limit and len(found) >= limit:
                 break
         return _ser(found)
+
+    def _neighbours(self, subject: str, via: str | None) -> set[str]:
+        """The subjects linked to `subject` now (through `via` when given), as the caller may see them."""
+        self._readable(subject)
+        if via is not None and via not in self.cartridge.relations:
+            raise ValueError(f"relation '{via}' is not declared")
+        return {r.dst if r.src == subject else r.src for r in self.store.relations(self.tenant, subject, rel=via, at=utcnow()) if self._visible(r, subject)}
 
     def _exact_keys(self, text: str, kinds: list[str] | None) -> list[str]:
         """Subjects whose key or id appears verbatim in the query: ids are what dense vectors blur."""
@@ -382,7 +408,9 @@ class Tools:
                     found.append(key)
         return found
 
-    def _semantic(self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None) -> list[dict[str, Any]]:
+    def _semantic(
+        self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None, neighbours: set[str] | None = None,
+    ) -> list[dict[str, Any]]:
         if self.embedder is None or self.index is None:
             raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
         if not text:
@@ -401,7 +429,7 @@ class Tools:
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
-            if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)):
+            if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)) or (neighbours is not None and key not in neighbours):
                 return None
             ent = self.store.entity(self.tenant, key)
             if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
@@ -533,7 +561,7 @@ class Tools:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?"], "doc": self.search.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
         ]

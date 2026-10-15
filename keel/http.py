@@ -141,6 +141,8 @@ def build_http_app(
         after: str | None = None
         mode: str = "text"
         min_score: float | None = None
+        related_to: str | None = None
+        via: str | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -184,7 +186,7 @@ def build_http_app(
 
     @app.post("/v1/search")
     def search(body: SearchIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score))
+        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score, body.related_to, body.via))
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:

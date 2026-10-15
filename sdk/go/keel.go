@@ -276,12 +276,13 @@ type SearchOptions struct {
 	Limit                   int
 	Mode                    string  // "semantic": ranked by meaning, each result with a "score"
 	MinScore                float64 // semantic: drop results whose cosine is below this; 0 = no floor
+	RelatedTo, Via          string  // only RelatedTo's neighbours (through Via when set)
 }
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
 	var out []map[string]any
 	body := map[string]any{"text": o.Text}
-	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode} {
+	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode, "related_to": o.RelatedTo, "via": o.Via} {
 		if v != "" {
 			body[k] = v
 		}

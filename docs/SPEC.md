@@ -372,7 +372,9 @@ What is true about a subject now, or at `as_of` (world time). With `depth=1` the
 
 Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter; `limit` keeps the most recent n, still oldest first (ask for one more to know whether more exist). `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`.
 
-### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None) -> [Entity | Fact]`
+### 7.3 `search(text="", kind=None, rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None) -> [Entity | Fact]`
+
+`related_to` (a subject key the caller may read) keeps only that subject's current neighbours, through relation `via` when given, in every mode: `search(kind="card", rule="en_pausa", related_to="cliente:BAT", via="de_cliente")` is the paused cards of one client in one call, walking the client's neighbours rather than the whole kind. `after` has one format, the key of the last entity received (`tire:T-9002`); an id alone is accepted when the listing has one kind. It pages the `kind`/`rule` listing only: with `mode="semantic"` or a plain text search it is an error, since those rank and page with `limit`.
 
 Every entity the tools return (here, in `context.entity`, in `neighbors`, and in `keel export`) carries `key`, the `<kind>:<id>` that every other call takes and that `after` expects.
 

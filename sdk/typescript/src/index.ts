@@ -227,9 +227,12 @@ export class Client<S extends string = string> {
   }
 
   /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`. */
-  search(text = "", opts: { kind?: string; rule?: string; limit?: number; after?: string; mode?: "text" | "semantic"; minScore?: number } = {}): Promise<Array<Entity | Fact>> {
-    const { minScore, ...rest } = opts;
-    return this.post("/v1/search", { text, ...rest, min_score: minScore });
+  search(
+    text = "",
+    opts: { kind?: string; rule?: string; limit?: number; after?: string; mode?: "text" | "semantic"; minScore?: number; relatedTo?: S; via?: string } = {},
+  ): Promise<Array<Entity | Fact>> {
+    const { minScore, relatedTo, ...rest } = opts;
+    return this.post("/v1/search", { text, ...rest, min_score: minScore, related_to: relatedTo });
   }
 
   /** Write earned memory. The server enforces the scope policy and the agent registry. `task` ties it to a job;

@@ -502,3 +502,34 @@ def test_multi_valued_authors_are_the_by_when_given(store):
     assert sorted((x["by"], x["value"]) for x in ctx["conflicts"]["diagnosis"]) == open_
     short = console.context("unit:MXK-4821", detail="concise")["facts"]["diagnosis"]
     assert sorted((x["by"], x["value"]) for x in short) == open_
+
+
+def test_search_by_neighbour_and_one_format_for_after(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    now = datetime.now(UTC)
+    for tid, depth in (("T-9002", 2.1), ("T-9003", 6.0)):
+        store.upsert_entity(TENANT, "tire", tid, position="P2")
+        store.link(TENANT, f"tire:{tid}", "mounted_on", "unit:MXK-4821", now)
+        store.open_fact(TENANT, f"tire:{tid}", "depth_mm", depth, valid_from=now)
+    store.upsert_entity(TENANT, "unit", "OTHER-1")
+    store.upsert_entity(TENANT, "tire", "T-7777", position="P1")
+    store.link(TENANT, "tire:T-7777", "mounted_on", "unit:OTHER-1", now)
+    store.open_fact(TENANT, "tire:T-7777", "depth_mm", 1.0, valid_from=now)  # critical, but on another unit
+    t = Tools(c, store, TENANT)
+    critical_here = t.search(rule="tire_critical", related_to="unit:MXK-4821", via="mounted_on")
+    assert [e["key"] for e in critical_here] == ["tire:T-9001", "tire:T-9002"]  # one call; T-7777 is not this unit's
+    assert [e["key"] for e in t.search(kind="tire", related_to="unit:MXK-4821")] == ["tire:T-9001", "tire:T-9002", "tire:T-9003"]
+    assert {h["subject"] if "subject" in h else h["key"] for h in t.search("2.1", related_to="unit:MXK-4821")} == {"tire:T-9002"}
+    with pytest.raises(ValueError):
+        t.search(kind="tire", related_to="unit:MXK-4821", via="flies")
+    with pytest.raises(ValueError):
+        t.search(kind="tire", via="mounted_on")  # via without related_to
+    # `after`: the key, or an id when the kind is known; never silently wrong
+    assert [e["key"] for e in t.search(kind="tire")] == ["tire:T-7777", "tire:T-9001", "tire:T-9002", "tire:T-9003"]
+    by_key = [e["key"] for e in t.search(kind="tire", after="tire:T-9001")]
+    assert by_key == [e["key"] for e in t.search(kind="tire", after="T-9001")] == ["tire:T-9002", "tire:T-9003"]
+    with pytest.raises(ValueError):
+        t.search(kind="tire", after="unit:MXK-4821")  # a key of another kind
+    with pytest.raises(ValueError):
+        t.search("x", after="tire:T-9001")  # text search does not page by key
