@@ -883,6 +883,7 @@ dev = [
     { name = "mcp" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "uvicorn" },
 ]
 docs = [
     { name = "mkdocs" },
@@ -890,6 +891,11 @@ docs = [
 ]
 graphiti = [
     { name = "graphiti-core" },
+]
+http = [
+    { name = "fastapi" },
+    { name = "mcp" },
+    { name = "uvicorn" },
 ]
 kafka = [
     { name = "confluent-kafka" },
@@ -913,10 +919,12 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'sqs'", specifier = ">=1.34" },
     { name = "confluent-kafka", marker = "extra == 'kafka'", specifier = ">=2.3" },
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.110" },
+    { name = "fastapi", marker = "extra == 'http'", specifier = ">=0.110" },
     { name = "fastapi", marker = "extra == 'webhook'", specifier = ">=0.110" },
     { name = "graphiti-core", marker = "extra == 'graphiti'", specifier = ">=0.5" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
     { name = "mcp", marker = "extra == 'dev'", specifier = ">=1.2" },
+    { name = "mcp", marker = "extra == 'http'", specifier = ">=1.2" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.2" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = "<2" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
@@ -926,9 +934,11 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
     { name = "typer", specifier = ">=0.12" },
+    { name = "uvicorn", marker = "extra == 'dev'", specifier = ">=0.27" },
+    { name = "uvicorn", marker = "extra == 'http'", specifier = ">=0.27" },
     { name = "uvicorn", marker = "extra == 'webhook'", specifier = ">=0.27" },
 ]
-provides-extras = ["mcp", "postgres", "webhook", "kafka", "sqs", "docs", "graphiti", "dev"]
+provides-extras = ["mcp", "postgres", "webhook", "http", "kafka", "sqs", "docs", "graphiti", "dev"]
 
 [[package]]
 name = "markdown"

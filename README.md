@@ -67,7 +67,7 @@ With Claude Code, one command registers it and the agent sees exactly five tools
 claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
 ```
 
-Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [connect](docs/connect.md#serve-the-tools-over-mcp).
+Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [connect](docs/connect.md#serve-the-tools-over-mcp). A backend, or many tenants from one process, use the same five as a JSON API: `keel serve --transport http` (`/v1/context`, `/v1/events`, ... with OpenAPI; tenant and agent per request).
 
 Poll an outbox table in your Postgres (a cursor file makes restarts resume, not re-ingest):
 

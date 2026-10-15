@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import typer
@@ -197,19 +198,41 @@ def context(cartridge: Path, events: Path, subject: str, tenant: str | None = No
 @app.command()
 def serve(
     cartridge: Path,
-    tenant: str = typer.Option(..., help="The end-customer this server is bound to."),
+    tenant: str | None = typer.Option(None, help="The end-customer this server is bound to. Required with stdio; with http it also enables /mcp."),
     events: Path | None = None,
     db: Path | None = DB,
     agent: str | None = AGENT,
+    transport: str = typer.Option("stdio", help="stdio: MCP for one tenant. http: the /v1 JSON API for any tenant (X-Keel-Tenant), plus /mcp when --tenant is given."),
+    host: str = typer.Option("127.0.0.1", help="http only."),
+    port: int = typer.Option(8000, help="http only."),
+    secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
 ):
-    """Serve the five tools over MCP (stdio). Requires `uv sync --extra mcp`. --events fills an in-memory graph; --db serves a durable one."""
-    from keel.mcp_server import build_server
-
+    """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
     store = SqliteStore(db) if db else MemoryStore()
     if events:
         Ingestor(c, store).ingest(JsonlAdapter(events))
-    build_server(_tools(c, store, tenant, agent)).run()
+    if transport == "stdio":
+        from keel.mcp_server import build_server
+
+        if not tenant:
+            raise typer.BadParameter("--tenant is required with the stdio transport", param_hint="--tenant")
+        build_server(_tools(c, store, tenant, agent)).run()
+        return
+    if transport != "http":
+        raise typer.BadParameter("stdio or http", param_hint="--transport")
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
+    from keel.http import build_http_app
+
+    secret = os.environ.get(secret_env)
+    if not secret:
+        typer.echo(f"warning: {secret_env} is unset, the API is open; keep it on localhost", err=True)
+    if tenant:
+        _tools(c, store, tenant, agent)  # fail now, not on the first request, if the agent is not declared
+    uvicorn.run(build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host), host=host, port=port)
 
 
 if __name__ == "__main__":

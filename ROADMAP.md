@@ -55,7 +55,7 @@ Pulled forward from Later on 2026-10-14 and shipped the same day, while the post
 Decided 2026-10-14 ([design note](docs/design/sdk-generator.md)): the cartridge is the interface definition; Keel generates the client code.
 
 - [x] Payload notation as a JSON Schema subset (enums, nested objects, arrays) and `keel schema <cartridge>`
-- [ ] HTTP transport: `/v1/*` JSON API with OpenAPI, MCP over HTTP, tenant and agent per request, one process for many tenants
+- [x] HTTP transport: `/v1/*` JSON API with OpenAPI, tenant and agent per request, one process for many tenants; MCP over HTTP for one tenant (`--tenant`)
 - [ ] `keel sdk typescript`, runtime `@keel-context/sdk`, validated against Toche
 - [ ] Python, Go and PHP templates and runtimes
 - [ ] Publishing to npm, a Go module and Packagist

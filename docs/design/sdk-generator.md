@@ -40,20 +40,21 @@ cartridge.yaml  ->  keel schema  ->  intermediate model (JSON)  ->  template  ->
 | `POST /v1/search` | `{text}` | entities and facts |
 | `POST /v1/annotate` | `{subject, predicate, value, scope?, evidence?, by?}` | the fact |
 | `POST /v1/related` | `{subject, relation?}` | neighbours |
-| `/mcp` | MCP streamable HTTP | the same five tools |
+| `/mcp` | MCP streamable HTTP, when the server is started with `--tenant` | the same five tools |
 | `GET /openapi.json` | | the contract |
 
 Errors: 401 wrong secret, 403 a refusal (scope policy, agent registry), 400 bad input, 422 malformed envelope. Every request carries `X-Keel-Tenant`; `X-Keel-Agent` is required when the cartridge declares agents. A `Tools` instance is built per request; nothing is cached across tenants.
 
 ## Milestones
 
-1. Payload notation and `keel schema` (shipped with this note).
-2. HTTP transport: the API above, MCP over HTTP, headers, OpenAPI.
+1. Payload notation and `keel schema`. Shipped.
+2. HTTP transport: the API above, MCP over HTTP for one tenant, headers, OpenAPI. Shipped.
 3. TypeScript template and `@keel-context/sdk` runtime, validated by emitting Toche's events and calling the tools from Bun.
 4. Python, Go and PHP templates and runtimes from the same model.
 5. Publishing: npm, PyPI (inside `keel-context`), a Go module, Packagist. Registry accounts are Angel's step.
 
 ## Open
 
+- MCP over HTTP for many tenants from one process (a path per tenant and agent, `/mcp/<tenant>/<agent>`, each with its own session manager). Not needed by Toche, whose own MCP server will proxy the five tools; one process per tenant covers the rest for now.
 - Whether generated files carry a `--check` mode in CI (regenerate and diff) from the start.
 - Streaming or batching for `POST /v1/events` beyond a list per request.

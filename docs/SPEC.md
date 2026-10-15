@@ -347,7 +347,7 @@ Open relations at now, optionally filtered by type, with direction relative to t
 
 ### 7.6 Transport
 
-The tools are plain functions first. `keel serve` exposes the same five over MCP (stdio) with identical names. Other transports MAY be added; the names and semantics MUST NOT change per transport.
+The tools are plain functions first. `keel serve` exposes the same five over MCP (stdio, or streamable HTTP at `/mcp` with `--transport http --tenant`) and as a JSON API (`POST /v1/<tool>`, one process for many tenants, tenant and agent from `X-Keel-Tenant` and `X-Keel-Agent` behind a shared bearer secret). The names and semantics MUST NOT change per transport.
 
 ---
 

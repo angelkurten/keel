@@ -174,6 +174,31 @@ Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an 
 
     The log is the truth and the file is derived: `replay` rebuilds one tenant from the external log (your outbox table, your bus, a `.jsonl`) and never from the file itself. The store is pluggable: `SqliteStore` is the default, and any store that passes `tests/test_store.py` (see [contributing](contributing.md)) can take its place.
 
+## Serve the tools over HTTP
+
+For a backend, or for many tenants from one process, serve the same five operations as a JSON API (`uv sync --extra http`):
+
+```bash
+KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
+```
+
+| Call | Body | Returns |
+| --- | --- | --- |
+| `POST /v1/events` | one envelope or a list | the ingest report |
+| `POST /v1/context` | `{"subject", "as_of"?}` | what `context` returns |
+| `POST /v1/history` | `{"subject", "since"?, "until"?, "predicate"?, "scope"?}` | facts |
+| `POST /v1/search` | `{"text"}` | entities and facts |
+| `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"?, "evidence"?, "by"?}` | the fact |
+| `POST /v1/related` | `{"subject", "relation"?}` | neighbours |
+| `GET /openapi.json` | | the contract, for generated clients |
+
+Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. A refusal (scope policy, agent registry) is a `403` with its reason. With `--tenant`, the same server also exposes `/mcp` (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.
+
+```bash
+curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Keel-Tenant: acme-logistics" \
+  -H "Content-Type: application/json" -d '{"subject": "tire:T-9001"}'
+```
+
 ## Export the audit trail
 
 One tenant, everything Keel knows about it, as JSONL: entities, relations and facts, closed ones included, each with `source`, `evidence`, `scope`, `recorded_at` and `corrected_by`. Hand it to the customer, an auditor, or a diff.
