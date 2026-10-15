@@ -39,6 +39,7 @@ nav:
   - Design notes:
       - Agent registry: design/agent-registry.md
       - SDKs from the cartridge: design/sdk-generator.md
+      - Ingesting millions of events: design/bulk-ingest.md
 
 markdown_extensions:
   - admonition
