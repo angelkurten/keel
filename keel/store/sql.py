@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from keel.envelope import utcnow
+from keel.envelope import Event, utcnow
 from keel.scopes import Scope
 from keel.store.base import Entity, Fact, Relation
 from keel.store.memory import filter_facts, filter_relations, new_fact, place_fact, search_in
@@ -92,6 +92,7 @@ class SqlStore:
         # ponytail: reads cached only inside a transaction (we hold the lock, nobody else writes):
         # bulk loads repeat subjects, and every read skipped is a network round trip skipped.
         self._cache: dict[tuple[Any, ...], Any] | None = None
+        self._bulk: _Bulk | None = None  # the batch overlay, see bulk()
         self.db = connect()
         self._prepare(self.db)
         for stmt in self.SCHEMA.split(";"):
@@ -135,6 +136,41 @@ class SqlStore:
             self._cache[key] = load()
         return self._cache[key]
 
+    def _execmany(self, sql: str, rows: list[tuple[Any, ...]], size: int = 1000) -> None:
+        """Multi-row writes. PyMySQL folds an INSERT ... VALUES executemany into one statement per
+        chunk; sqlite3 runs them in-process. Either way: one round trip per chunk, not per row."""
+        with self._lock:
+            for i in range(0, len(rows), size):
+                cur = self._cursor(self.db)
+                cur.executemany(self._sql(sql), rows[i : i + size])
+
+    def _close_rows(self, table: str, closes: dict[int, datetime | None], size: int = 500) -> None:
+        """One UPDATE ... CASE per chunk: PyMySQL's executemany is a round trip per row for UPDATE."""
+        items = list(closes.items())
+        for i in range(0, len(items), size):
+            part = items[i : i + size]
+            case = " ".join("WHEN ? THEN ?" for _ in part)
+            marks = ", ".join("?" for _ in part)
+            params: list[Any] = []
+            for seq, valid_to in part:
+                params += [seq, _ts(valid_to)]
+            params += [seq for seq, _ in part]
+            self._exec(f"UPDATE {table} SET valid_to = CASE seq {case} END WHERE seq IN ({marks})", tuple(params))
+
+    @contextmanager
+    def bulk(self, events: list[Event]) -> Iterator[None]:
+        """A batch of events: the state of their subjects is read in a few statements, the handlers
+        read and write memory, and the result is written back in a few multi-row statements, all in
+        one transaction. Thousands of events cost tens of round trips instead of thousands."""
+        with self.transaction():
+            self._bulk = _Bulk(self)
+            try:
+                self._bulk.prefetch(events)
+                yield
+                self._bulk.flush()
+            finally:
+                self._bulk = None
+
     def _rows(self, sql: str, params: tuple[Any, ...] = ()) -> list[Any]:
         with self._lock:
             cur = self._cursor(self.db)
@@ -169,6 +205,8 @@ class SqlStore:
     # ---- writes (the primitives) -------------------------------------------------
 
     def upsert_entity(self, tenant: str, kind: str, id: str, ref: str | None = None, **attrs: Any) -> Entity:
+        if self._bulk is not None:
+            return self._bulk.upsert_entity(tenant, kind, id, ref, attrs)
         key = f"{kind}:{id}"
         ent = self.entity(tenant, key)
         if ent is not None and (not ref or ref == ent.ref) and all(ent.attrs.get(k) == v for k, v in attrs.items()):
@@ -183,6 +221,8 @@ class SqlStore:
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation:
+        if self._bulk is not None:
+            return self._bulk.link(tenant, src, rel, dst, valid_from, source)
         key = ("r", tenant, src, rel, dst)
 
         def load() -> Relation | None:
@@ -202,6 +242,9 @@ class SqlStore:
         return r
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
+        if self._bulk is not None:
+            self._bulk.unlink(tenant, src, rel, dst, valid_to)
+            return
         self._exec(
             "UPDATE relations SET valid_to = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
             (_ts(valid_to), tenant, src, rel, dst),
@@ -210,6 +253,8 @@ class SqlStore:
             self._cache.pop(("r", tenant, src, rel, dst), None)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
+        if self._bulk is not None:
+            return self._bulk.open_fact(tenant, subject, predicate, value, valid_from, kw)
         # never overwrite; the new fact takes its place by valid_from even when it arrives late (place_fact)
         key = ("f", tenant, subject, predicate)
 
@@ -233,6 +278,9 @@ class SqlStore:
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+        if self._bulk is not None:
+            self._bulk.close_fact(tenant, subject, predicate, valid_to)
+            return
         # a close that predates a fact's start is about an earlier period and leaves this fact alone
         self._exec(
             "UPDATE facts SET valid_to = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND valid_to IS NULL AND valid_from <= ?",
@@ -246,6 +294,9 @@ class SqlStore:
     # ---- reads -------------------------------------------------------------------
 
     def entity(self, tenant: str, key: str) -> Entity | None:
+        if self._bulk is not None:
+            return self._bulk.entity(tenant, key)
+
         def load() -> Entity | None:
             kind, _, id = key.partition(":")
             row = self._one("SELECT * FROM entities WHERE tenant = ? AND kind = ? AND id = ?", (tenant, kind, id))
@@ -261,10 +312,14 @@ class SqlStore:
         since: datetime | None = None,
         until: datetime | None = None,
     ) -> list[Fact]:
+        if self._bulk is not None:
+            return filter_facts(self._bulk.facts(tenant, subject), at, since, until)
         rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? ORDER BY seq", (tenant, subject))
         return filter_facts((_fact(r) for r in rows), at, since, until)
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
+        if self._bulk is not None:
+            return filter_relations(self._bulk.relations(tenant, key), rel, at)
         rows = self._rows("SELECT * FROM relations WHERE tenant = ? AND (src = ? OR dst = ?) ORDER BY seq", (tenant, key, key))
         return filter_relations((_relation(r) for r in rows), rel, at)
 
@@ -280,6 +335,8 @@ class SqlStore:
         return self._one("SELECT 1 AS one FROM ingested WHERE tenant = ? AND id = ?", (tenant, event_id)) is not None
 
     def remember(self, tenant: str, event_id: str) -> bool:
+        if self._bulk is not None:
+            return self._bulk.remember(tenant, event_id)
         return self._exec(self.REMEMBER, (tenant, event_id)) == 1  # insert-or-ignore: 0 rows means already there
 
     # ---- maintenance --------------------------------------------------------------
@@ -307,3 +364,199 @@ class SqlStore:
             self._exec(f"DELETE FROM {table} WHERE tenant = ?", (tenant,))
         if self._cache is not None:
             self._cache.clear()
+
+
+def _in(n: int) -> str:
+    return ", ".join("?" for _ in range(n))
+
+
+class _Bulk:
+    """The overlay behind `SqlStore.bulk`: everything a batch touches, in memory, with what changed.
+
+    Keys are prefetched from the batch's envelope subjects; anything a handler reaches beyond them
+    (a payload id, a neighbour) is loaded lazily, one key at a time, merged with the batch's own
+    unsaved writes so reads never miss them. `flush` writes entities, relations, facts, closes and
+    the dedupe marks in a handful of multi-row statements.
+    """
+
+    CHUNK = 1000
+
+    def __init__(self, store: SqlStore) -> None:
+        self.s = store
+        self.entities: dict[tuple[str, str], Entity | None] = {}
+        self.dirty_entities: set[tuple[str, str]] = set()
+        self.facts_by: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, subject) -> [[Fact, seq|None], ...]
+        self.new_facts: list[Fact] = []
+        self.closed_facts: dict[int, Fact] = {}
+        self.rels_by: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, key) -> [[Relation, seq|None], ...]
+        self.new_rels: list[Relation] = []
+        self.closed_rels: dict[int, Relation] = {}
+        self.seen: dict[str, set[str]] = {}
+        self.known_ids: dict[str, set[str]] = {}  # ids whose presence we checked
+        self.new_ids: list[tuple[str, str]] = []
+
+    # ---- prefetch: the batch's subjects and ids in a few statements ----------------------------
+
+    def prefetch(self, events: list[Event]) -> None:
+        by_tenant: dict[str, tuple[set[str], set[str]]] = {}
+        for ev in events:
+            subjects, ids = by_tenant.setdefault(ev.tenant, (set(), set()))
+            ids.add(ev.id)
+        for tenant, (_, ids) in by_tenant.items():  # ids first: a redelivered batch costs one lookup and no state
+            known = self.known_ids.setdefault(tenant, set())
+            present = self.seen.setdefault(tenant, set())
+            id_list = sorted(ids)
+            for i in range(0, len(id_list), self.CHUNK):
+                part = id_list[i : i + self.CHUNK]
+                known.update(part)
+                for row in self.s._rows(f"SELECT id FROM ingested WHERE tenant = ? AND id IN ({_in(len(part))})", (tenant, *part)):
+                    present.add(row["id"])
+        for ev in events:
+            if ev.id not in self.seen[ev.tenant]:
+                by_tenant[ev.tenant][0].add(ev.subject)
+        for tenant, (subjects, _) in by_tenant.items():
+            subs = sorted(subjects)
+            for i in range(0, len(subs), self.CHUNK):
+                part = subs[i : i + self.CHUNK]
+                for sub in part:
+                    self.facts_by.setdefault((tenant, sub), [])
+                    self.rels_by.setdefault((tenant, sub), [])
+                for row in self.s._rows(f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({_in(len(part))}) ORDER BY seq", (tenant, *part)):
+                    self.facts_by[(tenant, row["subject"])].append([_fact(row), row["seq"]])
+                pairs = [tuple(sub.partition(":")[::2]) for sub in part]
+                flat = [x for kind, id in pairs for x in (kind, id)]
+                rows = self.s._rows(f"SELECT * FROM entities WHERE tenant = ? AND (kind, id) IN ({', '.join('(?, ?)' for _ in pairs)})", (tenant, *flat))
+                found = {f"{r['kind']}:{r['id']}": _entity(r) for r in rows}
+                for sub in part:
+                    self.entities[(tenant, sub)] = found.get(sub)
+                seen_seq: set[int] = set()
+                for col in ("src", "dst"):
+                    for row in self.s._rows(f"SELECT * FROM relations WHERE tenant = ? AND {col} IN ({_in(len(part))}) ORDER BY seq", (tenant, *part)):
+                        if row["seq"] in seen_seq:
+                            continue
+                        seen_seq.add(row["seq"])
+                        r = _relation(row)
+                        for key in {r.src, r.dst}:
+                            if (tenant, key) in self.rels_by:
+                                self.rels_by[(tenant, key)].append([r, row["seq"]])
+
+    # ---- lazy loads, merged with the batch's own writes --------------------------------------
+
+    def entity(self, tenant: str, key: str) -> Entity | None:
+        k = (tenant, key)
+        if k not in self.entities:
+            kind, _, id = key.partition(":")
+            row = self.s._one("SELECT * FROM entities WHERE tenant = ? AND kind = ? AND id = ?", (tenant, kind, id))
+            self.entities[k] = None if row is None else _entity(row)
+        return self.entities[k]
+
+    def _facts(self, tenant: str, subject: str) -> list[list[Any]]:
+        k = (tenant, subject)
+        if k not in self.facts_by:
+            rows = self.s._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? ORDER BY seq", (tenant, subject))
+            self.facts_by[k] = [[_fact(r), r["seq"]] for r in rows] + [[f, None] for f in self.new_facts if f.tenant == tenant and f.subject == subject]
+        return self.facts_by[k]
+
+    def facts(self, tenant: str, subject: str) -> list[Fact]:
+        return [f for f, _ in self._facts(tenant, subject)]
+
+    def _rels(self, tenant: str, key: str) -> list[list[Any]]:
+        k = (tenant, key)
+        if k not in self.rels_by:
+            rows = self.s._rows("SELECT * FROM relations WHERE tenant = ? AND (src = ? OR dst = ?) ORDER BY seq", (tenant, key, key))
+            self.rels_by[k] = [[_relation(r), r["seq"]] for r in rows] + [[r, None] for r in self.new_rels if r.tenant == tenant and key in (r.src, r.dst)]
+        return self.rels_by[k]
+
+    def relations(self, tenant: str, key: str) -> list[Relation]:
+        return [r for r, _ in self._rels(tenant, key)]
+
+    # ---- writes: memory now, statements at flush ---------------------------------------------
+
+    def upsert_entity(self, tenant: str, kind: str, id: str, ref: str | None, attrs: dict[str, Any]) -> Entity:
+        key = f"{kind}:{id}"
+        ent = self.entity(tenant, key)
+        if ent is not None and (not ref or ref == ent.ref) and all(ent.attrs.get(k) == v for k, v in attrs.items()):
+            return ent
+        ent = ent or Entity(tenant=tenant, kind=kind, id=id)
+        if ref:
+            ent.ref = ref
+        ent.attrs.update(attrs)
+        self.entities[(tenant, key)] = ent
+        self.dirty_entities.add((tenant, key))
+        return ent
+
+    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None) -> Relation:
+        for r, _ in self._rels(tenant, src):
+            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
+                return r
+        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
+        self.new_rels.append(r)
+        self._rels(tenant, src).append([r, None])
+        if dst != src and (tenant, dst) in self.rels_by:
+            self.rels_by[(tenant, dst)].append([r, None])
+        return r
+
+    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
+        for r, seq in self._rels(tenant, src):
+            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
+                r.valid_to = valid_to
+                if seq is not None:
+                    self.closed_rels[seq] = r
+
+    def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, kw: dict[str, Any]) -> Fact:
+        same = self._facts(tenant, subject)
+        f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
+        closed = place_fact(f, [x for x, _ in same if x.predicate == predicate])
+        if closed is not None:
+            seq = next(s for x, s in same if x is closed)
+            if seq is not None:
+                self.closed_facts[seq] = closed  # an unsaved one carries its valid_to into its own INSERT
+        same.append([f, None])
+        self.new_facts.append(f)
+        return f
+
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime) -> None:
+        for f, seq in self._facts(tenant, subject):
+            if f.predicate == predicate and f.valid_to is None and f.valid_from <= valid_to:
+                f.valid_to = valid_to
+                if seq is not None:
+                    self.closed_facts[seq] = f
+
+    def remember(self, tenant: str, event_id: str) -> bool:
+        known = self.known_ids.setdefault(tenant, set())
+        present = self.seen.setdefault(tenant, set())
+        if event_id not in known:
+            known.add(event_id)
+            if self.s._one("SELECT 1 AS one FROM ingested WHERE tenant = ? AND id = ?", (tenant, event_id)) is not None:
+                present.add(event_id)
+        if event_id in present:
+            return False
+        present.add(event_id)
+        self.new_ids.append((tenant, event_id))
+        return True
+
+    # ---- flush ---------------------------------------------------------------------------------
+
+    def flush(self) -> None:
+        s = self.s
+        if self.dirty_entities:
+            rows = [(t, e.kind, e.id, e.ref, json.dumps(e.attrs)) for (t, _), e in ((k, self.entities[k]) for k in self.dirty_entities) if e is not None]
+            s._execmany(s.UPSERT_ENTITY, rows)
+        if self.new_rels:
+            s._execmany(
+                "INSERT INTO relations (tenant, src, rel, dst, valid_from, valid_to, recorded_at, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                [(r.tenant, r.src, r.rel, r.dst, _ts(r.valid_from), _ts(r.valid_to), _ts(r.recorded_at), r.source) for r in self.new_rels],
+            )
+        if self.closed_rels:
+            s._close_rows("relations", {seq: r.valid_to for seq, r in self.closed_rels.items()})
+        if self.new_facts:
+            s._execmany(
+                "INSERT INTO facts (tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
+                "corrected_by, evidence, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [(f.tenant, f.subject, f.predicate, json.dumps(f.value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
+                  f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at)) for f in self.new_facts],
+            )
+        if self.closed_facts:
+            s._close_rows("facts", {seq: f.valid_to for seq, f in self.closed_facts.items()})
+        if self.new_ids:
+            s._execmany(s.REMEMBER, self.new_ids)

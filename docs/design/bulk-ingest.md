@@ -1,6 +1,6 @@
 # Design note: ingesting millions of events
 
-Status: researched and measured on 2026-10-14; not implemented. Decision needed at the end.
+Status: researched, measured and implemented on 2026-10-14 (design A, `SqlStore.bulk`, shipped in 0.8.0). The numbers after implementation are at the end.
 
 ## Where the time goes
 
@@ -65,3 +65,16 @@ About eight statements per batch of 1000 instead of 4000. Estimated for one mill
 - InnoDB locking of duplicate inserts and auto-increment modes: https://dev.mysql.com/doc/refman/8.4/en/innodb-locks-set.html, https://dev.mysql.com/doc/refman/8.4/en/innodb-auto-increment-handling.html, https://bugs.mysql.com/bug.php?id=106610
 - SQLite: https://www.sqlite.org/faq.html#q19, https://avi.im/blag/2021/fast-sqlite-inserts/, https://www.sqlite.org/pragma.html#pragma_synchronous
 - Projection practice: https://martendb.io/events/projections/rebuilding, https://martendb.io/events/optimizing, https://docs.confluent.io/kafka-connectors/jdbc/current/sink-connector/sink_config_options.html, https://developers.eventstore.com/clients/dotnet/5.0/subscriptions/
+
+## After implementation (0.8.0)
+
+`SqlStore.bulk(events)` is the overlay described in design A; `Ingestor.ingest(batch=N)` uses it for every chunk larger than one event, so the CLI (500), the HTTP batch and `replay` get it without changes; streams (`batch=1`) keep the per-event path. Prefetch reads the batch's event ids first, so a redelivered batch costs one lookup per thousand events and loads no state.
+
+| Measure (same machine, same streams) | 0.7.1 | 0.8.0 |
+| --- | --- | --- |
+| 3030 events on MySQL | 8.9 s | 0.5 s |
+| 101 000 events on MySQL | about 300 s (extrapolated) | 8.4 s |
+| 101 000 events on SQLite | 4.0 s | 2.9 s |
+| 101 000 events re-sent to MySQL (all duplicates) | | 2.1 s |
+
+About 12 000 events per second on MySQL through Docker: a million events in under a minute and a half, write-bound (four million rows at 60 000 rows per second), with round trips no longer measurable. Designs B (replay through `LOAD DATA`) and C (workers per tenant) stay on the shelf until someone needs more.

@@ -69,8 +69,10 @@ class Ingestor:
         strict mode is rolled back whole and will be redelivered whole; dedupe takes care of the rest."""
         report = IngestReport()
         tx = getattr(self.store, "transaction", None)
+        bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
         for chunk in _chunks(events, max(1, batch)):
-            with tx() if tx else nullcontext():
+            scope = bulk(chunk) if bulk and len(chunk) > 1 else (tx() if tx else nullcontext())
+            with scope:
                 for ev in chunk:
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
