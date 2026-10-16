@@ -71,6 +71,19 @@ await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "assessment",
 
 A refusal from the server (scope policy, agent registry) is a `KeelError` with the status and the reason. Keep the generated file fresh with `keel sdk typescript <cartridge> -o <file> --check` in CI: it exits 1 when the cartridge moved on.
 
+## The context for a task, in every runtime
+
+The parameters of 0.19 (§7.1, §7.3, §7.5 of the spec) are in all four runtimes. The same calls in each:
+
+| | Python | TypeScript | Go | PHP |
+| --- | --- | --- | --- | --- |
+| Facts on each result | `search(text, detail="concise")` | `search(text, { detail: "concise" })` | `SearchWith(ctx, SearchOptions{Text: t, Detail: "concise"})` | `search($t, ['detail' => 'concise'])` |
+| Best of each kind, in scope | `search(t, mode="semantic", related_to=s, per_kind=3, depth=1)` | `search(t, { mode: "semantic", relatedTo: s, perKind: 3, depth: 1 })` | `SearchOptions{..., RelatedTo: s, PerKind: 3, Depth: 1}` | `['related_to' => $s, 'per_kind' => 3, 'depth' => 1]` |
+| Many subjects, one call | `context([a, b])` | `contexts([a, b])`, `contextsConcise` | `Contexts(ctx, []string{a, b}, o)` | `context([$a, $b])` |
+| Many texts, one call | `search([t1, t2])` | `searches([t1, t2])` | `Searches(ctx, []string{t1, t2}, o)` | `search([$t1, $t2])` |
+| Two hops through some relations | `related(s, ["r1", "r2"], depth=2)` | `related(s, ["r1", "r2"], undefined, 2)` | `RelatedWith(ctx, s, RelatedOptions{Relations: ..., Depth: 2})` | `related($s, ['r1', 'r2'], null, 2)` |
+| Hide predicates, past instant | `exclude=[...]`, `as_of=` | `exclude`, `asOf` | `Exclude`, `AsOf` | `'exclude'`, `'as_of'` |
+
 ## Runtime options
 
 Every runtime takes the same connection options besides the base URL, tenant, secret and agent: a `traceparent` sent as the W3C header on every call (Keel stores it with every write) and a request timeout.

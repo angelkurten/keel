@@ -8,6 +8,7 @@ require __DIR__ . '/../src/Client.php';
 require __DIR__ . '/KeelFleet.php';
 
 use Keel\Fleet\Cartridge;
+use Keel\Fleet\DriverAssignedPayload;
 use Keel\Fleet\Emit;
 use Keel\Fleet\Keel;
 use Keel\Fleet\Subjects;
@@ -52,6 +53,15 @@ ok(count($keel->search('', ['kind' => 'tire'])) === 1, 'search kind');
 ok(count($keel->history(null, ['changed_since' => '2000-01-01T00:00:00Z', 'task' => 'run-1'])) === 1, 'changes');
 ok($keel->annotate(Subjects::tire('T-9001'), 'swap', true, 'task', null, null, null, null, 'proposed')['status'] === 'proposed', 'proposal');
 ok($keel->context(Subjects::tire('T-9001'), null, 0, null, null, 'concise')['facts']['depth_mm'] === 2.6, 'concise');
+// the context for a task (0.19): facts and neighbours on each result, batches, hops, hidden predicates
+ok($keel->search('T-9001', ['detail' => 'concise'])[0]['facts']['depth_mm'] === 2.6, 'search detail');
+ok(count($keel->search('', ['kind' => 'unit', 'depth' => 1])[0]['neighbors']) > 0, 'search depth');
+$both = $keel->context(['tire:T-9001', 'unit:MXK-4821'], null, 0, null, null, 'full', ['depth_mm']);
+ok(count($both) === 2 && $both[1]['subject'] === 'unit:MXK-4821' && !in_array('depth_mm', array_column($both[0]['facts'], 'predicate'), true), 'context list with exclude');
+ok(count($keel->search(['T-9001', 'MXK'], ['per_kind' => 1])) === 2, 'search list');
+$keel->events([Emit::driverAssigned($tenant, Subjects::unit('MXK-4821'), '2026-09-01T09:05:00Z', 'core', new DriverAssignedPayload('D-118'))]);
+$hops = array_values(array_filter($keel->related('tire:T-9001', ['mounted_on', 'assigned_to'], null, 2), fn($r) => $r['subject'] === 'driver:D-118'));
+ok(count($hops) === 1 && $hops[0]['hops'] === 2 && $hops[0]['via'] === 'unit:MXK-4821', 'related depth');
 ok(Keel::client($base, 'someone-else', $secret)->context('tire:T-9001')['entity'] === null, 'tenant isolation');
 $tp = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 ok(Keel::client($base, $tenant, $secret, null, 5, $tp)->annotate('tire:T-9001', 'traced', 'yes')['trace'] === $tp, 'client() passes traceparent');

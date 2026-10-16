@@ -101,6 +101,8 @@ type Related struct {
 	Direction string `json:"direction"`
 	Subject   string `json:"subject"`
 	Since     string `json:"since"`
+	Hops      int    `json:"hops,omitempty"` // RelatedWith Depth 2 or 3: how far
+	Via       string `json:"via,omitempty"`  // and the subject it was reached from (Direction is relative to it)
 }
 
 type IngestReport struct {
@@ -205,20 +207,35 @@ func (c *Client) ContextDepth(ctx context.Context, subject string, asOf *time.Ti
 	return c.ContextWith(ctx, subject, ContextOptions{AsOf: asOf, Depth: depth})
 }
 
-// ContextOptions: AsKnownAt answers what Keel knew then; Task keeps one task's memory.
+// ContextOptions: AsKnownAt answers what Keel knew then; Task keeps one task's memory; Exclude leaves predicates out.
 type ContextOptions struct {
 	AsOf, AsKnownAt *time.Time
 	Depth           int
 	Task            string
+	Exclude         []string
+}
+
+func (o ContextOptions) body(subject any, detail string) map[string]any {
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt), "detail": detail}
+	if o.Task != "" {
+		body["task"] = o.Task
+	}
+	if len(o.Exclude) > 0 {
+		body["exclude"] = o.Exclude
+	}
+	return body
 }
 
 func (c *Client) ContextWith(ctx context.Context, subject string, o ContextOptions) (Context, error) {
 	var out Context
-	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt)}
-	if o.Task != "" {
-		body["task"] = o.Task
-	}
-	err := c.post(ctx, "/v1/context", body, &out)
+	err := c.post(ctx, "/v1/context", o.body(subject, "full"), &out)
+	return out, err
+}
+
+// Contexts is ContextWith for many subjects in one call; the answers come back in order.
+func (c *Client) Contexts(ctx context.Context, subjects []string, o ContextOptions) ([]Context, error) {
+	var out []Context
+	err := c.post(ctx, "/v1/context", o.body(subjects, "full"), &out)
 	return out, err
 }
 
@@ -227,11 +244,7 @@ func (c *Client) ContextWith(ctx context.Context, subject string, o ContextOptio
 // differs from Context, so it comes back as a map.
 func (c *Client) ContextConcise(ctx context.Context, subject string, o ContextOptions) (map[string]any, error) {
 	var out map[string]any
-	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt), "detail": "concise"}
-	if o.Task != "" {
-		body["task"] = o.Task
-	}
-	err := c.post(ctx, "/v1/context", body, &out)
+	err := c.post(ctx, "/v1/context", o.body(subject, "concise"), &out)
 	return out, err
 }
 
@@ -274,26 +287,50 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 type SearchOptions struct {
 	Text, Kind, Rule, After string
 	Limit                   int
-	Mode                    string  // "semantic": ranked by meaning, each result with a "score"
-	MinScore                float64 // semantic: drop results whose cosine is below this; 0 = no floor
-	RelatedTo, Via          string  // only RelatedTo's neighbours (through Via when set)
+	Mode                    string     // "semantic": ranked by meaning, each result with a "score"
+	MinScore                float64    // semantic: drop results whose cosine is below this; 0 = no floor
+	RelatedTo, Via          string     // only RelatedTo's neighbours (through Via when set)
+	Detail                  string     // "concise": each result carries its current facts as {predicate: value}; "full": as facts
+	Depth                   int        // 1: each result carries its neighbours
+	PerKind                 int        // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
+	Exclude                 []string   // predicates left out of what is returned
+	AsOf                    *time.Time // rules, neighbours and facts at this instant
 }
 
-func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
-	var out []map[string]any
-	body := map[string]any{"text": o.Text}
-	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode, "related_to": o.RelatedTo, "via": o.Via} {
+func (o SearchOptions) body(text any) map[string]any {
+	body := map[string]any{"text": text}
+	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode, "related_to": o.RelatedTo, "via": o.Via, "detail": o.Detail} {
 		if v != "" {
 			body[k] = v
 		}
 	}
-	if o.Limit > 0 {
-		body["limit"] = o.Limit
+	for k, v := range map[string]int{"limit": o.Limit, "depth": o.Depth, "per_kind": o.PerKind} {
+		if v > 0 {
+			body[k] = v
+		}
 	}
 	if o.MinScore > 0 {
 		body["min_score"] = o.MinScore
 	}
-	err := c.post(ctx, "/v1/search", body, &out)
+	if len(o.Exclude) > 0 {
+		body["exclude"] = o.Exclude
+	}
+	if o.AsOf != nil {
+		body["as_of"] = iso(o.AsOf)
+	}
+	return body
+}
+
+func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
+	var out []map[string]any
+	err := c.post(ctx, "/v1/search", o.body(o.Text), &out)
+	return out, err
+}
+
+// Searches runs one search per text in one call (o.Text is ignored); one result list per text, in order.
+func (c *Client) Searches(ctx context.Context, texts []string, o SearchOptions) ([][]map[string]any, error) {
+	var out [][]map[string]any
+	err := c.post(ctx, "/v1/search", o.body(texts), &out)
 	return out, err
 }
 
@@ -321,10 +358,31 @@ func (c *Client) Related(ctx context.Context, subject, relation string) ([]Relat
 
 // RelatedAt is Related at an instant in world time.
 func (c *Client) RelatedAt(ctx context.Context, subject, relation string, asOf *time.Time) ([]Related, error) {
-	var out []Related
-	body := map[string]any{"subject": subject, "as_of": iso(asOf)}
+	o := RelatedOptions{AsOf: asOf}
 	if relation != "" {
-		body["relation"] = relation
+		o.Relations = []string{relation}
+	}
+	return c.RelatedWith(ctx, subject, o)
+}
+
+// RelatedOptions: Relations filters by type (any of them); Depth 2 or 3 walks further through them.
+type RelatedOptions struct {
+	Relations []string
+	AsOf      *time.Time
+	Depth     int
+}
+
+// RelatedWith walks up to Depth hops; with Depth above 1 every entry carries Hops and Via.
+func (c *Client) RelatedWith(ctx context.Context, subject string, o RelatedOptions) ([]Related, error) {
+	var out []Related
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf)}
+	if len(o.Relations) == 1 {
+		body["relation"] = o.Relations[0]
+	} else if len(o.Relations) > 1 {
+		body["relation"] = o.Relations
+	}
+	if o.Depth > 1 {
+		body["depth"] = o.Depth
 	}
 	err := c.post(ctx, "/v1/related", body, &out)
 	return out, err

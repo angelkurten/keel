@@ -108,6 +108,36 @@ func TestGeneratedClient(t *testing.T) {
 	if got, err := c.ContextConcise(ctx, "tire:T-9001", keel.ContextOptions{}); err != nil || got["facts"].(map[string]any)["depth_mm"] != 2.6 {
 		t.Fatalf("concise: %v %+v", err, got)
 	}
+	// the context for a task (0.19): facts and neighbours on each result, batches, hops, hidden predicates
+	if hits, err := c.SearchWith(ctx, keel.SearchOptions{Text: "T-9001", Detail: "concise"}); err != nil || hits[0]["facts"].(map[string]any)["depth_mm"] != 2.6 {
+		t.Fatalf("search detail: %v %+v", err, hits)
+	}
+	if units, err := c.SearchWith(ctx, keel.SearchOptions{Kind: "unit", Depth: 1}); err != nil || len(units[0]["neighbors"].([]any)) == 0 {
+		t.Fatalf("search depth: %v %+v", err, units)
+	}
+	both, err := c.Contexts(ctx, []string{"tire:T-9001", "unit:MXK-4821"}, keel.ContextOptions{Exclude: []string{"depth_mm"}})
+	if err != nil || len(both) != 2 || both[1].Subject != "unit:MXK-4821" {
+		t.Fatalf("contexts: %v %+v", err, both)
+	}
+	for _, f := range both[0].Facts {
+		if f.Predicate == "depth_mm" {
+			t.Fatalf("exclude: depth_mm returned")
+		}
+	}
+	if lists, err := c.Searches(ctx, []string{"T-9001", "MXK"}, keel.SearchOptions{PerKind: 1}); err != nil || len(lists) != 2 {
+		t.Fatalf("searches: %v %+v", err, lists)
+	}
+	if _, err := c.Events(ctx, []keel.Envelope{EmitDriverAssigned(tenant, SubjectUnit("MXK-4821"), t1, "core", DriverAssignedPayload{DriverId: "D-118"})}); err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	hops, err := c.RelatedWith(ctx, "tire:T-9001", keel.RelatedOptions{Relations: []string{"mounted_on", "assigned_to"}, Depth: 2})
+	found := false
+	for _, r := range hops {
+		found = found || (r.Subject == "driver:D-118" && r.Hops == 2 && r.Via == "unit:MXK-4821")
+	}
+	if err != nil || !found {
+		t.Fatalf("related depth: %v %+v", err, hops)
+	}
 	other := NewClient(keel.Options{BaseURL: base, Tenant: "someone-else", Secret: secret})
 	if got, err := other.Context(ctx, "tire:T-9001", nil); err != nil || got.Entity != nil {
 		t.Fatalf("tenant isolation: %v %+v", err, got.Entity)

@@ -18,8 +18,10 @@ final class Client
 
     /** @return array<string, mixed> */
     /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`; `$asKnownAt` answers
-     * what Keel knew then; `$task` keeps one task's memory. The result's `watermark` is the changes cursor. */
-    public function context(string $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full'): array
+     * what Keel knew then; `$task` keeps one task's memory; `$exclude` leaves predicates out. The result's `watermark`
+     * is the changes cursor. A list of subjects returns a list of answers, in order.
+     * @param string|list<string> $subject @param list<string>|null $exclude */
+    public function context(string|array $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full', ?array $exclude = null): array
     {
         return $this->post('/v1/context', [
             'subject' => $subject,
@@ -28,6 +30,7 @@ final class Client
             'as_known_at' => $asKnownAt === null ? null : Envelope::iso($asKnownAt),
             'task' => $task,
             'detail' => $detail,
+            'exclude' => $exclude,
         ]);
     }
 
@@ -51,10 +54,17 @@ final class Client
 
     /** With `kind` or `rule`: the entities of a kind, or where a rule fires now, paged by `limit`/`after`.
      * `mode` => 'semantic' ranks by meaning, each result with a `score` and `similarity`; `min_score` drops results below a cosine.
-     * `related_to` (+ `via`) keeps only that subject's neighbours.
-     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string} $filter @return list<array<string, mixed>> */
-    public function search(string $text = '', array $filter = []): array
+     * `related_to` (+ `via`) keeps only that subject's neighbours. `detail` => 'concise' puts each result's facts in it,
+     * `depth` => 1 its neighbours, `per_kind` => n the best of every kind (with `related_to` and semantic mode, the
+     * context for a task); `exclude` leaves predicates out; `as_of` evaluates at that instant. A list of texts returns
+     * one result list per text.
+     * @param string|list<string> $text
+     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string} $filter @return list<mixed> */
+    public function search(string|array $text = '', array $filter = []): array
     {
+        if (isset($filter['as_of'])) {
+            $filter['as_of'] = Envelope::iso($filter['as_of']);
+        }
         return $this->post('/v1/search', ['text' => $text] + $filter);
     }
 
@@ -64,10 +74,11 @@ final class Client
         return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key, 'status' => $status]);
     }
 
-    /** @return list<array<string, mixed>> */
-    public function related(string $subject, ?string $relation = null, \DateTimeInterface|string|null $asOf = null): array
+    /** Neighbours by relation (one, or a list); `$depth` 2 or 3 walks further, each entry with `hops` and `via`.
+     * @param string|list<string>|null $relation @return list<array<string, mixed>> */
+    public function related(string $subject, string|array|null $relation = null, \DateTimeInterface|string|null $asOf = null, int $depth = 1): array
     {
-        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation, 'as_of' => $asOf === null ? null : Envelope::iso($asOf)]);
+        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation, 'as_of' => $asOf === null ? null : Envelope::iso($asOf), 'depth' => $depth]);
     }
 
     /** @param list<array<string, mixed>> $batch @return array<string, mixed> */

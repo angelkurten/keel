@@ -1,6 +1,6 @@
 // End to end from Bun: start `keel serve --transport http` (Python), emit typed events, ask the tools.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { KeelError } from "@keel-context/sdk";
+import { type Entity, KeelError } from "@keel-context/sdk";
 import { client, emit, subjects } from "./keel-fleet";
 
 const ROOT = new URL("../../..", import.meta.url).pathname;
@@ -55,6 +55,19 @@ test("typed events in, context with the rule's verdict out", async () => {
   expect((await keel.history(null, { changedSince: "2000-01-01T00:00:00Z", task: "run-1" })).map((f) => f.predicate)).toEqual(["plan"]);
   expect((await keel.contextConcise(subjects.tire("T-9001"))).facts).toMatchObject({ depth_mm: 2.6 });
   expect((await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "swap", value: true, status: "proposed" })).status).toBe("proposed");
+  // the context for a task (0.19): facts and neighbours on each result, batches, hops, hidden predicates
+  const [tireHit] = (await keel.search("T-9001", { detail: "concise" })) as Entity[];
+  expect(tireHit.facts).toMatchObject({ depth_mm: 2.6 });
+  const [unitHit] = (await keel.search("", { kind: "unit", depth: 1, detail: "concise" })) as Entity[];
+  expect(unitHit.neighbors?.find((n) => n.subject === "tire:T-9001")?.facts).toMatchObject({ depth_mm: 2.6 });
+  const both = await keel.contexts([subjects.tire("T-9001"), subjects.unit("MXK-4821")], undefined, 0, { exclude: ["depth_mm"] });
+  expect(both.map((x) => x.subject)).toEqual(["tire:T-9001", "unit:MXK-4821"]);
+  expect(both[0].facts.map((f) => f.predicate)).not.toContain("depth_mm");
+  const lists = await keel.searches(["T-9001", "MXK"], { perKind: 1 });
+  expect(lists.length).toBe(2);
+  await keel.events(emit.driverAssigned({ tenant, subject: subjects.unit("MXK-4821"), occurredAt: "2026-09-01T09:05:00Z", source: "core", payload: { driver_id: "D-118" } }));
+  const hops = await keel.related(subjects.tire("T-9001"), ["mounted_on", "assigned_to"], undefined, 2);
+  expect(hops.find((r) => r.subject === "driver:D-118")).toMatchObject({ hops: 2, via: "unit:MXK-4821" });
   const other = client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant: "someone-else", secret: SECRET });
   expect((await other.context(subjects.tire("T-9001"))).entity).toBeNull();
   await expect(client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant, secret: "wrong" }).search("x")).rejects.toMatchObject({ status: 401 });

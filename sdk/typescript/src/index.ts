@@ -15,7 +15,27 @@ export type Envelope = {
   payload: Record<string, unknown>;
 };
 
-export type Entity = { tenant: string; kind: string; id: string; key: string; ref: string | null; attrs: Record<string, unknown>; /** with mode: "semantic" */ score?: number; similarity?: number | null; match?: "key" };
+export type Entity = {
+  tenant: string;
+  kind: string;
+  id: string;
+  key: string;
+  ref: string | null;
+  attrs: Record<string, unknown>;
+  /** with mode: "semantic" */
+  score?: number;
+  similarity?: number | null;
+  match?: "key";
+  /** semantic, with the cartridge's semantic.split: the predicate whose own document ranked this result */
+  matched?: string;
+  /** search with detail "concise" ({predicate: value}) or "full" (facts) */
+  facts?: Record<string, unknown> | Fact[];
+  /** search with depth: 1 */
+  neighbors?: SearchNeighbor[];
+  neighbors_truncated?: boolean;
+};
+/** A neighbour of a search result (depth: 1); facts when detail asks for them. */
+export type SearchNeighbor = { relation: string; direction: "in" | "out" | "both"; subject: string; facts?: Record<string, unknown> | Fact[] };
 export type Fact = {
   tenant: string;
   subject: string;
@@ -83,7 +103,36 @@ export type ConciseContext = {
   neighbors?: Array<{ relation: string; direction: string; subject: string; facts: Record<string, unknown>; evaluation: Record<string, boolean | null> }>;
   neighbors_truncated?: boolean;
 };
-export type Related = { relation: string; direction: "in" | "out" | "both"; subject: string; since: string };
+export type Related = {
+  relation: string;
+  direction: "in" | "out" | "both";
+  subject: string;
+  since: string;
+  /** related with depth 2 or 3: how far, and the subject it was reached from (direction is relative to it) */
+  hops?: number;
+  via?: string;
+};
+export type ContextOptions = { asKnownAt?: Date | string; task?: string; /** predicates to leave out of what is returned */ exclude?: string[] };
+export type SearchOptions<S extends string = string> = {
+  kind?: string;
+  rule?: string;
+  limit?: number;
+  after?: string;
+  mode?: "text" | "semantic";
+  minScore?: number;
+  relatedTo?: S;
+  via?: string;
+  /** "concise": each result carries its current facts as {predicate: value}; "full": as facts */
+  detail?: "entity" | "concise" | "full";
+  /** 1: each result carries its neighbours */
+  depth?: 0 | 1;
+  /** the best n of every kind instead of one ranking: with relatedTo and mode "semantic", the context for a task */
+  perKind?: number;
+  /** predicates to leave out (and fact hits on them dropped) */
+  exclude?: string[];
+  /** evaluate rules, neighbours and facts at this instant */
+  asOf?: Date | string;
+};
 export type Neighbor = {
   relation: string;
   direction: "in" | "out" | "both";
@@ -177,26 +226,35 @@ export class Client<S extends string = string> {
 
   /** What is true about a subject now, or at `asOf`: facts, relations, rules and their verdicts. `depth: 1` adds the neighbours;
    * `opts.asKnownAt` answers what Keel knew then; `opts.task` keeps one task's memory. */
-  context(subject: S, asOf?: Date | string, depth = 0, opts: { asKnownAt?: Date | string; task?: string } = {}): Promise<Context> {
-    return this.post("/v1/context", {
-      subject,
-      as_of: asOf ? iso(asOf) : undefined,
-      depth,
-      as_known_at: opts.asKnownAt ? iso(opts.asKnownAt) : undefined,
-      task: opts.task,
-    });
+  context(subject: S, asOf?: Date | string, depth = 0, opts: ContextOptions = {}): Promise<Context> {
+    return this.post("/v1/context", this.contextBody(subject, asOf, depth, opts, "full"));
   }
 
   /** `context` in about a third of the tokens: facts as {predicate: value}, no rule definitions. For prompts. */
-  contextConcise(subject: S, asOf?: Date | string, depth = 0, opts: { asKnownAt?: Date | string; task?: string } = {}): Promise<ConciseContext> {
-    return this.post("/v1/context", {
+  contextConcise(subject: S, asOf?: Date | string, depth = 0, opts: ContextOptions = {}): Promise<ConciseContext> {
+    return this.post("/v1/context", this.contextBody(subject, asOf, depth, opts, "concise"));
+  }
+
+  /** `context` for many subjects in one call, answers in order. */
+  contexts(subjects: S[], asOf?: Date | string, depth = 0, opts: ContextOptions = {}): Promise<Context[]> {
+    return this.post("/v1/context", this.contextBody(subjects, asOf, depth, opts, "full"));
+  }
+
+  /** `contextConcise` for many subjects in one call, answers in order. */
+  contextsConcise(subjects: S[], asOf?: Date | string, depth = 0, opts: ContextOptions = {}): Promise<ConciseContext[]> {
+    return this.post("/v1/context", this.contextBody(subjects, asOf, depth, opts, "concise"));
+  }
+
+  private contextBody(subject: S | S[], asOf: Date | string | undefined, depth: number, opts: ContextOptions, detail: string) {
+    return {
       subject,
       as_of: asOf ? iso(asOf) : undefined,
       depth,
       as_known_at: opts.asKnownAt ? iso(opts.asKnownAt) : undefined,
       task: opts.task,
-      detail: "concise",
-    });
+      detail,
+      exclude: opts.exclude,
+    };
   }
 
   /** Facts over time, oldest first, closed ones included. `subject: null` with `changedSince` lists the tenant's changes. */
@@ -226,13 +284,20 @@ export class Client<S extends string = string> {
     });
   }
 
-  /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`. */
-  search(
-    text = "",
-    opts: { kind?: string; rule?: string; limit?: number; after?: string; mode?: "text" | "semantic"; minScore?: number; relatedTo?: S; via?: string } = {},
-  ): Promise<Array<Entity | Fact>> {
-    const { minScore, relatedTo, ...rest } = opts;
-    return this.post("/v1/search", { text, ...rest, min_score: minScore, related_to: relatedTo });
+  /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`.
+   * `detail: "concise"` puts each result's facts in it, `depth: 1` its neighbours, `perKind` the best of every kind. */
+  search(text = "", opts: SearchOptions<S> = {}): Promise<Array<Entity | Fact>> {
+    return this.post("/v1/search", this.searchBody(text, opts));
+  }
+
+  /** `search` for many texts in one call: one result list per text, in order. */
+  searches(texts: string[], opts: SearchOptions<S> = {}): Promise<Array<Array<Entity | Fact>>> {
+    return this.post("/v1/search", this.searchBody(texts, opts));
+  }
+
+  private searchBody(text: string | string[], opts: SearchOptions<S>) {
+    const { minScore, relatedTo, perKind, asOf, ...rest } = opts;
+    return { text, ...rest, min_score: minScore, related_to: relatedTo, per_kind: perKind, as_of: asOf ? iso(asOf) : undefined };
   }
 
   /** Write earned memory. The server enforces the scope policy and the agent registry. `task` ties it to a job;
@@ -252,9 +317,10 @@ export class Client<S extends string = string> {
     return this.post("/v1/annotate", a);
   }
 
-  /** Neighbours by relation type, now or at `asOf`. */
-  related(subject: S, relation?: string, asOf?: Date | string): Promise<Related[]> {
-    return this.post("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined });
+  /** Neighbours by relation type (one or a list), now or at `asOf`. `depth` 2 or 3 walks further through those
+   * relations; each entry then carries `hops` and `via`. */
+  related(subject: S, relation?: string | string[], asOf?: Date | string, depth = 1): Promise<Related[]> {
+    return this.post("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined, depth });
   }
 
   /** Ingest one envelope or a batch. At-least-once is yours: retry on network errors, the server dedupes nothing. */
