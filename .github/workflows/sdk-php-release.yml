@@ -1,0 +1,42 @@
+name: sdk-php-release
+
+# Composer needs the package at the root of a repo: the PHP runtime lives in sdk/php here and is published
+# to github.com/angelkurten/keel-sdk-php. A sdk/php/vX.Y.Z tag tests it, pushes the subtree to that repo's
+# main and tags it vX.Y.Z there; Packagist follows that repo.
+# One-time setup: a deploy key with write access on keel-sdk-php, its private key in the secret
+# KEEL_SDK_PHP_DEPLOY_KEY of this repo.
+on:
+  push:
+    tags: ["sdk/php/v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # git subtree split walks the history
+      - uses: astral-sh/setup-uv@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+      - run: uv sync --extra dev
+      - run: uv run keel sdk php cartridges/fleet -o sdk/php/test/KeelFleet.php --check
+      - run: php -l sdk/php/test/KeelFleet.php && bash sdk/php/test/run.sh
+      - name: push the subtree and the tag to keel-sdk-php
+        env:
+          KEY: ${{ secrets.KEEL_SDK_PHP_DEPLOY_KEY }}
+        run: |
+          v="${GITHUB_REF_NAME#sdk/php/}"
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes"
+          git config user.name "github-actions[bot]" && git config user.email "github-actions[bot]@users.noreply.github.com"
+          git subtree split --prefix=sdk/php -b php-split
+          git push git@github.com:angelkurten/keel-sdk-php.git php-split:main
+          # this repo has its own v* tags (the Python releases): name it apart here, push it as vX.Y.Z there
+          git tag -a "php-$v" -m "keel-context/sdk ${v#v}" php-split
+          git push git@github.com:angelkurten/keel-sdk-php.git "refs/tags/php-$v:refs/tags/$v"

@@ -77,11 +77,12 @@ gh release create vX.Y.Z --title "X.Y.Z" --notes-file notes.md
 
 The tag triggers `.github/workflows/release.yml`, which runs the tests, builds and publishes `keel-context` to PyPI through trusted publishing (one-time setup on PyPI: pending publisher for project `keel-context`, owner `angelkurten`, repository `keel`, workflow `release.yml`, environment `pypi`).
 
-The SDK runtimes release separately, when they change:
+The SDK runtimes release separately, when they change, each by pushing its tag; the workflow tests the runtime end to end against `keel serve` before it publishes:
 
 ```bash
-git tag sdk/typescript/vX.Y.Z && git push origin sdk/typescript/vX.Y.Z   # npm, by .github/workflows/sdk-typescript-release.yml (trusted publishing); bump sdk/typescript/package.json first
-git tag sdk/go/vX.Y.Z && git push origin sdk/go/vX.Y.Z                       # Go module in this repo
-git subtree split --prefix=sdk/php -b php-split && git push git@github.com:angelkurten/keel-sdk-php.git php-split:main   # Composer
-cd ../.. && git tag -f php-split-done && git branch -D php-split              # then tag vX.Y.Z in keel-sdk-php; Packagist follows it
+git tag sdk/typescript/vX.Y.Z && git push origin sdk/typescript/vX.Y.Z   # npm (sdk-typescript-release.yml, trusted publishing); bump sdk/typescript/package.json first
+git tag sdk/go/vX.Y.Z && git push origin sdk/go/vX.Y.Z                   # the Go module in this repo (sdk-go-release.yml asks the module proxy for it)
+git tag sdk/php/vX.Y.Z && git push origin sdk/php/vX.Y.Z                 # Composer (sdk-php-release.yml pushes sdk/php to keel-sdk-php and tags it vX.Y.Z there)
 ```
+
+One-time setup: npm trusted publisher for `@keel-context/sdk` (workflow `sdk-typescript-release.yml`); a deploy key with write access on `keel-sdk-php` whose private key is the secret `KEEL_SDK_PHP_DEPLOY_KEY` here; Packagist registers `keel-sdk-php` once (Submit, with the repo URL) and follows its tags.
