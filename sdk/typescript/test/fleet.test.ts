@@ -60,6 +60,10 @@ test("typed events in, context with the rule's verdict out", async () => {
   expect(tireHit.facts).toMatchObject({ depth_mm: 2.6 });
   const [unitHit] = (await keel.search("", { kind: "unit", depth: 1, detail: "concise" })) as Entity[];
   expect(unitHit.neighbors?.find((n) => n.subject === "tire:T-9001")?.facts).toMatchObject({ depth_mm: 2.6 });
+  // by the value of a fact, and why each result matched (0.20)
+  expect(((await keel.search("", { kind: "tire", where: { depth_mm: 2.6 } })) as Entity[]).map((h) => h.key)).toEqual(["tire:T-9001"]);
+  const [byValue] = (await keel.search("2.6", { kind: "tire" })) as Entity[];
+  expect([byValue.matched, byValue.snippet]).toEqual(["depth_mm", "2.6"]);
   const both = await keel.contexts([subjects.tire("T-9001"), subjects.unit("MXK-4821")], undefined, 0, { exclude: ["depth_mm"] });
   expect(both.map((x) => x.subject)).toEqual(["tire:T-9001", "unit:MXK-4821"]);
   expect(both[0].facts.map((f) => f.predicate)).not.toContain("depth_mm");

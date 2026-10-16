@@ -138,7 +138,7 @@ An agent with no `writes:` may write `[task, agent]`; one with `kind: human` is 
 semantic:
   kinds: [patient, appointment]
   relations: [booked_by]          # an appointment's document names its patient
-  split: {patient: [allergy]}     # optional: each allergy is also a document of its own, so one long list does not dilute it
+  split: {patient: [allergy]}     # optional: each allergy (each element, when the value is a list) is also a document of its own, so one long list does not dilute it
 ```
 
 Index outside ingest, from a durable store, and serve with the same index and embedder:

@@ -56,10 +56,11 @@ final class Client
      * `mode` => 'semantic' ranks by meaning, each result with a `score` and `similarity`; `min_score` drops results below a cosine.
      * `related_to` (+ `via`) keeps only that subject's neighbours. `detail` => 'concise' puts each result's facts in it,
      * `depth` => 1 its neighbours, `per_kind` => n the best of every kind (with `related_to` and semantic mode, the
-     * context for a task); `exclude` leaves predicates out; `as_of` evaluates at that instant. A list of texts returns
-     * one result list per text.
+     * context for a task); `exclude` leaves predicates out; `as_of` evaluates at that instant; `where` => [name => value] keeps
+     * the entities whose attribute or current fact has that value. Each ranked result says why: `matched` and `snippet`.
+     * A list of texts returns one result list per text.
      * @param string|list<string> $text
-     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string} $filter @return list<mixed> */
+     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string, where?: array<string, mixed>} $filter @return list<mixed> */
     public function search(string|array $text = '', array $filter = []): array
     {
         if (isset($filter['as_of'])) {

@@ -26,8 +26,10 @@ export type Entity = {
   score?: number;
   similarity?: number | null;
   match?: "key";
-  /** semantic, with the cartridge's semantic.split: the predicate whose own document ranked this result */
+  /** why it is a result: the attribute or predicate whose value matched, or "key" */
   matched?: string;
+  /** the part of that value that matched (of a list, the element) */
+  snippet?: string;
   /** search with detail "concise" ({predicate: value}) or "full" (facts) */
   facts?: Record<string, unknown> | Fact[];
   /** search with depth: 1 */
@@ -132,6 +134,8 @@ export type SearchOptions<S extends string = string> = {
   exclude?: string[];
   /** evaluate rules, neighbours and facts at this instant */
   asOf?: Date | string;
+  /** only entities whose attribute or current fact has this value (or a list holding it; text without case) */
+  where?: Record<string, unknown>;
 };
 export type Neighbor = {
   relation: string;

@@ -1,6 +1,7 @@
 """What the kagent pilot of technical instructions asked for, inside the five tools (rule 7):
 search results that carry their facts and neighbours, the best of each kind for a task, batches,
-related over several hops, hidden predicates, and a finer semantic index."""
+related over several hops, hidden predicates, and a finer semantic index; then, from the analysis
+of its calls, search by a fact's value, a document per list element and why each result matched."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -193,3 +194,67 @@ def test_the_cartridge_checks_split():
     assert any("split kind 'spaceship'" in p for p in c.validate())
     c.semantic = {"split": ["tire"]}
     assert any("split maps a kind" in p for p in c.validate())
+
+
+# ---- 6. from the analysis of the pilot's calls ---------------------------------------------
+
+
+def _pages(store):
+    t, base = _unit_with_tires(store, 3)
+    store.open_fact(TENANT, "tire:T0", "page", "Detalhe Ociosidade", valid_from=base, source="b")
+    store.open_fact(TENANT, "tire:T1", "page", "Resumo", valid_from=base, source="b")
+    store.open_fact(TENANT, "unit:U1", "field", ["Ventas netas por region", "Margen bruto", "Tipo de ticket"], valid_from=base, source="b")
+    return t, base
+
+
+@pytest.mark.parametrize("kind", ["memory", "sqlite"])
+def test_where_finds_an_entity_by_the_value_of_a_fact(kind, tmp_path):
+    store = MemoryStore() if kind == "memory" else SqliteStore(tmp_path / "w.db")
+    t, base = _pages(store)
+    assert [h["key"] for h in t.search(kind="tire", where={"page": "detalhe ociosidade"})] == ["tire:T0"]  # without case
+    assert [h["key"] for h in t.search(kind="unit", where={"field": "Margen bruto"})] == ["unit:U1"]  # an element of a list
+    assert t.search(kind="tire", where={"page": "Detalhe"}) == []  # the value, not a part of it
+    assert {h.get("subject", h.get("key")) for h in t.search("Resumo", where={"page": "Resumo"})} == {"tire:T1"}
+    assert [h["key"] for h in t.search(kind="tire", where={"page": "Resumo", "position": "P1"})] == ["tire:T1"]  # an attribute or a fact
+    store.open_fact(TENANT, "tire:T0", "page", "Overview", valid_from=base + timedelta(days=1), source="b")
+    assert t.search(kind="tire", where={"page": "Detalhe Ociosidade"}) == []  # current facts only
+    assert [h["key"] for h in t.search(kind="tire", where={"page": "Detalhe Ociosidade"}, as_of=base + timedelta(hours=12))] == ["tire:T0"]
+    with pytest.raises(ValueError, match="exclude hides"):
+        t.search(kind="tire", where={"page": "Resumo"}, exclude=["page"])
+    with pytest.raises(ValueError):
+        t.search(kind="tire", where={})
+
+
+def test_text_over_a_kind_reads_the_facts_and_each_result_says_what_matched(tmp_path):
+    store = SqliteStore(tmp_path / "m.db")
+    t, base = _pages(store)
+    [hit] = t.search("ociosidade", kind="tire")
+    assert hit["key"] == "tire:T0" and hit["matched"] == "page" and hit["snippet"] == "Detalhe Ociosidade"
+    assert t.search("ociosidade", kind="tire", exclude=["page"]) == []  # a hidden fact matches nothing
+    [unit] = t.search("margen", kind="unit")
+    assert unit["matched"] == "field" and unit["snippet"] == "Margen bruto"  # the element, not the whole list
+    assert t.search("U1", kind="unit")[0]["matched"] == "key" and "snippet" not in t.search("U1", kind="unit")[0]
+    store.open_fact(TENANT, "tire:T2", "note", "x" * 400 + " needle " + "y" * 400, valid_from=base, source="b")
+    [long] = t.search("needle", kind="tire")
+    assert "needle" in long["snippet"] and long["snippet"].startswith("…") and long["snippet"].endswith("…") and len(long["snippet"]) <= 162
+    assert "matched" not in t.search(kind="tire")[0]  # a listing without text matched nothing
+
+
+def test_split_indexes_each_element_of_a_list_and_quotes_the_one_that_ranked(tmp_path):
+    store = SqliteStore(tmp_path / "s.db")
+    t0, base = _pages(store)
+    policy = {"split": {"unit": ["field"]}}
+    emb, idx = HashEmbedder(), MemoryIndex()
+    first = index_tenant(store, TENANT, emb, idx, policy=policy)
+    assert len([k for k in idx._data[TENANT] if SPLIT in k]) == 3  # one document per element
+    t = Tools(t0.cartridge, store, TENANT, embedder=emb, index=idx)
+    [hit] = t.search("margen bruto", mode="semantic", kind="unit", limit=1)
+    assert hit["key"] == "unit:U1" and hit["matched"] == "field" and hit["snippet"] == "Margen bruto"
+    [page] = t.search("detalhe ociosidade", mode="semantic", kind="tire", limit=1)  # not split: the field sharing most words
+    assert page["key"] == "tire:T0" and page["matched"] == "page" and page["snippet"] == "Detalhe Ociosidade"
+    [hidden] = t.search("margen bruto", mode="semantic", kind="unit", limit=1, exclude=["field"])
+    assert "matched" not in hidden and "snippet" not in hidden
+    assert [h["key"] for h in t.search("detalhe", mode="semantic", kind="tire", where={"page": "Resumo"})] == ["tire:T1"]
+    store.open_fact(TENANT, "unit:U1", "field", ["Ventas netas por region"], valid_from=base + timedelta(days=1), source="b")
+    index_tenant(store, TENANT, emb, idx, since=first.cursor, policy=policy)
+    assert len([k for k in idx._data[TENANT] if SPLIT in k]) == 1  # the dropped elements' documents are gone

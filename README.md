@@ -35,10 +35,11 @@ context(subject, as_of?, depth?, as_known_at?, task?, detail?, exclude?)
      depth=1 adds the neighbors; detail="concise" for about a third of the tokens
 history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
   -> what was true and when we learned it; without a subject, what changed since a watermark
-search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?, detail?, depth?, per_kind?, exclude?, as_of?)
+search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?, detail?, depth?, per_kind?, exclude?, as_of?, where?)
   -> text or semantic search, or every entity of a kind / where a rule fires, paged;
      related_to (and via) keeps only one subject's neighbors; detail="concise" puts each result's facts in it;
      per_kind=n the best of every kind: the context for a task in one call
+     where={name: value} by an attribute's or a fact's value; each result says what matched (matched, snippet)
 annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
   -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
 related(subject, relation?, as_of?, depth?)

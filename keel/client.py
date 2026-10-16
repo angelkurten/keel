@@ -138,14 +138,15 @@ class Client:
         self, text: str | list[str] = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None,
         mode: str = "text", min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: str = "entity",
         depth: int = 0, per_kind: int | None = None, exclude: list[str] | None = None, as_of: datetime | str | None = None,
+        where: dict[str, Any] | None = None,
     ) -> list[Any]:
         """Text search; with `kind` or `rule`, the entities of a kind or where a rule fires, paged by `limit`/`after`.
         `mode="semantic"`: subjects ranked by meaning, each with a `score` (the server needs --index). `detail="concise"`
-        puts each result's facts in it; `depth=1` its neighbours; `per_kind=n` the best n of every kind. A list of
-        texts returns one result list per text."""
+        puts each result's facts in it; `depth=1` its neighbours; `per_kind=n` the best n of every kind; `where={name: value}`
+        only entities with that attribute or current fact. A list of texts returns one result list per text."""
         return self._post("/v1/search", {
             "text": text, "kind": kind, "rule": rule, "limit": limit, "after": after, "mode": mode, "min_score": min_score, "related_to": related_to,
-            "via": via, "detail": detail, "depth": depth, "per_kind": per_kind, "exclude": exclude, "as_of": _iso(as_of),
+            "via": via, "detail": detail, "depth": depth, "per_kind": per_kind, "exclude": exclude, "as_of": _iso(as_of), "where": where,
         })
 
     def annotate(

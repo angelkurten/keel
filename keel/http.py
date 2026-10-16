@@ -7,7 +7,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/events    one envelope or a list        -> ingest report
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
-    POST /v1/search    {text (or a list), kind?, rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?}
+    POST /v1/search    {text (or a list), kind?, rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
@@ -149,6 +149,7 @@ def build_http_app(
         per_kind: int | None = None
         exclude: list[str] | None = None
         as_of: str | None = None
+        where: dict[str, Any] | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -195,7 +196,7 @@ def build_http_app(
     def search(body: SearchIn, request: Request) -> list[Any]:
         return run(lambda: tools_for(request).search(
             body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score, body.related_to, body.via,
-            body.detail, body.depth, body.per_kind, body.exclude, dt(body.as_of),
+            body.detail, body.depth, body.per_kind, body.exclude, dt(body.as_of), body.where,
         ))
 
     @app.post("/v1/annotate")

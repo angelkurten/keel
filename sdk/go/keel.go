@@ -287,14 +287,15 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 type SearchOptions struct {
 	Text, Kind, Rule, After string
 	Limit                   int
-	Mode                    string     // "semantic": ranked by meaning, each result with a "score"
-	MinScore                float64    // semantic: drop results whose cosine is below this; 0 = no floor
-	RelatedTo, Via          string     // only RelatedTo's neighbours (through Via when set)
-	Detail                  string     // "concise": each result carries its current facts as {predicate: value}; "full": as facts
-	Depth                   int        // 1: each result carries its neighbours
-	PerKind                 int        // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
-	Exclude                 []string   // predicates left out of what is returned
-	AsOf                    *time.Time // rules, neighbours and facts at this instant
+	Mode                    string         // "semantic": ranked by meaning, each result with a "score"
+	MinScore                float64        // semantic: drop results whose cosine is below this; 0 = no floor
+	RelatedTo, Via          string         // only RelatedTo's neighbours (through Via when set)
+	Detail                  string         // "concise": each result carries its current facts as {predicate: value}; "full": as facts
+	Depth                   int            // 1: each result carries its neighbours
+	PerKind                 int            // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
+	Exclude                 []string       // predicates left out of what is returned
+	AsOf                    *time.Time     // rules, neighbours and facts at this instant
+	Where                   map[string]any // only entities whose attribute or current fact has this value (or a list holding it)
 }
 
 func (o SearchOptions) body(text any) map[string]any {
@@ -317,6 +318,9 @@ func (o SearchOptions) body(text any) map[string]any {
 	}
 	if o.AsOf != nil {
 		body["as_of"] = iso(o.AsOf)
+	}
+	if len(o.Where) > 0 {
+		body["where"] = o.Where
 	}
 	return body
 }

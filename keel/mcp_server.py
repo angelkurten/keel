@@ -98,9 +98,10 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
         text: str | list[str] = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: str = "text",
         min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: str = "entity", depth: int = 0,
         per_kind: int | None = None, exclude: list[str] | None = None, as_of: str | None = None,
+        where: dict[str, Any] | None = None,
     ) -> list[Any]:
-        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after. mode="semantic": subjects ranked by meaning, with a score. related_to (+ via): only that subject's neighbours, e.g. cards of a client where a rule holds. detail="concise" puts each result's current facts in it (no context call needed); depth=1 adds its neighbours. per_kind=n: the best n of every kind; with related_to and mode="semantic", the context for a task in one call. exclude: predicates to leave out. A list of texts returns one result list per text."""
-        return tools.search(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, _dt(as_of))
+        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after. mode="semantic": subjects ranked by meaning, with a score. related_to (+ via): only that subject's neighbours, e.g. cards of a client where a rule holds. detail="concise" puts each result's current facts in it (no context call needed); depth=1 adds its neighbours. per_kind=n: the best n of every kind; with related_to and mode="semantic", the context for a task in one call. exclude: predicates to leave out. where={name: value}: only entities whose attribute or current fact has that value (a visual by its exact title). Each result says what matched and quotes it (matched, snippet). A list of texts returns one result list per text."""
+        return tools.search(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, _dt(as_of), where)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False))
     @guarded

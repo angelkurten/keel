@@ -56,6 +56,9 @@ ok($keel->context(Subjects::tire('T-9001'), null, 0, null, null, 'concise')['fac
 // the context for a task (0.19): facts and neighbours on each result, batches, hops, hidden predicates
 ok($keel->search('T-9001', ['detail' => 'concise'])[0]['facts']['depth_mm'] === 2.6, 'search detail');
 ok(count($keel->search('', ['kind' => 'unit', 'depth' => 1])[0]['neighbors']) > 0, 'search depth');
+ok(array_column($keel->search('', ['kind' => 'tire', 'where' => ['depth_mm' => 2.6]]), 'key') === ['tire:T-9001'], 'search where');
+$hit = $keel->search('2.6', ['kind' => 'tire'])[0];
+ok([$hit['matched'], $hit['snippet']] === ['depth_mm', '2.6'], 'search matched');
 $both = $keel->context(['tire:T-9001', 'unit:MXK-4821'], null, 0, null, null, 'full', ['depth_mm']);
 ok(count($both) === 2 && $both[1]['subject'] === 'unit:MXK-4821' && !in_array('depth_mm', array_column($both[0]['facts'], 'predicate'), true), 'context list with exclude');
 ok(count($keel->search(['T-9001', 'MXK'], ['per_kind' => 1])) === 2, 'search list');

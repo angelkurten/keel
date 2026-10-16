@@ -23,7 +23,17 @@ from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import GLOBAL_TENANT, Scope
-from keel.semantic import accepts, embed_as, fuse, render, subject_of
+from keel.semantic import (
+    accepts,
+    as_text,
+    embed_as,
+    fuse,
+    render,
+    split_hash,
+    subject_of,
+    tokens,
+    value_hash,
+)
 from keel.store.base import DuplicateKey, Entity, Fact, Relation, Store
 from keel.store.memory import changed_after, filter_facts, search_in
 
@@ -65,6 +75,30 @@ def _conflicts(facts: list[Fact]) -> dict[str, list[dict[str, Any]]]:
         for p, fs in by.items()
         if len({repr(f.value) for f in fs}) > 1
     }
+
+
+SNIPPET = 160  # characters of a matching value a search result quotes
+
+
+def _same(a: Any, b: Any) -> bool:
+    return a.casefold() == b.casefold() if isinstance(a, str) and isinstance(b, str) else a == b
+
+
+def _holds(value: Any, want: Any) -> bool:
+    """`where`: the value is `want`, or a list holding it; text compares without case."""
+    return _same(value, want) or (isinstance(value, list) and any(_same(v, want) for v in value))
+
+
+def _snippet(value: Any, needles: list[str]) -> str:
+    """The part of a value around the first needle: of a list, the element that holds one."""
+    if isinstance(value, list):
+        value = next((v for v in value if any(n in as_text(v).lower() for n in needles)), value)
+    s = as_text(value)
+    if len(s) <= SNIPPET:
+        return s
+    at = [i for n in needles if (i := s.lower().find(n)) >= 0]
+    start = max(0, min(at, default=0) - SNIPPET // 3)
+    return ("…" if start else "") + s[start : start + SNIPPET] + ("…" if start + SNIPPET < len(s) else "")
 
 
 def _compact_facts(facts: list[dict[str, Any]]) -> dict[str, Any]:
@@ -441,6 +475,7 @@ class Tools:
         per_kind: int | None = None,
         exclude: list[str] | None = None,
         as_of: Instant = None,
+        where: dict[str, Any] | None = None,
     ) -> list[Any]:
         """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
         deployment's embedder and vector index (keel.semantic): ids in the query first, then dense and
@@ -460,14 +495,26 @@ class Tools:
         of every kind instead of one ranking: with `related_to` for the scope and `mode="semantic"`, the
         context a task needs in one call. `exclude` hides predicates from what is returned, and drops fact
         hits on them; `as_of` evaluates rules, neighbours and facts at that instant. A list of texts
-        returns one result list per text, in order."""
+        returns one result list per text, in order.
+
+        `where={name: value}` keeps the entities whose attribute or current fact `name` is `value` (or
+        a list holding it; text compares without case), in every mode: a visual by its exact title is
+        `search(kind="visual", where={"title": "..."})`. With `kind`, `text` matches the key, the
+        attributes and the current facts' values. Each ranked result says why it is there: `matched`
+        (the attribute, predicate, or "key") and `snippet`, the part of the value that matched."""
         if isinstance(text, list):
-            return [self.search(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, as_of) for t in text]
+            return [self.search(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, as_of, where) for t in text]
         if detail not in ("entity", "concise", "full"):
             raise ValueError("search detail is 'entity', 'concise' or 'full'")
         if depth not in (0, 1):
             raise ValueError("search depth is 0 or 1")
         at = _t(as_of)
+        hide = set(exclude or ())
+        if where is not None and (not isinstance(where, dict) or not where):
+            raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
+        if hidden := sorted(set(where or ()) & hide):
+            raise ValueError(f"where filters on {hidden}, which exclude hides")
+        graph = self._graph(at or utcnow())
         if per_kind is not None:
             if per_kind < 1:
                 raise ValueError("per_kind is at least 1")
@@ -477,28 +524,59 @@ class Tools:
                 spec = self.cartridge.rules.get(rule) if rule else None
                 one = kind or (spec or {}).get("applies_to")
                 kinds = [one] if one else [k for k in self.cartridge.entities if not self.agent or self.agent.sees_kind(k)]
-                hits = [h for k in kinds for h in self._search(text, k, rule, per_kind, None, mode, min_score, related_to, via, at)]
+                hits = [h for k in kinds for h in self._search(text, k, rule, per_kind, None, mode, min_score, related_to, via, graph, where, hide)]
             elif kind is not None or rule is not None:
                 raise ValueError("per_kind groups a text or semantic search by kind; with `kind` or `rule` you list one kind (use `limit`)")
             else:
                 taken: dict[str, int] = {}
                 hits = []
-                for h in self._search(text, None, None, None, None, mode, min_score, related_to, via, at):
+                for h in self._search(text, None, None, None, None, mode, min_score, related_to, via, graph, where, hide):
                     k = h.get("kind") or _kind(h["subject"])
                     if taken.get(k, 0) < per_kind:
                         taken[k] = taken.get(k, 0) + 1
                         hits.append(h)
         else:
-            hits = self._search(text, kind, rule, limit, after, mode, min_score, related_to, via, at)
-        return self._enrich(hits, detail, depth, set(exclude or ()), at)
-
-    def _enrich(self, hits: list[dict[str, Any]], detail: str, depth: int, hide: set[str], at: datetime | None) -> list[dict[str, Any]]:
-        """Facts and neighbours on each entity result, read in batches (a few statements per page)."""
+            hits = self._search(text, kind, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        self._explain(hits, text, mode, hide, graph)
+        return self._enrich(hits, detail, depth, hide, graph)
+
+    def _explain(self, hits: list[dict[str, Any]], text: str, mode: str, hide: set[str], graph: _Graph) -> None:
+        """`matched` and `snippet` on each ranked entity: why it is a result, without a `context` call."""
+        entities = [h for h in hits if "predicate" not in h]
+        split = {h["key"]: h.pop("_split") for h in entities if "_split" in h}
+        if not text:
+            return
+        entities = [h for h in entities if h.get("match") != "key"]  # an id in the query says it already
+        graph.prime(h["key"] for h in entities)
+        words = set(tokens(text))
+        for h in entities:
+            facts = [(f.predicate, f.value) for f in graph.facts(h["key"]) if f.predicate not in hide]
+            fields = list((h.get("attrs") or {}).items()) + facts
+            found: tuple[str, Any, list[str]] | None = None
+            if h.get("matched") in hide:
+                h.pop("matched")  # semantic.split ranked it by a hidden fact: say nothing about it
+            elif h["key"] in split:  # the split document that ranked it: that value, or that element of a list
+                found = next(((p, v, []) for p, value in facts if p == h["matched"]
+                              for v in ([value, *value] if isinstance(value, list) else [value]) if value_hash(v) == split[h["key"]]), None)
+            elif mode == "text":
+                if text.lower() in h["key"].lower():
+                    h["matched"] = "key"
+                else:
+                    found = next(((p, v, [text.lower()]) for p, v in fields if text.lower() in str(v).lower()), None)
+            else:  # ranked by meaning: the field that shares most words with the query
+                shared = [(len(common), p, v, sorted(common)) for p, v in fields if (common := words & set(tokens(as_text(v))))]
+                if shared:
+                    _, p, v, needles = max(shared, key=lambda x: x[0])
+                    found = (p, v, needles)
+            if found:
+                h["matched"], h["snippet"] = found[0], _snippet(found[1], found[2])
+
+    def _enrich(self, hits: list[dict[str, Any]], detail: str, depth: int, hide: set[str], graph: _Graph) -> list[dict[str, Any]]:
+        """Facts and neighbours on each entity result, read in batches (a few statements per page)."""
         if detail == "entity" and not depth:
             return hits
         entities = [h for h in hits if "predicate" not in h]
-        graph = self._graph(at or utcnow())
         graph.prime(h["key"] for h in entities)
 
         def facts(key: str) -> Any:
@@ -537,9 +615,13 @@ class Tools:
         min_score: float | None = None,
         related_to: str | None = None,
         via: str | None = None,
-        at: datetime | None = None,
+        graph: _Graph | None = None,
+        where: dict[str, Any] | None = None,
+        hide: set[str] | None = None,
     ) -> list[dict[str, Any]]:
-        """The search itself, before `search` adds facts and neighbours."""
+        """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked."""
+        graph = graph or self._graph(utcnow())
+        at, hide = graph.as_of, hide or set()
         if mode not in ("text", "semantic"):
             raise ValueError("mode is 'text' or 'semantic'")
         if via and not related_to:
@@ -548,7 +630,7 @@ class Tools:
         if after is not None and (mode == "semantic" or (kind is None and rule is None)):
             raise ValueError("`after` pages the kind/rule listing; semantic and text search rank, page them with `limit`")
         if mode == "semantic":
-            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, at)
+            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, graph, where)
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text) + [h for h in self.store.search(GLOBAL_TENANT, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
             hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
@@ -556,6 +638,11 @@ class Tools:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
             if neighbours is not None:
                 hits = [h for h in hits if (h.key if isinstance(h, Entity) else h.subject) in neighbours]
+            if where:
+                subject = lambda h: h.key if isinstance(h, Entity) else h.subject
+                graph.prime(subject(h) for h in hits)
+                ents = {subject(h): (h if isinstance(h, Entity) else self.store.entity(self.tenant, subject(h))) for h in hits}
+                hits = [h for h in hits if self._where(graph, subject(h), ents[subject(h)], where)]
             return _ser(hits[:limit] if limit else hits)
         spec = None
         if rule is not None:
@@ -568,7 +655,6 @@ class Tools:
         if self.agent and not self.agent.sees_kind(kind):
             raise PermissionError(f"agent '{self.agent.id}' may not read kind '{kind}'")
         found: list[Entity] = []
-        graph = self._graph(at or utcnow()) if spec else None
         if after is not None and ":" not in after:
             after = f"{kind}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
         elif after is not None and _kind(after) != kind:
@@ -576,21 +662,34 @@ class Tools:
         entities = self.store.entities(self.tenant, kind)
         if neighbours is not None:  # walk the neighbours, not the whole kind
             entities = sorted((e for k in neighbours if _kind(k) == kind and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
-        candidates = [e for e in entities if (after is None or e.key > after) and (not text or search_in([e], [], text))]
+        candidates = [e for e in entities if after is None or e.key > after]
+        t = text.lower()
+        # ponytail: text or where over a kind reads every candidate's facts, a chunk at a time; an index on
+        # fact values (or the semantic index) if a kind grows past what a sweep reads in time
         for i in range(0, len(candidates), SWEEP_CHUNK):
             chunk = candidates[i : i + SWEEP_CHUNK]
-            if graph:
+            if spec or text or where:
                 graph.prime(e.key for e in chunk)  # one read per chunk, not per entity
                 if vias := _vias(spec):  # the chunk's relations, then the facts at their other ends, in a few reads
                     graph.prime_relations(e.key for e in chunk)
                     graph.prime(r.dst if r.src == e.key else r.src for e in chunk for r in graph.relations(e.key) if r.rel in vias)
             for e in chunk:
+                if text and not search_in([e], [], text) and not any(f.predicate not in hide and t in str(f.value).lower() for f in graph.facts(e.key)):
+                    continue
+                if where and not self._where(graph, e.key, e, where):
+                    continue
                 if spec and evaluate(spec, e.key, graph.as_of, graph) is not True:
                     continue
                 found.append(e)
                 if limit and len(found) >= limit:
                     return _ser(found)
         return _ser(found)
+
+    def _where(self, graph: _Graph, key: str, ent: Entity | None, where: dict[str, Any]) -> bool:
+        """Every `where` entry holds as an attribute or as a current fact of the subject."""
+        attrs = ent.attrs if ent else {}
+        return all((name in attrs and _holds(attrs[name], want)) or any(f.predicate == name and _holds(f.value, want) for f in graph.facts(key))
+                   for name, want in where.items())
 
     def _neighbours(self, subject: str, via: str | None, at: datetime | None = None) -> set[str]:
         """The subjects linked to `subject` now or at `at` (through `via` when given), as the caller may see them."""
@@ -614,7 +713,7 @@ class Tools:
 
     def _semantic(
         self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None, neighbours: set[str] | None = None,
-        at: datetime | None = None,
+        graph: _Graph | None = None, where: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         if self.embedder is None or self.index is None:
             raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
@@ -626,11 +725,11 @@ class Tools:
             raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
         kind = kind or (spec or {}).get("applies_to")
         kinds = [kind] if kind else (sorted(self.agent.kinds) if self.agent and self.agent.kinds is not None else None)
-        where = {"kind": kinds} if kinds else None
+        scope = {"kind": kinds} if kinds else None  # the index's own filter
         floor = min_score if min_score is not None else policy.get("min_score")
         w_lex = float(policy.get("lexical_weight", 0.3))
         lexical = getattr(self.index, "text_query", None) if w_lex > 0 else None
-        graph = self._graph(at or utcnow()) if spec else None
+        graph = graph or self._graph(utcnow())
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
@@ -639,10 +738,12 @@ class Tools:
             ent = self.store.entity(self.tenant, key)
             if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
                 return None  # gone since indexing, or the rule does not fire
+            if where and not self._where(graph, key, ent, where):
+                return None
             return ent
 
         def ask(fn: Any, *args: Any) -> list[tuple[str, float]]:
-            return fn(self.tenant, *args, where=where) if where and accepts(fn, "where") else fn(self.tenant, *args)
+            return fn(self.tenant, *args, where=scope) if scope and accepts(fn, "where") else fn(self.tenant, *args)
 
         out: list[dict[str, Any]] = []
         for key in self._exact_keys(text, kinds):
@@ -652,7 +753,7 @@ class Tools:
         pool_size = max(limit, 30) if self.reranker else limit
         vector = embed_as(self.embedder, [text], "query")[0]
         k = max(limit * 5 if (kind or spec or self.agent) else limit, 20)
-        matched: dict[str, str] = {}
+        matched: dict[str, tuple[str, str | None]] = {}
         while True:  # filters drop candidates: widen until the pool is full or both legs run out
             dense = ask(self.index.query, vector, k)
             lex = ask(lexical, text, k) if lexical else []
@@ -671,7 +772,7 @@ class Tools:
                     pool.append((ent, score))
                     pooled.add(key)
                     if predicate:
-                        matched[key] = predicate
+                        matched[key] = (predicate, split_hash(doc))
                     if len(pool) >= pool_size:
                         break
             exhausted = len(dense) < k and (not lexical or len(lex) < k)
@@ -689,8 +790,8 @@ class Tools:
             if len(out) >= limit:
                 break
             hit = {**_ser(ent), "score": round(score, 6), "similarity": None if ent.key not in similarity else round(similarity[ent.key], 6)}
-            if ent.key in matched:
-                hit["matched"] = matched[ent.key]  # the split predicate whose document ranked it
+            if ent.key in matched:  # the split predicate whose document ranked it; `search` finds the value
+                hit["matched"], hit["_split"] = matched[ent.key]
             out.append(hit)
         return out
 
@@ -800,7 +901,7 @@ class Tools:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?"], "doc": self.search.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
             {"name": "related", "args": ["subject", "relation?", "as_of?", "depth?"], "doc": self.related.__doc__},
         ]

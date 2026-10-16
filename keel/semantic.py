@@ -97,6 +97,11 @@ def subject_of(key: str) -> tuple[str, str | None]:
     return subject, (rest.split(SPLIT, 1)[0] if rest else None)
 
 
+def split_hash(key: str) -> str | None:
+    """A split document's value hash (`value_hash` of the fact's value, or of one element of a list)."""
+    return key.rsplit(SPLIT, 1)[1] if key.count(SPLIT) == 2 else None
+
+
 TOKEN = re.compile(r"[a-z0-9áéíóúñü]+(?:-[a-z0-9]+)*")
 
 
@@ -385,19 +390,27 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
     return "\n".join(lines)
 
 
-def _value_hash(value: Any) -> str:
+def value_hash(value: Any) -> str:
     return hashlib.sha1(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
+def as_text(value: Any) -> str:
+    return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+
+
 def split_docs(store: Store, tenant: str, subject: str, policy: dict[str, Any] | None = None) -> tuple[list[tuple[str, str]], set[str]]:
-    """The extra documents `semantic.split` asks for: one per open accepted fact of the listed predicates
-    (a visual with twenty fields is twenty sentences, not one diluted text), and every key such a document
-    ever had for this subject, from its history: the stale ones to delete when a value changes."""
+    """The extra documents `semantic.split` asks for: one per open accepted fact of the listed predicates,
+    and one per element when the value is a list (a visual with twenty fields is twenty sentences, not one
+    diluted text), and every key such a document ever had for this subject, from its history: the stale
+    ones to delete when a value changes."""
     preds = set(((policy or {}).get("split") or {}).get(subject.split(":", 1)[0]) or ())
     if not preds:
         return [], set()
     history = store.facts(tenant, subject) + [f for f in store.facts(GLOBAL_TENANT, subject) if f.scope == Scope.GLOBAL]
-    every = {f"{subject}{SPLIT}{f.predicate}{SPLIT}{_value_hash(f.value)}" for f in history if f.predicate in preds}
+    key = lambda f, v: f"{subject}{SPLIT}{f.predicate}{SPLIT}{value_hash(v)}"
+    parts = lambda f: f.value if isinstance(f.value, list) and f.value else [f.value]
+    # the whole value's key too: a list indexed as one document before 0.20 is deleted when it changes
+    every = {key(f, v) for f in history if f.predicate in preds for v in [f.value, *parts(f)]}
     ent = store.entity(tenant, subject)
     labels = (policy or {}).get("labels", DEFAULT_LABELS)
     label = next((str(ent.attrs[k]) for k in labels if ent and ent.attrs.get(k) is not None), None)
@@ -405,8 +418,8 @@ def split_docs(store: Store, tenant: str, subject: str, policy: dict[str, Any] |
     docs = {}
     for f in history:
         if f.predicate in preds and f.status is None and f.scope in INDEXED_SCOPES and f.valid_from <= now and (f.valid_to is None or f.valid_to > now):
-            value = f.value if isinstance(f.value, str) else json.dumps(f.value, ensure_ascii=False)
-            docs[f"{subject}{SPLIT}{f.predicate}{SPLIT}{_value_hash(f.value)}"] = f"{subject}" + (f" ({label})" if label else "") + f" {f.predicate}: {value[:MAX_VALUE_CHARS]}"
+            for v in parts(f):
+                docs[key(f, v)] = f"{subject}" + (f" ({label})" if label else "") + f" {f.predicate}: {as_text(v)[:MAX_VALUE_CHARS]}"
     return list(docs.items()), every
 
 
