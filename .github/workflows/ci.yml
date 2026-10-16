@@ -98,3 +98,12 @@ jobs:
       - run: uv sync --extra dev
       - run: uv run keel sdk php cartridges/fleet -o sdk/php/test/KeelFleet.php --check
       - run: php -l sdk/php/test/KeelFleet.php && bash sdk/php/test/run.sh
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t keel:local .
+      - run: deploy/smoke.sh keel:local
+      - run: docker build --build-arg KEEL_EXTRAS=http2,mysql -t keel:slim .
+      - run: deploy/smoke.sh keel:slim

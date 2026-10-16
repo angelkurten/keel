@@ -1,0 +1,74 @@
+name: image
+
+# Publishes ghcr.io/angelkurten/keel when a v* tag is pushed (after release.yml puts it on PyPI),
+# or for an existing release by hand: Actions > image > Run workflow, version 0.18.0.
+# Tags: X.Y.Z, X.Y, latest; the -slim variant has no Chroma client (no semantic search on Chroma).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "A version already on PyPI, e.g. 0.18.0"
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/angelkurten/keel
+    steps:
+      - uses: actions/checkout@v4
+      - name: version
+        run: |
+          V="${{ inputs.version }}"
+          [ -n "$V" ] || V="${GITHUB_REF_NAME#v}"
+          echo "V=$V" >> "$GITHUB_ENV"
+          echo "MM=${V%.*}" >> "$GITHUB_ENV"
+      - name: wait until PyPI serves it (release.yml publishes in parallel)
+        run: |
+          for i in $(seq 60); do
+            python3 -m pip download --no-deps -q -d /tmp/k "keel-context==$V" && exit 0
+            sleep 20
+          done
+          echo "keel-context==$V is not on PyPI"; exit 1
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: smoke test before publishing
+        run: |
+          docker buildx build --load --build-arg KEEL_VERSION=$V -t keel:smoke .
+          deploy/smoke.sh keel:smoke
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: KEEL_VERSION=${{ env.V }}
+          tags: ${{ env.IMAGE }}:${{ env.V }},${{ env.IMAGE }}:${{ env.MM }},${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/angelkurten/keel
+            org.opencontainers.image.version=${{ env.V }}
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.description=Keel: one context layer for every agent, the five tools over HTTP and MCP
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            KEEL_VERSION=${{ env.V }}
+            KEEL_EXTRAS=http2,mysql
+          tags: ${{ env.IMAGE }}:${{ env.V }}-slim,${{ env.IMAGE }}:${{ env.MM }}-slim,${{ env.IMAGE }}:slim
+          labels: |
+            org.opencontainers.image.source=https://github.com/angelkurten/keel
+            org.opencontainers.image.version=${{ env.V }}
+            org.opencontainers.image.licenses=Apache-2.0

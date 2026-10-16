@@ -247,6 +247,24 @@ curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Kee
 
 Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send `X-Keel-Agent` to read your own). Task-scope memory tied to a task id is read only by calls that pass that `task` (`history`'s `task` is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, `__global__`, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name.
 
+## Run it in a container
+
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.18.0`, `0.18`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+
+```bash
+docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
+  -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
+  -v ./cartridges/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.18.0
+```
+
+- It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
+- `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
+- It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment (§ Configuration); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.18.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.18.0` and `COPY cartridges/mine /cartridge`.
+
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.18.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+
 ## Semantic search
 
 `search(text, mode="semantic")` finds subjects by meaning ("worn-out tyre" finds a tire at 2.6 mm), filtered by tenant, the agent's read slice, `kind` and `rule`. Two adapters, both replaceable: where vectors live and where embeddings come from.

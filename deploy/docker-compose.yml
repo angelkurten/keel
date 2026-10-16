@@ -1,0 +1,60 @@
+# Keel with its own MySQL and a Chroma server, plus the semantic index refreshed every 15 minutes.
+#
+#   KEEL_SECRET=$(openssl rand -hex 32) docker compose -f deploy/docker-compose.yml up -d
+#
+# Point CARTRIDGE at your cartridge folder (default: the fleet example). Chroma runs as a server
+# (chroma://chroma:8000): chroma:///path does not work across the keel and indexer processes.
+# For semantic search set the KEEL_EMBEDDINGS_* variables; without them, drop KEEL_INDEX and the indexer.
+x-keel: &keel
+  image: ghcr.io/angelkurten/keel:${KEEL_TAG:-latest}
+  volumes:
+    - ${CARTRIDGE:-../cartridges/fleet}:/cartridge:ro
+    - keel-data:/data
+  environment:
+    KEEL_DB: mysql://keel:${MYSQL_PASSWORD:-keel}@mysql:3306/keel
+    KEEL_INDEX: chroma://chroma:8000
+    KEEL_TENANT: ${KEEL_TENANT:-}
+    KEEL_SECRET: ${KEEL_SECRET:?set KEEL_SECRET}
+    KEEL_EMBEDDER: ${KEEL_EMBEDDER:-openai}
+    KEEL_EMBEDDINGS_BASE_URL: ${KEEL_EMBEDDINGS_BASE_URL:-https://api.openai.com/v1}
+    KEEL_EMBEDDINGS_MODEL: ${KEEL_EMBEDDINGS_MODEL:-text-embedding-3-small}
+    KEEL_EMBEDDINGS_API_KEY: ${KEEL_EMBEDDINGS_API_KEY:-}
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+services:
+  keel:
+    <<: *keel
+    ports: ["8000:8000"]
+
+  indexer:  # one tenant per KEEL_TENANT; a run that overlaps a slow one skips (the lock next to the cursor)
+    <<: *keel
+    entrypoint:
+      - sh
+      - -c
+      - 'while true; do keel index /cartridge --db "$$KEEL_DB" || true; sleep 900; done'
+    healthcheck: {disable: true}
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: keel
+      MYSQL_USER: keel
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-keel}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    command: ["--innodb-buffer-pool-size=1G"]
+    volumes: [mysql-data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      retries: 30
+
+  chroma:
+    image: chromadb/chroma:1.5.9
+    volumes: [chroma-data:/data]
+
+volumes:
+  keel-data:
+  mysql-data:
+  chroma-data:

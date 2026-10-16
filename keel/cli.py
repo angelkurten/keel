@@ -216,7 +216,7 @@ def replay(cartridge: Path, events: Path, tenant: str = TENANT, db: str | None =
 @app.command()
 def expire(
     tenant: str = TENANT,
-    db: str = typer.Option(..., "--db", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
     task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
     consolidate: Path | None = typer.Option(None, "--consolidate", help="Consolidate first, with this cartridge's `consolidate:` section, so nothing is dropped unsummarized."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="With --consolidate: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
@@ -243,7 +243,7 @@ def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
 def consolidate_cmd(
     cartridge: Path,
     tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to consolidate."),
-    db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="For `reduce: summary`: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
 ):
     """Summarize episodic memory into durable facts, as the cartridge's `consolidate:` section declares. Idempotent; a job, never ingest."""
@@ -253,7 +253,7 @@ def consolidate_cmd(
 @app.command()
 def export(
     tenant: str = TENANT,
-    db: str = typer.Option(..., "--db", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
     out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
 ):
     """Audit trail for one tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what."""
@@ -279,7 +279,7 @@ def export(
 def index_cmd(
     cartridge: Path,
     tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to index."),
-    db: str = typer.Option(..., "--db", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
     index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
     full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),

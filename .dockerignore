@@ -1,0 +1,13 @@
+.git
+.venv
+.keel
+.env
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+dist
+site
+sdk
+tests
+examples/demo.tape

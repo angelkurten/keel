@@ -46,3 +46,16 @@ def test_keel_tenant_is_the_default_tenant(tmp_path, monkeypatch):
     assert res.exit_code == 0 and '"tenant": "acme-logistics"' in res.output, res.output
     res = CliRunner().invoke(app, ["export", "nobody", "--db", db])  # an explicit tenant wins
     assert res.exit_code == 0 and res.output.strip() == "", res.output
+
+
+def test_keel_db_reaches_every_command_with_db(tmp_path, monkeypatch):
+    """A container is configured by its environment: no command with --db may require the flag."""
+    monkeypatch.chdir(tmp_path)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cart = f"{root}/cartridges/fleet"
+    monkeypatch.setenv("KEEL_DB", str(tmp_path / "k.db"))
+    monkeypatch.setenv("KEEL_TENANT", "acme-logistics")
+    assert CliRunner().invoke(app, ["ingest", cart, f"{root}/examples/events/fleet.jsonl"]).exit_code == 0
+    for args in (["export"], ["expire"], ["consolidate", cart], ["index", cart, "--index", "memory", "--embedder", "hash"]):
+        res = CliRunner().invoke(app, args)
+        assert res.exit_code == 0 and "Missing option" not in res.output, (args, res.output)
