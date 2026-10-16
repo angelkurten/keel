@@ -1,7 +1,7 @@
 # Keel: the five tools over HTTP (/v1, /mcp) for one cartridge, on SQLite or MySQL.
 #
 #   docker build -t keel .                                  # this checkout
-#   docker build --build-arg KEEL_VERSION=0.19.0 -t keel .  # a release from PyPI
+#   docker build --build-arg KEEL_VERSION=0.20.0 -t keel .  # a release from PyPI
 #   docker run -p 8000:8000 -e KEEL_SECRET=... -v ./cartridges/fleet:/cartridge:ro -v keel-data:/data keel
 #
 # The cartridge is not in the image: mount it at /cartridge, or `FROM ghcr.io/angelkurten/keel` and COPY it there.
