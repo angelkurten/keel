@@ -2,7 +2,7 @@
 
 A cartridge is a folder:
 
-    cartridges/fleet/
+    examples/fleet/
       cartridge.yaml   ontology, event catalog, semantic rules, memory policies
       handlers.py      a `registry = HandlerRegistry()` with one handler per event type
 

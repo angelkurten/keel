@@ -76,13 +76,13 @@ def test_validation_messages_for_the_grammar():
     assert any("needs a `predicate`" in m for m in problems("r", {"when": {"eq": 1}}, rels))
     assert any("exactly one of `any` or `all`" in m for m in problems("r", {"when": {"via": "relaciona"}}, rels))
     assert problems("r", {"when": {"any": [{"predicate": "x", "eq": 1}, {"not": {"predicate": "y", "ci": True, "in": ["a"]}}]}}, rels) == []
-    assert load_cartridge("cartridges/fleet").validate() == []
+    assert load_cartridge("examples/fleet").validate() == []
 
 
 def test_fleet_rules_follow_tires_and_count_days_and_context_brings_neighbours():
-    c = load_cartridge("cartridges/fleet")
+    c = load_cartridge("examples/fleet")
     s = MemoryStore()
-    Ingestor(c, s).ingest(JsonlAdapter("examples/events/fleet.jsonl"), strict=True)
+    Ingestor(c, s).ingest(JsonlAdapter("examples/fleet/events.jsonl"), strict=True)
     t = Tools(c, s, "acme-logistics")
     assert t.context("unit:MXK-4821")["evaluation"] == {"unit_grounded": True}  # via the tire at 2.6 mm
     assert t.context("unit:MXK-4821", as_of=datetime(2026, 9, 20, tzinfo=UTC))["evaluation"] == {"unit_grounded": False}
@@ -96,7 +96,7 @@ def test_fleet_rules_follow_tires_and_count_days_and_context_brings_neighbours()
 
 
 def test_symmetric_relations_show_once_in_both_directions():
-    c = load_cartridge("cartridges/fleet")
+    c = load_cartridge("examples/fleet")
     c.relations["pairs_with"] = {"from": "unit", "to": "unit", "symmetric": True}
     s = MemoryStore()
     for u in ("A", "B"):

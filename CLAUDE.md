@@ -27,7 +27,8 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory, sqlite or mysql: dialects of sql.py)
    -> Tools (keel/tools.py)                     context / history / search / annotate / related; bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools
-cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers
+cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers (your own; empty here)
+examples/<name>/                                 fleet, crm, finance, clinics: a cartridge, its events.jsonl and its test_<name>.py
 ```
 
 Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `open_fact`, `close_fact`. `open_fact` places the fact in its predicate's history by `valid_from` (closing the one current at that instant, closing itself at the next one's start); nothing is overwritten, and arrival order does not change the result. The Ingestor skips event ids the store has already applied.
@@ -39,7 +40,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 3. **Explicit time, bitemporal.** `valid_from`/`valid_to` = world time. `recorded_at` = when Keel learned it; `closed_at` = when Keel learned it ended (both feed `as_known_at`). Facts close; they are never mutated or deleted by handlers. "The tire was critical on Oct 3" and "the tire is critical" are different queries and both must work.
 4. **Provenance on every fact.** `source`, `evidence` (event id, row ref, photo), and `corrected_by` when a human or agent corrected it.
 5. **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Policy (TTL, evidence requirement) is enforced in `Tools.annotate` via `MemoryPolicy`, never trusted to the calling agent. Promotion to a wider scope is an explicit `annotate` with evidence. Reads are enforced in `Tools` too: agent memory reaches only its author, task memory only calls that pass its task, global memory (partition `__global__`) every tenant. When the cartridge declares `agents:`, the registry (who may write which scope, see which kinds and relations) is enforced in `Tools` too; a missing or unknown agent id is refused.
-6. **The core is domain-agnostic.** No entity kind, relation name, predicate, rule or event type appears anywhere under `keel/`. The acceptance test for any core change: both `cartridges/fleet` and `cartridges/crm` still pass without edits. Adding a third cartridge must require zero changes under `keel/`.
+6. **The core is domain-agnostic.** No entity kind, relation name, predicate, rule or event type appears anywhere under `keel/`. The acceptance test for any core change: both `examples/fleet` and `examples/crm` still pass without edits. Adding a third cartridge must require zero changes under `keel/`.
 7. **Five tools, and only five.** New capabilities go into the semantics of these five (richer `context`, filters on `history`) before anyone adds a sixth. The tool names and signatures are part of the public standard.
 8. **One subgraph per tenant.** Every store call takes `tenant` first. Cross-tenant reads do not exist; the only shared partition is `__global__`, written only by `annotate(scope="global")` from a privileged caller. A tool instance is bound to one tenant.
 9. **Handlers are small.** A handler maps one payload to primitives in ~10 lines. Business logic (what "critical" means) lives in `rules`, read by tools, not in handlers and not in agents. Rules may compose (`all`/`any`/`not`), follow relations (`via`) and measure durations; what they cannot express (counts over time, aggregates) stays a definition the agent applies.
@@ -52,18 +53,18 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 - Datetimes are timezone-aware UTC. Naive datetimes are rejected at the envelope.
 - Public surface: `keel/__init__.py` exports. Anything else is internal and may change.
 - All user-facing text (README, docs, CLI help, errors) is in English. Commit messages in English.
-- Tests: every core change adds or updates a test in `tests/`; cartridge changes add events to `examples/events/*.jsonl` and assertions in `tests/test_core.py`.
+- Tests: every core change adds or updates a test in `tests/`; example cartridge changes add events to `examples/<name>/events.jsonl` and assertions in `examples/<name>/test_<name>.py`.
 
 ## How to verify a change
 
 ```bash
 uv sync --extra dev
 uv run pytest
-uv run keel validate cartridges/fleet && uv run keel validate cartridges/crm
-uv run python examples/agent_minimal.py
+uv run keel validate examples/fleet && uv run keel validate examples/crm
+uv run python examples/fleet/agent_minimal.py
 ```
 
-If `examples/agent_minimal.py` output changes, say why in the PR.
+If `examples/fleet/agent_minimal.py` output changes, say why in the PR.
 
 ## Open decisions (do not resolve silently)
 

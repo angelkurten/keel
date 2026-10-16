@@ -9,8 +9,8 @@ from keel import Ingestor, MemoryStore, Tools, load_cartridge
 from keel.adapters.postgres import PostgresTableAdapter
 from keel.ingest import JsonlAdapter
 
-FLEET = "cartridges/fleet"
-FLEET_EVENTS = "examples/events/fleet.jsonl"
+FLEET = "examples/fleet"
+FLEET_EVENTS = "examples/fleet/events.jsonl"
 TENANT = "acme-logistics"
 DDL = (
     "CREATE TABLE keel_events (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT, tenant TEXT, "
@@ -64,10 +64,10 @@ def test_webhook_validates_authenticates_and_ingests():
 
     from keel.adapters.webhook import build_app
 
-    c, s = load_cartridge("cartridges/crm"), MemoryStore()
+    c, s = load_cartridge("examples/crm"), MemoryStore()
     client = TestClient(build_app(Ingestor(c, s), token="s3cret"))
     ok = {"Authorization": "Bearer s3cret"}
-    with open("examples/events/crm.jsonl", encoding="utf-8") as fh:
+    with open("examples/crm/events.jsonl", encoding="utf-8") as fh:
         events = [json.loads(line) for line in fh if line.strip() and not line.startswith("#")]
 
     assert client.post("/events", json=events).status_code == 401

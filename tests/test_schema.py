@@ -62,7 +62,7 @@ def test_unknown_hints_are_rejected_and_validate_reports_them(tmp_path):
 
 
 def test_keel_schema_prints_the_generator_input():
-    res = CliRunner().invoke(app, ["schema", "cartridges/fleet"])
+    res = CliRunner().invoke(app, ["schema", "examples/fleet"])
     assert res.exit_code == 0, res.output
     doc = json.loads(res.output)
     assert doc["cartridge"] == "fleet" and doc["envelope"]["properties"]["tenant"]

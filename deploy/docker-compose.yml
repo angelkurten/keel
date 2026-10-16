@@ -8,7 +8,7 @@
 x-keel: &keel
   image: ghcr.io/angelkurten/keel:${KEEL_TAG:-latest}
   volumes:
-    - ${CARTRIDGE:-../cartridges/fleet}:/cartridge:ro
+    - ${CARTRIDGE:-../examples/fleet}:/cartridge:ro
     - keel-data:/data
   environment:
     KEEL_DB: mysql://keel:${MYSQL_PASSWORD:-keel}@mysql:3306/keel

@@ -4,7 +4,7 @@ Runtime for the clients `keel sdk php <cartridge> --package '<Namespace>'` gener
 
 ```bash
 composer require keel-context/sdk
-keel sdk php cartridges/fleet -o src/Keel/Fleet.php --package 'App\Keel\Fleet'
+keel sdk php examples/fleet -o src/Keel/Fleet.php --package 'App\Keel\Fleet'
 ```
 
 ```php

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 PORT=$((20000 + RANDOM % 20000))
 SECRET=s3cret
-(cd "$ROOT" && KEEL_SECRET=$SECRET exec uv run keel serve cartridges/fleet --transport http --host 0.0.0.0 --port "$PORT" >/dev/null 2>&1) &
+(cd "$ROOT" && KEEL_SECRET=$SECRET exec uv run keel serve examples/fleet --transport http --host 0.0.0.0 --port "$PORT" >/dev/null 2>&1) &
 PID=$!
 trap 'pkill -P $PID 2>/dev/null || true; kill $PID 2>/dev/null || true' EXIT
 for _ in $(seq 1 200); do curl -sf "http://127.0.0.1:$PORT/health" >/dev/null 2>&1 && break; sleep 0.1; done

@@ -1,6 +1,6 @@
 """A complex agentic workflow on Keel, with no LLM, to see where the context layer helps and where it hurts.
 
-Run:  uv run python examples/workflow_fleet_ops.py
+Run:  uv run python examples/fleet/workflow_ops.py
 
 The flow (one tenant, five agents with different permissions, a human, and a verifier loop),
 all writes tagged with the run's task id and an idempotency key so a replayed step is harmless:
@@ -126,7 +126,7 @@ def verify(t: Tools, plan_: dict[str, list[dict[str, Any]]]) -> str | None:
 
 
 def run(store: Store | None = None, quiet: bool = False) -> dict[str, Any]:
-    c = load_cartridge("cartridges/fleet")
+    c = load_cartridge("examples/fleet")
     c.agents = parse_agents(AGENTS)  # declared here instead of in cartridge.yaml so the reference cartridge stays open
     c.predicates = {"recommendation": {"multi": True}}  # every specialist keeps its own open recommendation
     store = store or SqliteStore()

@@ -28,7 +28,7 @@ func startServer(t *testing.T) string {
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	root, _ := filepath.Abs("../../..")
-	cmd := exec.Command("uv", "run", "keel", "serve", "cartridges/fleet", "--transport", "http", "--port", fmt.Sprint(port))
+	cmd := exec.Command("uv", "run", "keel", "serve", "examples/fleet", "--transport", "http", "--port", fmt.Sprint(port))
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "KEEL_SECRET="+secret)
 	if err := cmd.Start(); err != nil {

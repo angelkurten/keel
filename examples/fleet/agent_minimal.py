@@ -1,6 +1,6 @@
 """A minimal 'agent' that uses the five tools with no LLM, to show the contract.
 
-Run:  uv run python examples/agent_minimal.py
+Run:  uv run python examples/fleet/agent_minimal.py
 
 It ingests the fleet stream, asks for the context of one unit, applies the
 cartridge's rules (which live in the graph, not in the agent), and writes
@@ -10,9 +10,9 @@ what it concluded back as task-scoped memory with evidence.
 from keel import Ingestor, MemoryStore, Tools, load_cartridge
 from keel.ingest import JsonlAdapter
 
-cartridge = load_cartridge("cartridges/fleet")
+cartridge = load_cartridge("examples/fleet")
 store = MemoryStore()
-Ingestor(cartridge, store).ingest(JsonlAdapter("examples/events/fleet.jsonl"))
+Ingestor(cartridge, store).ingest(JsonlAdapter("examples/fleet/events.jsonl"))
 tools = Tools(cartridge, store, tenant="acme-logistics")
 
 unit = "unit:MXK-4821"

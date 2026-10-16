@@ -47,7 +47,7 @@ class Sandbox:
 
 def fleet() -> Sandbox:
     """A fleet with 40 units and 160 tires; distractors share vocabulary with the targets."""
-    c, s, t = load_cartridge("cartridges/fleet"), MemoryStore(), "acme"
+    c, s, t = load_cartridge("examples/fleet"), MemoryStore(), "acme"
     rnd = random.Random(7)
     models = ["Freightliner Cascadia", "Mercedes Actros", "Volvo FH16", "Kenworth T680", "Sprinter 515"]
     conditions = {
@@ -93,7 +93,7 @@ def fleet() -> Sandbox:
 
 def cards() -> Sandbox:
     """Jira-like support cards in Spanish (kagent-style): clients, noisy comments, renamed keys."""
-    c = load_cartridge("cartridges/fleet")  # reuse the engine; kinds below are declared on the fly
+    c = load_cartridge("examples/fleet")  # reuse the engine; kinds below are declared on the fly
     c.entities.update({"card": {}, "cliente": {}})
     c.relations.update({"de_cliente": {"from": "card", "to": "cliente"}})
     c.rules["en_pausa"] = {"applies_to": "card", "when": {"predicate": "estado", "in": ["on hold", "pend. autorización td"], "ci": True}}
@@ -140,7 +140,7 @@ def cards() -> Sandbox:
 
 def finance() -> Sandbox:
     """A household's debts and dues (Toche-style), Spanish, numbers and creditors."""
-    c, s, t = load_cartridge("cartridges/finance"), MemoryStore(), "hogar"
+    c, s, t = load_cartridge("examples/finance"), MemoryStore(), "hogar"
     debts = {
         "visa": ("Banco de Bogotá", "Tarjeta de crédito Visa", 3870000, 29.22),
         "libranza": ("Bancolombia", "Crédito de libranza", 12500000, 14.5),

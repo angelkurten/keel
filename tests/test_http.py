@@ -12,7 +12,7 @@ from keel import Ingestor, MemoryStore, load_cartridge
 from keel.agents import parse_agents
 from keel.ingest import JsonlAdapter
 
-FLEET, EVENTS, TENANT = "cartridges/fleet", "examples/events/fleet.jsonl", "acme-logistics"
+FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 AUTH = {"Authorization": "Bearer s3cret"}
 
 
@@ -132,7 +132,7 @@ def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from keel.cli import _loopback, app
 
     monkeypatch.delenv("KEEL_SECRET", raising=False)
-    res = CliRunner().invoke(app, ["serve", "cartridges/fleet", "--transport", "http", "--host", "0.0.0.0"], env={"COLUMNS": "400"})
+    res = CliRunner().invoke(app, ["serve", "examples/fleet", "--transport", "http", "--host", "0.0.0.0"], env={"COLUMNS": "400"})
     assert res.exit_code != 0 and "reachable from the network" in res.output
     assert _loopback("127.0.0.1") and _loopback("::1") and _loopback("localhost") and not _loopback("0.0.0.0") and not _loopback("keel.internal")
 

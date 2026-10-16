@@ -13,7 +13,7 @@ body:
     id: ontology
     attributes:
       label: Entities, relations and the three most important event types
-      description: A sketch is enough. See cartridges/fleet/cartridge.yaml for the shape.
+      description: A sketch is enough. See examples/fleet/cartridge.yaml for the shape.
     validations:
       required: true
   - type: textarea

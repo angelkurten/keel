@@ -27,7 +27,7 @@ The Python API reads nothing from `.env`: a program that embeds Keel passes its 
 
 ## The envelope
 
-One event, as the development adapter reads it from `examples/events/fleet.jsonl`:
+One event, as the development adapter reads it from `examples/fleet/events.jsonl`:
 
 ```json
 {"tenant": "acme-logistics", "type": "unit.registered", "subject": "unit:MXK-4821",
@@ -53,7 +53,7 @@ The full rules are in the [specification](SPEC.md#2-event-envelope).
 For development and tests. One envelope per line; blank lines and lines starting with `#` are ignored.
 
 ```bash
-uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
+uv run keel ingest examples/fleet examples/fleet/events.jsonl
 ```
 
 The command prints `processed`, `duplicates`, `unhandled` and `errors` and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (5000 events) is rolled back.
@@ -86,7 +86,7 @@ import psycopg
 from keel import Ingestor, MemoryStore, SqliteStore, load_cartridge
 from keel.adapters.postgres import PostgresTableAdapter
 
-ingestor = Ingestor(load_cartridge("cartridges/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
+ingestor = Ingestor(load_cartridge("examples/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
 adapter = PostgresTableAdapter(lambda: psycopg.connect(DSN), table="keel_events", cursor_path=".keel/cursor")
 
 ingestor.ingest(adapter)                      # one pass over everything after the cursor
@@ -130,7 +130,7 @@ uv sync --extra webhook
 from keel import Ingestor, MemoryStore, SqliteStore, load_cartridge
 from keel.adapters.webhook import build_app
 
-ingestor = Ingestor(load_cartridge("cartridges/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
+ingestor = Ingestor(load_cartridge("examples/fleet"), SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
 app = build_app(ingestor, token="shared-secret")
 ```
 
@@ -162,13 +162,13 @@ Delivery is at-least-once: the offset is committed, or the SQS message deleted, 
 
 ```bash
 uv sync --extra mcp
-uv run keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+uv run keel serve examples/fleet --tenant acme-logistics --events examples/fleet/events.jsonl
 ```
 
 With Claude Code, one command registers the server. The agent sees exactly five tools and nothing else:
 
 ```bash
-claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+claude mcp add keel -- uv run --directory $PWD keel serve examples/fleet --tenant acme-logistics --events examples/fleet/events.jsonl
 ```
 
 With Codex CLI (OpenAI), declare the server in `~/.codex/config.toml`. Keel annotates `context`, `history`, `search` and `related` as read-only, so Codex runs them without asking even under `approval_policy = "never"`; `annotate` writes, so it prompts unless you set `default_tools_approval_mode = "auto"` on the server:
@@ -176,7 +176,7 @@ With Codex CLI (OpenAI), declare the server in `~/.codex/config.toml`. Keel anno
 ```toml
 [mcp_servers.keel]
 command = "uv"
-args = ["run", "--directory", "/path/to/keel", "keel", "serve", "cartridges/fleet", "--tenant", "acme-logistics", "--events", "examples/events/fleet.jsonl"]
+args = ["run", "--directory", "/path/to/keel", "keel", "serve", "examples/fleet", "--tenant", "acme-logistics", "--events", "examples/fleet/events.jsonl"]
 startup_timeout_sec = 60
 ```
 
@@ -192,9 +192,9 @@ Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an 
     In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use and the same conformance suite runs against it in CI. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
 
     ```bash
-    uv run keel ingest cartridges/fleet examples/events/fleet.jsonl --db keel.db   # or adapter.follow() in your own process
-    uv run keel serve cartridges/fleet --tenant acme-logistics --db keel.db
-    uv run keel replay cartridges/fleet examples/events/fleet.jsonl acme-logistics --db keel.db   # wipe one tenant, rebuild it from the log
+    uv run keel ingest examples/fleet examples/fleet/events.jsonl --db keel.db   # or adapter.follow() in your own process
+    uv run keel serve examples/fleet --tenant acme-logistics --db keel.db
+    uv run keel replay examples/fleet examples/fleet/events.jsonl acme-logistics --db keel.db   # wipe one tenant, rebuild it from the log
     ```
 
     The log is the truth and the file is derived: `replay` rebuilds one tenant from the external log (your outbox table, your bus, a `.jsonl`) and never from the file itself. What agents and people wrote through `annotate`, and consolidations of it, is not in the log, so `replay` keeps it and the events land around it. The store is pluggable: `SqliteStore` is the default, and any store that passes `tests/test_store.py` (see [contributing](contributing.md)) can take its place.
@@ -204,7 +204,7 @@ Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an 
 For a backend, or for many tenants from one process, serve the same five operations as a JSON API (`uv sync --extra http`):
 
 ```bash
-KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
+KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
 ```
 
 The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
@@ -212,7 +212,7 @@ The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from an
 **TLS and HTTP/2.** `--certfile` and `--keyfile` (PEM; or `KEEL_CERTFILE`, `KEEL_KEYFILE`) serve https. `--http2` runs the server on Hypercorn instead of uvicorn (`uv sync --extra http2`) and speaks HTTP/1.1 and HTTP/2 on the same port: h2 negotiated by ALPN over TLS, or cleartext h2c (prior knowledge or `Upgrade`) without it, which is what a proxy in front that talks h2c to its origin uses. HTTP/1.1 clients keep working. On the client side, `keel.client.Client(..., http_client=httpx.Client(http2=True))` ([SDKs](sdks.md)).
 
 ```bash
-KEEL_SECRET=change-me uv run keel serve cartridges/fleet --transport http --http2 --db keel.db \
+KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --http2 --db keel.db \
   --host 0.0.0.0 --certfile cert.pem --keyfile key.pem
 ```
 
@@ -254,7 +254,7 @@ Reads follow the memory scopes. Agent-scope memory is read only by the agent tha
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./cartridges/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.22.0
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.22.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
@@ -272,8 +272,8 @@ docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
 ```bash
 uv sync --extra chroma        # only for the bundled Chroma adapter; Python 3.11+ (chromadb needs onnxruntime)
 export KEEL_EMBEDDINGS_BASE_URL=https://api.openai.com/v1 KEEL_EMBEDDINGS_MODEL=text-embedding-3-small KEEL_EMBEDDINGS_API_KEY=...
-uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db --index chroma:///var/keel/vectors   # cron it: incremental
-uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
+uv run keel index examples/fleet --tenant acme-logistics --db keel.db --index chroma:///var/keel/vectors   # cron it: incremental
+uv run keel serve examples/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
 ```
 
 `keel index` keeps the time of its last run in a cursor file and indexes only what changed since; `--full` rebuilds the tenant's index. The cursor sits next to a `chroma:///path` index (`keel-index-<tenant>.cursor`), else in `.keel/index-<tenant>.cursor` under the working directory; `--cursor` or `KEEL_INDEX_CURSOR` puts it elsewhere. In a container, keep it on the same volume as the index: a cursor lost on deploy makes the next run a full rebuild, and `keel index` says so when it starts without one. Embedding batches go out four at a time (`--workers`, `KEEL_INDEX_WORKERS`), and a rate limit or a 5xx from the embeddings API is retried with backoff. One run per tenant at a time: a run that finds another holding the lock next to the cursor skips (two runs at once corrupt a Chroma index), so a cron that overlaps a slow run is safe. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
@@ -304,7 +304,7 @@ The rules an index must keep: every call is scoped by tenant and never returns a
 Name them by a spec, `module:factory?param=value` (parameters arrive as text), on `index` and `serve` alike, and check them with the same conformance suite as the bundled adapters:
 
 ```bash
-uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db \
+uv run keel index examples/fleet --tenant acme-logistics --db keel.db \
   --index "examples.custom_adapters:make_index?path=vectors.db" --embedder examples.custom_adapters:make_embedder
 KEEL_VECTOR_INDEX="examples.custom_adapters:make_index?path=/tmp/v.db" KEEL_EMBEDDER=examples.custom_adapters:make_embedder \
   uv run pytest tests/test_semantic.py
@@ -328,8 +328,8 @@ semantic:
 Agents write task and agent memory that expires. A cartridge's `consolidate:` section declares which of it becomes a durable fact: the source predicate and scopes (task memory by default; agent memory is private and is read only when `from.scopes` lists it), an optional `within:` window on world time (`valid_from`, so a reingested history keeps its dates), how many observations make a pattern, a reducer (`mode`, `latest`, `count`, `min`, `max`, `avg`, `distinct` or `summary`) and the predicate and scope to write. It runs as a job, never in ingest:
 
 ```bash
-uv run keel consolidate cartridges/fleet --tenant acme-logistics --db keel.db
-uv run keel expire acme-logistics --db keel.db --consolidate cartridges/fleet   # consolidate, then drop expired memory
+uv run keel consolidate examples/fleet --tenant acme-logistics --db keel.db
+uv run keel expire acme-logistics --db keel.db --consolidate examples/fleet   # consolidate, then drop expired memory
 ```
 
 Each run prints `written` and `unchanged` per consolidation and is idempotent: the same inputs never write twice. The originals stay until their TTL. `reduce: summary` needs `--summarizer`: `llm` (any OpenAI-compatible chat model, from `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`), `join` (the distinct values joined, deterministic) or your own `pkg.module:factory`. The other reducers are deterministic and need none.

@@ -8,7 +8,7 @@ cartridges/clinics/
   handlers.py
 ```
 
-The finished version is in the repo (`cartridges/clinics`, `examples/events/clinics.jsonl`), so every command below runs as written.
+Build yours in `cartridges/clinics`, the folder for your own cartridges. The finished version is in the repo as `examples/clinics`, with its events in `examples/clinics/events.jsonl`: point any command below at `examples/clinics` to run it without writing a line.
 
 ## 1. Scaffold it (1 min)
 
@@ -98,9 +98,9 @@ The `context` tool returns the rules that apply to a subject's kind, so every ag
 
 ```bash
 uv run keel validate cartridges/clinics
-uv run keel validate cartridges/clinics --events examples/events/clinics.jsonl
-uv run keel ingest cartridges/clinics examples/events/clinics.jsonl
-uv run keel context cartridges/clinics examples/events/clinics.jsonl patient:P-1
+uv run keel validate cartridges/clinics --events examples/clinics/events.jsonl
+uv run keel ingest cartridges/clinics examples/clinics/events.jsonl
+uv run keel context cartridges/clinics examples/clinics/events.jsonl patient:P-1
 ```
 
 `validate` fails if an event has no handler, a handler has no event, a relation uses an undeclared kind, a payload hint does not parse, a rule's `when` uses an unknown operator or an undeclared relation, or the `agents`, `semantic`, `consolidate` or `predicates` sections are malformed. With `--events` it also checks a stream against the catalog: unknown types, wrong subject kinds, missing or mistyped payload fields.
@@ -109,7 +109,7 @@ uv run keel context cartridges/clinics examples/events/clinics.jsonl patient:P-1
 
 ```bash
 uv sync --extra mcp
-uv run keel serve cartridges/clinics --tenant clinic-centro --events examples/events/clinics.jsonl
+uv run keel serve cartridges/clinics --tenant clinic-centro --events examples/clinics/events.jsonl
 ```
 
 Any MCP client now sees `context`, `history`, `search`, `annotate`, `related`. Your second agent uses the same five tools; there is no second pipeline.
@@ -144,7 +144,7 @@ semantic:
 Index outside ingest, from a durable store, and serve with the same index and embedder:
 
 ```bash
-uv run keel ingest cartridges/clinics examples/events/clinics.jsonl --db clinic.db
+uv run keel ingest cartridges/clinics examples/clinics/events.jsonl --db clinic.db
 export KEEL_EMBEDDINGS_API_KEY=...    # any OpenAI-compatible embeddings endpoint (KEEL_EMBEDDINGS_BASE_URL, _MODEL)
 uv run keel index cartridges/clinics --tenant clinic-centro --db clinic.db --index "examples.custom_adapters:make_index?path=vectors.db"
 uv run keel serve cartridges/clinics --tenant clinic-centro --db clinic.db --index "examples.custom_adapters:make_index?path=vectors.db"

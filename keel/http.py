@@ -1,8 +1,8 @@
 """HTTP transport: the five tools as a JSON API for many tenants, the ingest endpoint, and MCP
 over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
 
-    keel serve cartridges/fleet --transport http --db keel.db                 # /v1/* for any tenant
-    keel serve cartridges/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
+    keel serve examples/fleet --transport http --db keel.db                 # /v1/* for any tenant
+    keel serve examples/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?, only?}  -> the context object (or a list)

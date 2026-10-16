@@ -9,7 +9,7 @@ const SECRET = "s3cret";
 let server: ReturnType<typeof Bun.spawn>;
 
 beforeAll(async () => {
-  server = Bun.spawn(["uv", "run", "keel", "serve", "cartridges/fleet", "--transport", "http", "--port", String(PORT)], {
+  server = Bun.spawn(["uv", "run", "keel", "serve", "examples/fleet", "--transport", "http", "--port", String(PORT)], {
     cwd: ROOT,
     env: { ...process.env, KEEL_SECRET: SECRET },
     stdout: "ignore",

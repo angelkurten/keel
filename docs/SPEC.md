@@ -453,7 +453,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 4. Replay produces a graph equal to the one built incrementally.
 5. `annotate` to a scope in `requires_evidence` without evidence raises.
 6. `task`/`agent` annotations carry `expires_at`; `tenant`/`global` with `never` TTL do not.
-7. The core imports nothing from `cartridges/`; every reference cartridge validates and passes after any core change.
+7. The core imports nothing from `cartridges/` or `examples/`; every example cartridge validates and passes after any core change.
 8. Ingest performs no I/O other than reading the adapter and writing the store.
 9. Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.
 10. Scope reads hold (§6): agent memory reaches only its author, task memory only its task, global memory every tenant.

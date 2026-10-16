@@ -81,9 +81,9 @@ Expose them over MCP with `keel serve` and point any agent framework at them. Th
 ```bash
 git clone https://github.com/angelkurten/keel && cd keel
 uv sync --extra dev
-uv run keel validate cartridges/fleet
-uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
-uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
+uv run keel validate examples/fleet
+uv run keel ingest examples/fleet examples/fleet/events.jsonl
+uv run keel context examples/fleet examples/fleet/events.jsonl unit:MXK-4821
 ```
 
 Then:

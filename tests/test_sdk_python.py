@@ -14,7 +14,7 @@ import pytest
 from keel import load_cartridge
 from keel.sdk import generate
 
-FLEET, TENANT, SECRET = "cartridges/fleet", "acme-logistics", "s3cret"
+FLEET, TENANT, SECRET = "examples/fleet", "acme-logistics", "s3cret"
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ def test_generated_python_client(tmp_path, server):
 
 def test_generated_python_is_valid_for_every_cartridge(tmp_path):
     for cart in ("fleet", "crm", "finance", "clinics"):
-        code = generate("python", load_cartridge(f"cartridges/{cart}"))
+        code = generate("python", load_cartridge(f"examples/{cart}"))
         compile(code, f"keel_{cart}.py", "exec")
         m = _load(tmp_path, code, f"keel_{cart}")
         assert m.CARTRIDGE == cart and len(m.KINDS) >= 3
@@ -179,7 +179,7 @@ def _serve(*args, scheme="http"):
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]
     proc = subprocess.Popen(
-        [sys.executable, "-m", "keel.cli", "serve", FLEET, "--transport", "http", "--port", str(port), "--events", "examples/events/fleet.jsonl", *args],
+        [sys.executable, "-m", "keel.cli", "serve", FLEET, "--transport", "http", "--port", str(port), "--events", "examples/fleet/events.jsonl", *args],
         env={**os.environ, "KEEL_SECRET": SECRET}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     return proc, f"{scheme}://127.0.0.1:{port}"

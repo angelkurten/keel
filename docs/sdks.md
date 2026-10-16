@@ -14,7 +14,7 @@ Every generator reads the same `keel schema` document and writes the same things
 ## Python
 
 ```bash
-keel sdk python cartridges/fleet -o app/keel_fleet.py
+keel sdk python examples/fleet -o app/keel_fleet.py
 ```
 
 ```python
@@ -31,7 +31,7 @@ Payloads are `TypedDict`s, so your editor checks the keys; a refusal raises `kee
 
 ```bash
 go get github.com/angelkurten/keel/sdk/go
-keel sdk go cartridges/fleet -o internal/keelfleet/keel_fleet.go --package keelfleet
+keel sdk go examples/fleet -o internal/keelfleet/keel_fleet.go --package keelfleet
 ```
 
 Payloads are structs with JSON tags, enums are typed string constants, nullable fields are pointers, and `Emit<Event>(tenant, subject, occurredAt, source, payload)` returns a `keel.Envelope`. Errors are `*keel.Error` with `Status` and `Detail`. The output is `gofmt` and `go vet` clean.
@@ -40,7 +40,7 @@ Payloads are structs with JSON tags, enums are typed string constants, nullable 
 
 ```bash
 composer require keel-context/sdk
-keel sdk php cartridges/fleet -o src/Keel/Fleet.php --package 'App\Keel\Fleet'
+keel sdk php examples/fleet -o src/Keel/Fleet.php --package 'App\Keel\Fleet'
 ```
 
 Payloads are readonly value objects with `toArray()`, enums become PHP 8.1 enums, `Emit::<event>(...)` returns the envelope as an array and `Keel::client(...)` the client. Errors are `Keel\Sdk\KeelError`.
@@ -48,7 +48,7 @@ Payloads are readonly value objects with `toArray()`, enums become PHP 8.1 enums
 ## TypeScript
 
 ```bash
-uv run keel sdk typescript cartridges/fleet -o src/keel-fleet.ts     # in your product's repo
+uv run keel sdk typescript examples/fleet -o src/keel-fleet.ts     # in your product's repo
 npm install @keel-context/sdk                                         # or bun add
 ```
 

@@ -5,7 +5,7 @@ too: pass your own `connect` callable.
 
     store = MysqlStore.from_url("mysql://keel:secret@db.internal:3306/keel")
     store = MysqlStore(lambda: pymysql.connect(host=..., user=..., password=..., database=..., autocommit=True))
-    keel serve cartridges/fleet --transport http --db mysql://keel:secret@db.internal:3306/keel?prefix=keel_
+    keel serve examples/fleet --transport http --db mysql://keel:secret@db.internal:3306/keel?prefix=keel_
 
 Tables are created on first use (CREATE TABLE IF NOT EXISTS). Timestamps are ISO 8601 strings in
 UTC; JSON columns hold attrs and fact values. The SQL lives in `keel.store.sql.SqlStore`.

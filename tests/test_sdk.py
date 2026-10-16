@@ -23,7 +23,7 @@ def test_json_schema_subset_maps_to_typescript_types():
 
 
 def test_typescript_file_for_fleet():
-    ts = generate("typescript", load_cartridge("cartridges/fleet"))
+    ts = generate("typescript", load_cartridge("examples/fleet"))
     assert 'import { Client, envelope, type ClientOptions, type Envelope } from "@keel-context/sdk";' in ts
     assert "export type TireDepthMeasuredPayload = { unit_id: string; position: string; depth_mm: number };" in ts
     assert "export type TicketOpenedPayload = { id: string; kind: string; urgency: string; inspection_id?: string | null };" in ts
@@ -34,13 +34,13 @@ def test_typescript_file_for_fleet():
 
 def test_sdk_command_writes_and_checks(tmp_path):
     out = tmp_path / "keel-fleet.ts"
-    res = CliRunner().invoke(app, ["sdk", "typescript", "cartridges/fleet", "-o", str(out)])
+    res = CliRunner().invoke(app, ["sdk", "typescript", "examples/fleet", "-o", str(out)])
     assert res.exit_code == 0 and out.exists(), res.output
-    assert CliRunner().invoke(app, ["sdk", "typescript", "cartridges/fleet", "-o", str(out), "--check"]).exit_code == 0
+    assert CliRunner().invoke(app, ["sdk", "typescript", "examples/fleet", "-o", str(out), "--check"]).exit_code == 0
     out.write_text("stale", encoding="utf-8")
-    res = CliRunner().invoke(app, ["sdk", "typescript", "cartridges/fleet", "-o", str(out), "--check"])
+    res = CliRunner().invoke(app, ["sdk", "typescript", "examples/fleet", "-o", str(out), "--check"])
     assert res.exit_code == 1 and "stale" in res.output
-    assert CliRunner().invoke(app, ["sdk", "rust", "cartridges/fleet"]).exit_code != 0
+    assert CliRunner().invoke(app, ["sdk", "rust", "examples/fleet"]).exit_code != 0
 
 
 def test_optional_enum_in_every_template(tmp_path):

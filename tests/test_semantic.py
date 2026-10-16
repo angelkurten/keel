@@ -16,7 +16,7 @@ from keel.cli import app
 from keel.ingest import JsonlAdapter
 from keel.semantic import HashEmbedder, MemoryIndex, index_tenant, load_embedder, load_index, render
 
-FLEET, EVENTS, TENANT = "cartridges/fleet", "examples/events/fleet.jsonl", "acme-logistics"
+FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 
 
 def _indexes():

@@ -55,14 +55,14 @@ Expose them over MCP (`keel serve`) and point any agent framework at them. Decla
 
 ```bash
 uv sync --extra dev
-uv run keel validate cartridges/fleet --events examples/events/fleet.jsonl
-uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
-uv run keel context cartridges/fleet examples/events/fleet.jsonl unit:MXK-4821
+uv run keel validate examples/fleet --events examples/fleet/events.jsonl
+uv run keel ingest examples/fleet examples/fleet/events.jsonl
+uv run keel context examples/fleet examples/fleet/events.jsonl unit:MXK-4821
 ```
 
 Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes). Settings (database, secret, embeddings keys) go in a `.env`: copy [`.env.example`](.env.example) ([reference](docs/connect.md#configuration)).
 
-In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php cartridges/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
+In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php examples/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
 
 ## Connect a real event stream
 
@@ -70,13 +70,13 @@ Point an MCP client at the five tools:
 
 ```bash
 uv sync --extra mcp
-uv run keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+uv run keel serve examples/fleet --tenant acme-logistics --events examples/fleet/events.jsonl
 ```
 
 With Claude Code, one command registers it and the agent sees exactly five tools:
 
 ```bash
-claude mcp add keel -- uv run --directory $PWD keel serve cartridges/fleet --tenant acme-logistics --events examples/events/fleet.jsonl
+claude mcp add keel -- uv run --directory $PWD keel serve examples/fleet --tenant acme-logistics --events examples/fleet/events.jsonl
 ```
 
 Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [connect](docs/connect.md#serve-the-tools-over-mcp). A backend, or many tenants from one process, use the same five as a JSON API: `keel serve --transport http` (`/v1/context`, `/v1/events`, ... with OpenAPI; tenant and agent per request).
@@ -130,8 +130,9 @@ Design rules the core enforces:
 
 ```
 keel/            core: envelope, handlers, store, scopes, cartridge loader, ingest, tools, cli
-cartridges/      fleet (reference), crm, finance and clinics: four domains, one core, no core change between them
-examples/        sample event streams, a minimal agent and a multi-agent workflow (workflow_fleet_ops.py)
+cartridges/      your own cartridges (empty here)
+examples/        fleet (reference), crm, finance and clinics: four domains, one core, no core change between them;
+                 each a cartridge, its events and its test; fleet also has a minimal agent and a multi-agent workflow
 sdk/             SDK runtimes: typescript, go, php (the Python client ships in keel)
 evals/           the semantic-search eval bench
 docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, sdks, SPEC

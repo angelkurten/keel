@@ -24,7 +24,7 @@ jobs:
         with:
           php-version: "8.3"
       - run: uv sync --extra dev
-      - run: uv run keel sdk php cartridges/fleet -o sdk/php/test/KeelFleet.php --check
+      - run: uv run keel sdk php examples/fleet -o sdk/php/test/KeelFleet.php --check
       - run: php -l sdk/php/test/KeelFleet.php && bash sdk/php/test/run.sh
       - name: push the subtree and the tag to keel-sdk-php
         env:

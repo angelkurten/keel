@@ -30,16 +30,16 @@ def test_cli_reads_db_and_more_from_an_env_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     (tmp_path / ".env").write_text(f"KEEL_DB={tmp_path / 'from-env.db'}\n", encoding="utf-8")
-    res = CliRunner().invoke(app, ["ingest", f"{root}/cartridges/fleet", f"{root}/examples/events/fleet.jsonl"])
+    res = CliRunner().invoke(app, ["ingest", f"{root}/examples/fleet", f"{root}/examples/fleet/events.jsonl"])
     assert res.exit_code == 0 and (tmp_path / "from-env.db").exists(), res.output
-    res = CliRunner().invoke(app, ["--env-file", "missing.env", "validate", f"{root}/cartridges/fleet"], env={"COLUMNS": "300"})
+    res = CliRunner().invoke(app, ["--env-file", "missing.env", "validate", f"{root}/examples/fleet"], env={"COLUMNS": "300"})
     assert res.exit_code != 0 and "does not exist" in res.output
 
 
 def test_keel_tenant_is_the_default_tenant(tmp_path, monkeypatch):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     db = str(tmp_path / "k.db")
-    res = CliRunner().invoke(app, ["ingest", f"{root}/cartridges/fleet", f"{root}/examples/events/fleet.jsonl", "--db", db])
+    res = CliRunner().invoke(app, ["ingest", f"{root}/examples/fleet", f"{root}/examples/fleet/events.jsonl", "--db", db])
     assert res.exit_code == 0, res.output
     monkeypatch.setenv("KEEL_TENANT", "acme-logistics")
     res = CliRunner().invoke(app, ["export", "--db", db])
@@ -52,10 +52,10 @@ def test_keel_db_reaches_every_command_with_db(tmp_path, monkeypatch):
     """A container is configured by its environment: no command with --db may require the flag."""
     monkeypatch.chdir(tmp_path)
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cart = f"{root}/cartridges/fleet"
+    cart = f"{root}/examples/fleet"
     monkeypatch.setenv("KEEL_DB", str(tmp_path / "k.db"))
     monkeypatch.setenv("KEEL_TENANT", "acme-logistics")
-    assert CliRunner().invoke(app, ["ingest", cart, f"{root}/examples/events/fleet.jsonl"]).exit_code == 0
+    assert CliRunner().invoke(app, ["ingest", cart, f"{root}/examples/fleet/events.jsonl"]).exit_code == 0
     for args in (["export"], ["expire"], ["consolidate", cart], ["index", cart, "--index", "memory", "--embedder", "hash"]):
         res = CliRunner().invoke(app, args)
         assert res.exit_code == 0 and "Missing option" not in res.output, (args, res.output)

@@ -9,7 +9,7 @@ from keel import MemoryStore, SqliteStore
 
 
 def _example():
-    spec = importlib.util.spec_from_file_location("workflow_fleet_ops", Path("examples/workflow_fleet_ops.py"))
+    spec = importlib.util.spec_from_file_location("workflow_fleet_ops", Path("examples/fleet/workflow_ops.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

@@ -16,7 +16,7 @@ from keel import Ingestor, MemoryStore, Scope, SqliteStore, Tools, load_cartridg
 from keel.cli import app
 from keel.ingest import JsonlAdapter
 
-FLEET, EVENTS, TENANT = "cartridges/fleet", "examples/events/fleet.jsonl", "acme-logistics"
+FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 UTC = timezone.utc
 
 
@@ -170,8 +170,8 @@ def test_mcp_serve_reads_and_writes_a_db_file(tmp_path):
 
 def test_ingest_is_idempotent_and_order_independent(store):
     """At-least-once delivery: the same batch twice changes nothing; any arrival order gives the same history."""
-    c = load_cartridge("cartridges/finance")
-    events = list(JsonlAdapter("examples/events/finance.jsonl"))
+    c = load_cartridge("examples/finance")
+    events = list(JsonlAdapter("examples/finance/events.jsonl"))
     ing = Ingestor(c, store)
     assert ing.ingest(events, strict=True).processed == 13
     t = Tools(c, store, "hogar-demo")

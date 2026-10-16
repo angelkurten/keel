@@ -10,7 +10,7 @@ nothing to inherit, nothing to register:
 
 Point the CLI at them with a spec, `module:factory?param=value`:
 
-    keel index cartridges/fleet --tenant acme-logistics --db keel.db \
+    keel index examples/fleet --tenant acme-logistics --db keel.db \
       --index examples.custom_adapters:make_index?path=vectors.db \
       --embedder examples.custom_adapters:make_embedder
 
@@ -87,8 +87,8 @@ def make_embedder() -> ModelEmbedder:
 
 
 if __name__ == "__main__":
-    c, store = load_cartridge("cartridges/fleet"), SqliteStore()
-    Ingestor(c, store).ingest(JsonlAdapter("examples/events/fleet.jsonl"), strict=True)
+    c, store = load_cartridge("examples/fleet"), SqliteStore()
+    Ingestor(c, store).ingest(JsonlAdapter("examples/fleet/events.jsonl"), strict=True)
     index, embedder = make_index(), make_embedder()
     report = index_tenant(store, "acme-logistics", embedder, index, policy=c.semantic)
     print("indexed:", report.indexed)

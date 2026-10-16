@@ -8,7 +8,7 @@
 Any project writes its own adapter by implementing the protocol and points Keel at it with a spec,
 the same way stores are pluggable:
 
-    keel index cartridges/fleet --tenant acme --db keel.db --index my_pkg.vectors:make?url=... --embedder my_pkg.emb:make
+    keel index examples/fleet --tenant acme --db keel.db --index my_pkg.vectors:make?url=... --embedder my_pkg.emb:make
     KEEL_VECTOR_INDEX=my_pkg.vectors:make KEEL_EMBEDDER=my_pkg.emb:make uv run pytest tests/test_semantic.py   # conformance
 
 Indexing runs outside ingest (ingest stays deterministic, no network: design rule 10). One document

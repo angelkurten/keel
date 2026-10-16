@@ -4,7 +4,7 @@ Runtime for the clients `keel sdk typescript <cartridge>` generates: the event e
 
 ```bash
 npm install @keel-context/sdk          # or: bun add @keel-context/sdk
-keel sdk typescript cartridges/fleet -o src/keel-fleet.ts   # from the Keel repo of your cartridge
+keel sdk typescript examples/fleet -o src/keel-fleet.ts   # from the Keel repo of your cartridge
 ```
 
 ```ts

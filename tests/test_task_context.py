@@ -13,7 +13,7 @@ from keel import Event, Ingestor, MemoryStore, SqliteStore, Tools, load_cartridg
 from keel.ingest import JsonlAdapter
 from keel.semantic import SPLIT, HashEmbedder, MemoryIndex, index_tenant
 
-FLEET, EVENTS, TENANT = "cartridges/fleet", "examples/events/fleet.jsonl", "acme-logistics"
+FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 UTC = timezone.utc
 STAMPS = {"recorded_at", "as_of", "closed_at", "watermark"}
 

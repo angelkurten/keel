@@ -20,7 +20,7 @@ jobs:
         with:
           go-version: "1.22"
       - run: uv sync --extra dev
-      - run: uv run keel sdk go cartridges/fleet -o sdk/go/fleet/keel_fleet.go --package fleet --check
+      - run: uv run keel sdk go examples/fleet -o sdk/go/fleet/keel_fleet.go --package fleet --check
       - run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
         working-directory: sdk/go
       - name: publish to the module proxy

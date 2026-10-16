@@ -1,6 +1,6 @@
 """MCP server exposing the five tools. Optional dependency: `pip install keel[mcp]`.
 
-    keel serve cartridges/fleet --tenant heineken-mx --events examples/events/fleet.jsonl
+    keel serve examples/fleet --tenant heineken-mx --events examples/fleet/events.jsonl
 
 Any MCP-capable agent (Claude, an OpenAI agent, LangGraph via an MCP client)
 then sees context/history/search/annotate/related and nothing else.

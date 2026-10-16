@@ -10,7 +10,7 @@ from keel import Ingestor, MemoryStore, Tools, load_cartridge
 from keel.agents import parse_agents
 from keel.ingest import JsonlAdapter
 
-FLEET, EVENTS, TENANT = "cartridges/fleet", "examples/events/fleet.jsonl", "acme-logistics"
+FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 AGENTS = {
     "tires-bot": {
         "description": "Reads tire depth, writes task memory for the inspection audit.",

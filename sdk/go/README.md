@@ -4,7 +4,7 @@ Runtime for the clients `keel sdk go <cartridge> --package <pkg>` generates: the
 
 ```bash
 go get github.com/angelkurten/keel/sdk/go
-keel sdk go cartridges/fleet -o internal/keelfleet/keel_fleet.go --package keelfleet
+keel sdk go examples/fleet -o internal/keelfleet/keel_fleet.go --package keelfleet
 ```
 
 ```go

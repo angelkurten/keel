@@ -1,6 +1,6 @@
 """SDK generators: the cartridge is the interface definition, these templates are the compilers.
 
-    keel sdk typescript cartridges/fleet -o src/keel-fleet.ts
+    keel sdk typescript examples/fleet -o src/keel-fleet.ts
 
 Every template reads the same input, `Cartridge.schema()` (what `keel schema` prints), and writes
 one file for the product's repo: payload types, `emit` constructors, subject helpers and
