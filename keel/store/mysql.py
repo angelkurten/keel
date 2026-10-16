@@ -24,6 +24,7 @@ from keel.store.sql import SqlStore
 class MysqlStore(SqlStore):
     PLACEHOLDER = "%s"
     ENTITY_ORDER = "seq"
+    PER_THREAD_READS = True
     SCHEMA = """
     CREATE TABLE IF NOT EXISTS entities (
       seq BIGINT AUTO_INCREMENT PRIMARY KEY, tenant VARCHAR(191) NOT NULL, kind VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL,
@@ -55,7 +56,7 @@ class MysqlStore(SqlStore):
     )
 
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
-        self._last_ping = time.monotonic()
+        self._pings: dict[int, float] = {}  # per connection: the shared one and each thread's reader
         super().__init__(connect, prefix)
 
     @classmethod
@@ -96,12 +97,12 @@ class MysqlStore(SqlStore):
     def _cursor(self, conn: Any) -> Any:
         pymysql = type(conn).__module__.startswith("pymysql")
         now = time.monotonic()
-        if now - self._last_ping > 10:  # servers drop idle connections: reconnect after a pause, not per statement
+        if now - self._pings.setdefault(id(conn), now) > 10:  # servers drop idle connections: reconnect after a pause, not per statement
             if pymysql:
                 conn.ping()  # reconnects by default
             else:
                 conn.ping(reconnect=True, attempts=1, delay=0)
-            self._last_ping = now
+        self._pings[id(conn)] = now
         if pymysql:
             import pymysql.cursors
 

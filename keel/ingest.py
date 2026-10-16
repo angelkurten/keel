@@ -54,6 +54,9 @@ class IngestReport:
     errors: list[tuple[str, str]] = field(default_factory=list)
 
 
+BATCH = 5000  # events per commit for a bulk load (a file, a replay): fewer prefetch statements per event
+
+
 def _chunks(events: Iterable[Event], size: int) -> Iterator[list[Event]]:
     """Lists of up to `size` events. With size 1 a streaming adapter is never buffered."""
     buf: list[Event] = []
@@ -67,10 +70,13 @@ def _chunks(events: Iterable[Event], size: int) -> Iterator[list[Event]]:
 
 
 class Ingestor:
-    def __init__(self, cartridge: Cartridge, store: Store) -> None:
+    def __init__(self, cartridge: Cartridge, store: Store, keep_log: bool = False) -> None:
         self.cartridge = cartridge
         self.store = store
-        self.log: list[Event] = []  # append-only; a real deployment keeps this in the bus
+        # opt-in copy of every event, for replay(tenant) without an external log: a development
+        # convenience that grows with every event, so a server or a bulk load leaves it off
+        self.keep_log = keep_log
+        self.log: list[Event] = []
 
     def ingest(self, events: Iterable[Event], strict: bool = False, batch: int = 1) -> IngestReport:
         """Dispatch every event. When the store has transactions, each event is one (its primitives and
@@ -96,7 +102,8 @@ class Ingestor:
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
                         continue
-                    self.log.append(ev)
+                    if self.keep_log:
+                        self.log.append(ev)
                     try:
                         self.cartridge.registry.dispatch(ev, self.store)
                         report.processed += 1
@@ -118,12 +125,14 @@ class Ingestor:
         land around it, as they did when they first arrived.
 
         `events` is the external log (the bus, the outbox table, a .jsonl file): the truth a
-        deployment replays from. Without it, the in-memory log of this process is used.
+        deployment replays from. Without it, the in-memory log of this process is used (keep_log=True).
         """
+        if events is None and not self.keep_log:
+            raise ValueError("replay needs events (the bus, the outbox table, a .jsonl file), or an Ingestor(keep_log=True)")
         reset = getattr(self.store, "reset", None)
         if reset:
             # annotations are earned memory, not derived from events: the log cannot rebuild them, so they stay
             reset(tenant, keep_annotations=True) if _accepts(reset, "keep_annotations") else reset(tenant)
         if events is None:
             events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
-        return self._ingest((e for e in events if e.tenant == tenant), False, 500, source=events)
+        return self._ingest((e for e in events if e.tenant == tenant), False, BATCH, source=events)

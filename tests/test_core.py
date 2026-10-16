@@ -15,7 +15,7 @@ CRM = "cartridges/crm"
 def _run(cart, events):
     c = load_cartridge(cart)
     s = MemoryStore()
-    ing = Ingestor(c, s)
+    ing = Ingestor(c, s, keep_log=True)
     report = ing.ingest(JsonlAdapter(events), strict=True)
     return c, s, ing, report
 
@@ -189,3 +189,13 @@ def test_iso_parsing_accepts_z_and_bare_dates():
     c = load_cartridge("cartridges/clinics")
     ev = Event(tenant="t", type="appointment.booked", subject="patient:P-9", occurred_at=datetime(2026, 1, 1, tzinfo=UTC), source="s", payload={"id": "A-9", "starts_at": "not a date", "treatment": "x"})
     assert c.check_event(ev) == ["'appointment.booked' payload 'starts_at' should be datetime, got str"]
+
+
+def test_ingestor_keeps_no_log_unless_asked():
+    c, s = load_cartridge(FLEET), MemoryStore()
+    ing = Ingestor(c, s)  # a server or a bulk load: memory must not grow with every event
+    assert ing.ingest(JsonlAdapter("examples/events/fleet.jsonl"), strict=True).processed
+    assert ing.log == []
+    with pytest.raises(ValueError, match="replay needs events"):
+        ing.replay("acme-logistics")
+    assert ing.replay("acme-logistics", events=JsonlAdapter("examples/events/fleet.jsonl")).processed

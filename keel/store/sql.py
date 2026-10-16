@@ -95,6 +95,18 @@ FACT_COLUMNS = (
     "tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
     "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace"
 )
+# Two indexed branches, never `a = ? OR b = ?`: without table statistics SQLite plans that OR on the
+# tenant prefix alone and scans the whole tenant, so each read (and ingest) grew with the tenant.
+RELATIONS_OF = "SELECT * FROM relations WHERE tenant = ? AND src = ? UNION ALL SELECT * FROM relations WHERE tenant = ? AND dst = ? ORDER BY seq"
+CHANGES = "SELECT * FROM facts WHERE tenant = ? AND recorded_at > ? UNION ALL SELECT * FROM facts WHERE tenant = ? AND closed_at > ? ORDER BY seq"
+
+
+def _once(rows: list[Any]) -> list[Any]:
+    """Rows of a UNION ALL, each seq once (a self-link, or a fact recorded and closed after the mark)."""
+    seen: set[int] = set()
+    return [r for r in rows if not (r["seq"] in seen or seen.add(r["seq"]))]
+
+
 INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(17))})"
 
 
@@ -109,20 +121,22 @@ class SqlStore:
     UPSERT_ENTITY = ""  # (tenant, kind, id, ref, attrs); on conflict update ref and attrs
     REMEMBER = ""  # (tenant, id); insert or ignore
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
+    PER_THREAD_READS = False  # a networked database: each thread reads on its own connection, never queued behind the lock
 
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
         """`prefix` names the tables `<prefix>entities`, `<prefix>facts`... for a database shared with an application."""
         self.prefix = prefix
         self._lock = threading.RLock()  # re-entrant: a transaction holds it across its statements
-        self._in_tx = False
+        # A transaction, its read cache and a batch overlay belong to the thread that opened them: a server
+        # thread that reads or writes meanwhile waits for the lock or reads committed state, never the batch.
         # ponytail: reads cached only inside a transaction (we hold the lock, nobody else writes):
         # bulk loads repeat subjects, and every read skipped is a network round trip skipped.
-        self._cache: dict[tuple[Any, ...], Any] | None = None
-        self._bulk: _Bulk | None = None  # the batch overlay, see bulk()
+        self._mine = threading.local()
+        self._connect = connect
         self.db = connect()
         self._prepare(self.db)
         for stmt in self.SCHEMA.split(";"):
@@ -134,6 +148,10 @@ class SqlStore:
                 self._ddl(f"ALTER TABLE facts ADD COLUMN {name} {sqltype}", lambda n=name: n in self._columns("facts"))
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
                 self._ddl(index, lambda i=index: self._has_index("facts", re.search(r"INDEX (\w+)", i).group(1)))
+        if not self._has_index("relations", "relations_recorded"):  # the watermark's MAX, without a tenant scan
+            self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
+        if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
+            self._ddl("CREATE INDEX facts_open ON facts (tenant, subject, valid_to)", lambda: self._has_index("facts", "facts_open"))
         if not self._has_index("facts", "facts_key"):  # annotate(key=) stays one write even across processes
             try:
                 self._ddl("CREATE UNIQUE INDEX facts_key ON facts (tenant, subject, idempotency_key)", lambda: self._has_index("facts", "facts_key"))
@@ -141,6 +159,39 @@ class SqlStore:
                 if type(exc).__name__ != "IntegrityError":  # every driver's name for it
                     raise
                 warnings.warn(f"facts_key not created, so annotate(key=) is not race-safe here: {exc}", stacklevel=2)
+
+    # per-thread state: see __init__
+    @property
+    def _in_tx(self) -> bool:
+        return getattr(self._mine, "in_tx", False)
+
+    @_in_tx.setter
+    def _in_tx(self, v: bool) -> None:
+        self._mine.in_tx = v
+
+    @property
+    def _cache(self) -> dict[tuple[Any, ...], Any] | None:
+        return getattr(self._mine, "cache", None)
+
+    @_cache.setter
+    def _cache(self, v: dict[tuple[Any, ...], Any] | None) -> None:
+        self._mine.cache = v
+
+    @property
+    def _bulk(self) -> _Bulk | None:
+        return getattr(self._mine, "bulk", None)
+
+    @_bulk.setter
+    def _bulk(self, v: _Bulk | None) -> None:
+        self._mine.bulk = v
+
+    def _reader(self) -> Any:
+        """This thread's read connection (PER_THREAD_READS): autocommit, so each read sees what is committed."""
+        conn = getattr(self._mine, "conn", None)
+        if conn is None:
+            conn = self._mine.conn = self._connect()
+            self._prepare(conn)
+        return conn
 
     def _ddl(self, stmt: str, done: Callable[[], bool]) -> None:
         """A migration step several processes may race to run on one database: when it fails because
@@ -238,6 +289,10 @@ class SqlStore:
                 self._bulk = None
 
     def _rows(self, sql: str, params: tuple[Any, ...] = ()) -> list[Any]:
+        if self.PER_THREAD_READS and not self._in_tx:  # inside its own transaction a thread reads what it wrote
+            cur = self._cursor(self._reader())
+            cur.execute(self._sql(sql), params)
+            return list(cur.fetchall())
         with self._lock:
             cur = self._cursor(self.db)
             cur.execute(self._sql(sql), params)
@@ -389,8 +444,68 @@ class SqlStore:
     ) -> list[Fact]:
         if self._bulk is not None:
             return filter_facts(self._bulk.facts(tenant, subject), at, since, until, known_at)
-        rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? ORDER BY seq", (tenant, subject))
+        rows = self._fact_rows(tenant, [subject], at if known_at is None else None)
         return filter_facts((_fact(r) for r in rows), at, since, until, known_at)
+
+    def _fact_rows(self, tenant: str, subjects: list[str], open_at: datetime | None) -> list[Any]:
+        """Facts of some subjects; with `open_at`, only those still open then (valid_to after it, or none):
+        the state now reads the few current facts through facts_open, not a history that keeps growing.
+        Not with `known_at`: a close learned later than it still counts as open there."""
+        marks = _in(len(subjects))
+        if open_at is None:
+            return self._rows(f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({marks}) ORDER BY seq", (tenant, *subjects))
+        return self._rows(
+            f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({marks}) AND valid_to IS NULL UNION ALL "
+            f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({marks}) AND valid_to > ? ORDER BY seq",
+            (tenant, *subjects, tenant, *subjects, _ts(open_at)),
+        )
+
+    def facts_of(self, tenant: str, subjects: list[str], **kw: Any) -> dict[str, list[Fact]]:
+        """`facts` for many subjects in a few statements (optional on a store: Tools falls back to one
+        `facts` call per subject). A neighbourhood or a rule sweep is one round trip per chunk."""
+        out: dict[str, list[Fact]] = {s: [] for s in subjects}
+        if self._bulk is not None:
+            return {s: self.facts(tenant, s, **kw) for s in subjects}
+        subs = sorted(out)
+        open_at = kw.get("at") if kw.get("known_at") is None else None
+        for i in range(0, len(subs), _Bulk.CHUNK):
+            for r in self._fact_rows(tenant, subs[i : i + _Bulk.CHUNK], open_at):
+                out[r["subject"]].append(_fact(r))
+        return {s: filter_facts(fs, kw.get("at"), kw.get("since"), kw.get("until"), kw.get("known_at")) for s, fs in out.items()}
+
+    def relations_of(self, tenant: str, keys: list[str], at: datetime | None = None) -> dict[str, list[Relation]]:
+        """`relations` for many keys in a few statements (optional, like `facts_of`)."""
+        if self._bulk is not None:
+            return {k: self.relations(tenant, k, at=at) for k in keys}
+        out: dict[str, list[Relation]] = {k: [] for k in keys}
+        ks = sorted(out)
+        for i in range(0, len(ks), _Bulk.CHUNK):
+            part = ks[i : i + _Bulk.CHUNK]
+            marks = _in(len(part))
+            rows = self._rows(
+                f"SELECT * FROM relations WHERE tenant = ? AND src IN ({marks}) UNION ALL "
+                f"SELECT * FROM relations WHERE tenant = ? AND dst IN ({marks}) ORDER BY seq",
+                (tenant, *part, tenant, *part),
+            )
+            for r in _once(rows):
+                rel = _relation(r)
+                for k in {rel.src, rel.dst}:
+                    if k in out:
+                        out[k].append(rel)
+        return {k: filter_relations(rs, None, at) for k, rs in out.items()}
+
+    def entities_of(self, tenant: str, keys: list[str]) -> dict[str, Entity | None]:
+        """`entity` for many keys in a few statements (optional, like `facts_of`)."""
+        out: dict[str, Entity | None] = {k: None for k in keys}
+        if self._bulk is not None:
+            return {k: self.entity(tenant, k) for k in keys}
+        ks = sorted(out)
+        for i in range(0, len(ks), _Bulk.CHUNK):
+            pairs = [tuple(k.partition(":")[::2]) for k in ks[i : i + _Bulk.CHUNK]]
+            flat = [x for kind, id in pairs for x in (kind, id)]
+            for r in self._rows(f"SELECT * FROM entities WHERE tenant = ? AND (kind, id) IN ({', '.join('(?, ?)' for _ in pairs)})", (tenant, *flat)):
+                out[f"{r['kind']}:{r['id']}"] = _entity(r)
+        return out
 
     def entities(self, tenant: str, kind: str | None = None) -> list[Entity]:
         """Every entity of a kind (or all), ordered by key: the work list of a sweep."""
@@ -403,7 +518,7 @@ class SqlStore:
     def changes(self, tenant: str, after: datetime) -> list[Fact]:
         """Facts recorded or closed after a watermark, across subjects."""
         a = _ts(after)
-        rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND (recorded_at > ? OR closed_at > ?) ORDER BY seq", (tenant, a, a))
+        rows = _once(self._rows(CHANGES, (tenant, a, tenant, a)))
         now = utcnow()
         return [f for f in changed_after((_fact(r) for r in rows), after) if f.expires_at is None or f.expires_at > now]
 
@@ -413,7 +528,8 @@ class SqlStore:
 
     def watermark(self, tenant: str) -> datetime | None:
         """The latest transaction time in the tenant (facts and links): a cursor for `changes`."""
-        row = self._one("SELECT MAX(recorded_at) AS r, MAX(closed_at) AS c FROM facts WHERE tenant = ?", (tenant,))
+        # one MAX per statement: each is then a seek on its index; two in one SELECT scan the tenant
+        row = self._one("SELECT (SELECT MAX(recorded_at) FROM facts WHERE tenant = ?) AS r, (SELECT MAX(closed_at) FROM facts WHERE tenant = ?) AS c", (tenant, tenant))
         rel = self._one("SELECT MAX(recorded_at) AS r FROM relations WHERE tenant = ?", (tenant,))
         times = [_dt(row[k]) for k in ("r", "c") if row and row[k]] + ([_dt(rel["r"])] if rel and rel["r"] else [])
         return max(times) if times else None
@@ -426,7 +542,7 @@ class SqlStore:
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
         if self._bulk is not None:
             return filter_relations(self._bulk.relations(tenant, key), rel, at)
-        rows = self._rows("SELECT * FROM relations WHERE tenant = ? AND (src = ? OR dst = ?) ORDER BY seq", (tenant, key, key))
+        rows = _once(self._rows(RELATIONS_OF, (tenant, key, tenant, key)))
         return filter_relations((_relation(r) for r in rows), rel, at)
 
     def search(self, tenant: str, text: str) -> list[Entity | Fact]:
@@ -484,7 +600,10 @@ class _Bulk:
 
     Keys are prefetched from the batch's envelope subjects; anything a handler reaches beyond them
     (a payload id, a neighbour) is loaded lazily, one key at a time, merged with the batch's own
-    unsaved writes so reads never miss them. `flush` writes entities, relations, facts, closes and
+    unsaved writes so reads never miss them. A subject's facts are prefetched only where the batch
+    can still change them: open, or closing after the batch's earliest event. A history that keeps
+    growing is never read whole per batch; a handler that writes before that instant, or reads the
+    facts, loads the rest of that one subject first. `flush` writes entities, relations, facts, closes and
     the dedupe marks in a handful of multi-row statements.
     """
 
@@ -503,14 +622,18 @@ class _Bulk:
         self.seen: dict[str, set[str]] = {}
         self.known_ids: dict[str, set[str]] = {}  # ids whose presence we checked
         self.new_ids: list[tuple[str, str]] = []
+        self.partial: dict[tuple[str, str], datetime] = {}  # subjects whose facts closed before this instant are not loaded
 
     # ---- prefetch: the batch's subjects and ids in a few statements ----------------------------
 
     def prefetch(self, events: list[Event]) -> None:
         by_tenant: dict[str, tuple[set[str], set[str]]] = {}
+        since: dict[str, datetime] = {}  # per tenant, the batch's earliest event
         for ev in events:
             subjects, ids = by_tenant.setdefault(ev.tenant, (set(), set()))
             ids.add(ev.id)
+            if ev.tenant not in since or ev.occurred_at < since[ev.tenant]:
+                since[ev.tenant] = ev.occurred_at
         for tenant, (_, ids) in by_tenant.items():  # ids first: a redelivered batch costs one lookup and no state
             known = self.known_ids.setdefault(tenant, set())
             present = self.seen.setdefault(tenant, set())
@@ -530,7 +653,13 @@ class _Bulk:
                 for sub in part:
                     self.facts_by.setdefault((tenant, sub), [])
                     self.rels_by.setdefault((tenant, sub), [])
-                for row in self.s._rows(f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({_in(len(part))}) ORDER BY seq", (tenant, *part)):
+                    self.partial[(tenant, sub)] = since[tenant]
+                marks = _in(len(part))
+                for row in self.s._rows(
+                    f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({marks}) AND valid_to IS NULL UNION ALL "
+                    f"SELECT * FROM facts WHERE tenant = ? AND subject IN ({marks}) AND valid_to > ? ORDER BY seq",
+                    (tenant, *part, tenant, *part, _ts(since[tenant])),
+                ):
                     self.facts_by[(tenant, row["subject"])].append([_fact(row), row["seq"]])
                 pairs = [tuple(sub.partition(":")[::2]) for sub in part]
                 flat = [x for kind, id in pairs for x in (kind, id)]
@@ -566,13 +695,23 @@ class _Bulk:
             self.facts_by[k] = [[_fact(r), r["seq"]] for r in rows] + [[f, None] for f in self.new_facts if f.tenant == tenant and f.subject == subject]
         return self.facts_by[k]
 
+    def _whole(self, tenant: str, subject: str) -> list[list[Any]]:
+        """The subject's full history: what prefetch skipped, around what the batch already holds
+        (loaded facts keep their identity, since a close may already point at them)."""
+        k = (tenant, subject)
+        if self.partial.pop(k, None) is not None:
+            held = {seq: e for e in self.facts_by[k] if (seq := e[1]) is not None}
+            rows = self.s._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? ORDER BY seq", (tenant, subject))
+            self.facts_by[k] = [held.get(r["seq"]) or [_fact(r), r["seq"]] for r in rows] + [e for e in self.facts_by[k] if e[1] is None]
+        return self._facts(tenant, subject)
+
     def facts(self, tenant: str, subject: str) -> list[Fact]:
-        return [f for f, _ in self._facts(tenant, subject)]
+        return [f for f, _ in self._whole(tenant, subject)]
 
     def _rels(self, tenant: str, key: str) -> list[list[Any]]:
         k = (tenant, key)
         if k not in self.rels_by:
-            rows = self.s._rows("SELECT * FROM relations WHERE tenant = ? AND (src = ? OR dst = ?) ORDER BY seq", (tenant, key, key))
+            rows = _once(self.s._rows(RELATIONS_OF, (tenant, key, tenant, key)))
             self.rels_by[k] = [[_relation(r), r["seq"]] for r in rows] + [[r, None] for r in self.new_rels if r.tenant == tenant and key in (r.src, r.dst)]
         return self.rels_by[k]
 
@@ -613,7 +752,9 @@ class _Bulk:
                     self.closed_rels[seq] = r
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, kw: dict[str, Any]) -> Fact:
-        same = self._facts(tenant, subject)
+        since = self.partial.get((tenant, subject))
+        # a fact that closed before `since` can neither hold nor follow a later one: only an earlier write needs it
+        same = self._whole(tenant, subject) if since is not None and valid_from < since else self._facts(tenant, subject)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
         closed = place_fact(f, same_slot((x for x, _ in same), f, kw.get("per_source", False)))
         if closed is not None:

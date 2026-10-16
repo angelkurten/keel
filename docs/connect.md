@@ -55,7 +55,7 @@ For development and tests. One envelope per line; blank lines and lines starting
 uv run keel ingest cartridges/fleet examples/events/fleet.jsonl
 ```
 
-The command prints `processed`, `duplicates`, `unhandled` and `errors` and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (500 events) is rolled back.
+The command prints `processed`, `duplicates`, `unhandled` and `errors` and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (5000 events) is rolled back.
 
 ## A Postgres outbox table
 

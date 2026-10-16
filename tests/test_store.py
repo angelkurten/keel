@@ -828,3 +828,197 @@ def test_replay_keeps_what_agents_and_people_wrote(store):
     report = ing.replay(TENANT, events=JsonlAdapter(EVENTS))
     assert report.processed > 0 and view() == before
     assert [f["value"] for f in t.context("tire:T-9001")["facts"] if f["predicate"] == "depth_mm"] == [2.4]  # the correction still wins
+
+
+def test_sqlite_reads_by_key_never_scan_the_tenant(tmp_path):
+    """No statistics (a fresh database never ran ANALYZE): every branch must still seek its own index."""
+    from keel.store.sql import CHANGES, RELATIONS_OF
+
+    store = SqliteStore(tmp_path / "plan.db")
+    for sql in (RELATIONS_OF, CHANGES):
+        plan = " | ".join(r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {sql}", ("t", "x", "t", "x")))
+        assert plan.count("SEARCH") == 2 and "(tenant=?)" not in plan, plan
+    # the watermark: one MAX per index, answered from the index alone
+    for sql in ("SELECT (SELECT MAX(recorded_at) FROM facts WHERE tenant = ?) AS r, (SELECT MAX(closed_at) FROM facts WHERE tenant = ?) AS c",
+                "SELECT MAX(recorded_at) AS r FROM relations WHERE tenant = ?"):
+        details = [r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {sql}", ("t",) * sql.count("?"))]
+        assert all("COVERING INDEX" in d for d in details if d.startswith("SEARCH")) and any(d.startswith("SEARCH") for d in details), details
+
+
+def _bulk_history(store):
+    """Three depth readings, the last one open; then a batch that starts after all of them."""
+    from datetime import timedelta
+
+    from keel import Event
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    for k in range(3):
+        store.open_fact(TENANT, "tire:T-1", "depth_mm", 8 - k, valid_from=base + timedelta(days=k), source="b")
+    later = Event(tenant=TENANT, type="x.y", subject="tire:T-1", occurred_at=base + timedelta(days=10), source="b")
+    return base, later
+
+
+def test_bulk_writes_before_the_batch_still_land_in_their_slot(store):
+    """Prefetch skips history the batch cannot change; a write before the batch's earliest event, or
+    a read of the facts, must still see all of it, and give what the reference store gives."""
+    from datetime import timedelta
+
+    if not hasattr(store, "bulk"):
+        pytest.skip("no bulk path")
+    reference = MemoryStore()
+    base, later = _bulk_history(store)
+    _bulk_history(reference)
+    with store.bulk([later]):
+        assert len(store.facts(TENANT, "tire:T-1")) == 3  # a read inside the batch sees the whole history
+        store.open_fact(TENANT, "tire:T-1", "depth_mm", 7.5, valid_from=base + timedelta(hours=12), source="b")
+    reference.open_fact(TENANT, "tire:T-1", "depth_mm", 7.5, valid_from=base + timedelta(hours=12), source="b")
+    with store.bulk([later]):  # no read first: the early write alone must load what prefetch skipped
+        store.open_fact(TENANT, "tire:T-1", "depth_mm", 7.8, valid_from=base + timedelta(hours=6), source="b")
+    reference.open_fact(TENANT, "tire:T-1", "depth_mm", 7.8, valid_from=base + timedelta(hours=6), source="b")
+    slots = lambda s: sorted((f.value, f.valid_from, f.valid_to) for f in s.facts(TENANT, "tire:T-1"))
+    assert slots(store) == slots(reference)
+
+
+def test_bulk_prefetch_reads_only_what_the_batch_can_change(tmp_path):
+    """A subject's closed history is not read per batch: only its open fact is."""
+    store = SqliteStore(tmp_path / "prefetch.db")
+    _, later = _bulk_history(store)
+    with store.bulk([later]):
+        assert [f.value for f, _ in store._bulk.facts_by[(TENANT, "tire:T-1")]] == [6]
+
+
+def test_sqlite_caches_pages_in_process(tmp_path):
+    store = SqliteStore(tmp_path / "cache.db")
+    assert store._one("PRAGMA cache_size")["cache_size"] == -262144
+
+
+def _unit_with_tires(store, tires):
+    from datetime import timedelta
+
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    evs = [Event(tenant=TENANT, type="unit.registered", subject="unit:U1", occurred_at=base, source="b", payload={"id": "U1", "plate": "P", "model": "X"})]
+    for n in range(tires):
+        evs.append(Event(tenant=TENANT, type="tire.depth_measured", subject=f"tire:T{n}", occurred_at=base + timedelta(hours=n), source="b", payload={"unit_id": "U1", "position": f"P{n}", "depth_mm": 2.0 + n % 5}))
+    Ingestor(c, store).ingest(evs, strict=True)
+    return Tools(c, store, TENANT)
+
+
+def test_neighbourhoods_and_rule_sweeps_read_in_batches_with_the_same_answer(store):
+    """context(depth=1) and search(rule=) read many subjects at once on a store with facts_of; the
+    answer is the reference store's, which reads one subject at a time."""
+    a, b = _unit_with_tires(MemoryStore(), 12), _unit_with_tires(store, 12)
+    assert _strip(a.context("unit:U1", depth=1)) == _strip(b.context("unit:U1", depth=1))
+    for rule in ("tire_critical", "unit_grounded"):
+        assert _strip(a.search(rule=rule)) == _strip(b.search(rule=rule)) != []
+    assert _strip(a.search(rule="tire_critical", limit=2, after="tire:T0")) == _strip(b.search(rule="tire_critical", limit=2, after="tire:T0"))
+
+
+def test_reads_do_not_grow_with_the_neighbourhood(tmp_path):
+    """No N+1: on a networked database every statement is a round trip."""
+
+    def statements(tires, call):
+        store = SqliteStore(tmp_path / f"n{tires}.db")
+        tools, n, orig = _unit_with_tires(store, tires), [0], store._rows
+        store._rows = lambda sql, params=(): (n.__setitem__(0, n[0] + 1), orig(sql, params))[1]
+        call(tools)
+        return n[0]
+
+    for call in (lambda t: t.context("unit:U1", depth=1), lambda t: t.search(rule="tire_critical"), lambda t: t.search(rule="unit_grounded")):
+        assert statements(20, call) == statements(40, call)
+
+
+def test_a_write_from_another_thread_never_joins_a_batch_in_flight(store):
+    """The HTTP server serves requests on a thread pool: an annotate that arrives while another thread
+    ingests a batch must neither land in that batch (and be lost when it rolls back) nor read it."""
+    import threading
+    from datetime import timedelta
+
+    from keel import Event
+
+    if not hasattr(store, "bulk"):
+        pytest.skip("no bulk path")
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    store.upsert_entity(TENANT, "unit", "U1")
+    ev = Event(tenant=TENANT, type="x.y", subject="unit:U1", occurred_at=base, source="b")
+    inside, seen = threading.Event(), {}
+
+    def other():
+        inside.wait()
+        seen["batch_entity"] = store.entity(TENANT, "unit:U2")  # written by the batch, not committed
+        store.open_fact(TENANT, "unit:U1", "note", "from another thread", valid_from=base + timedelta(days=1), source="b")
+
+    t = threading.Thread(target=other)
+    t.start()
+    with pytest.raises(RuntimeError), store.bulk([ev]):
+        store.upsert_entity(TENANT, "unit", "U2")
+        inside.set()
+        t.join(0.5)  # the other thread waits for the batch, or (the bug) writes into it
+        raise RuntimeError("batch fails: rolled back")
+    t.join()
+    assert seen["batch_entity"] is None
+    assert [f.value for f in store.facts(TENANT, "unit:U1") if f.predicate == "note"] == ["from another thread"]
+
+
+def test_reads_on_a_networked_store_never_queue_behind_a_transaction(store):
+    """PER_THREAD_READS: a server thread reads on its own connection while another thread holds a transaction."""
+    import threading
+
+    if type(store).__name__ != "MysqlStore":
+        pytest.skip("a networked store")
+    store.upsert_entity(TENANT, "unit", "U1")
+    got = {}
+    reader = threading.Thread(target=lambda: got.setdefault("entity", store.entity(TENANT, "unit:U1")))
+    with store.transaction():
+        store.upsert_entity(TENANT, "unit", "U2")
+        reader.start()
+        reader.join(5)
+        assert not reader.is_alive(), "the read waited for the transaction"
+    assert got["entity"] is not None and got["entity"].id == "U1"
+
+
+def test_a_rule_sweep_that_follows_relations_does_not_grow_with_the_kind(tmp_path):
+    from datetime import timedelta
+
+    from keel import Event
+
+    def statements(units):
+        store, c = SqliteStore(tmp_path / f"u{units}.db"), load_cartridge(FLEET)
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        evs = []
+        for u in range(units):
+            evs.append(Event(tenant=TENANT, type="unit.registered", subject=f"unit:U{u}", occurred_at=base, source="b", payload={"id": f"U{u}", "plate": "P", "model": "X"}))
+            evs.append(Event(tenant=TENANT, type="tire.depth_measured", subject=f"tire:T{u}", occurred_at=base + timedelta(hours=1), source="b", payload={"unit_id": f"U{u}", "position": "P1", "depth_mm": 2.0 + u % 3}))
+        Ingestor(c, store).ingest(evs, strict=True)
+        n, orig = [0], store._rows
+        store._rows = lambda sql, params=(): (n.__setitem__(0, n[0] + 1), orig(sql, params))[1]
+        found = Tools(c, store, TENANT).search(rule="unit_grounded")
+        assert len(found) == len([u for u in range(units) if u % 3 == 0])
+        return n[0]
+
+    assert statements(10) == statements(30)
+
+
+def test_the_state_now_reads_only_open_facts(tmp_path):
+    """A subject's history keeps growing; what holds now is a few rows, read through facts_open."""
+    store, base = SqliteStore(tmp_path / "open.db"), datetime(2026, 1, 1, tzinfo=UTC)
+    from datetime import timedelta
+
+    for k in range(30):
+        store.open_fact(TENANT, "tire:T-1", "depth_mm", 10 - k * 0.2, valid_from=base + timedelta(days=k), source="b")
+    fetched, orig = [], store._rows
+
+    def rows(sql, params=()):
+        r = orig(sql, params)
+        fetched.append(len(r))
+        return r
+
+    store._rows = rows
+    now = base + timedelta(days=100)
+    assert [f.value for f in store.facts(TENANT, "tire:T-1", at=now)] == [pytest.approx(4.2)]
+    assert fetched == [1]
+    later = datetime(2100, 1, 1, tzinfo=UTC)
+    assert len(store.facts(TENANT, "tire:T-1", at=now, known_at=later)) == 1  # known_at reads the history, same answer
+    assert len(store.facts_of(TENANT, ["tire:T-1"], at=base + timedelta(days=5, hours=1))["tire:T-1"]) == 1

@@ -13,7 +13,7 @@ They are plain functions first, so any framework can call them directly;
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any
@@ -111,11 +111,19 @@ def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str
     return out
 
 
+def _vias(cond: Any) -> set[str]:
+    """The relations a rule walks (`via` anywhere in it)."""
+    if isinstance(cond, dict):
+        return ({cond["via"]} if "via" in cond else set()).union(*(_vias(v) for v in cond.values()))
+    return set().union(*(_vias(v) for v in cond)) if isinstance(cond, list) else set()
+
+
 def _kind(subject: str) -> str:
     return subject.split(":", 1)[0]
 
 
 NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
+SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at once
 
 
 class _Graph:
@@ -128,11 +136,40 @@ class _Graph:
         self, store: Store, tenant: str, as_of: datetime, calendar: Calendar, symmetric: set[str],
         known_at: datetime | None = None, task: str | None = None,
         fetch: Callable[..., list[Fact]] | None = None,
+        fetch_many: Callable[..., dict[str, list[Fact]]] | None = None,
     ) -> None:
         self.store, self.tenant, self.as_of, self.calendar, self.symmetric = store, tenant, as_of, calendar, symmetric
         self.known_at, self.task = known_at, task
         self.fetch = fetch or (lambda subject, task, **kw: store.facts(tenant, subject, **kw))
+        self.fetch_many = fetch_many or (lambda subjects, task, **kw: {s: self.fetch(s, task, **kw) for s in subjects})
         self._facts: dict[str, list[Fact]] = {}
+        self._rels: dict[str, list[Relation]] = {}
+
+    def prime_relations(self, subjects: Iterable[str]) -> None:
+        """Read the relations of many subjects at once: a sweep of a rule that follows a relation."""
+        missing = list(dict.fromkeys(s for s in subjects if s not in self._rels))
+        many = getattr(self.store, "relations_of", None)
+        if not missing or many is None:
+            return
+        for s, rels in many(self.tenant, missing, at=self.as_of).items():
+            self._rels[s] = self._known(rels)
+
+    def _known(self, rels: list[Relation]) -> list[Relation]:
+        if self.known_at is not None:
+            rels = [r for r in rels if r.recorded_at is None or r.recorded_at <= self.known_at]
+        return rels
+
+    def prime(self, subjects: Iterable[str]) -> None:
+        """Read the facts of many subjects at once, ahead of `facts()`: a neighbourhood or a rule
+        sweep costs a few statements instead of one or two per subject."""
+        missing = list(dict.fromkeys(s for s in subjects if s not in self._facts))
+        if not missing:
+            return
+        kw: dict[str, Any] = {"at": self.as_of}
+        if self.known_at is not None:
+            kw["known_at"] = self.known_at
+        for s, facts in self.fetch_many(missing, self.task, **kw).items():
+            self._facts[s] = [f for f in facts if f.status is None]
 
     def _read(self, subject: str, proposed: bool = False, **kw: Any) -> list[Fact]:
         if self.known_at is not None:
@@ -153,10 +190,9 @@ class _Graph:
         return [f for f in self._read(subject, until=self.as_of) if f.predicate == predicate]
 
     def relations(self, subject: str, rel: str | None = None) -> list[Relation]:
-        rels = self.store.relations(self.tenant, subject, rel=rel, at=self.as_of)
-        if self.known_at is not None:
-            rels = [r for r in rels if r.recorded_at is None or r.recorded_at <= self.known_at]
-        return rels
+        if subject not in self._rels:
+            self._rels[subject] = self._known(self.store.relations(self.tenant, subject, at=self.as_of))
+        return [r for r in self._rels[subject] if rel is None or r.rel == rel]
 
     def neighbors(self, subject: str, rel: str, direction: str) -> list[str]:
         out: list[str] = []
@@ -168,6 +204,7 @@ class _Graph:
             other = r.dst if r.src == subject else r.src
             if other not in out:
                 out.append(other)
+        self.prime(out)  # a rule that follows a relation reads every neighbour's facts next
         return out
 
 
@@ -203,7 +240,7 @@ class Tools:
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
 
     def _graph(self, now: datetime, known_at: datetime | None = None, task: str | None = None) -> _Graph:
-        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task, self._fetch)
+        return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task, self._fetch, self._fetch_many)
 
     # ---- memory scopes on every read: enforced here, not trusted to the caller ---------------
 
@@ -224,6 +261,24 @@ class Tools:
         if glob:
             facts = sorted(facts + glob, key=lambda f: f.valid_from)
         return [f for f in facts if self._sees(f, task)]
+
+    def _fetch_many(self, subjects: list[str], task: str | None = None, **kw: Any) -> dict[str, list[Fact]]:
+        """`_fetch` for many subjects: two statements per chunk on a store with `facts_of`, else one
+        `_fetch` per subject."""
+        many = getattr(self.store, "facts_of", None)
+        if many is None:
+            return {s: self._fetch(s, task, **kw) for s in subjects}
+        mine, glob = many(self.tenant, subjects, **kw), many(GLOBAL_TENANT, subjects, **kw)
+        out = {}
+        for s in subjects:
+            g = [f for f in glob.get(s, []) if f.scope == Scope.GLOBAL]
+            facts = sorted(mine.get(s, []) + g, key=lambda f: f.valid_from) if g else mine.get(s, [])
+            out[s] = [f for f in facts if self._sees(f, task)]
+        return out
+
+    def _entities(self, keys: list[str]) -> dict[str, Entity | None]:
+        many = getattr(self.store, "entities_of", None)
+        return many(self.tenant, keys) if many else {k: self.store.entity(self.tenant, k) for k in keys}
 
     def _watermark(self) -> datetime | None:
         wm = getattr(self.store, "watermark", None)
@@ -297,14 +352,16 @@ class Tools:
             out["conflicts"] = conflicts
         if depth >= 1:
             neighbors = []
-            for r in rels[:NEIGHBOR_CAP]:
-                other = r.dst if r.src == subject else r.src
+            others = [r.dst if r.src == subject else r.src for r in rels[:NEIGHBOR_CAP]]
+            graph.prime(others)
+            entities = self._entities(others)
+            for r, other in zip(rels[:NEIGHBOR_CAP], others):
                 neighbors.append(
                     {
                         "relation": r.rel,
                         "direction": _direction(r.rel, r.src, subject, self.symmetric),
                         "subject": other,
-                        "entity": self.store.entity(self.tenant, other),
+                        "entity": entities[other],
                         "facts": graph.facts(other),
                         "evaluation": self._evaluation(other, graph),
                     }
@@ -418,16 +475,20 @@ class Tools:
         entities = self.store.entities(self.tenant, kind)
         if neighbours is not None:  # walk the neighbours, not the whole kind
             entities = sorted((e for k in neighbours if _kind(k) == kind and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
-        for e in entities:
-            if after is not None and e.key <= after:
-                continue
-            if text and not search_in([e], [], text):
-                continue
-            if spec and evaluate(spec, e.key, graph.as_of, graph) is not True:
-                continue
-            found.append(e)
-            if limit and len(found) >= limit:
-                break
+        candidates = [e for e in entities if (after is None or e.key > after) and (not text or search_in([e], [], text))]
+        for i in range(0, len(candidates), SWEEP_CHUNK):
+            chunk = candidates[i : i + SWEEP_CHUNK]
+            if graph:
+                graph.prime(e.key for e in chunk)  # one read per chunk, not per entity
+                if vias := _vias(spec):  # the chunk's relations, then the facts at their other ends, in a few reads
+                    graph.prime_relations(e.key for e in chunk)
+                    graph.prime(r.dst if r.src == e.key else r.src for e in chunk for r in graph.relations(e.key) if r.rel in vias)
+            for e in chunk:
+                if spec and evaluate(spec, e.key, graph.as_of, graph) is not True:
+                    continue
+                found.append(e)
+                if limit and len(found) >= limit:
+                    return _ser(found)
         return _ser(found)
 
     def _neighbours(self, subject: str, via: str | None) -> set[str]:

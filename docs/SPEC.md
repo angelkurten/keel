@@ -153,6 +153,9 @@ search(tenant, text) -> [Entity | Fact]
 changes(tenant, after) -> [Fact]               # recorded or closed after a watermark, oldest change first
 watermark(tenant) -> datetime | None           # optional: latest recorded_at or closed_at
 relation_changes(tenant, after) -> [Relation]  # optional: links recorded after a watermark (keel index)
+facts_of(tenant, subjects, **filters) -> {subject: [Fact]}   # optional: facts() for many subjects at once
+entities_of(tenant, keys) -> {key: Entity | None}           # optional: entity() for many keys at once
+relations_of(tenant, keys, at=None) -> {key: [Relation]}    # optional: relations() for many keys at once
 ```
 
 `Tools` calls `entities` and `changes` on every store. `known_at` is passed only when a caller asks for transaction time, so a store without it still serves every other read. Global-scope memory is stored under the reserved tenant `__global__` (§6); a store needs nothing special for it.
@@ -167,13 +170,15 @@ A store implementation MUST pass `tests/test_core.py` and `tests/test_store.py` 
 
 The ingestor reads envelopes from an adapter and dispatches each to the handlers registered for its `type`.
 
-- The event log is the source of truth. Keel's own copy of the log (`Ingestor.log`) is a development convenience; in production the bus holds it.
+- The event log is the source of truth. Keel's own copy of the log (`Ingestor.log`, opt-in with `keep_log=True`) is a development convenience that grows with every event; in production the bus holds it.
 - Dispatch is **deterministic**: no network, no LLM, no randomness in the ingest path. Replaying the same log in the same order MUST produce an identical graph.
 - An event with no handler is reported as unhandled; in strict mode it raises. A handler exception is reported with the event id and does not stop the stream, unless strict.
-- `replay(tenant, events=None)` wipes that tenant's event-derived subgraph (entities, relations, facts from handlers, dedupe marks) and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log. It keeps annotations (facts whose `source` is `annotate:...` or `consolidate:...`, closed history included): they are earned memory, not in the log, and the events land around them as they did the first time (a store's `reset(tenant, keep_annotations=True)`). It is the recovery path, not the update path.
+- `replay(tenant, events=None)` wipes that tenant's event-derived subgraph (entities, relations, facts from handlers, dedupe marks) and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log (only kept with `Ingestor(..., keep_log=True)`; otherwise replay without `events` is an error). It keeps annotations (facts whose `source` is `annotate:...` or `consolidate:...`, closed history included): they are earned memory, not in the log, and the events land around them as they did the first time (a store's `reset(tenant, keep_annotations=True)`). It is the recovery path, not the update path.
 - Ordering: adapters SHOULD deliver events in `occurred_at` order per subject, but the result MUST NOT depend on it for facts: `open_fact` places a fact in its predicate's history by `valid_from`, closing the fact current at that instant and closing itself at the next fact's start, so a late event lands in its slot instead of closing a newer fact backwards. Relations (`link`/`unlink`) still assume order per subject.
 - Transactions: when the store has them (the SQL stores do), each event is applied in one, so the handler's primitives and the dedupe mark land together (`remember` runs first, in the same transaction, and is one statement); a bulk caller passes `batch=` to commit every n events (the CLI and the HTTP batch do), and a chunk that raises in strict mode is rolled back whole and redelivered whole. A streaming adapter is never buffered.
 - Batches: a store MAY offer `bulk(events)`, a context manager the Ingestor uses for chunks larger than one event. The SQL stores read the state of the chunk's subjects in a few statements, serve the handlers from memory, and write back in a few multi-row statements; the result is the same as event by event (the conformance suite checks it on every store, forwards and shuffled), about a thousand times fewer round trips.
+- Batch reads: a store MAY offer `facts_of`, `entities_of` and `relations_of`, the same answers as `facts` and `entity` for many subjects. `context(depth=1)` reads its neighbours with them, `search(rule=)` its candidates in chunks, and a rule that follows a relation its neighbours: a few statements whatever the neighbourhood's size, where one per subject would be a round trip each on a networked database. Without them Tools reads one subject at a time.
+- Threads: a store shared by a server's threads MUST keep a transaction, its read cache and a batch in flight to the thread that opened them: another thread waits for it or reads committed state, and never writes into it (a write that joined a batch would be lost with its rollback). The MySQL store reads on one connection per thread, so reads never queue behind a writer.
 - Duplicates: an event whose `id` the store has already applied for that tenant is skipped and counted in `IngestReport.duplicates`. With content-hash ids this makes at-least-once adapters and client retries safe; a source that can emit two identical events at the same instant MUST give them ids.
 
 ### 4.1 Adapters

@@ -62,6 +62,9 @@ class SqliteStore(SqlStore):
 
     def _prepare(self, conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA journal_mode=WAL")
+        # ponytail: fixed sizes; the defaults (2 MB, no mmap) send a large database to the OS per page read
+        conn.execute("PRAGMA cache_size=-262144")  # 256 MB of pages, allocated as used
+        conn.execute("PRAGMA mmap_size=2147483648")  # 2 GB mapped (SQLite's default cap)
 
     def _columns(self, table: str) -> set[str]:
         return {r["name"] for r in self._rows(f"PRAGMA table_info({table})")}

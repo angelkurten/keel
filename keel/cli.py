@@ -11,7 +11,7 @@ import typer
 
 from keel.cartridge import load_cartridge
 from keel.envelope import Event
-from keel.ingest import Ingestor, IngestReport, JsonlAdapter
+from keel.ingest import BATCH, Ingestor, IngestReport, JsonlAdapter
 from keel.store.memory import MemoryStore
 from keel.store.sqlite import SqliteStore
 from keel.tools import Tools
@@ -189,8 +189,8 @@ def sdk(
 def _run(cartridge: Path, events: Path | None, strict: bool = False, db: str | None = None):
     c = load_cartridge(cartridge)
     store = _store(db)
-    ing = Ingestor(c, store)
-    report = ing.ingest(JsonlAdapter(events), strict=strict, batch=500) if events else IngestReport()
+    ing = Ingestor(c, store, keep_log=db is None)  # an in-memory graph is already that size; a --db load is not
+    report = ing.ingest(JsonlAdapter(events), strict=strict, batch=BATCH) if events else IngestReport()
     return c, store, ing, report
 
 

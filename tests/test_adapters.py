@@ -43,7 +43,7 @@ def test_table_adapter_resumes_from_cursor(tmp_path):
         return PostgresTableAdapter(lambda: sqlite3.connect(db), cursor_path=cursor, placeholder="?", **kw)
 
     c, s = load_cartridge(FLEET), MemoryStore()
-    ing = Ingestor(c, s)
+    ing = Ingestor(c, s, keep_log=True)
     insert(events[:7])
     assert ing.ingest(adapter(batch_size=3), strict=True).processed == 7
     assert adapter().position == 7
@@ -258,7 +258,7 @@ def test_table_adapter_on_real_postgres(tmp_path):
     insert(events[:7])
     c = load_cartridge(FLEET)
     store, ing = MemoryStore(), None
-    ing = Ingestor(c, store)
+    ing = Ingestor(c, store, keep_log=True)
     adapter = PostgresTableAdapter(lambda: psycopg.connect(dsn), cursor_path=tmp_path / "cursor")
     assert ing.ingest(adapter, strict=True).processed == 7 and adapter.position == 7
     insert(events[7:])
