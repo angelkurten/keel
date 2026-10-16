@@ -151,12 +151,94 @@ def test_cli_index_full_then_incremental(tmp_path, monkeypatch):
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cart, events = os.path.join(root, FLEET), os.path.join(root, EVENTS)
     assert CliRunner().invoke(app, ["ingest", cart, events, "--db", db]).exit_code == 0
-    args = ["index", cart, "--tenant", TENANT, "--db", db, "--index", "chroma:///" + str(tmp_path / "vec") if "chroma" in _indexes() else "memory", "--embedder", "hash"]
+    chroma = "chroma" in _indexes()
+    args = ["index", cart, "--tenant", TENANT, "--db", db, "--index", "chroma:///" + str(tmp_path / "vec") if chroma else "memory", "--embedder", "hash"]
     res = CliRunner().invoke(app, args)
-    assert res.exit_code == 0 and "mode=full" in res.output, res.output
-    assert (tmp_path / ".keel" / f"index-{TENANT}.cursor").exists()
+    assert res.exit_code == 0 and "mode=full" in res.output and "no cursor at" in res.output, res.output
+    # the cursor lives next to a persistent index (its volume), else under .keel
+    assert (tmp_path / "vec" / f"keel-index-{TENANT}.cursor" if chroma else tmp_path / ".keel" / f"index-{TENANT}.cursor").exists()
     res = CliRunner().invoke(app, args)
-    assert "mode=incremental" in res.output and "subjects=0" in res.output, res.output
+    assert "mode=incremental" in res.output and "subjects=0" in res.output and "no cursor" not in res.output, res.output
+
+
+def test_cli_index_skips_while_another_run_holds_the_lock(tmp_path, monkeypatch):
+    fcntl = pytest.importorskip("fcntl")
+    monkeypatch.chdir(tmp_path)
+    db = str(tmp_path / "keel.db")
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cart, events = os.path.join(root, FLEET), os.path.join(root, EVENTS)
+    assert CliRunner().invoke(app, ["ingest", cart, events, "--db", db]).exit_code == 0
+    cursor = tmp_path / "vol" / "idx.cursor"
+    cursor.parent.mkdir()
+    args = ["index", cart, "--tenant", TENANT, "--db", db, "--index", "memory", "--embedder", "hash", "--cursor", str(cursor)]
+    with open(str(cursor) + ".lock", "a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)  # another `keel index` is running
+        res = CliRunner().invoke(app, args)
+        assert res.exit_code == 0 and "skipped" in res.output and not cursor.exists(), res.output
+    res = CliRunner().invoke(app, args)
+    assert "mode=full" in res.output and cursor.exists(), res.output
+
+
+def test_batches_embed_in_parallel_and_land_in_order(fleet):
+    """An embeddings API is a round trip per batch: several at once, the same index as one by one."""
+    import threading
+    import time
+
+    _, s = fleet
+    live, peak, lock = [0], [0], threading.Lock()
+
+    class Slow(HashEmbedder):
+        def embed(self, texts, role="document"):
+            with lock:
+                live[0] += 1
+                peak[0] = max(peak[0], live[0])
+            time.sleep(0.02)
+            with lock:
+                live[0] -= 1
+            return super().embed(texts, role)
+
+    one, many = MemoryIndex(), MemoryIndex()
+    index_tenant(s, TENANT, HashEmbedder(), one, batch=1)
+    index_tenant(s, TENANT, Slow(), many, batch=1, workers=4)
+    assert peak[0] > 1
+    assert many._data == one._data
+
+
+def test_the_embedder_retries_a_rate_limit():
+    import json as _json
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    from keel.semantic import OpenAIEmbedder
+
+    calls = []
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = _json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            calls.append(1)
+            if len(calls) == 1:
+                self.send_response(429)
+                self.send_header("Retry-After", "0")
+                self.end_headers()
+                return
+            out = _json.dumps({"data": [{"index": i, "embedding": [1.0, 0.0]} for i, _ in enumerate(body["input"])]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(out)))
+            self.end_headers()
+            self.wfile.write(out)
+
+        def log_message(self, *a):
+            pass
+
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        emb = OpenAIEmbedder(base_url=f"http://127.0.0.1:{srv.server_port}", api_key="test")
+        assert emb.embed(["a", "b"]) == [[1.0, 0.0], [1.0, 0.0]] and len(calls) == 2
+    finally:
+        srv.shutdown()
 
 
 @pytest.mark.skipif(not os.environ.get("KEEL_EMBEDDINGS_API_KEY"), reason="set KEEL_EMBEDDINGS_API_KEY (and _BASE_URL/_MODEL) for a live embedder")

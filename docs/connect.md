@@ -14,6 +14,7 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 | `KEEL_CERTFILE`, `KEEL_KEYFILE` | `serve --transport http` | TLS certificate and key (PEM) to serve https (`--certfile`, `--keyfile`) |
 | `KEEL_SECRET` | `serve --transport http` | the shared bearer secret (`--secret-env` names another variable) |
 | `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
+| `KEEL_INDEX_CURSOR`, `KEEL_INDEX_WORKERS` | `index` | where the cursor of the last run is kept (on a volume) and how many embedding batches go out at once (`--cursor`, `--workers`) |
 | `KEEL_EMBEDDINGS_BASE_URL`, `_MODEL`, `_API_KEY`, `_QUERY_PREFIX`, `_DOCUMENT_PREFIX` | `--embedder openai` | any OpenAI-compatible `/v1/embeddings` endpoint |
 | `KEEL_RERANK_BASE_URL`, `_MODEL`, `_API_KEY` | `serve --reranker http\|llm` | the reranker endpoint |
 | `KEEL_SUMMARIZER_BASE_URL`, `_MODEL`, `_API_KEY` | `consolidate --summarizer llm` | the chat model that writes summaries |
@@ -257,9 +258,11 @@ uv run keel index cartridges/fleet --tenant acme-logistics --db keel.db --index 
 uv run keel serve cartridges/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
 ```
 
-`keel index` keeps the time of its last run in a cursor file, `.keel/index-<tenant>.cursor` unless `--cursor` names another, and indexes only what changed since; `--full` rebuilds the tenant's index. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
+`keel index` keeps the time of its last run in a cursor file and indexes only what changed since; `--full` rebuilds the tenant's index. The cursor sits next to a `chroma:///path` index (`keel-index-<tenant>.cursor`), else in `.keel/index-<tenant>.cursor` under the working directory; `--cursor` or `KEEL_INDEX_CURSOR` puts it elsewhere. In a container, keep it on the same volume as the index: a cursor lost on deploy makes the next run a full rebuild, and `keel index` says so when it starts without one. Embedding batches go out four at a time (`--workers`, `KEEL_INDEX_WORKERS`), and a rate limit or a 5xx from the embeddings API is retried with backoff. One run per tenant at a time: a run that finds another holding the lock next to the cursor skips (two runs at once corrupt a Chroma index), so a cron that overlaps a slow run is safe. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
 
 Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM).
+
+`chroma:///path` opens the index inside the process. When `keel serve` and `keel index` run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with `Error finding id`. Run Chroma as a server and point both at it with `chroma://host:port`; keep `chroma:///path` for a single process or for tests.
 
 ### Your own vector store or embedding model
 

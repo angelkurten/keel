@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -281,20 +283,59 @@ def index_cmd(
     index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
     full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),
-    cursor: Path | None = typer.Option(None, "--cursor", help="Where the watermark of the last run is kept (default .keel/index-<tenant>.cursor)."),
+    cursor: Path | None = typer.Option(None, "--cursor", envvar="KEEL_INDEX_CURSOR", help="Where the watermark of the last run is kept. Default: next to a chroma:///path index, else .keel/index-<tenant>.cursor. Keep it on a volume."),
+    workers: int = typer.Option(4, "--workers", envvar="KEEL_INDEX_WORKERS", help="Embedding batches requested at once."),
 ):
-    """Bring the semantic index up to date for one tenant, outside ingest: only subjects changed since the last run."""
+    """Bring the semantic index up to date for one tenant, outside ingest: only subjects changed since the last run.
+    One run per tenant at a time: a second one finds the lock next to the cursor and skips."""
     from keel.envelope import parse_iso
     from keel.semantic import index_tenant, load_embedder, load_index
 
     c = load_cartridge(cartridge)
-    path = cursor or Path(".keel") / f"index-{tenant}.cursor"
-    since = None if full or not path.exists() else parse_iso(path.read_text(encoding="utf-8").strip())
-    report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since, policy=c.semantic)
-    if report.cursor is not None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(report.cursor.isoformat(), encoding="utf-8")
+    path = cursor or _index_cursor(index, tenant)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _exclusive(path.with_name(path.name + ".lock")) as mine:
+        if not mine:  # two runs over one index corrupt it (Chroma's compaction): the one running covers this
+            typer.echo(f"skipped tenant={tenant}: another keel index holds {path}.lock")
+            return
+        if not full and not path.exists():
+            typer.echo(f"no cursor at {path}: indexing the whole tenant. Keep it on a volume (--cursor, KEEL_INDEX_CURSOR) or every deploy rebuilds the index.", err=True)
+        since = None if full or not path.exists() else parse_iso(path.read_text(encoding="utf-8").strip())
+        report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since, policy=c.semantic, workers=workers)
+        if report.cursor is not None:
+            path.write_text(report.cursor.isoformat(), encoding="utf-8")
     typer.echo(f"indexed tenant={tenant} subjects={report.indexed} removed={report.deleted} mode={'full' if since is None else 'incremental'}")
+
+
+def _index_cursor(index: str, tenant: str) -> Path:
+    """Next to a persistent Chroma (its volume), else under .keel in the working directory."""
+    from urllib.parse import urlparse
+
+    u = urlparse(index)
+    if u.scheme == "chroma" and u.path not in ("", "/"):
+        return Path(u.path) / f"keel-index-{tenant}.cursor"
+    return Path(".keel") / f"index-{tenant}.cursor"
+
+
+@contextmanager
+def _exclusive(lock: Path) -> Iterator[bool]:
+    """An advisory lock held for the block, without waiting: yields False when another process holds it.
+    ponytail: POSIX flock; where fcntl is missing (Windows) every run proceeds."""
+    try:
+        import fcntl
+    except ImportError:
+        yield True
+        return
+    with lock.open("a") as fh:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
 
 
 @app.command()

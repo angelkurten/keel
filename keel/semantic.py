@@ -24,8 +24,10 @@ import json
 import math
 import os
 import re
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
@@ -201,7 +203,10 @@ class OpenAIEmbedder:
     """Any OpenAI-compatible /v1/embeddings endpoint, stdlib only.
 
     From the environment: KEEL_EMBEDDINGS_BASE_URL (default https://api.openai.com/v1),
-    KEEL_EMBEDDINGS_MODEL (default text-embedding-3-small), KEEL_EMBEDDINGS_API_KEY."""
+    KEEL_EMBEDDINGS_MODEL (default text-embedding-3-small), KEEL_EMBEDDINGS_API_KEY.
+    A rate limit (429), a 5xx or a dropped connection is retried with backoff (Retry-After when sent)."""
+
+    RETRIES = 4
 
     def __init__(
         self, base_url: str = "https://api.openai.com/v1", model: str = "text-embedding-3-small", api_key: str | None = None,
@@ -232,11 +237,20 @@ class OpenAIEmbedder:
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
             req = urllib.request.Request(f"{self.base_url}/embeddings", data=json.dumps({"model": self.model, "input": part}).encode(), headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as res:
-                    data = json.loads(res.read())["data"]
-            except urllib.error.HTTPError as exc:
-                raise RuntimeError(f"embeddings {exc.code}: {exc.read()[:300].decode(errors='replace')}") from exc
+            for attempt in range(self.RETRIES + 1):
+                try:
+                    with urllib.request.urlopen(req, timeout=self.timeout) as res:
+                        data = json.loads(res.read())["data"]
+                    break
+                except urllib.error.HTTPError as exc:
+                    if exc.code not in (429, 500, 502, 503, 504) or attempt == self.RETRIES:
+                        raise RuntimeError(f"embeddings {exc.code}: {exc.read()[:300].decode(errors='replace')}") from exc
+                    wait = exc.headers.get("Retry-After") if exc.headers else None
+                    time.sleep(float(wait) if wait and wait.replace(".", "", 1).isdigit() else 2**attempt)
+                except (urllib.error.URLError, TimeoutError):
+                    if attempt == self.RETRIES:
+                        raise
+                    time.sleep(2**attempt)
             out += [d["embedding"] for d in sorted(data, key=lambda d: d["index"])]
         return out
 
@@ -370,12 +384,14 @@ class IndexReport:
 
 def index_tenant(
     store: Store, tenant: str, embedder: Embedder, index: VectorIndex, since: datetime | None = None, batch: int = 64,
-    policy: dict[str, Any] | None = None,
+    policy: dict[str, Any] | None = None, workers: int = 1,
 ) -> IndexReport:
     """Bring the index up to date for one tenant. `since=None` rebuilds it; a watermark updates the
     subjects whose facts changed after it, and both ends of every link recorded after it (an indexed
     relation names the other side). `policy` is the cartridge's `semantic:` section. Entity attributes
-    and unlinks carry no transaction time, so changes to them alone are picked up by `--full`."""
+    and unlinks carry no transaction time, so changes to them alone are picked up by `--full`.
+    `workers` embeds that many batches at once (an embeddings API is a round trip per batch); the
+    index is still written one batch at a time, in order, from this thread."""
     marks = [m for m in (store.watermark(tenant), store.watermark(GLOBAL_TENANT)) if m is not None]
     cursor = max(marks) if marks else None
     # global memory is every tenant's: a global fact re-indexes the subject where this tenant knows it
@@ -394,10 +410,11 @@ def index_tenant(
     for s in subjects:
         text = render(store, tenant, s, policy)
         (docs.append((s, text)) if text is not None else gone.append(s))
-    for i in range(0, len(docs), batch):
-        part = docs[i : i + batch]
-        vectors = embed_as(embedder, [t for _, t in part], "document")
-        index.upsert(tenant, [(s, v, t) for (s, t), v in zip(part, vectors)])
+    parts = [docs[i : i + batch] for i in range(0, len(docs), batch)]
+    embed = lambda part: embed_as(embedder, [t for _, t in part], "document")
+    with ThreadPoolExecutor(max(1, workers)) as pool:
+        for part, vectors in zip(parts, pool.map(embed, parts)):  # map yields in order, as each batch lands
+            index.upsert(tenant, [(s, v, t) for (s, t), v in zip(part, vectors)])
     if gone:
         index.delete(tenant, gone)
     return IndexReport(indexed=len(docs), deleted=len(gone), cursor=cursor)
