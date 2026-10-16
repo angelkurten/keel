@@ -55,9 +55,9 @@ Events are the truth and the graph is derived, so one tenant's subgraph can be r
 ## Five tools, any agent
 
 ```text
-context(subject, as_of?, depth?, as_known_at?, task?, detail?, exclude?)
+context(subject, as_of?, depth?, as_known_at?, task?, detail?, exclude?, only?)
   -> what is true now, at as_of, or as known at a past moment; rules and their verdicts;
-     depth=1 adds the neighbors; detail="concise" for about a third of the tokens
+     depth=1 adds the neighbors; detail="concise" for about a third of the tokens; only=[...] just those predicates
 history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
   -> what was true and when we learned it; without a subject, what changed since a watermark
 search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?, detail?, depth?, per_kind?, exclude?, as_of?, where?)

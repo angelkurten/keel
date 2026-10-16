@@ -5,7 +5,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     keel serve cartridges/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
-    POST /v1/context   {subject (or a list), as_of?, depth?, exclude?}  -> the context object (or a list)
+    POST /v1/context   {subject (or a list), as_of?, depth?, exclude?, only?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
     POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
@@ -122,6 +122,7 @@ def build_http_app(
         task: str | None = None
         detail: str = "full"
         exclude: list[str] | None = None
+        only: list[str] | None = None
 
     class HistoryIn(BaseModel):
         subject: str | None = None
@@ -186,7 +187,7 @@ def build_http_app(
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> Any:
-        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task, body.detail, body.exclude))
+        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task, body.detail, body.exclude, body.only))
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:

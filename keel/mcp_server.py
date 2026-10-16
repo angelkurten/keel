@@ -72,9 +72,9 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def context(subject: str | list[str], as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None, detail: str = "full", exclude: list[str] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
-        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. A list of subjects returns their answers in order. depth=1 adds each neighbour. as_known_at: what Keel knew then. task: one task's memory. detail="concise" is about a third of the tokens. exclude: predicates to leave out. The result's watermark is the cursor for history(changed_since=)."""
-        return tools.context(subject, _dt(as_of), depth, _dt(as_known_at), task, detail, exclude)
+    def context(subject: str | list[str], as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None, detail: str = "full", exclude: list[str] | None = None, only: list[str] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
+        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. A list of subjects returns their answers in order. depth=1 adds each neighbour. as_known_at: what Keel knew then. task: one task's memory. detail="concise" is about a third of the tokens. exclude: predicates to leave out; only: just these predicates (e.g. the evidence to check from many subjects). The result's watermark is the cursor for history(changed_since=)."""
+        return tools.context(subject, _dt(as_of), depth, _dt(as_known_at), task, detail, exclude, only)
 
     @mcp.tool(**read_only)
     @guarded

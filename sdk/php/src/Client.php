@@ -18,10 +18,10 @@ final class Client
 
     /** @return array<string, mixed> */
     /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`; `$asKnownAt` answers
-     * what Keel knew then; `$task` keeps one task's memory; `$exclude` leaves predicates out. The result's `watermark`
+     * what Keel knew then; `$task` keeps one task's memory; `$exclude` leaves predicates out, `$only` keeps just those. The result's `watermark`
      * is the changes cursor. A list of subjects returns a list of answers, in order.
-     * @param string|list<string> $subject @param list<string>|null $exclude */
-    public function context(string|array $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full', ?array $exclude = null): array
+     * @param string|list<string> $subject @param list<string>|null $exclude @param list<string>|null $only */
+    public function context(string|array $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full', ?array $exclude = null, ?array $only = null): array
     {
         return $this->post('/v1/context', [
             'subject' => $subject,
@@ -31,6 +31,7 @@ final class Client
             'task' => $task,
             'detail' => $detail,
             'exclude' => $exclude,
+            'only' => $only,
         ]);
     }
 

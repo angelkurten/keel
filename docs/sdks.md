@@ -84,6 +84,7 @@ The parameters of 0.19 (§7.1, §7.3, §7.5 of the spec) are in all four runtime
 | Several kinds at once | `search(t, kind=[k1, k2])` | `search(t, { kind: [k1, k2] })` | `SearchOptions{Text: t, Kinds: []string{k1, k2}}` | `['kind' => [$k1, $k2]]` |
 | By a fact's value (0.20) | `search(kind=k, where={"title": t})` | `search("", { kind: k, where: { title: t } })` | `SearchOptions{Kind: k, Where: map[string]any{"title": t}}` | `['kind' => $k, 'where' => ['title' => $t]]` |
 | Two hops through some relations | `related(s, ["r1", "r2"], depth=2)` | `related(s, ["r1", "r2"], undefined, 2)` | `RelatedWith(ctx, s, RelatedOptions{Relations: ..., Depth: 2})` | `related($s, ['r1', 'r2'], null, 2)` |
+| Just some predicates (0.22) | `context([a, b], only=[...])` | `contexts([a, b], undefined, 0, { only: [...] })` | `ContextOptions{Only: ...}` | `context([$a, $b], only: [...])` |
 | Hide predicates, past instant | `exclude=[...]`, `as_of=` | `exclude`, `asOf` | `Exclude`, `AsOf` | `'exclude'`, `'as_of'` |
 
 ## Runtime options

@@ -2,7 +2,8 @@
 search results that carry their facts and neighbours, the best of each kind for a task, batches,
 related over several hops, hidden predicates, and a finer semantic index; then, from the analysis
 of its calls, search by a fact's value, a document per list element and why each result matched;
-then, from its second round, kind as a list and a faster semantic search."""
+then, from its second round, kind as a list and a faster semantic search; then, from its 41 CUs, the
+evidence of many subjects (`only`) and many names checked in one call."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -318,3 +319,46 @@ def test_the_lexical_leg_is_built_once_until_the_index_changes():
     assert [k for k, _ in idx.text_query(TENANT, "leak", 5, where={"subject": ["unit:U1"]})] == ["unit:U1\x1fp\x1fh"]  # a split document is its subject's
     idx.upsert(TENANT, [("tire:T3", [1.0], "leak again")])
     assert "tire:T3" in [k for k, _ in idx.text_query(TENANT, "leak", 5)]  # a write drops the cache
+
+
+# ---- 8. from the 41 CUs: the evidence a reviewer reads, many names at once -----------------
+
+
+def _counting(store):
+    n, orig = [0], store._rows
+    store._rows = lambda sql, params=(): (n.__setitem__(0, n[0] + 1), orig(sql, params))[1]
+    return n
+
+
+def test_context_only_returns_just_those_predicates_for_many_subjects(tmp_path):
+    def statements(tires):
+        store = SqliteStore(tmp_path / f"o{tires}.db")
+        t, _ = _pages(store) if tires == 3 else _unit_with_tires(store, tires)
+        n = _counting(store)
+        got = t.context([f"tire:T{i}" for i in range(tires)], only=["page"], detail="concise")
+        return n[0], got
+
+    few, got = statements(3)
+    assert [c["facts"] for c in got] == [{"page": "Detalhe Ociosidade"}, {"page": "Resumo"}, {}]  # depth_mm left out
+    assert all("tire_critical" in c["evaluation"] for c in got)  # rules still see the whole truth
+    assert statements(30)[0] == few  # a few statements, whatever the number of subjects
+    store = SqliteStore(tmp_path / "x.db")
+    t, _ = _pages(store)
+    one = t.context("tire:T0", only=["page", "depth_mm"], exclude=["depth_mm"])
+    assert [f["predicate"] for f in one["facts"]] == ["page"]  # exclude still hides
+    with pytest.raises(ValueError):
+        t.context("tire:T0", only=[])
+
+
+def test_many_names_in_one_search_read_each_subject_once(tmp_path):
+    def statements(names):
+        store = SqliteStore(tmp_path / f"n{len(names)}.db")
+        t, _ = _pages(store)
+        n = _counting(store)
+        got = t.search(names, kind=["tire", "unit"], related_to="unit:U1")
+        return n[0], got
+
+    few, got = statements(["Resumo", "ociosidade", "Margen bruto", "no such name"])
+    assert [[(h["key"], h["matched"]) for h in hits] for hits in got] == [[("tire:T1", "page")], [("tire:T0", "page")], [], []]
+    more, _ = statements(["Resumo", "ociosidade", "Margen bruto", "no such name"] * 5)
+    assert more - few < 5 * 4  # the facts are read once; each extra name costs at most its neighbour lookup

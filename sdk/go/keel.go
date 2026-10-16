@@ -207,12 +207,13 @@ func (c *Client) ContextDepth(ctx context.Context, subject string, asOf *time.Ti
 	return c.ContextWith(ctx, subject, ContextOptions{AsOf: asOf, Depth: depth})
 }
 
-// ContextOptions: AsKnownAt answers what Keel knew then; Task keeps one task's memory; Exclude leaves predicates out.
+// ContextOptions: AsKnownAt answers what Keel knew then; Task keeps one task's memory; Exclude leaves predicates out;
+// Only keeps just those predicates.
 type ContextOptions struct {
 	AsOf, AsKnownAt *time.Time
 	Depth           int
 	Task            string
-	Exclude         []string
+	Exclude, Only   []string
 }
 
 func (o ContextOptions) body(subject any, detail string) map[string]any {
@@ -222,6 +223,9 @@ func (o ContextOptions) body(subject any, detail string) map[string]any {
 	}
 	if len(o.Exclude) > 0 {
 		body["exclude"] = o.Exclude
+	}
+	if len(o.Only) > 0 {
+		body["only"] = o.Only
 	}
 	return body
 }

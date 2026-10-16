@@ -68,6 +68,8 @@ test("typed events in, context with the rule's verdict out", async () => {
   const both = await keel.contexts([subjects.tire("T-9001"), subjects.unit("MXK-4821")], undefined, 0, { exclude: ["depth_mm"] });
   expect(both.map((x) => x.subject)).toEqual(["tire:T-9001", "unit:MXK-4821"]);
   expect(both[0].facts.map((f) => f.predicate)).not.toContain("depth_mm");
+  const just = await keel.contexts([subjects.tire("T-9001"), subjects.unit("MXK-4821")], undefined, 0, { only: ["depth_mm"] });
+  expect(just.map((x) => x.facts.map((f) => f.predicate))).toEqual([["depth_mm"], []]);
   const lists = await keel.searches(["T-9001", "MXK"], { perKind: 1 });
   expect(lists.length).toBe(2);
   await keel.events(emit.driverAssigned({ tenant, subject: subjects.unit("MXK-4821"), occurredAt: "2026-09-01T09:05:00Z", source: "core", payload: { driver_id: "D-118" } }));

@@ -114,7 +114,7 @@ export type Related = {
   hops?: number;
   via?: string;
 };
-export type ContextOptions = { asKnownAt?: Date | string; task?: string; /** predicates to leave out of what is returned */ exclude?: string[] };
+export type ContextOptions = { asKnownAt?: Date | string; task?: string; /** predicates to leave out of what is returned */ exclude?: string[]; /** just these predicates */ only?: string[] };
 export type SearchOptions<S extends string = string> = {
   /** one kind, or several: the listing covers them all, a semantic ranking only them, perKind the best of each */
   kind?: string | string[];
@@ -259,6 +259,7 @@ export class Client<S extends string = string> {
       task: opts.task,
       detail,
       exclude: opts.exclude,
+      only: opts.only,
     };
   }
 

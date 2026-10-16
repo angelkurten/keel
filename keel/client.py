@@ -117,11 +117,12 @@ class Client:
     def context(
         self, subject: str | list[str], as_of: datetime | str | None = None, depth: int = 0,
         as_known_at: datetime | str | None = None, task: str | None = None, detail: str = "full", exclude: list[str] | None = None,
+        only: list[str] | None = None,
     ) -> Any:
         """What is true about a subject now, or at `as_of`; a list of subjects returns a list. `depth=1` adds
         each neighbour; `as_known_at` answers what Keel knew then; `task` keeps one task's memory; `exclude`
-        leaves predicates out. `watermark` is the changes cursor."""
-        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task, "detail": detail, "exclude": exclude})
+        leaves predicates out, `only` keeps just those. `watermark` is the changes cursor."""
+        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task, "detail": detail, "exclude": exclude, "only": only})
 
     def history(
         self, subject: str | None = None, since: datetime | str | None = None, until: datetime | str | None = None,

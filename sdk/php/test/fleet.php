@@ -62,6 +62,8 @@ $hit = $keel->search('2.6', ['kind' => 'tire'])[0];
 ok([$hit['matched'], $hit['snippet']] === ['depth_mm', '2.6'], 'search matched');
 $both = $keel->context(['tire:T-9001', 'unit:MXK-4821'], null, 0, null, null, 'full', ['depth_mm']);
 ok(count($both) === 2 && $both[1]['subject'] === 'unit:MXK-4821' && !in_array('depth_mm', array_column($both[0]['facts'], 'predicate'), true), 'context list with exclude');
+$just = $keel->context(['tire:T-9001', 'unit:MXK-4821'], only: ['depth_mm']);
+ok(array_column($just[0]['facts'], 'predicate') === ['depth_mm'] && $just[1]['facts'] === [], 'context only');
 ok(count($keel->search(['T-9001', 'MXK'], ['per_kind' => 1])) === 2, 'search list');
 $keel->events([Emit::driverAssigned($tenant, Subjects::unit('MXK-4821'), '2026-09-01T09:05:00Z', 'core', new DriverAssignedPayload('D-118'))]);
 $hops = array_values(array_filter($keel->related('tire:T-9001', ['mounted_on', 'assigned_to'], null, 2), fn($r) => $r['subject'] === 'driver:D-118'));

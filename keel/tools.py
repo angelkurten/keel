@@ -187,6 +187,7 @@ class _Graph:
         self.fetch = fetch or (lambda subject, task, **kw: store.facts(tenant, subject, **kw))
         self.fetch_many = fetch_many or (lambda subjects, task, **kw: {s: self.fetch(s, task, **kw) for s in subjects})
         self._facts: dict[str, list[Fact]] = {}
+        self._proposed: dict[str, list[Fact]] = {}
         self._rels: dict[str, list[Relation]] = {}
 
     def prime_relations(self, subjects: Iterable[str]) -> None:
@@ -214,6 +215,7 @@ class _Graph:
             kw["known_at"] = self.known_at
         for s, facts in self.fetch_many(missing, self.task, **kw).items():
             self._facts[s] = [f for f in facts if f.status is None]
+            self._proposed[s] = [f for f in facts if f.status == "proposed"]
 
     def _read(self, subject: str, proposed: bool = False, **kw: Any) -> list[Fact]:
         if self.known_at is not None:
@@ -223,6 +225,8 @@ class _Graph:
         return [f for f in facts if f.status == wanted]
 
     def proposals(self, subject: str) -> list[Fact]:
+        if subject in self._proposed:
+            return self._proposed[subject]
         return [f for f in self._read(subject, at=self.as_of, proposed=True)]
 
     def facts(self, subject: str) -> list[Fact]:
@@ -358,6 +362,7 @@ class Tools:
         task: str | None = None,
         detail: str = "full",
         exclude: list[str] | None = None,
+        only: list[str] | None = None,
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
         that apply to its kind, and the evaluation of every rule that carries a `when`. With
@@ -372,27 +377,42 @@ class Tools:
         facts as {predicate: value}, relations as (relation, direction, subject), no rule definitions.
         A list of subjects returns their answers in order, in one call. `exclude` hides those predicates
         from the facts, proposals and neighbours returned (an evaluation where the agent must not see the
-        answer); rules still evaluate on the whole truth."""
-        if isinstance(subject, list):
-            return [self.context(s, as_of, depth, as_known_at, task, detail, exclude) for s in subject]  # type: ignore[misc]
+        answer); rules still evaluate on the whole truth. `only` returns just those predicates (the
+        evidence a reviewer needs from many subjects, without the rest of their facts); with a list of
+        subjects, their facts and relations are read in a few statements, not one per subject."""
         if detail not in ("full", "concise"):
             raise ValueError("detail is 'full' or 'concise'")
-        self._readable(subject)
+        if only is not None and (not isinstance(only, list) or not only or not all(isinstance(p, str) for p in only)):
+            raise ValueError("only is a non-empty list of predicates")
+        subjects = subject if isinstance(subject, list) else [subject]
+        for s in subjects:
+            self._readable(s)
         as_of, as_known_at = _t(as_of), _t(as_known_at)
         now = as_of or as_known_at or utcnow()
         graph = self._graph(now, as_known_at, task)
-        hide = set(exclude or ())
-        shown = lambda fs: [f for f in fs if f.predicate not in hide]
+        if len(subjects) > 1:
+            graph.prime(subjects)
+            graph.prime_relations(subjects)
+        hide, keep = set(exclude or ()), set(only) if only is not None else None
+        shown = lambda fs: [f for f in fs if f.predicate not in hide and (keep is None or f.predicate in keep)]
+        entities, watermark = self._entities(subjects), self._watermark()
+        answers = [self._context(s, graph, now, as_known_at, depth, detail, shown, entities[s], watermark) for s in subjects]
+        return answers if isinstance(subject, list) else answers[0]
+
+    def _context(
+        self, subject: str, graph: _Graph, now: datetime, as_known_at: datetime | None, depth: int, detail: str,
+        shown: Callable[[list[Fact]], list[Fact]], entity: Entity | None, watermark: datetime | None,
+    ) -> dict[str, Any]:
         rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
         out: dict[str, Any] = {
             "subject": subject,
-            "entity": self.store.entity(self.tenant, subject),
+            "entity": entity,
             "facts": shown(graph.facts(subject)),
             "relations": [asdict(r) for r in rels],
             "rules": self._rules_for(subject),
             "evaluation": self._evaluation(subject, graph),
             "as_of": now,
-            "watermark": self._watermark(),
+            "watermark": watermark,
         }
         if as_known_at is not None:
             out["as_known_at"] = as_known_at
@@ -515,20 +535,26 @@ class Tools:
 
         `kind` may be a list: the listing covers those kinds (still ordered by key), a semantic ranking
         only them, and `per_kind` takes the best n of each of them (the first n by key in text mode)."""
+        graph = self._graph(_t(as_of) or utcnow())  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
-            return [self.search(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, as_of, where) for t in text]
+            return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph) for t in text]
+        return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph)
+
+    def _search_one(
+        self, text: str, kind: str | list[str] | None, rule: str | None, limit: int | None, after: str | None, mode: str,
+        min_score: float | None, related_to: str | None, via: str | None, detail: str, depth: int, per_kind: int | None,
+        exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph,
+    ) -> list[Any]:
         if detail not in ("entity", "concise", "full"):
             raise ValueError("search detail is 'entity', 'concise' or 'full'")
         if depth not in (0, 1):
             raise ValueError("search depth is 0 or 1")
-        at = _t(as_of)
         hide = set(exclude or ())
         if where is not None and (not isinstance(where, dict) or not where):
             raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
         if hidden := sorted(set(where or ()) & hide):
             raise ValueError(f"where filters on {hidden}, which exclude hides")
         kinds = _kind_list(kind)
-        graph = self._graph(at or utcnow())
         if per_kind is not None:
             if per_kind < 1:
                 raise ValueError("per_kind is at least 1")
@@ -639,12 +665,12 @@ class Tools:
     ) -> list[dict[str, Any]]:
         """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked."""
         graph = graph or self._graph(utcnow())
-        at, hide = graph.as_of, hide or set()
+        hide = hide or set()
         if mode not in ("text", "semantic"):
             raise ValueError("mode is 'text' or 'semantic'")
         if via and not related_to:
             raise ValueError("`via` needs `related_to`")
-        neighbours = self._neighbours(related_to, via, at) if related_to else None
+        neighbours = self._neighbours(related_to, via, graph) if related_to else None
         if after is not None and (mode == "semantic" or (kind is None and rule is None)):
             raise ValueError("`after` pages the kind/rule listing; semantic and text search rank, page them with `limit`")
         if mode == "semantic":
@@ -682,7 +708,7 @@ class Tools:
         elif after is not None and _kind(after) not in kinds:
             raise ValueError(f"`after` is a key of kind {' or '.join(map(repr, kinds))} (the last key received), got '{after}'")
         if neighbours is not None:  # walk the neighbours, not the whole kind
-            entities = sorted((e for k in neighbours if _kind(k) in kinds and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
+            entities = sorted((e for e in self._entities(sorted(k for k in neighbours if _kind(k) in kinds)).values() if e), key=lambda e: e.key)
         elif len(kinds) == 1:
             entities = self.store.entities(self.tenant, kinds[0])
         else:
@@ -716,12 +742,12 @@ class Tools:
         return all((name in attrs and _holds(attrs[name], want)) or any(f.predicate == name and _holds(f.value, want) for f in graph.facts(key))
                    for name, want in where.items())
 
-    def _neighbours(self, subject: str, via: str | None, at: datetime | None = None) -> set[str]:
-        """The subjects linked to `subject` now or at `at` (through `via` when given), as the caller may see them."""
+    def _neighbours(self, subject: str, via: str | None, graph: _Graph) -> set[str]:
+        """The subjects linked to `subject` at the graph's instant (through `via` when given), as the caller may see them."""
         self._readable(subject)
         if via is not None and via not in self.cartridge.relations:
             raise ValueError(f"relation '{via}' is not declared")
-        return {r.dst if r.src == subject else r.src for r in self.store.relations(self.tenant, subject, rel=via, at=at or utcnow()) if self._visible(r, subject)}
+        return {r.dst if r.src == subject else r.src for r in graph.relations(subject, via) if self._visible(r, subject)}
 
     def _exact_keys(self, text: str, kinds: list[str] | None) -> list[str]:
         """Subjects whose key or id appears verbatim in the query: ids are what dense vectors blur."""
@@ -928,7 +954,7 @@ class Tools:
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?"], "doc": self.context.__doc__},
+            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?", "only?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
             {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},

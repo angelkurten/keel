@@ -133,6 +133,9 @@ func TestGeneratedClient(t *testing.T) {
 			t.Fatalf("exclude: depth_mm returned")
 		}
 	}
+	if just, err := c.Contexts(ctx, []string{"tire:T-9001", "unit:MXK-4821"}, keel.ContextOptions{Only: []string{"depth_mm"}}); err != nil || len(just[0].Facts) != 1 || just[0].Facts[0].Predicate != "depth_mm" || len(just[1].Facts) != 0 {
+		t.Fatalf("only: %v %v", just, err)
+	}
 	if lists, err := c.Searches(ctx, []string{"T-9001", "MXK"}, keel.SearchOptions{PerKind: 1}); err != nil || len(lists) != 2 {
 		t.Fatalf("searches: %v %+v", err, lists)
 	}
