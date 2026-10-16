@@ -147,6 +147,8 @@ def test_the_task_context_parameters_over_http():
     assert tire["facts"] == {"depth_mm": 2.6}
     lists = client.post("/v1/search", json={"text": ["T-9001", "MXK"], "per_kind": 1}, headers=h).json()
     assert len(lists) == 2 and all(isinstance(x, list) for x in lists)
+    both_kinds = client.post("/v1/search", json={"kind": ["unit", "tire"], "where": {"depth_mm": 2.6}}, headers=h).json()
+    assert [x["key"] for x in both_kinds] == ["tire:T-9001"]
     [unit] = client.post("/v1/search", json={"kind": "unit", "depth": 1, "as_of": "2026-09-05"}, headers=h).json()
     assert "tire:T-9001" not in {n["subject"] for n in unit["neighbors"]}  # mounted on 09-10
     deep = client.post("/v1/related", json={"subject": "tire:T-9001", "relation": ["mounted_on", "assigned_to"], "depth": 2}, headers=h).json()

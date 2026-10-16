@@ -7,7 +7,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/events    one envelope or a list        -> ingest report
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
-    POST /v1/search    {text (or a list), kind?, rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
+    POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
@@ -136,7 +136,7 @@ def build_http_app(
 
     class SearchIn(BaseModel):
         text: str | list[str] = ""
-        kind: str | None = None
+        kind: str | list[str] | None = None
         rule: str | None = None
         limit: int | None = None
         after: str | None = None

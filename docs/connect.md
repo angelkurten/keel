@@ -282,6 +282,8 @@ Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Olla
 
 `chroma:///path` opens the index inside the process. When `keel serve` and `keel index` run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with `Error finding id`. Run Chroma as a server and point both at it with `chroma://host:port`; keep `chroma:///path` for a single process or for tests.
 
+The Chroma adapter ranks the lexical leg itself: it pulls a kind's documents once, keeps their BM25 in memory and reuses it until the collection's count changes or 300 seconds pass (`ChromaIndex(bm25_ttl=...)`), so a re-index by another process shows in the lexical leg within that time (the dense leg sees it at once). Each document carries its subject as metadata, so `related_to` filters inside Chroma; a collection built before 0.21 lacks it and filters after retrieval, slower, until one `keel index --full`.
+
 ### Your own vector store or embedding model
 
 Another vector database (pgvector, Qdrant, Pinecone, OpenSearch...) or your own model is an adapter you write: a plain class, nothing to inherit or register. `examples/custom_adapters.py` is a complete, tested one, a vector index on SQLite and an embedder wrapping any encode function. Run it with `uv run python examples/custom_adapters.py`.

@@ -64,7 +64,8 @@ search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?
   -> text or semantic search, or every entity of a kind / where a rule fires, paged;
      related_to (and via) keeps only one subject's neighbors; detail="concise" puts each result's facts in it;
      per_kind=n the best of every kind: the context for a task in one call
-     where={name: value} by an attribute's or a fact's value; each result says what matched (matched, snippet)
+     where={name: value} by an attribute's or a fact's value; each result says what matched (matched, snippet);
+     kind may be a list of kinds
 annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
   -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
 related(subject, relation?, as_of?, depth?)

@@ -27,6 +27,8 @@ import re
 import time
 import urllib.error
 import urllib.request
+from collections import OrderedDict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -43,6 +45,8 @@ class VectorIndex(Protocol):
     Optional, detected at runtime, so a minimal adapter keeps working:
       query(..., where={"kind": [...]})   filter inside the index (the kind is the key's prefix); without
                                           it Keel filters after retrieval, which an approximate index can miss
+      where={"subject": [...]}            also offered, with `related_to`: only those subjects' documents
+                                          (a split document belongs to its subject); an index may ignore it
       text_query(tenant, text, k, where)  a lexical leg (BM25 or the engine's own); enables hybrid search
     """
 
@@ -114,31 +118,60 @@ class BM25:
     """Okapi BM25 over documents, the lexical leg of hybrid search."""
 
     def __init__(self, docs: dict[str, str], k1: float = 1.2, b: float = 0.75) -> None:
-        self.docs = {key: tokens(text) for key, text in docs.items()}
-        self.avg = sum(len(d) for d in self.docs.values()) / max(1, len(self.docs))
-        self.df: dict[str, int] = {}
-        for d in self.docs.values():
-            for tok in set(d):
-                self.df[tok] = self.df.get(tok, 0) + 1
-        self.n, self.k1, self.b = len(self.docs), k1, b
+        self.size: dict[str, int] = {}
+        self.postings: dict[str, dict[str, int]] = {}  # token -> {key: term frequency}: a query reads only its tokens' documents
+        for key, text in docs.items():
+            toks = tokens(text)
+            self.size[key] = len(toks)
+            for tok in toks:
+                post = self.postings.setdefault(tok, {})
+                post[key] = post.get(key, 0) + 1
+        self.avg = sum(self.size.values()) / max(1, len(self.size))
+        self.n, self.k1, self.b = len(self.size), k1, b
 
     def rank(self, query: str, keys: set[str] | None = None) -> list[tuple[str, float]]:
-        q = tokens(query)
-        scored = []
-        for key, d in self.docs.items():
-            if keys is not None and key not in keys:
-                continue
-            tf: dict[str, int] = {}
-            for tok in d:
-                tf[tok] = tf.get(tok, 0) + 1
-            s = 0.0
-            for tok in q:
-                if tok in tf:
-                    idf = math.log(1 + (self.n - self.df[tok] + 0.5) / (self.df[tok] + 0.5))
-                    s += idf * tf[tok] * (self.k1 + 1) / (tf[tok] + self.k1 * (1 - self.b + self.b * len(d) / max(self.avg, 1e-9)))
-            if s > 0:
-                scored.append((key, s))
-        return sorted(scored, key=lambda x: (-x[1], x[0]))
+        scores: dict[str, float] = {}
+        for tok in tokens(query):
+            post = self.postings.get(tok, {})
+            idf = math.log(1 + (self.n - len(post) + 0.5) / (len(post) + 0.5))
+            for key, tf in post.items():
+                if keys is None or key in keys:
+                    norm = self.k1 * (1 - self.b + self.b * self.size[key] / max(self.avg, 1e-9))
+                    scores[key] = scores.get(key, 0.0) + idf * tf * (self.k1 + 1) / (tf + norm)
+        return sorted(((k, s) for k, s in scores.items() if s > 0), key=lambda x: (-x[1], x[0]))
+
+
+class BM25Cache:
+    """BM25 per (tenant, kinds), built once and reused until `stamp` changes or `ttl` seconds pass.
+    The lexical leg of an index without its own: rebuilding it per query was most of a query's time."""
+
+    def __init__(self, ttl: float = float("inf"), size: int = 64) -> None:
+        self.ttl, self.size = ttl, size
+        self._c: OrderedDict[tuple[str, tuple[str, ...] | None], tuple[Any, float, BM25]] = OrderedDict()
+
+    def get(self, tenant: str, kinds: Any, stamp: Any, load: Callable[[], dict[str, str]]) -> BM25:
+        key = (tenant, tuple(sorted(kinds)) if kinds else None)
+        hit = self._c.get(key)
+        if hit and hit[0] == stamp and time.monotonic() - hit[1] < self.ttl:
+            self._c.move_to_end(key)
+            return hit[2]
+        bm = BM25(load())
+        self._c[key] = (stamp, time.monotonic(), bm)
+        self._c.move_to_end(key)
+        while len(self._c) > self.size:  # ponytail: LRU by entry count; by documents held if tenants differ wildly in size
+            self._c.popitem(last=False)
+        return bm
+
+    def drop(self, tenant: str) -> None:
+        for key in [k for k in self._c if k[0] == tenant]:
+            del self._c[key]
+
+
+def lexical(bm: BM25, text: str, k: int, where: dict[str, Any] | None) -> list[tuple[str, float]]:
+    """A cached BM25's ranking, narrowed to `where["subject"]` when given."""
+    subjects = set(where["subject"]) if where and where.get("subject") is not None else None
+    ranked = bm.rank(text)
+    return [kv for kv in ranked if subject_of(kv[0])[0] in subjects][:k] if subjects is not None else ranked[:k]
 
 
 def fuse(dense: list[tuple[str, float]], lexical: list[tuple[str, float]], w_dense: float = 0.7) -> list[tuple[str, float]]:
@@ -161,6 +194,10 @@ def _kinds(where: dict[str, Any] | None) -> set[str] | None:
     return set(where["kind"]) if where and where.get("kind") else None
 
 
+def _subjects(where: dict[str, Any] | None) -> set[str] | None:
+    return set(where["subject"]) if where and where.get("subject") is not None else None
+
+
 def cosine(a: list[float], b: list[float]) -> float:
     na, nb = math.sqrt(sum(x * x for x in a)), math.sqrt(sum(y * y for y in b))
     return 0.0 if not na or not nb else sum(x * y for x, y in zip(a, b)) / (na * nb)
@@ -171,29 +208,33 @@ class MemoryIndex:
 
     def __init__(self) -> None:
         self._data: dict[str, dict[str, tuple[list[float], str]]] = {}
+        self._bm25 = BM25Cache()
 
     def upsert(self, tenant: str, items: list[tuple[str, list[float], str]]) -> None:
         bucket = self._data.setdefault(tenant, {})
         for key, vector, doc in items:
             bucket[key] = (list(vector), doc)
+        self._bm25.drop(tenant)
 
     def delete(self, tenant: str, keys: list[str]) -> None:
         for key in keys:
             self._data.get(tenant, {}).pop(key, None)
+        self._bm25.drop(tenant)
 
     def query(self, tenant: str, vector: list[float], k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
-        kinds = _kinds(where)
-        scored = [(key, cosine(vector, v)) for key, (v, _) in self._data.get(tenant, {}).items() if kinds is None or kind_of(key) in kinds]
+        kinds, subjects = _kinds(where), _subjects(where)
+        scored = [(key, cosine(vector, v)) for key, (v, _) in self._data.get(tenant, {}).items()
+                  if (kinds is None or kind_of(key) in kinds) and (subjects is None or subject_of(key)[0] in subjects)]
         return sorted(scored, key=lambda x: (-x[1], x[0]))[:k]
 
     def text_query(self, tenant: str, text: str, k: int, where: dict[str, Any] | None = None) -> list[tuple[str, float]]:
-        # ponytail: BM25 rebuilt per query over the tenant's documents; cache it per tenant if tenants grow large
         kinds = _kinds(where)
-        docs = {key: doc for key, (_, doc) in self._data.get(tenant, {}).items() if kinds is None or kind_of(key) in kinds}
-        return BM25(docs).rank(text)[:k]
+        load = lambda: {key: doc for key, (_, doc) in self._data.get(tenant, {}).items() if kinds is None or kind_of(key) in kinds}
+        return lexical(self._bm25.get(tenant, kinds, None, load), text, k, where)
 
     def clear(self, tenant: str) -> None:
         self._data.pop(tenant, None)
+        self._bm25.drop(tenant)
 
 
 class HashEmbedder:

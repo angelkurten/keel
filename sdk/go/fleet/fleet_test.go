@@ -115,6 +115,9 @@ func TestGeneratedClient(t *testing.T) {
 	if hits, err := c.SearchWith(ctx, keel.SearchOptions{Kind: "tire", Where: map[string]any{"depth_mm": 2.6}}); err != nil || len(hits) != 1 || hits[0]["key"] != "tire:T-9001" {
 		t.Fatalf("search where: %v %v", hits, err)
 	}
+	if hits, err := c.SearchWith(ctx, keel.SearchOptions{Kinds: []string{"unit", "tire"}, Where: map[string]any{"depth_mm": 2.6}}); err != nil || len(hits) != 1 || hits[0]["key"] != "tire:T-9001" {
+		t.Fatalf("search kinds: %v %v", hits, err)
+	}
 	if hits, err := c.SearchWith(ctx, keel.SearchOptions{Text: "2.6", Kind: "tire"}); err != nil || len(hits) != 1 || hits[0]["matched"] != "depth_mm" || hits[0]["snippet"] != "2.6" {
 		t.Fatalf("search matched: %v %v", hits, err)
 	}

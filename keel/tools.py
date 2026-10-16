@@ -152,6 +152,16 @@ def _vias(cond: Any) -> set[str]:
     return set().union(*(_vias(v) for v in cond)) if isinstance(cond, list) else set()
 
 
+def _kind_list(kind: str | list[str] | None) -> list[str] | None:
+    """`kind` as a list: one kind, several, or None for any."""
+    if kind is None:
+        return None
+    kinds = [kind] if isinstance(kind, str) else list(dict.fromkeys(kind))
+    if not kinds or not all(isinstance(k, str) and k for k in kinds):
+        raise ValueError("kind is a kind's name or a list of them")
+    return kinds
+
+
 def _kind(subject: str) -> str:
     return subject.split(":", 1)[0]
 
@@ -462,7 +472,7 @@ class Tools:
     def search(
         self,
         text: str | list[str] = "",
-        kind: str | None = None,
+        kind: str | list[str] | None = None,
         rule: str | None = None,
         limit: int | None = None,
         after: str | None = None,
@@ -501,7 +511,10 @@ class Tools:
         a list holding it; text compares without case), in every mode: a visual by its exact title is
         `search(kind="visual", where={"title": "..."})`. With `kind`, `text` matches the key, the
         attributes and the current facts' values. Each ranked result says why it is there: `matched`
-        (the attribute, predicate, or "key") and `snippet`, the part of the value that matched."""
+        (the attribute, predicate, or "key") and `snippet`, the part of the value that matched.
+
+        `kind` may be a list: the listing covers those kinds (still ordered by key), a semantic ranking
+        only them, and `per_kind` takes the best n of each of them (the first n by key in text mode)."""
         if isinstance(text, list):
             return [self.search(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, as_of, where) for t in text]
         if detail not in ("entity", "concise", "full"):
@@ -514,19 +527,23 @@ class Tools:
             raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
         if hidden := sorted(set(where or ()) & hide):
             raise ValueError(f"where filters on {hidden}, which exclude hides")
+        kinds = _kind_list(kind)
         graph = self._graph(at or utcnow())
         if per_kind is not None:
             if per_kind < 1:
                 raise ValueError("per_kind is at least 1")
             if after is not None:
                 raise ValueError("per_kind takes the best of each kind; page one kind with `kind`, `limit` and `after`")
-            if mode == "semantic":  # the index filters by kind: one ranking per kind
-                spec = self.cartridge.rules.get(rule) if rule else None
-                one = kind or (spec or {}).get("applies_to")
-                kinds = [one] if one else [k for k in self.cartridge.entities if not self.agent or self.agent.sees_kind(k)]
-                hits = [h for k in kinds for h in self._search(text, k, rule, per_kind, None, mode, min_score, related_to, via, graph, where, hide)]
-            elif kind is not None or rule is not None:
-                raise ValueError("per_kind groups a text or semantic search by kind; with `kind` or `rule` you list one kind (use `limit`)")
+            if mode != "semantic" and kinds and len(kinds) == 1:
+                raise ValueError("per_kind with one kind is `limit`: search(text, kind=k, limit=n)")
+            if mode == "semantic" or kinds:  # the index filters by kind: one ranking (or listing) per kind
+                if not kinds:
+                    one = (self.cartridge.rules.get(rule) or {}).get("applies_to") if rule else None
+                    kinds = [one] if one else [k for k in self.cartridge.entities if not self.agent or self.agent.sees_kind(k)]
+                vector = embed_as(self.embedder, [text], "query")[0] if mode == "semantic" and self.embedder and text else None  # once, not per kind
+                hits = [h for k in kinds for h in self._search(text, k, rule, per_kind, None, mode, min_score, related_to, via, graph, where, hide, vector)]
+            elif rule is not None:
+                raise ValueError("per_kind groups a text or semantic search by kind; with `rule` you list one kind (use `limit`)")
             else:
                 taken: dict[str, int] = {}
                 hits = []
@@ -536,7 +553,7 @@ class Tools:
                         taken[k] = taken.get(k, 0) + 1
                         hits.append(h)
         else:
-            hits = self._search(text, kind, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
+            hits = self._search(text, kinds, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
         self._explain(hits, text, mode, hide, graph)
         return self._enrich(hits, detail, depth, hide, graph)
@@ -607,7 +624,7 @@ class Tools:
     def _search(
         self,
         text: str = "",
-        kind: str | None = None,
+        kind: str | list[str] | None = None,
         rule: str | None = None,
         limit: int | None = None,
         after: str | None = None,
@@ -618,6 +635,7 @@ class Tools:
         graph: _Graph | None = None,
         where: dict[str, Any] | None = None,
         hide: set[str] | None = None,
+        vector: list[float] | None = None,
     ) -> list[dict[str, Any]]:
         """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked."""
         graph = graph or self._graph(utcnow())
@@ -630,7 +648,7 @@ class Tools:
         if after is not None and (mode == "semantic" or (kind is None and rule is None)):
             raise ValueError("`after` pages the kind/rule listing; semantic and text search rank, page them with `limit`")
         if mode == "semantic":
-            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, graph, where)
+            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, graph, where, vector)
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text) + [h for h in self.store.search(GLOBAL_TENANT, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
             hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
@@ -652,16 +670,23 @@ class Tools:
             kind = kind or spec.get("applies_to")
             if kind is None:
                 raise ValueError(f"rule '{rule}' applies to every kind: pass `kind` too")
-        if self.agent and not self.agent.sees_kind(kind):
-            raise PermissionError(f"agent '{self.agent.id}' may not read kind '{kind}'")
+        kinds = _kind_list(kind) or []
+        for k in kinds:
+            if self.agent and not self.agent.sees_kind(k):
+                raise PermissionError(f"agent '{self.agent.id}' may not read kind '{k}'")
         found: list[Entity] = []
         if after is not None and ":" not in after:
-            after = f"{kind}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
-        elif after is not None and _kind(after) != kind:
-            raise ValueError(f"`after` is a key of kind '{kind}' (the last key received), got '{after}'")
-        entities = self.store.entities(self.tenant, kind)
+            if len(kinds) > 1:
+                raise ValueError("with several kinds, `after` is the last key received, kind included")
+            after = f"{kinds[0]}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
+        elif after is not None and _kind(after) not in kinds:
+            raise ValueError(f"`after` is a key of kind {' or '.join(map(repr, kinds))} (the last key received), got '{after}'")
         if neighbours is not None:  # walk the neighbours, not the whole kind
-            entities = sorted((e for k in neighbours if _kind(k) == kind and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
+            entities = sorted((e for k in neighbours if _kind(k) in kinds and (e := self.store.entity(self.tenant, k))), key=lambda e: e.key)
+        elif len(kinds) == 1:
+            entities = self.store.entities(self.tenant, kinds[0])
+        else:
+            entities = sorted((e for k in kinds for e in self.store.entities(self.tenant, k)), key=lambda e: e.key)
         candidates = [e for e in entities if after is None or e.key > after]
         t = text.lower()
         # ponytail: text or where over a kind reads every candidate's facts, a chunk at a time; an index on
@@ -713,7 +738,7 @@ class Tools:
 
     def _semantic(
         self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None, neighbours: set[str] | None = None,
-        graph: _Graph | None = None, where: dict[str, Any] | None = None,
+        graph: _Graph | None = None, where: dict[str, Any] | None = None, vector: list[float] | None = None,
     ) -> list[dict[str, Any]]:
         if self.embedder is None or self.index is None:
             raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
@@ -723,9 +748,13 @@ class Tools:
         spec = self.cartridge.rules.get(rule) if rule else None
         if rule and (spec is None or not spec.get("when")):
             raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
-        kind = kind or (spec or {}).get("applies_to")
-        kinds = [kind] if kind else (sorted(self.agent.kinds) if self.agent and self.agent.kinds is not None else None)
-        scope = {"kind": kinds} if kinds else None  # the index's own filter
+        asked = _kind_list(kind) or _kind_list((spec or {}).get("applies_to"))
+        kinds = asked or (sorted(self.agent.kinds) if self.agent and self.agent.kinds is not None else None)
+        if neighbours is not None and not neighbours:
+            return []  # related_to a subject with no neighbours: nothing to rank
+        scope: dict[str, Any] = {"kind": kinds} if kinds else {}  # the index's own filter
+        if neighbours is not None:
+            scope["subject"] = sorted(neighbours)  # related_to inside the index, when it can; admit() checks it either way
         floor = min_score if min_score is not None else policy.get("min_score")
         w_lex = float(policy.get("lexical_weight", 0.3))
         lexical = getattr(self.index, "text_query", None) if w_lex > 0 else None
@@ -733,7 +762,7 @@ class Tools:
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
-            if (kind and kk != kind) or (self.agent and not self.agent.sees_kind(kk)) or (neighbours is not None and key not in neighbours):
+            if (asked and kk not in asked) or (self.agent and not self.agent.sees_kind(kk)) or (neighbours is not None and key not in neighbours):
                 return None
             ent = self.store.entity(self.tenant, key)
             if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
@@ -751,8 +780,8 @@ class Tools:
                 out.append({**_ser(ent), "score": 1.0, "similarity": None, "match": "key"})
         taken = {o["key"] for o in out}
         pool_size = max(limit, 30) if self.reranker else limit
-        vector = embed_as(self.embedder, [text], "query")[0]
-        k = max(limit * 5 if (kind or spec or self.agent) else limit, 20)
+        vector = vector if vector is not None else embed_as(self.embedder, [text], "query")[0]
+        k = max(limit * 5 if (asked or spec or self.agent or neighbours is not None) else limit, 20)
         matched: dict[str, tuple[str, str | None]] = {}
         while True:  # filters drop candidates: widen until the pool is full or both legs run out
             dense = ask(self.index.query, vector, k)

@@ -135,7 +135,7 @@ class Client:
         })
 
     def search(
-        self, text: str | list[str] = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None,
+        self, text: str | list[str] = "", kind: str | list[str] | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None,
         mode: str = "text", min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: str = "entity",
         depth: int = 0, per_kind: int | None = None, exclude: list[str] | None = None, as_of: datetime | str | None = None,
         where: dict[str, Any] | None = None,

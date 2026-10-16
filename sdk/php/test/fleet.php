@@ -57,6 +57,7 @@ ok($keel->context(Subjects::tire('T-9001'), null, 0, null, null, 'concise')['fac
 ok($keel->search('T-9001', ['detail' => 'concise'])[0]['facts']['depth_mm'] === 2.6, 'search detail');
 ok(count($keel->search('', ['kind' => 'unit', 'depth' => 1])[0]['neighbors']) > 0, 'search depth');
 ok(array_column($keel->search('', ['kind' => 'tire', 'where' => ['depth_mm' => 2.6]]), 'key') === ['tire:T-9001'], 'search where');
+ok(array_column($keel->search('', ['kind' => ['unit', 'tire'], 'where' => ['depth_mm' => 2.6]]), 'key') === ['tire:T-9001'], 'search kinds');
 $hit = $keel->search('2.6', ['kind' => 'tire'])[0];
 ok([$hit['matched'], $hit['snippet']] === ['depth_mm', '2.6'], 'search matched');
 $both = $keel->context(['tire:T-9001', 'unit:MXK-4821'], null, 0, null, null, 'full', ['depth_mm']);

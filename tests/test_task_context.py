@@ -1,7 +1,8 @@
 """What the kagent pilot of technical instructions asked for, inside the five tools (rule 7):
 search results that carry their facts and neighbours, the best of each kind for a task, batches,
 related over several hops, hidden predicates, and a finer semantic index; then, from the analysis
-of its calls, search by a fact's value, a document per list element and why each result matched."""
+of its calls, search by a fact's value, a document per list element and why each result matched;
+then, from its second round, kind as a list and a faster semantic search."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -258,3 +259,62 @@ def test_split_indexes_each_element_of_a_list_and_quotes_the_one_that_ranked(tmp
     store.open_fact(TENANT, "unit:U1", "field", ["Ventas netas por region"], valid_from=base + timedelta(days=1), source="b")
     index_tenant(store, TENANT, emb, idx, since=first.cursor, policy=policy)
     assert len([k for k in idx._data[TENANT] if SPLIT in k]) == 1  # the dropped elements' documents are gone
+
+
+# ---- 7. the second round: kind as a list, a faster semantic search -------------------------
+
+
+def test_kind_takes_a_list(tmp_path):
+    store = SqliteStore(tmp_path / "k.db")
+    t, _ = _pages(store)
+    keys = lambda hits: [h["key"] for h in hits]
+    assert keys(t.search(kind=["unit", "tire"])) == ["tire:T0", "tire:T1", "tire:T2", "unit:U1"]  # still by key
+    assert keys(t.search(kind=["unit", "tire"], limit=2)) == ["tire:T0", "tire:T1"]
+    assert keys(t.search(kind=["unit", "tire"], after="tire:T1")) == ["tire:T2", "unit:U1"]
+    assert keys(t.search("Resumo", kind=["tire", "unit"])) == ["tire:T1"] and keys(t.search("margen", kind=["tire", "unit"])) == ["unit:U1"]
+    assert keys(t.search("", kind=["tire", "unit"], per_kind=1)) == ["tire:T0", "unit:U1"]  # the first of each
+    for bad in ({"kind": []}, {"kind": ["tire", "unit"], "after": "T1"}, {"kind": "tire", "per_kind": 1, "text": "T"}):
+        with pytest.raises(ValueError):
+            t.search(**bad)
+    emb, idx = HashEmbedder(), MemoryIndex()
+    index_tenant(store, TENANT, emb, idx)
+    s = Tools(t.cartridge, store, TENANT, embedder=emb, index=idx)
+    assert {h["kind"] for h in s.search("margen ociosidade resumo", mode="semantic", kind=["unit"])} == {"unit"}
+    assert {h["kind"] for h in s.search("margen ociosidade resumo", mode="semantic", kind=["unit", "tire"])} == {"unit", "tire"}
+
+
+def test_semantic_per_kind_embeds_once_and_scopes_related_to_inside_the_index(tmp_path):
+    store = SqliteStore(tmp_path / "p.db")
+    t, _ = _pages(store)
+    queries, asked = [], []
+
+    class Embedder(HashEmbedder):
+        def embed(self, texts, role="document"):
+            queries.extend(texts if role == "query" else [])
+            return super().embed(texts, role)
+
+    class Index(MemoryIndex):
+        def query(self, tenant, vector, k, where=None):
+            asked.append(where)
+            return super().query(tenant, vector, k, where)
+
+    emb, idx = Embedder(), Index()
+    index_tenant(store, TENANT, emb, idx)
+    s = Tools(t.cartridge, store, TENANT, embedder=emb, index=idx)
+    pack = s.search("tire depth", mode="semantic", per_kind=2, related_to="unit:U1")
+    assert queries == ["tire depth"]  # one embedding for every kind
+    assert len(pack) == 2 and {h["key"] for h in pack} < {"tire:T0", "tire:T1", "tire:T2"} and all(w["subject"] == ["tire:T0", "tire:T1", "tire:T2"] for w in asked)
+    store.upsert_entity(TENANT, "unit", "U2")
+    asked.clear()
+    assert s.search("tire depth", mode="semantic", related_to="unit:U2") == [] and asked == []  # no neighbours: no query
+
+
+def test_the_lexical_leg_is_built_once_until_the_index_changes():
+    idx = MemoryIndex()
+    idx.upsert(TENANT, [("tire:T1", [1.0], "worn tread"), ("tire:T2", [1.0], "slow leak"), ("unit:U1\x1fp\x1fh", [1.0], "leak report")])
+    first = idx.text_query(TENANT, "leak", 5)
+    built = idx._bm25._c[(TENANT, None)][2]
+    assert first[0][0] == "tire:T2" and [k for k, _ in idx.text_query(TENANT, "tread", 5)] == ["tire:T1"] and idx._bm25._c[(TENANT, None)][2] is built
+    assert [k for k, _ in idx.text_query(TENANT, "leak", 5, where={"subject": ["unit:U1"]})] == ["unit:U1\x1fp\x1fh"]  # a split document is its subject's
+    idx.upsert(TENANT, [("tire:T3", [1.0], "leak again")])
+    assert "tire:T3" in [k for k, _ in idx.text_query(TENANT, "leak", 5)]  # a write drops the cache

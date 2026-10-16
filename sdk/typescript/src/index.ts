@@ -116,7 +116,8 @@ export type Related = {
 };
 export type ContextOptions = { asKnownAt?: Date | string; task?: string; /** predicates to leave out of what is returned */ exclude?: string[] };
 export type SearchOptions<S extends string = string> = {
-  kind?: string;
+  /** one kind, or several: the listing covers them all, a semantic ranking only them, perKind the best of each */
+  kind?: string | string[];
   rule?: string;
   limit?: number;
   after?: string;

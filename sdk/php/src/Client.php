@@ -60,7 +60,7 @@ final class Client
      * the entities whose attribute or current fact has that value. Each ranked result says why: `matched` and `snippet`.
      * A list of texts returns one result list per text.
      * @param string|list<string> $text
-     * @param array{kind?: string, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string, where?: array<string, mixed>} $filter @return list<mixed> */
+     * @param array{kind?: string|list<string>, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string, where?: array<string, mixed>} $filter @return list<mixed> */
     public function search(string|array $text = '', array $filter = []): array
     {
         if (isset($filter['as_of'])) {
