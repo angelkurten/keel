@@ -84,7 +84,7 @@ Decided 2026-10-14 ([design note](https://github.com/angelkurten/keel/blob/maste
 - [x] Python, Go and PHP templates and runtimes, each tested end to end against the HTTP server
 - [x] `@keel-context/sdk` 0.1.0 on npm (2026-10-14)
 - [x] Go module `github.com/angelkurten/keel/sdk/go` tagged `sdk/go/v0.1.0`; PHP runtime split to github.com/angelkurten/keel-sdk-php for Composer
-- [ ] Packagist listing of `keel-context/sdk` from that repo (Angel's Packagist account)
+- [x] Packagist lists `keel-context/sdk` from that repo, following its tags by webhook (2026-10-16, v0.1.0 to v0.8.0); `composer require keel-context/sdk` needs no repository entry
 
 ## 0.6 — what the kagent proof of concept asked for (2026-10-14)
 

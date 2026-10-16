@@ -7,7 +7,7 @@ The cartridge is the interface definition. `keel sdk <language> <cartridge>` wri
 | TypeScript | `keel sdk typescript` | `@keel-context/sdk` (npm) | shipped; tested end to end from Bun against `keel serve --transport http` |
 | Python | `keel sdk python` | `keel.client` inside `keel-context` (stdlib only) | shipped; tested end to end in pytest |
 | Go | `keel sdk go --package <pkg>` | `github.com/angelkurten/keel/sdk/go` | shipped; tested end to end with `go test` |
-| PHP | `keel sdk php --package '<Namespace>'` | `keel-context/sdk` (Composer; Packagist listing pending) | shipped; tested end to end on PHP 8.3 |
+| PHP | `keel sdk php --package '<Namespace>'` | `keel-context/sdk` (Composer, on Packagist) | shipped; tested end to end on PHP 8.3 |
 
 Every generator reads the same `keel schema` document and writes the same things: a type per event payload, an `emit` constructor per cataloged event, subject helpers, the rules and constants, and a client factory. `--check` on any of them exits 1 when the cartridge moved on, for CI.
 
