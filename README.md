@@ -30,18 +30,19 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 ## Five tools, any agent
 
 ```
-context(subject, as_of?, depth?, as_known_at?, task?, detail?)
+context(subject, as_of?, depth?, as_known_at?, task?, detail?, exclude?)
   -> what is true now, at as_of, or as known at a past moment; rules and their verdicts;
      depth=1 adds the neighbors; detail="concise" for about a third of the tokens
 history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
   -> what was true and when we learned it; without a subject, what changed since a watermark
-search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?)
+search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?, detail?, depth?, per_kind?, exclude?, as_of?)
   -> text or semantic search, or every entity of a kind / where a rule fires, paged;
-     related_to (and via) keeps only one subject's neighbors
+     related_to (and via) keeps only one subject's neighbors; detail="concise" puts each result's facts in it;
+     per_kind=n the best of every kind: the context for a task in one call
 annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
   -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
-related(subject, relation?, as_of?)
-  -> neighbors by relation type
+related(subject, relation?, as_of?, depth?)
+  -> neighbors by relation type, up to three hops
 ```
 
 `search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/connect.md#semantic-search), [example](examples/custom_adapters.py)).

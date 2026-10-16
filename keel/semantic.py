@@ -88,6 +88,15 @@ def kind_of(key: str) -> str:
     return key.split(":", 1)[0]
 
 
+SPLIT = "\x1f"  # a split document's key: subject, predicate and a hash of the value, joined by it
+
+
+def subject_of(key: str) -> tuple[str, str | None]:
+    """The subject a document belongs to, and the predicate when it is a split document."""
+    subject, _, rest = key.partition(SPLIT)
+    return subject, (rest.split(SPLIT, 1)[0] if rest else None)
+
+
 TOKEN = re.compile(r"[a-z0-9áéíóúñü]+(?:-[a-z0-9]+)*")
 
 
@@ -341,6 +350,7 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
           attrs: true                     # entity attributes (default true); or a list of names
           relations: [de_cliente]         # open relations: the other side's key and its label
           labels: [name, nombre]          # which attribute labels the other side (first present wins)
+          split: {visual: [campo]}        # also one document per open fact of these predicates
           lexical_weight: 0.3             # hybrid search: weight of the lexical leg (0 = dense only)
           min_score: 0.4                  # optional: drop results below this cosine (model-specific!)
 
@@ -375,6 +385,31 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
     return "\n".join(lines)
 
 
+def _value_hash(value: Any) -> str:
+    return hashlib.sha1(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def split_docs(store: Store, tenant: str, subject: str, policy: dict[str, Any] | None = None) -> tuple[list[tuple[str, str]], set[str]]:
+    """The extra documents `semantic.split` asks for: one per open accepted fact of the listed predicates
+    (a visual with twenty fields is twenty sentences, not one diluted text), and every key such a document
+    ever had for this subject, from its history: the stale ones to delete when a value changes."""
+    preds = set(((policy or {}).get("split") or {}).get(subject.split(":", 1)[0]) or ())
+    if not preds:
+        return [], set()
+    history = store.facts(tenant, subject) + [f for f in store.facts(GLOBAL_TENANT, subject) if f.scope == Scope.GLOBAL]
+    every = {f"{subject}{SPLIT}{f.predicate}{SPLIT}{_value_hash(f.value)}" for f in history if f.predicate in preds}
+    ent = store.entity(tenant, subject)
+    labels = (policy or {}).get("labels", DEFAULT_LABELS)
+    label = next((str(ent.attrs[k]) for k in labels if ent and ent.attrs.get(k) is not None), None)
+    now = datetime.now(timezone.utc)
+    docs = {}
+    for f in history:
+        if f.predicate in preds and f.status is None and f.scope in INDEXED_SCOPES and f.valid_from <= now and (f.valid_to is None or f.valid_to > now):
+            value = f.value if isinstance(f.value, str) else json.dumps(f.value, ensure_ascii=False)
+            docs[f"{subject}{SPLIT}{f.predicate}{SPLIT}{_value_hash(f.value)}"] = f"{subject}" + (f" ({label})" if label else "") + f" {f.predicate}: {value[:MAX_VALUE_CHARS]}"
+    return list(docs.items()), every
+
+
 @dataclass
 class IndexReport:
     indexed: int
@@ -406,10 +441,17 @@ def index_tenant(
             for r in store.relation_changes(tenant, since):
                 changed |= {r.src, r.dst}
         subjects = sorted(changed)
-    docs, gone = [], []
+    docs, gone, indexed = [], [], 0
     for s in subjects:
         text = render(store, tenant, s, policy)
-        (docs.append((s, text)) if text is not None else gone.append(s))
+        extra, every = split_docs(store, tenant, s, policy) if text is not None else ([], split_docs(store, tenant, s, policy)[1])
+        if text is not None:
+            docs.append((s, text))
+            indexed += 1
+        else:
+            gone.append(s)
+        docs += extra
+        gone += sorted(every - {k for k, _ in extra})
     parts = [docs[i : i + batch] for i in range(0, len(docs), batch)]
     embed = lambda part: embed_as(embedder, [t for _, t in part], "document")
     with ThreadPoolExecutor(max(1, workers)) as pool:
@@ -417,7 +459,7 @@ def index_tenant(
             index.upsert(tenant, [(s, v, t) for (s, t), v in zip(part, vectors)])
     if gone:
         index.delete(tenant, gone)
-    return IndexReport(indexed=len(docs), deleted=len(gone), cursor=cursor)
+    return IndexReport(indexed=indexed, deleted=len([g for g in gone if SPLIT not in g]), cursor=cursor)
 
 
 # ---- specs: how a deployment names its adapters --------------------------------------------

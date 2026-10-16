@@ -135,3 +135,45 @@ def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     res = CliRunner().invoke(app, ["serve", "cartridges/fleet", "--transport", "http", "--host", "0.0.0.0"], env={"COLUMNS": "400"})
     assert res.exit_code != 0 and "reachable from the network" in res.output
     assert _loopback("127.0.0.1") and _loopback("::1") and _loopback("localhost") and not _loopback("0.0.0.0") and not _loopback("keel.internal")
+
+
+def test_the_task_context_parameters_over_http():
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS), strict=True)
+    client, h = _client(c, s), {**AUTH, "X-Keel-Tenant": TENANT}
+    both = client.post("/v1/context", json={"subject": ["tire:T-9001", "unit:MXK-4821"], "exclude": ["depth_mm"]}, headers=h).json()
+    assert [x["subject"] for x in both] == ["tire:T-9001", "unit:MXK-4821"] and both[0]["facts"] == []
+    [tire] = client.post("/v1/search", json={"text": "T-9001", "detail": "concise"}, headers=h).json()
+    assert tire["facts"] == {"depth_mm": 2.6}
+    lists = client.post("/v1/search", json={"text": ["T-9001", "MXK"], "per_kind": 1}, headers=h).json()
+    assert len(lists) == 2 and all(isinstance(x, list) for x in lists)
+    [unit] = client.post("/v1/search", json={"kind": "unit", "depth": 1, "as_of": "2026-09-05"}, headers=h).json()
+    assert "tire:T-9001" not in {n["subject"] for n in unit["neighbors"]}  # mounted on 09-10
+    deep = client.post("/v1/related", json={"subject": "tire:T-9001", "relation": ["mounted_on", "assigned_to"], "depth": 2}, headers=h).json()
+    assert {(e["subject"], e["hops"]) for e in deep} >= {("unit:MXK-4821", 1), ("driver:D-118", 2)}
+
+
+def test_every_transport_takes_every_parameter_of_the_five_tools():
+    """A parameter added to a tool must reach the Python client, the HTTP API and MCP."""
+    pytest.importorskip("fastapi")
+    import asyncio
+
+    from keel import Tools
+    from keel.client import Client
+
+    c = load_cartridge(FLEET)
+    tools = Tools(c, MemoryStore(), TENANT)
+    names = ["context", "history", "search", "annotate", "related"]
+    own = {n: [p for p in inspect.signature(getattr(Tools, n)).parameters if p != "self"] for n in names}
+    for n in names:
+        assert [p for p in inspect.signature(getattr(Client, n)).parameters if p != "self"] == own[n], n
+    schema = _client(c, MemoryStore()).get("/openapi.json").json()
+    for n in names:
+        ref = schema["paths"][f"/v1/{n}"]["post"]["requestBody"]["content"]["application/json"]["schema"]["$ref"].split("/")[-1]
+        assert list(schema["components"]["schemas"][ref]["properties"]) == own[n], n
+    pytest.importorskip("mcp")
+    from keel.mcp_server import build_server
+
+    listed = {t.name: list((getattr(t, "input_schema", None) or t.inputSchema)["properties"]) for t in asyncio.run(build_server(tools).list_tools())}  # mcp 2.x / 1.x
+    for n in names:
+        assert listed[n] == own[n], n

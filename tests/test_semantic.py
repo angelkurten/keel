@@ -451,3 +451,16 @@ def test_custom_adapters_example_runs_and_honours_the_index_contract():
 
     mod = runpy.run_path("examples/custom_adapters.py", run_name="__main__")
     test_index_contract(mod["make_index"]())
+
+
+def test_split_documents_work_on_every_index(fleet, index):
+    """semantic.split keys carry a separator: every index must store and return them, and a hit maps to its subject."""
+    from keel.semantic import SPLIT
+
+    c, s = fleet
+    s.open_fact(TENANT, "unit:MXK-4821", "field", "Ventas netas por region", valid_from=datetime(2026, 9, 1, tzinfo=timezone.utc), source="b")
+    emb = HashEmbedder()
+    index_tenant(s, TENANT, emb, index, policy={"split": {"unit": ["field"]}})
+    t = Tools(c, s, TENANT, embedder=emb, index=index)
+    [hit] = t.search("ventas netas por region", mode="semantic", kind="unit", limit=1)
+    assert hit["key"] == "unit:MXK-4821" and hit["matched"] == "field" and SPLIT not in hit["key"]

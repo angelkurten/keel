@@ -115,12 +115,13 @@ class Client:
         raise KeelError(status, detail if isinstance(detail, str) else json.dumps(detail))
 
     def context(
-        self, subject: str, as_of: datetime | str | None = None, depth: int = 0,
-        as_known_at: datetime | str | None = None, task: str | None = None, detail: str = "full",
-    ) -> dict[str, Any]:
-        """What is true about a subject now, or at `as_of`. `depth=1` adds each neighbour; `as_known_at`
-        answers what Keel knew then; `task` keeps one task's memory. `watermark` is the changes cursor."""
-        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task, "detail": detail})
+        self, subject: str | list[str], as_of: datetime | str | None = None, depth: int = 0,
+        as_known_at: datetime | str | None = None, task: str | None = None, detail: str = "full", exclude: list[str] | None = None,
+    ) -> Any:
+        """What is true about a subject now, or at `as_of`; a list of subjects returns a list. `depth=1` adds
+        each neighbour; `as_known_at` answers what Keel knew then; `task` keeps one task's memory; `exclude`
+        leaves predicates out. `watermark` is the changes cursor."""
+        return self._post("/v1/context", {"subject": subject, "as_of": _iso(as_of), "depth": depth, "as_known_at": _iso(as_known_at), "task": task, "detail": detail, "exclude": exclude})
 
     def history(
         self, subject: str | None = None, since: datetime | str | None = None, until: datetime | str | None = None,
@@ -133,10 +134,19 @@ class Client:
             "as_known_at": _iso(as_known_at), "task": task, "changed_since": _iso(changed_since), "limit": limit,
         })
 
-    def search(self, text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: str = "text", min_score: float | None = None, related_to: str | None = None, via: str | None = None) -> list[dict[str, Any]]:
+    def search(
+        self, text: str | list[str] = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None,
+        mode: str = "text", min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: str = "entity",
+        depth: int = 0, per_kind: int | None = None, exclude: list[str] | None = None, as_of: datetime | str | None = None,
+    ) -> list[Any]:
         """Text search; with `kind` or `rule`, the entities of a kind or where a rule fires, paged by `limit`/`after`.
-        `mode="semantic"`: subjects ranked by meaning, each with a `score` (the server needs --index)."""
-        return self._post("/v1/search", {"text": text, "kind": kind, "rule": rule, "limit": limit, "after": after, "mode": mode, "min_score": min_score, "related_to": related_to, "via": via})
+        `mode="semantic"`: subjects ranked by meaning, each with a `score` (the server needs --index). `detail="concise"`
+        puts each result's facts in it; `depth=1` its neighbours; `per_kind=n` the best n of every kind. A list of
+        texts returns one result list per text."""
+        return self._post("/v1/search", {
+            "text": text, "kind": kind, "rule": rule, "limit": limit, "after": after, "mode": mode, "min_score": min_score, "related_to": related_to,
+            "via": via, "detail": detail, "depth": depth, "per_kind": per_kind, "exclude": exclude, "as_of": _iso(as_of),
+        })
 
     def annotate(
         self, subject: str, predicate: str, value: Any, scope: str = "task", evidence: str | None = None,
@@ -145,8 +155,9 @@ class Client:
         """Write memory. `task` ties it to a job; `key` makes a retried write return the first one."""
         return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by, "task": task, "key": key, "status": status})
 
-    def related(self, subject: str, relation: str | None = None, as_of: datetime | str | None = None) -> list[dict[str, Any]]:
-        return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of)})
+    def related(self, subject: str, relation: str | list[str] | None = None, as_of: datetime | str | None = None, depth: int = 1) -> list[dict[str, Any]]:
+        """Neighbours, optionally by relation (one or a list); `depth` 2 or 3 walks further, with `hops` and `via`."""
+        return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of), "depth": depth})
 
     def events(self, batch: Event | dict[str, Any] | list[Event | dict[str, Any]]) -> dict[str, Any]:
         items = batch if isinstance(batch, list) else [batch]

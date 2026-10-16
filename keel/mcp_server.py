@@ -72,9 +72,9 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def context(subject: str, as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None, detail: str = "full") -> dict[str, Any]:
-        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. depth=1 adds each neighbour. as_known_at: what Keel knew then. task: one task's memory. detail="concise" is about a third of the tokens. The result's watermark is the cursor for history(changed_since=)."""
-        return tools.context(subject, _dt(as_of), depth, _dt(as_known_at), task, detail)
+    def context(subject: str | list[str], as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None, detail: str = "full", exclude: list[str] | None = None) -> dict[str, Any] | list[dict[str, Any]]:
+        """What is true about a subject ('<kind>:<id>') now, or at an ISO datetime, with the rules that apply and their evaluation. A list of subjects returns their answers in order. depth=1 adds each neighbour. as_known_at: what Keel knew then. task: one task's memory. detail="concise" is about a third of the tokens. exclude: predicates to leave out. The result's watermark is the cursor for history(changed_since=)."""
+        return tools.context(subject, _dt(as_of), depth, _dt(as_known_at), task, detail, exclude)
 
     @mcp.tool(**read_only)
     @guarded
@@ -94,9 +94,13 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def search(text: str = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: str = "text", min_score: float | None = None, related_to: str | None = None, via: str | None = None) -> list[dict[str, Any]]:
-        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after. mode="semantic": subjects ranked by meaning, with a score. related_to (+ via): only that subject's neighbours, e.g. cards of a client where a rule holds."""
-        return tools.search(text, kind, rule, limit, after, mode, min_score, related_to, via)
+    def search(
+        text: str | list[str] = "", kind: str | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: str = "text",
+        min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: str = "entity", depth: int = 0,
+        per_kind: int | None = None, exclude: list[str] | None = None, as_of: str | None = None,
+    ) -> list[Any]:
+        """Entities and facts matching text. With kind or rule: list the entities of a kind, or those where a rule fires now, ordered by key; page with limit and after. mode="semantic": subjects ranked by meaning, with a score. related_to (+ via): only that subject's neighbours, e.g. cards of a client where a rule holds. detail="concise" puts each result's current facts in it (no context call needed); depth=1 adds its neighbours. per_kind=n: the best n of every kind; with related_to and mode="semantic", the context for a task in one call. exclude: predicates to leave out. A list of texts returns one result list per text."""
+        return tools.search(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, _dt(as_of))
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False))
     @guarded
@@ -111,8 +115,8 @@ def build_server(tools: Tools):  # pragma: no cover - needs the optional mcp pac
 
     @mcp.tool(**read_only)
     @guarded
-    def related(subject: str, relation: str | None = None, as_of: str | None = None) -> list[dict[str, Any]]:
-        """Neighbors of a subject, optionally by relation type, now or at an ISO datetime."""
-        return tools.related(subject, relation, _dt(as_of))
+    def related(subject: str, relation: str | list[str] | None = None, as_of: str | None = None, depth: int = 1) -> list[dict[str, Any]]:
+        """Neighbors of a subject, optionally by relation type (one or a list), now or at an ISO datetime. depth 2 or 3 walks further through those relations; each entry says its hops and the subject it was reached via."""
+        return tools.related(subject, relation, _dt(as_of), depth)
 
     return mcp

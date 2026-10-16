@@ -5,11 +5,11 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     keel serve cartridges/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
-    POST /v1/context   {subject, as_of?, depth?}     -> the context object
+    POST /v1/context   {subject (or a list), as_of?, depth?, exclude?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
-    POST /v1/search    {text}
+    POST /v1/search    {text (or a list), kind?, rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
-    POST /v1/related   {subject, relation?, as_of?}
+    POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
 
 Every request carries `Authorization: Bearer <secret>` (unset secret = open: localhost only),
@@ -115,12 +115,13 @@ def build_http_app(
             raise HTTPException(400, str(exc)) from exc
 
     class ContextIn(BaseModel):
-        subject: str
+        subject: str | list[str]
         as_of: str | None = None
         depth: int = 0
         as_known_at: str | None = None
         task: str | None = None
         detail: str = "full"
+        exclude: list[str] | None = None
 
     class HistoryIn(BaseModel):
         subject: str | None = None
@@ -134,7 +135,7 @@ def build_http_app(
         limit: int | None = None
 
     class SearchIn(BaseModel):
-        text: str = ""
+        text: str | list[str] = ""
         kind: str | None = None
         rule: str | None = None
         limit: int | None = None
@@ -143,6 +144,11 @@ def build_http_app(
         min_score: float | None = None
         related_to: str | None = None
         via: str | None = None
+        detail: str = "entity"
+        depth: int = 0
+        per_kind: int | None = None
+        exclude: list[str] | None = None
+        as_of: str | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -157,8 +163,9 @@ def build_http_app(
 
     class RelatedIn(BaseModel):
         subject: str
-        relation: str | None = None
+        relation: str | list[str] | None = None
         as_of: str | None = None
+        depth: int = 1
 
     def dt(s: str | None):
         return parse_iso(s) if s else None
@@ -177,16 +184,19 @@ def build_http_app(
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors}
 
     @app.post("/v1/context")
-    def context(body: ContextIn, request: Request) -> dict[str, Any]:
-        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task, body.detail))
+    def context(body: ContextIn, request: Request) -> Any:
+        return run(lambda: tools_for(request).context(body.subject, dt(body.as_of), body.depth, dt(body.as_known_at), body.task, body.detail, body.exclude))
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:
         return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since), body.limit))
 
     @app.post("/v1/search")
-    def search(body: SearchIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).search(body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score, body.related_to, body.via))
+    def search(body: SearchIn, request: Request) -> list[Any]:
+        return run(lambda: tools_for(request).search(
+            body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score, body.related_to, body.via,
+            body.detail, body.depth, body.per_kind, body.exclude, dt(body.as_of),
+        ))
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
@@ -194,7 +204,7 @@ def build_http_app(
 
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of)))
+        return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth))
 
     if mcp_app is not None:
         app.mount("/", mcp_app)

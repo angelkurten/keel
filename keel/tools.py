@@ -23,7 +23,7 @@ from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
 from keel.scopes import GLOBAL_TENANT, Scope
-from keel.semantic import accepts, embed_as, fuse, render
+from keel.semantic import accepts, embed_as, fuse, render, subject_of
 from keel.store.base import DuplicateKey, Entity, Fact, Relation, Store
 from keel.store.memory import changed_after, filter_facts, search_in
 
@@ -307,13 +307,14 @@ class Tools:
 
     def context(
         self,
-        subject: str,
+        subject: str | list[str],
         as_of: Instant = None,
         depth: int = 0,
         as_known_at: Instant = None,
         task: str | None = None,
         detail: str = "full",
-    ) -> dict[str, Any]:
+        exclude: list[str] | None = None,
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Truth about a subject now (or at `as_of`): entity, open facts and relations, the rules
         that apply to its kind, and the evaluation of every rule that carries a `when`. With
         `depth=1`, also each neighbour's entity, open facts and evaluation (up to NEIGHBOR_CAP).
@@ -324,18 +325,25 @@ class Tools:
         is the tenant's latest transaction time, the cursor for `history(changed_since=)`. `proposals`
         lists pending proposals; `conflicts` lists predicates with more than one open value (multi-valued
         predicates written by several authors). `detail="concise"` returns about a third of the tokens:
-        facts as {predicate: value}, relations as (relation, direction, subject), no rule definitions."""
+        facts as {predicate: value}, relations as (relation, direction, subject), no rule definitions.
+        A list of subjects returns their answers in order, in one call. `exclude` hides those predicates
+        from the facts, proposals and neighbours returned (an evaluation where the agent must not see the
+        answer); rules still evaluate on the whole truth."""
+        if isinstance(subject, list):
+            return [self.context(s, as_of, depth, as_known_at, task, detail, exclude) for s in subject]  # type: ignore[misc]
         if detail not in ("full", "concise"):
             raise ValueError("detail is 'full' or 'concise'")
         self._readable(subject)
         as_of, as_known_at = _t(as_of), _t(as_known_at)
         now = as_of or as_known_at or utcnow()
         graph = self._graph(now, as_known_at, task)
+        hide = set(exclude or ())
+        shown = lambda fs: [f for f in fs if f.predicate not in hide]
         rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
         out: dict[str, Any] = {
             "subject": subject,
             "entity": self.store.entity(self.tenant, subject),
-            "facts": graph.facts(subject),
+            "facts": shown(graph.facts(subject)),
             "relations": [asdict(r) for r in rels],
             "rules": self._rules_for(subject),
             "evaluation": self._evaluation(subject, graph),
@@ -344,7 +352,7 @@ class Tools:
         }
         if as_known_at is not None:
             out["as_known_at"] = as_known_at
-        proposals = graph.proposals(subject)
+        proposals = shown(graph.proposals(subject))
         if proposals:
             out["proposals"] = proposals
         conflicts = _conflicts(out["facts"])
@@ -362,7 +370,7 @@ class Tools:
                         "direction": _direction(r.rel, r.src, subject, self.symmetric),
                         "subject": other,
                         "entity": entities[other],
-                        "facts": graph.facts(other),
+                        "facts": shown(graph.facts(other)),
                         "evaluation": self._evaluation(other, graph),
                     }
                 )
@@ -419,7 +427,7 @@ class Tools:
 
     def search(
         self,
-        text: str = "",
+        text: str | list[str] = "",
         kind: str | None = None,
         rule: str | None = None,
         limit: int | None = None,
@@ -428,7 +436,12 @@ class Tools:
         min_score: float | None = None,
         related_to: str | None = None,
         via: str | None = None,
-    ) -> list[dict[str, Any]]:
+        detail: str = "entity",
+        depth: int = 0,
+        per_kind: int | None = None,
+        exclude: list[str] | None = None,
+        as_of: Instant = None,
+    ) -> list[Any]:
         """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
         deployment's embedder and vector index (keel.semantic): ids in the query first, then dense and
         lexical legs fused, then the optional reranker; tenant, the agent's read slice, `kind` and `rule`
@@ -438,16 +451,104 @@ class Tools:
         (an id alone is accepted when the kind is known) and applies to the kind/rule listing. With `kind` or `rule` it enumerates instead: the entities
         of that kind (a rule's `applies_to` when only `rule` is given) whose key or attributes match
         `text`, where the rule fires now when `rule` is given, ordered by key; page with `limit` and
-        `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers."""
+        `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers.
+
+        What each result carries:
+        `detail="concise"` adds the entity's current facts as {predicate: value}, `"full"` as facts, so
+        a result needs no `context` call to be understood; `depth=1` adds its neighbours (relation,
+        direction, subject, and their facts when `detail` asks for them). `per_kind=n` returns the best n
+        of every kind instead of one ranking: with `related_to` for the scope and `mode="semantic"`, the
+        context a task needs in one call. `exclude` hides predicates from what is returned, and drops fact
+        hits on them; `as_of` evaluates rules, neighbours and facts at that instant. A list of texts
+        returns one result list per text, in order."""
+        if isinstance(text, list):
+            return [self.search(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, as_of) for t in text]
+        if detail not in ("entity", "concise", "full"):
+            raise ValueError("search detail is 'entity', 'concise' or 'full'")
+        if depth not in (0, 1):
+            raise ValueError("search depth is 0 or 1")
+        at = _t(as_of)
+        if per_kind is not None:
+            if per_kind < 1:
+                raise ValueError("per_kind is at least 1")
+            if after is not None:
+                raise ValueError("per_kind takes the best of each kind; page one kind with `kind`, `limit` and `after`")
+            if mode == "semantic":  # the index filters by kind: one ranking per kind
+                spec = self.cartridge.rules.get(rule) if rule else None
+                one = kind or (spec or {}).get("applies_to")
+                kinds = [one] if one else [k for k in self.cartridge.entities if not self.agent or self.agent.sees_kind(k)]
+                hits = [h for k in kinds for h in self._search(text, k, rule, per_kind, None, mode, min_score, related_to, via, at)]
+            elif kind is not None or rule is not None:
+                raise ValueError("per_kind groups a text or semantic search by kind; with `kind` or `rule` you list one kind (use `limit`)")
+            else:
+                taken: dict[str, int] = {}
+                hits = []
+                for h in self._search(text, None, None, None, None, mode, min_score, related_to, via, at):
+                    k = h.get("kind") or _kind(h["subject"])
+                    if taken.get(k, 0) < per_kind:
+                        taken[k] = taken.get(k, 0) + 1
+                        hits.append(h)
+        else:
+            hits = self._search(text, kind, rule, limit, after, mode, min_score, related_to, via, at)
+        return self._enrich(hits, detail, depth, set(exclude or ()), at)
+
+    def _enrich(self, hits: list[dict[str, Any]], detail: str, depth: int, hide: set[str], at: datetime | None) -> list[dict[str, Any]]:
+        """Facts and neighbours on each entity result, read in batches (a few statements per page)."""
+        hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        if detail == "entity" and not depth:
+            return hits
+        entities = [h for h in hits if "predicate" not in h]
+        graph = self._graph(at or utcnow())
+        graph.prime(h["key"] for h in entities)
+
+        def facts(key: str) -> Any:
+            fs = _ser([f for f in graph.facts(key) if f.predicate not in hide])
+            return fs if detail == "full" else _compact_facts(fs)
+
+        if depth:
+            graph.prime_relations(h["key"] for h in entities)
+            near = {h["key"]: self._dedupe([r for r in graph.relations(h["key"]) if self._visible(r, h["key"])], h["key"]) for h in entities}
+            if detail != "entity":
+                graph.prime(r.dst if r.src == k else r.src for k, rels in near.items() for r in rels[:NEIGHBOR_CAP])
+        for h in entities:
+            if detail != "entity":
+                h["facts"] = facts(h["key"])
+            if depth:
+                rels = near[h["key"]]
+                h["neighbors"] = []
+                for r in rels[:NEIGHBOR_CAP]:
+                    other = r.dst if r.src == h["key"] else r.src
+                    n = {"relation": r.rel, "direction": _direction(r.rel, r.src, h["key"], self.symmetric), "subject": other}
+                    if detail != "entity":
+                        n["facts"] = facts(other)
+                    h["neighbors"].append(n)
+                if len(rels) > NEIGHBOR_CAP:
+                    h["neighbors_truncated"] = True
+        return hits
+
+    def _search(
+        self,
+        text: str = "",
+        kind: str | None = None,
+        rule: str | None = None,
+        limit: int | None = None,
+        after: str | None = None,
+        mode: str = "text",
+        min_score: float | None = None,
+        related_to: str | None = None,
+        via: str | None = None,
+        at: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """The search itself, before `search` adds facts and neighbours."""
         if mode not in ("text", "semantic"):
             raise ValueError("mode is 'text' or 'semantic'")
         if via and not related_to:
             raise ValueError("`via` needs `related_to`")
-        neighbours = self._neighbours(related_to, via) if related_to else None
+        neighbours = self._neighbours(related_to, via, at) if related_to else None
         if after is not None and (mode == "semantic" or (kind is None and rule is None)):
             raise ValueError("`after` pages the kind/rule listing; semantic and text search rank, page them with `limit`")
         if mode == "semantic":
-            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours)
+            return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, at)
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text) + [h for h in self.store.search(GLOBAL_TENANT, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
             hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
@@ -467,7 +568,7 @@ class Tools:
         if self.agent and not self.agent.sees_kind(kind):
             raise PermissionError(f"agent '{self.agent.id}' may not read kind '{kind}'")
         found: list[Entity] = []
-        graph = self._graph(utcnow()) if spec else None
+        graph = self._graph(at or utcnow()) if spec else None
         if after is not None and ":" not in after:
             after = f"{kind}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
         elif after is not None and _kind(after) != kind:
@@ -491,12 +592,12 @@ class Tools:
                     return _ser(found)
         return _ser(found)
 
-    def _neighbours(self, subject: str, via: str | None) -> set[str]:
-        """The subjects linked to `subject` now (through `via` when given), as the caller may see them."""
+    def _neighbours(self, subject: str, via: str | None, at: datetime | None = None) -> set[str]:
+        """The subjects linked to `subject` now or at `at` (through `via` when given), as the caller may see them."""
         self._readable(subject)
         if via is not None and via not in self.cartridge.relations:
             raise ValueError(f"relation '{via}' is not declared")
-        return {r.dst if r.src == subject else r.src for r in self.store.relations(self.tenant, subject, rel=via, at=utcnow()) if self._visible(r, subject)}
+        return {r.dst if r.src == subject else r.src for r in self.store.relations(self.tenant, subject, rel=via, at=at or utcnow()) if self._visible(r, subject)}
 
     def _exact_keys(self, text: str, kinds: list[str] | None) -> list[str]:
         """Subjects whose key or id appears verbatim in the query: ids are what dense vectors blur."""
@@ -513,6 +614,7 @@ class Tools:
 
     def _semantic(
         self, text: str, kind: str | None, rule: str | None, limit: int, min_score: float | None = None, neighbours: set[str] | None = None,
+        at: datetime | None = None,
     ) -> list[dict[str, Any]]:
         if self.embedder is None or self.index is None:
             raise ValueError("semantic search is not configured: pass an embedder and a vector index (keel serve --embedder --index)")
@@ -528,7 +630,7 @@ class Tools:
         floor = min_score if min_score is not None else policy.get("min_score")
         w_lex = float(policy.get("lexical_weight", 0.3))
         lexical = getattr(self.index, "text_query", None) if w_lex > 0 else None
-        graph = self._graph(utcnow()) if spec else None
+        graph = self._graph(at or utcnow()) if spec else None
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
@@ -550,18 +652,26 @@ class Tools:
         pool_size = max(limit, 30) if self.reranker else limit
         vector = embed_as(self.embedder, [text], "query")[0]
         k = max(limit * 5 if (kind or spec or self.agent) else limit, 20)
+        matched: dict[str, str] = {}
         while True:  # filters drop candidates: widen until the pool is full or both legs run out
             dense = ask(self.index.query, vector, k)
             lex = ask(lexical, text, k) if lexical else []
-            similarity = dict(dense)
+            similarity: dict[str, float] = {}
+            for doc, sim in dense:  # a subject's best document, its own or a split one (semantic.split)
+                similarity[subject_of(doc)[0]] = max(sim, similarity.get(subject_of(doc)[0], -1.0))
             pool: list[tuple[Entity, float]] = []
-            for key, score in fuse(dense, lex, 1 - w_lex):
-                if key in taken:
-                    continue
+            pooled: set[str] = set()
+            for doc, score in fuse(dense, lex, 1 - w_lex):
+                key, predicate = subject_of(doc)
+                if key in taken or key in pooled:
+                    continue  # ranked best first: a subject keeps its best document
                 if floor is not None and similarity.get(key, -1.0) < float(floor):
                     continue  # below the cosine floor (or found only lexically, so its cosine is lower still)
                 if (ent := admit(key)) is not None:
                     pool.append((ent, score))
+                    pooled.add(key)
+                    if predicate:
+                        matched[key] = predicate
                     if len(pool) >= pool_size:
                         break
             exhausted = len(dense) < k and (not lexical or len(lex) < k)
@@ -578,7 +688,10 @@ class Tools:
         for ent, score in ranked:
             if len(out) >= limit:
                 break
-            out.append({**_ser(ent), "score": round(score, 6), "similarity": None if ent.key not in similarity else round(similarity[ent.key], 6)})
+            hit = {**_ser(ent), "score": round(score, 6), "similarity": None if ent.key not in similarity else round(similarity[ent.key], 6)}
+            if ent.key in matched:
+                hit["matched"] = matched[ent.key]  # the split predicate whose document ranked it
+            out.append(hit)
         return out
 
     def annotate(
@@ -652,23 +765,42 @@ class Tools:
             f.valid_to = now
         return _ser(f)
 
-    def related(self, subject: str, relation: str | None = None, as_of: Instant = None) -> list[dict[str, Any]]:
-        """Neighbours by relation type, now or at `as_of`. A symmetric relation shows once, direction `both`."""
+    def related(self, subject: str, relation: str | list[str] | None = None, as_of: Instant = None, depth: int = 1) -> list[dict[str, Any]]:
+        """Neighbours by relation type (one, or a list), now or at `as_of`. A symmetric relation shows once,
+        direction `both`. `depth` 2 or 3 walks further through the same relations, each subject once,
+        nearest first; every entry then says how many `hops` away it is and which subject it was reached
+        `via` (its direction is relative to that subject)."""
+        if depth not in (1, 2, 3):
+            raise ValueError("related depth is 1, 2 or 3")
         self._readable(subject)
-        rels = self._dedupe([r for r in self.store.relations(self.tenant, subject, rel=relation, at=_t(as_of) or utcnow()) if self._visible(r, subject)], subject)
-        out = []
-        for r in rels:
-            other = r.dst if r.src == subject else r.src
-            direction = _direction(r.rel, r.src, subject, self.symmetric)
-            out.append({"relation": r.rel, "direction": direction, "subject": other, "since": r.valid_from.isoformat()})
+        allowed = None if relation is None else {relation} if isinstance(relation, str) else set(relation)
+        graph = self._graph(_t(as_of) or utcnow())
+        out: list[dict[str, Any]] = []
+        seen, frontier = {subject}, [subject]
+        for hop in range(1, depth + 1):
+            graph.prime_relations(frontier)
+            reached: list[str] = []
+            for s in frontier:
+                rels = self._dedupe([r for r in graph.relations(s) if (allowed is None or r.rel in allowed) and self._visible(r, s)], s)
+                for r in rels:
+                    other = r.dst if r.src == s else r.src
+                    if hop > 1 and other in seen:
+                        continue
+                    entry = {"relation": r.rel, "direction": _direction(r.rel, r.src, s, self.symmetric), "subject": other, "since": r.valid_from.isoformat()}
+                    if depth > 1:
+                        entry.update(hops=hop, via=s)
+                        seen.add(other)
+                    out.append(entry)
+                    reached.append(other)
+            frontier = list(dict.fromkeys(reached))
         return out
 
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?"], "doc": self.context.__doc__},
+            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?"], "doc": self.context.__doc__},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?"], "doc": self.search.__doc__},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?"], "doc": self.search.__doc__},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
-            {"name": "related", "args": ["subject", "relation?", "as_of?"], "doc": self.related.__doc__},
+            {"name": "related", "args": ["subject", "relation?", "as_of?", "depth?"], "doc": self.related.__doc__},
         ]

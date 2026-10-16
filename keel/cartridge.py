@@ -73,7 +73,7 @@ class Cartridge:
             problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
         sem = self.semantic
-        known = {"kinds", "predicates", "exclude", "attrs", "relations", "labels", "lexical_weight", "min_score"}
+        known = {"kinds", "predicates", "exclude", "attrs", "relations", "labels", "lexical_weight", "min_score", "split"}
         for key in sorted(set(sem) - known):
             problems.append(f"semantic: unknown key '{key}' ({', '.join(sorted(known))})")
         if not 0 <= float(sem.get("lexical_weight", 0.3)) <= 1:
@@ -84,6 +84,12 @@ class Cartridge:
             problems.append(f"semantic: kind '{k}' is not a declared entity kind")
         for r in sorted(set(sem.get("relations") or []) - set(self.relations)):
             problems.append(f"semantic: relation '{r}' is not declared")
+        split = sem.get("split") or {}
+        if not isinstance(split, dict) or not all(isinstance(v, list) for v in split.values()):
+            problems.append("semantic: split maps a kind to a list of predicates, e.g. {visual: [campo]}")
+        else:
+            for k in sorted(set(split) - set(self.entities)):
+                problems.append(f"semantic: split kind '{k}' is not a declared entity kind")
         from keel.consolidate import problems as consolidate_problems
 
         problems += consolidate_problems(self)
