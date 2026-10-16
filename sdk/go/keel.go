@@ -286,7 +286,7 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 // SearchOptions: with Kind or Rule it lists entities of a kind, or where a rule fires now, paged by Limit/After.
 type SearchOptions struct {
 	Text, Kind, Rule, After string
-	Kinds                   []string       // several kinds at once, instead of Kind: listed together, ranked only among them, PerKind of each
+	Kinds                   []string // several kinds at once, instead of Kind: listed together, ranked only among them, PerKind of each
 	Limit                   int
 	Mode                    string         // "semantic": ranked by meaning, each result with a "score"
 	MinScore                float64        // semantic: drop results whose cosine is below this; 0 = no floor
