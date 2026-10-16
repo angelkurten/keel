@@ -11,6 +11,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
+    GET  /ui           with ui=True (`keel serve --ui`): a read-only browser over the same API
 
 Every request carries `Authorization: Bearer <secret>` (unset secret = open: localhost only),
 `X-Keel-Tenant`, and `X-Keel-Agent` when the cartridge declares agents. The product
@@ -32,7 +33,7 @@ from keel.ingest import Ingestor
 from keel.store.base import Store
 from keel.tools import Tools
 
-OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc"}
+OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui holds no data; its calls carry the secret
 
 
 class _Bearer:
@@ -63,6 +64,7 @@ def build_http_app(
     embedder: Any = None,
     index: Any = None,
     reranker: Any = None,
+    ui: bool = False,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`)."""
     try:
@@ -207,6 +209,17 @@ def build_http_app(
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
         return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth))
+
+    if ui:
+        from pathlib import Path
+
+        from fastapi.responses import HTMLResponse
+
+        page = (Path(__file__).parent / "ui.html").read_text(encoding="utf-8")
+
+        @app.get("/ui", include_in_schema=False)
+        def ui_page() -> HTMLResponse:
+            return HTMLResponse(page)
 
     if mcp_app is not None:
         app.mount("/", mcp_app)

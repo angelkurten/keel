@@ -179,3 +179,11 @@ def test_every_transport_takes_every_parameter_of_the_five_tools():
     listed = {t.name: list((getattr(t, "input_schema", None) or t.inputSchema)["properties"]) for t in asyncio.run(build_server(tools).list_tools())}  # mcp 2.x / 1.x
     for n in names:
         assert listed[n] == own[n], n
+
+
+def test_ui_is_opt_in_open_and_carries_no_data():
+    c = load_cartridge(FLEET)
+    assert _client(c, MemoryStore()).get("/ui").status_code == 404  # off unless asked
+    page = _client(c, MemoryStore(), ui=True).get("/ui")
+    assert page.status_code == 200 and "text/html" in page.headers["content-type"]
+    assert 'fetch("v1/" + tool' in page.text  # the page reads through the same /v1 API, with the secret

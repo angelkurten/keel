@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keel Browser</title>
+<link rel="icon" href="data:,">
+<style>
+:root { --bg:#fafaf9; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --card:#fff; --accent:#0f766e; --warn:#b45309; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1c1917; --fg:#f5f5f4; --muted:#a8a29e; --line:#44403c; --card:#292524; --accent:#2dd4bf; --warn:#fbbf24; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui, sans-serif; }
+header { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); }
+header b { margin-right:8px; }
+input, button { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+button { cursor:pointer; }
+main { display:grid; grid-template-columns:280px 1fr; gap:16px; padding:16px; }
+@media (max-width:800px) { main { grid-template-columns:1fr; } }
+section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 8px; }
+ul { list-style:none; margin:0; padding:0; }
+li a, .link { color:var(--accent); cursor:pointer; text-decoration:none; }
+li { padding:3px 0; overflow-wrap:anywhere; }
+table { border-collapse:collapse; width:100%; }
+td, th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere; }
+th { color:var(--muted); font-weight:500; }
+.muted { color:var(--muted); }
+.err { color:var(--warn); white-space:pre-wrap; }
+.tag { display:inline-block; padding:0 6px; border-radius:10px; border:1px solid var(--line); margin:0 4px 4px 0; }
+.tag.on { border-color:var(--warn); color:var(--warn); }
+svg { width:100%; height:auto; max-height:460px; }
+svg text { fill:var(--fg); font-size:11px; }
+svg line { stroke:var(--line); }
+svg circle { fill:var(--card); stroke:var(--accent); stroke-width:2; cursor:pointer; }
+svg .center circle { fill:var(--accent); }
+.stack > * + * { margin-top:16px; }
+</style>
+</head>
+<body>
+<header>
+  <b>Keel</b>
+  <input id="secret" type="password" placeholder="secret" autocomplete="off">
+  <input id="tenant" placeholder="tenant">
+  <input id="agent" placeholder="agent (optional)">
+  <label class="muted">as of <input id="asof" type="datetime-local"></label>
+</header>
+<main>
+  <section>
+    <h2>Search</h2>
+    <form id="sf"><input id="q" placeholder="text or kind:id" style="width:100%"></form>
+    <p id="serr" class="err"></p>
+    <ul id="results"></ul>
+  </section>
+  <div class="stack">
+    <section><h2 id="title">Pick a subject</h2><div id="entity" class="muted">Search on the left, or type a subject key.</div></section>
+    <section><h2>Neighbours</h2><div id="graph" class="muted">-</div></section>
+    <section><h2>Facts</h2><div id="facts" class="muted">-</div></section>
+    <section><h2 id="htitle">History</h2><div id="history" class="muted">Click a predicate to see its history.</div></section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k.startsWith("on") ? n.addEventListener(k.slice(2), v) : n.setAttribute(k, v);
+  for (const k of kids) n.append(k instanceof Node ? k : document.createTextNode(String(k)));
+  return n;
+};
+const svgEl = (tag, attrs = {}) => {
+  const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  return n;
+};
+const show = (v) => v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
+const day = (s) => s ? s.replace("T", " ").slice(0, 16) : "";
+
+// Per-tab only: the secret never outlives the tab.
+for (const k of ["secret", "tenant", "agent"]) {
+  try { $(k).value = sessionStorage.getItem("keel." + k) || ""; } catch {}
+  $(k).addEventListener("change", () => { try { sessionStorage.setItem("keel." + k, $(k).value); } catch {} });
+}
+
+async function call(tool, body) {
+  const headers = { "Content-Type": "application/json", "X-Keel-Tenant": $("tenant").value.trim() };
+  if ($("secret").value) headers.Authorization = "Bearer " + $("secret").value;
+  if ($("agent").value.trim()) headers["X-Keel-Agent"] = $("agent").value.trim();
+  const res = await fetch("v1/" + tool, { method: "POST", headers, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`${res.status}: ${show(data.detail ?? res.statusText)}`);
+  return data;
+}
+const asOf = () => $("asof").value ? new Date($("asof").value).toISOString() : null;
+
+$("sf").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  $("serr").textContent = ""; $("results").replaceChildren();
+  if (/^[\w.-]+:\S+$/.test(q)) return open(q);
+  try {
+    const hits = await call("search", { text: q, limit: 50, as_of: asOf() });
+    if (!hits.length) $("results").append(el("li", { class: "muted" }, "No match."));
+    for (const h of hits) $("results").append(el("li", {}, el("a", { onclick: () => open(h.key) }, h.key), " ", el("span", { class: "muted" }, h.attrs ? Object.values(h.attrs).map(show).join(" · ") : "")));
+  } catch (err) { $("serr").textContent = err.message; }
+});
+
+async function open(subject) {
+  $("title").textContent = subject;
+  $("history").replaceChildren(el("span", { class: "muted" }, "Click a predicate to see its history."));
+  $("htitle").textContent = "History";
+  try {
+    const [ctx, rel] = await Promise.all([call("context", { subject, as_of: asOf() }), call("related", { subject, as_of: asOf() })]);
+    renderEntity(ctx); renderFacts(subject, ctx.facts || []); renderGraph(subject, rel);
+  } catch (err) {
+    $("entity").replaceChildren(el("span", { class: "err" }, err.message));
+    $("facts").replaceChildren(); $("graph").replaceChildren();
+  }
+}
+
+function renderEntity(ctx) {
+  const e = ctx.entity || {}, box = el("div");
+  if (e.ref) box.append(el("div", { class: "muted" }, "ref " + e.ref));
+  const attrs = el("div");
+  for (const [k, v] of Object.entries(e.attrs || {})) attrs.append(el("span", { class: "tag" }, `${k}: ${show(v)}`));
+  const rules = el("div");
+  for (const [k, v] of Object.entries(ctx.evaluation || {})) rules.append(el("span", { class: v ? "tag on" : "tag" }, `${k}: ${show(v)}`));
+  box.append(attrs, rules);
+  $("entity").replaceChildren(box);
+}
+
+function renderFacts(subject, facts) {
+  if (!facts.length) return $("facts").replaceChildren(el("span", { class: "muted" }, "No current facts."));
+  const t = el("table", {}, el("tr", {}, ...["predicate", "value", "since", "scope", "source"].map((h) => el("th", {}, h))));
+  for (const f of facts) t.append(el("tr", {},
+    el("td", {}, el("a", { class: "link", onclick: () => history(subject, f.predicate) }, f.predicate)),
+    el("td", {}, show(f.value)), el("td", {}, day(f.valid_from)), el("td", {}, f.scope || ""),
+    el("td", {}, f.corrected_by ? `${f.source} (by ${f.corrected_by})` : f.source || "")));
+  $("facts").replaceChildren(t);
+}
+
+async function history(subject, predicate) {
+  $("htitle").textContent = "History: " + predicate;
+  try {
+    const rows = await call("history", { subject, predicate });
+    const t = el("table", {}, el("tr", {}, ...["value", "valid from", "valid to", "recorded", "source", "evidence"].map((h) => el("th", {}, h))));
+    for (const f of rows) t.append(el("tr", {}, el("td", {}, show(f.value)), el("td", {}, day(f.valid_from)), el("td", {}, day(f.valid_to) || "now"),
+      el("td", {}, day(f.recorded_at)), el("td", {}, f.source || ""), el("td", { class: "muted" }, show(f.evidence))));
+    $("history").replaceChildren(t);
+  } catch (err) { $("history").replaceChildren(el("span", { class: "err" }, err.message)); }
+}
+
+// ponytail: radial layout of one hop; a force layout library if people want to walk several hops at once.
+function renderGraph(subject, rel) {
+  if (!rel.length) return $("graph").replaceChildren(el("span", { class: "muted" }, "No neighbours."));
+  const W = 640, H = 420, cx = W / 2, cy = H / 2, r = Math.min(170, 60 + rel.length * 12);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Neighbours of ${subject}` });
+  rel.forEach((n, i) => {
+    const a = (2 * Math.PI * i) / rel.length - Math.PI / 2, x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    svg.append(svgEl("line", { x1: cx, y1: cy, x2: x, y2: y }));
+    const lbl = svgEl("text", { x: cx + (x - cx) * 0.62, y: cy + (y - cy) * 0.62 - 3, "text-anchor": "middle", class: "muted" });
+    lbl.textContent = (n.direction === "in" ? "← " : "") + n.relation + (n.direction === "in" ? "" : " →");
+    lbl.style.fill = "var(--muted)";
+    svg.append(lbl);
+    const g = svgEl("g", { tabindex: 0 });
+    g.append(svgEl("circle", { cx: x, cy: y, r: 7 }));
+    const t = svgEl("text", { x, y: y + (y < cy ? -12 : 20), "text-anchor": "middle" });
+    t.textContent = n.subject;
+    g.append(t);
+    g.addEventListener("click", () => open(n.subject));
+    g.addEventListener("keydown", (e) => e.key === "Enter" && open(n.subject));
+    svg.append(g);
+  });
+  const c = svgEl("g", { class: "center" });
+  c.append(svgEl("circle", { cx, cy, r: 10 }));
+  const t = svgEl("text", { x: cx, y: cy + 26, "text-anchor": "middle", "font-weight": "600" });
+  t.textContent = subject;
+  c.append(t);
+  svg.append(c);
+  $("graph").replaceChildren(svg);
+}
+
+$("asof").addEventListener("change", () => { const s = $("title").textContent; if (s.includes(":")) open(s); });
+</script>
+</body>
+</html>
