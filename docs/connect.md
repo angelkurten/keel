@@ -261,21 +261,21 @@ Reads follow the memory scopes. Agent-scope memory is read only by the agent tha
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.23.0`, `0.23`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.24.0`, `0.24`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.23.0
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.24.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment (§ Configuration); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.23.0 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.23.0` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.24.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.24.0` and `COPY cartridges/mine /cartridge`.
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.23.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.24.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Semantic search
 
