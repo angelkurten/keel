@@ -34,7 +34,7 @@ test("typed events in, context with the rule's verdict out", async () => {
     emit.tireDepthMeasured({ tenant, subject: subjects.tire("T-9001"), occurredAt: "2026-09-10T08:00:00Z", source: "tires", payload: { unit_id: "MXK-4821", position: "P3", depth_mm: 5.2 } }),
     emit.tireDepthMeasured({ tenant, subject: subjects.tire("T-9001"), occurredAt: new Date("2026-10-03T08:00:00Z"), source: "tires", payload: { unit_id: "MXK-4821", position: "P3", depth_mm: 2.6 } }),
   ]);
-  expect(report).toEqual({ processed: 3, duplicates: 0, unhandled: [], errors: [] });
+  expect(report).toEqual({ processed: 3, duplicates: 0, unhandled: [], errors: [], forgotten: [], skipped: 0 });
 
   const ctx = await keel.context(subjects.tire("T-9001"));
   expect(ctx.evaluation).toEqual({ tire_critical: true });

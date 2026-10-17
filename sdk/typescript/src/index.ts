@@ -146,7 +146,11 @@ export type Neighbor = {
   facts: Fact[];
   evaluation: Record<string, boolean | null>;
 };
-export type IngestReport = { processed: number; duplicates: number; unhandled: string[]; errors: Array<[string, string]> };
+export type IngestReport = {
+  processed: number; duplicates: number; unhandled: string[]; errors: Array<[string, string]>;
+  forgotten: Array<{ tenant: string } & Record<string, number | string>>; // tenants erased by a `forgets: tenant` event, with what was deleted
+  skipped: number; // events for a forgotten tenant, never applied
+};
 
 export type ClientOptions = {
   /** Where `keel serve --transport http` listens, e.g. http://keel.internal:8000 */
