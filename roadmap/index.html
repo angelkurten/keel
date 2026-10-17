@@ -1,0 +1,1176 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/roadmap/">
+      
+      
+        <link rel="prev" href="../SPEC/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Roadmap - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#now-00x-octobernovember-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Now — 0.0.x (October–November 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-01-code-shipped-early-as-010-on-2026-10-14-pilots-through-january-2027" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next — 0.1 (code shipped early as 0.1.0 on 2026-10-14; pilots through January 2027)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-in-parallel-with-the-pilots-shipped-as-020-on-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2 — in parallel with the pilots (shipped as 0.2.0 on 2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03-sdks-generated-from-the-cartridge-030-with-typescript-and-040-with-python-go-and-php-both-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3 — SDKs generated from the cartridge (0.3.0 with TypeScript and 0.4.0 with Python, Go and PHP, both 2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-what-the-kagent-proof-of-concept-asked-for-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.6 — what the kagent proof of concept asked for (2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#09-what-agentic-workflows-demand-090-shipped-2026-10-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.9 — what agentic workflows demand (0.9.0 shipped 2026-10-15)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#012-semantic-search-from-the-evals-0120-shipped-2026-10-15-mrr-082-to-095-100-with-a-reranker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.12 — semantic search, from the evals (0.12.0 shipped 2026-10-15: MRR 0.82 to 0.95, 1.00 with a reranker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#later-2027" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Later (2027)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not planned
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#now-00x-octobernovember-2026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Now — 0.0.x (October–November 2026)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-01-code-shipped-early-as-010-on-2026-10-14-pilots-through-january-2027" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next — 0.1 (code shipped early as 0.1.0 on 2026-10-14; pilots through January 2027)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-in-parallel-with-the-pilots-shipped-as-020-on-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2 — in parallel with the pilots (shipped as 0.2.0 on 2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#03-sdks-generated-from-the-cartridge-030-with-typescript-and-040-with-python-go-and-php-both-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.3 — SDKs generated from the cartridge (0.3.0 with TypeScript and 0.4.0 with Python, Go and PHP, both 2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#06-what-the-kagent-proof-of-concept-asked-for-2026-10-14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.6 — what the kagent proof of concept asked for (2026-10-14)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#09-what-agentic-workflows-demand-090-shipped-2026-10-15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.9 — what agentic workflows demand (0.9.0 shipped 2026-10-15)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#012-semantic-search-from-the-evals-0120-shipped-2026-10-15-mrr-082-to-095-100-with-a-reranker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.12 — semantic search, from the evals (0.12.0 shipped 2026-10-15: MRR 0.82 to 0.95, 1.00 with a reranker)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#later-2027" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Later (2027)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-planned" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not planned
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<p>Keel is built in the open at 10–20 hours a week. The order below is deliberate: the public story ships alongside the code, and the proof of the thesis (a second cartridge, a second agent, no second pipeline) comes before polish.</p>
+<p>Continue/stop criterion at 90 days: open source traction. Before that, at 30 days: one issue, PR or question from someone we do not know.</p>
+<h2 id="now-00x-octobernovember-2026">Now — 0.0.x (October–November 2026)<a class="headerlink" href="#now-00x-octobernovember-2026" title="Permanent link">&para;</a></h2>
+<p>Goal: a repo a stranger can run in ten minutes and a post that names the problem.</p>
+<ul>
+<li>[x] Event envelope, handler registry, in-memory bitemporal store</li>
+<li>[x] Memory scopes with TTL and evidence policy</li>
+<li>[x] Five tools as plain functions</li>
+<li>[x] Two cartridges on one core: <code>fleet</code> (reference) and <code>crm</code> (proof of generality)</li>
+<li>[x] CLI: <code>init</code>, <code>validate</code>, <code>ingest</code>, <code>replay</code>, <code>context</code>, <code>serve</code></li>
+<li>[x] Docs: <em>Your first cartridge in 20 minutes</em></li>
+<li>[x] Docs site: MkDocs Material on GitHub Pages, built from the repo's markdown</li>
+<li>[x] MCP server tested end to end with Claude via MCP (<code>tests/test_adapters.py</code> drives it with the MCP client; <code>claude -p --mcp-config</code> answered from the three tool calls)</li>
+<li>[x] MCP server tested end to end with one non-Anthropic client: Codex CLI with <code>openai/gpt-5.2-codex</code>, seven tool calls, right answers (see <a href="https://github.com/angelkurten/keel/blob/master/docs/connect.md">docs/connect.md</a>)</li>
+<li>[x] Postgres adapter: table + polling, with a cursor so restarts do not re-ingest</li>
+<li>[x] Webhook adapter (FastAPI, optional extra)</li>
+<li>[x] Full Apache 2.0 LICENSE text, CONTRIBUTING.md, issue templates</li>
+<li>[x] Launch post: <a href="https://angelkurten.com/blog/keel-four-agents-four-copies-of-context"><em>We built four agents and four copies of our customer context</em></a></li>
+<li>[ ] Share it: HN, r/LLMDevs, LinkedIn</li>
+<li>[x] Recorded demo: terminal recording with narration lines (<code>examples/demo.tape</code> renders <code>docs/demo.gif</code>); a narrated video with subtitles is still open</li>
+</ul>
+<p>Exit: the post is published, the demo runs, and the fleet slice runs against a real event stream from the first design customer.</p>
+<h2 id="next-01-code-shipped-early-as-010-on-2026-10-14-pilots-through-january-2027">Next — 0.1 (code shipped early as 0.1.0 on 2026-10-14; pilots through January 2027)<a class="headerlink" href="#next-01-code-shipped-early-as-010-on-2026-10-14-pilots-through-january-2027" title="Permanent link">&para;</a></h2>
+<p>Goal: durable, replayable, and used by two SaaS products that are not ours.</p>
+<ul>
+<li>[x] Durable store: SQLite (<code>keel/store/sqlite.py</code>, stdlib, same filters as the reference store, <code>--db</code> in the CLI). Graphiti stays a candidate for graph-native queries once a pilot needs them</li>
+<li>[x] MySQL / MariaDB store (<code>keel/store/mysql.py</code>, requested 2026-10-14; <code>--db mysql://...</code>), a dialect of the shared <code>SqlStore</code>, same conformance suite in CI</li>
+<li>[x] Replay from an external log (<code>Ingestor.replay(tenant, events=adapter)</code>; <code>keel replay ... --db</code> wipes one tenant and rebuilds it from the stream). Event ids are content hashes when the source has none, so a replay yields the same provenance</li>
+<li>[x] Expire task/agent memory: <code>keel expire &lt;tenant&gt; --db</code> (reads already hide expired facts)</li>
+<li>[x] <code>keel serve --transport http --http2</code>: HTTP/2 on Hypercorn (<code>--extra http2</code>), h2 over TLS or cleartext h2c; <code>--certfile</code>/<code>--keyfile</code> serve https on either server (0.17.0)</li>
+<li>[x] <code>keel.client.Client</code> reuses one keep-alive connection, sends <code>User-Agent: keel-context/&lt;version&gt;</code> (Cloudflare blocked urllib's with 1010) and takes <code>headers=</code> and <code>http_client=</code> (any httpx-shaped client: HTTP/2, proxies, retries) (0.17.0)</li>
+<li>[x] Processes that open one database at once no longer race on the schema migration (<code>facts_key</code> and added columns; MySQL 1061/1060) (0.16.4)</li>
+<li>[x] <code>annotate(key=)</code> is one write even across processes: a unique <code>facts_key</code> index on (tenant, subject, idempotency_key); a racing call gets the winner's fact back (<code>DuplicateKey</code> in the store protocol) (0.16.3)</li>
+<li>[x] The table, Kafka and SQS adapters acknowledge only after the Ingestor commits: with <code>batch=N</code>, a batch that rolled back was skipped by the cursor and lost (0.16.2; from the kagent PoC)</li>
+<li>[x] Ingest no longer slows down as a tenant grows (from the 14M-event stress test, SQLite, same snapshot: 1.0k to 3.1k events/s; <code>context</code> 79 ms to 1.5 ms): relation lookups and <code>changes</code> are two indexed branches instead of an <code>OR</code> that scanned the tenant; the watermark takes one <code>MAX</code> per index (new index <code>relations_recorded</code>); a bulk batch prefetches only the facts it can still change (new index <code>facts_open</code>); SQLite keeps 256 MB of pages in process; <code>keel ingest</code> and <code>replay</code> commit every 5000 events (0.18.0)</li>
+<li>[x] The example cartridges live in <code>examples/&lt;name&gt;/</code>, each with its cartridge, its <code>events.jsonl</code> and its <code>test_&lt;name&gt;.py</code> (path-independent, so a copied folder keeps a working test); <code>cartridges/</code> is left empty for a team's own. Paths changed: <code>cartridges/fleet</code> is <code>examples/fleet</code>, <code>examples/events/fleet.jsonl</code> is <code>examples/fleet/events.jsonl</code>, <code>examples/agent_minimal.py</code> is <code>examples/fleet/agent_minimal.py</code> (0.23.0)</li>
+<li>[x] From the kagent pilot's 41 CUs (more than half the cost was checking and correcting): <code>context(subjects, only=[...])</code> returns just those predicates, the evidence a reviewer needs from many subjects; a list of subjects is read in batches (facts, proposals, relations, entities: a constant number of statements, it was two or more per subject); <code>search</code> with a list of texts reads each subject's facts once for every text, so many names checked against one subject's neighbours (<code>search(names, kind=[...], related_to=s)</code>) is one call (0.22.0)</li>
+<li>[x] <code>keel serve --transport http --ui</code>: a read-only browser at <code>/ui</code> (search, context with <code>as_of</code>, a predicate's history, neighbours as a graph) over the same <code>/v1</code> API; it asks for the secret and tenant (0.23.0)</li>
+<li>[x] <code>weaviate://host:port</code>: a bundled Weaviate adapter for semantic search (extra <code>weaviate</code>), one multi-tenant collection with a Weaviate tenant per Keel tenant, filters and BM25 inside Weaviate; the official image includes it (and boto3, for <code>keel consume</code>) (0.24.0)</li>
+<li>[x] From Toche (a tenant per household, Ley 1581): erase a tenant for good. An event declared <code>forgets: tenant</code> in the catalog (no handler) makes the Ingestor call <code>store.forget(tenant)</code> in its transaction: entities, relations, facts of every scope, annotations and applied ids go, a tombstone stays, later events for it are skipped and <code>annotate</code> refused; the report says what was deleted. <code>keel forget &lt;tenant&gt; --db --yes [--index]</code> for operators; the index drops a forgotten tenant's documents (0.24.0)</li>
+<li>[x] <code>keel consume --queue &lt;sqs url&gt;</code>: an SQS (or ElasticMQ) consumer, one transaction per message, failures left for the queue's dead-letter queue, erasures printed for the audit log (0.24.0)</li>
+<li>
+<p>[x] <code>--all-tenants</code> on <code>keel index</code>, <code>keel consolidate</code> and <code>keel expire</code> (<code>store.tenants()</code>), for a tenant per end-customer (0.24.0)</p>
+</li>
+<li>
+<p>[x] From the kagent pilot's second round (semantic search had become the slow call: 17 to 20 s for <code>per_kind</code> with <code>related_to</code>): <code>kind</code> takes a list (listing, semantic ranking and <code>per_kind</code> over just those kinds); <code>per_kind</code> embeds the query once, not once per kind; the lexical leg's BM25 is built once per tenant and kinds and reads only the query's tokens (cached until the index changes; in <code>ChromaIndex</code> also for at most <code>bm25_ttl</code> seconds, since another process may re-index); <code>related_to</code> filters inside the index (<code>where={"subject": [...]}</code>; Chroma collections built before this need <code>keel index --full</code>), so its fused <code>score</code> is now normalized among the neighbours. On a synthetic tenant of 14,000 subjects in embedded Chroma, <code>per_kind=5, related_to=</code> went from 1.76 s to 0.09 s (0.21.0)</p>
+</li>
+<li>[x] From the analysis of the kagent pilot's calls (three of four were searches, most for a visual by its title or page): <code>search(where={name: value})</code> finds entities by an attribute's or a current fact's exact value, in every mode; with <code>kind</code>, <code>text</code> also matches current facts' values; every ranked result says why it is there (<code>matched</code>, <code>snippet</code>); <code>semantic.split</code> makes a document per element of a list value. In the Python client, HTTP, MCP and the TypeScript, Go and PHP runtimes (0.20.0)</li>
+<li>[x] The 0.19 parameters in the TypeScript, Go and PHP runtimes: <code>detail</code>, <code>depth</code>, <code>perKind</code>, <code>exclude</code>, <code>asOf</code> on search, batches (<code>contexts</code>, <code>searches</code>; lists in PHP), <code>exclude</code> on context, <code>related</code> with a list of relations and <code>depth</code> (each runtime's end-to-end test exercises them against <code>keel serve</code>)</li>
+<li>[x] What the kagent pilot of technical instructions asked for, inside the five tools: <code>search(detail="concise")</code> puts each result's facts in it (one call, not one plus a <code>context</code> per result), <code>depth=1</code> its neighbours, and <code>per_kind=n</code> the best of every kind (with <code>related_to</code> and semantic mode, the context for a task in one call); <code>context</code> and <code>search</code> take a list; <code>related(depth=2|3)</code> with a list of relations; <code>exclude</code> and <code>search(as_of=)</code> hide data for evaluations; <code>semantic.split</code> indexes chosen facts as documents of their own. Every parameter reaches the Python client, HTTP and MCP (a test checks it) (0.19.0)</li>
+<li>[x] An official image, <code>ghcr.io/angelkurten/keel</code> (amd64, arm64; <code>-slim</code> without Chroma), published on every release: non-root, <code>/data</code> volume, its own health check, refuses to listen without <code>KEEL_SECRET</code>; <code>deploy/docker-compose.yml</code> with MySQL, a Chroma server and the indexer. Every command with <code>--db</code> now reads <code>KEEL_DB</code> (<code>index</code>, <code>expire</code>, <code>consolidate</code> and <code>export</code> required the flag, so a container configured by its environment failed) (0.18.1)</li>
+<li>[x] <code>keel index</code> for a production deploy (from kagent: 11,192 entities took 21 minutes): embedding batches go out four at a time with retries on 429/5xx; the cursor defaults to the index's own folder for <code>chroma:///path</code> (<code>KEEL_INDEX_CURSOR</code> otherwise) and a run without one says it is rebuilding; one run per tenant at a time, a second skips (two at once corrupted Chroma); documented that <code>chroma:///path</code> does not work across <code>keel serve</code> and <code>keel index</code> processes (0.18.0)</li>
+<li>[x] No N+1 reads: <code>context(depth=1)</code>, <code>search(rule=)</code> and rules that follow a relation read their subjects in batches (<code>facts_of</code>, <code>entities_of</code>, optional on a store). On the 14M-event MySQL graph <code>context(depth=1)</code> issued about 100 statements, 130 ms over Docker; now a fixed handful (0.18.0; from the stress test)</li>
+<li>[x] A store shared by the HTTP server's threads keeps a transaction and a batch in flight to the thread that opened them: an <code>annotate</code> arriving during an ingest batch wrote into that batch and was lost if it rolled back, and other threads read its uncommitted state. MySQL reads on a connection per thread: 32 clients went from 41 to 254 requests/s on the 14M-event graph. Reads of the state now fetch only open facts (<code>facts_open</code>), and rule sweeps that follow a relation read relations in batches (<code>relations_of</code>): <code>search(rule=unit_grounded)</code> 1.0 s to 0.22 s (0.18.0)</li>
+<li>[x] <code>Ingestor</code> keeps no in-memory copy of the log unless asked (<code>keep_log=True</code>): the HTTP server, the webhook and <code>follow()</code> grew by every event they ever ingested, and a 14M-event load needed about 32 GB (0.18.0; from the stress test)</li>
+<li>[x] <code>keel sdk python</code> writes rules as a Python literal: a rule with <code>true</code> or <code>null</code> no longer breaks the import (0.16.1)</li>
+<li>[x] <code>KEEL_TENANT</code>: the default tenant for every command that takes one, and the bound tenant of <code>serve</code>; a product with no end-customers sets one value and forgets it (0.16.1)</li>
+<li>[x] <code>replay</code> keeps annotations and consolidations; the events land around them (0.16.0)</li>
+<li>[x] Configuration in a <code>.env</code> file (<code>--env-file</code>, <code>KEEL_ENV_FILE</code>), and <code>KEEL_DB</code>, <code>KEEL_AGENT</code>, <code>KEEL_INDEX</code>, <code>KEEL_EMBEDDER</code> for the matching flags (0.16.0)</li>
+<li>[x] <code>keel serve --transport http</code> refuses an open API on a non-loopback host unless <code>--allow-open</code> (0.16.0)</li>
+<li>[x] Generated Python and PHP <code>client()</code> pass <code>timeout</code> and <code>traceparent</code>; Kafka and SQS <code>connect</code> take every adapter option; the unused <code>graphiti</code> extra is gone (0.16.0)</li>
+<li>[x] MCP <code>annotate</code> takes any JSON <code>value</code>, and <code>detail="concise"</code> reports symmetric relations as <code>both</code> (0.16.0)</li>
+<li>[x] A handler's <code>close_fact</code> closes tenant facts only; <code>scope=None</code> closes every scope (0.15.3)</li>
+<li>[x] Scopes never close each other, and consolidation keeps agent memory private and uses world time (0.15.2; from the kagent PoC)</li>
+<li>[x] Memory scopes enforced on read (0.15.0): agent memory reaches only its author, task memory only calls that pass its task, global memory every tenant from its own partition (<code>__global__</code>)</li>
+<li>[x] Consolidation (0.14.0): episodic memory into durable facts, declared in the cartridge; deterministic reducers and a Summarizer adapter; <code>keel consolidate</code>, <code>keel expire --consolidate</code></li>
+<li>[x] <code>history</code> filters by predicate and scope; <code>context</code> returns the rule evaluation, not only the rule (rules carry a <code>when</code>; <code>context</code> takes <code>as_of</code>)</li>
+<li>[x] Cartridge validation against event streams (<code>keel validate --events</code> reports unknown types, wrong subject kinds and bad payloads)</li>
+<li>[x] Third and fourth cartridges: <code>finance</code> (modeled on Toche) and <code>clinics</code> (the tutorial's result), zero core changes</li>
+<li>[ ] A cartridge written with a pilot that is not ours (logistics?)</li>
+<li>[ ] Two pilots outside the design customer, running the core for free</li>
+</ul>
+<p>Exit: a pilot connects its second agent in under a day, measured.</p>
+<h2 id="02-in-parallel-with-the-pilots-shipped-as-020-on-2026-10-14">0.2 — in parallel with the pilots (shipped as 0.2.0 on 2026-10-14)<a class="headerlink" href="#02-in-parallel-with-the-pilots-shipped-as-020-on-2026-10-14" title="Permanent link">&para;</a></h2>
+<p>Pulled forward from Later on 2026-10-14 and shipped the same day, while the post circulates and the pilots are found.</p>
+<ul>
+<li>[x] Exportable audit trail per tenant: <code>keel export &lt;tenant&gt; --db</code> (entities, relations and facts with provenance, corrections, who annotated what)</li>
+<li>[x] Kafka and SQS adapters as optional extras (<code>keel.adapters.bus</code>), tested against fake consumers until a pilot runs a real broker</li>
+<li>[x] Agent registry: identity, permitted scopes, kinds and relations per agent, enforced in <code>Tools</code> (<code>agents:</code> in the cartridge, <code>--agent</code> on <code>serve</code>; <a href="https://github.com/angelkurten/keel/blob/master/docs/design/agent-registry.md">design note</a>, SPEC §6.1)</li>
+</ul>
+<h2 id="03-sdks-generated-from-the-cartridge-030-with-typescript-and-040-with-python-go-and-php-both-2026-10-14">0.3 — SDKs generated from the cartridge (0.3.0 with TypeScript and 0.4.0 with Python, Go and PHP, both 2026-10-14)<a class="headerlink" href="#03-sdks-generated-from-the-cartridge-030-with-typescript-and-040-with-python-go-and-php-both-2026-10-14" title="Permanent link">&para;</a></h2>
+<p>Decided 2026-10-14 (<a href="https://github.com/angelkurten/keel/blob/master/docs/design/sdk-generator.md">design note</a>): the cartridge is the interface definition; Keel generates the client code.</p>
+<ul>
+<li>[x] Payload notation as a JSON Schema subset (enums, nested objects, arrays) and <code>keel schema &lt;cartridge&gt;</code></li>
+<li>[x] HTTP transport: <code>/v1/*</code> JSON API with OpenAPI, tenant and agent per request, one process for many tenants; MCP over HTTP for one tenant (<code>--tenant</code>)</li>
+<li>[x] <code>keel sdk typescript</code>, runtime <code>@keel-context/sdk</code> (sdk/typescript), validated end to end from Bun against the HTTP server with the fleet and finance cartridges; Toche's own cartridge is the next real test</li>
+<li>[x] Python, Go and PHP templates and runtimes, each tested end to end against the HTTP server</li>
+<li>[x] <code>@keel-context/sdk</code> 0.1.0 on npm (2026-10-14)</li>
+<li>[x] Go module <code>github.com/angelkurten/keel/sdk/go</code> tagged <code>sdk/go/v0.1.0</code>; PHP runtime split to github.com/angelkurten/keel-sdk-php for Composer</li>
+<li>[x] Packagist lists <code>keel-context/sdk</code> from that repo, following its tags by webhook (2026-10-16, v0.1.0 to v0.8.0); <code>composer require keel-context/sdk</code> needs no repository entry</li>
+</ul>
+<h2 id="06-what-the-kagent-proof-of-concept-asked-for-2026-10-14">0.6 — what the kagent proof of concept asked for (2026-10-14)<a class="headerlink" href="#06-what-the-kagent-proof-of-concept-asked-for-2026-10-14" title="Permanent link">&para;</a></h2>
+<p>A second design customer: kagent, with 354 real Jira cards and 2831 events, wrote up what Keel answered well and what blocked production. Each item below was a row in that list.</p>
+<ul>
+<li>[x] MySQL / MariaDB store with a table prefix for a shared database (0.5.0, prefix in 0.6.0)</li>
+<li>[x] Rules that follow a relation (<code>via</code> with <code>any</code>/<code>all</code>), compose (<code>all</code>/<code>any</code>/<code>not</code>) and compare strings case-insensitively (<code>ci: true</code>)</li>
+<li>[x] Duration operators on the open fact: <code>open_for_days</code>, <code>open_for_business_days</code> with a cartridge <code>calendar</code></li>
+<li>[x] Symmetric relations declared in the cartridge, shown once with direction <code>both</code></li>
+<li>[x] <code>context(depth=1)</code> with each neighbour's facts and evaluation; <code>related(as_of=)</code></li>
+<li>[x] Spec guidance: long text is a pointer, not a fact value</li>
+<li>[x] Second round (revalidated on the same 354 cards, 0 differences on the pause rules): <code>held_for_days</code> / <code>held_for_business_days</code>, the waiting clock that survives a change between waiting states; transactions per event or per batch in the SQL stores, for MySQL ingest speed</li>
+<li>[x] Optional enums in the payload notation: <code>[new, done, null]</code> (third round of the kagent report, 0.8.1)</li>
+<li>[x] Semantic <code>search</code> (0.11.0): <code>search(mode="semantic")</code> over pluggable <code>VectorIndex</code> and <code>Embedder</code> adapters (Chroma and any OpenAI-compatible embeddings bundled), built by <code>keel index</code> outside ingest</li>
+<li>[x] Bulk ingest: set-based batch flush for the SQL stores (<a href="https://github.com/angelkurten/keel/blob/master/docs/design/bulk-ingest.md">design note</a>); 101 000 events in 8.4 s on MySQL, a million in under a minute and a half, against 45 minutes before</li>
+</ul>
+<h2 id="09-what-agentic-workflows-demand-090-shipped-2026-10-15">0.9 — what agentic workflows demand (0.9.0 shipped 2026-10-15)<a class="headerlink" href="#09-what-agentic-workflows-demand-090-shipped-2026-10-15" title="Permanent link">&para;</a></h2>
+<p>From a survey of the state of the art and a complex multi-agent flow run on Keel (<code>examples/fleet/workflow_ops.py</code>); the reasoning is in the <a href="https://github.com/angelkurten/keel/blob/master/docs/design/agentic-workflows.md">design note</a>. All inside the five tools.</p>
+<ul>
+<li>[x] Transaction time: <code>context</code> / <code>history</code> with <code>as_known_at</code> (what the agent saw), with the close's own <code>recorded_at</code></li>
+<li>[x] Changes since a cursor: tenant-wide <code>history(changed_since=)</code> with annotations, and the watermark in every <code>context</code></li>
+<li>[x] Task ids on task memory, <code>history(task=)</code>, <code>keel expire --task</code></li>
+<li>[x] Idempotency key on <code>annotate</code></li>
+<li>[x] <code>search(kind=, rule=, limit=)</code>: enumerate subjects by kind or by rule state, with a cursor</li>
+<li>[x] People as principals in the registry (<code>kind: human</code>)</li>
+<li>[x] Detail levels and budgets (<code>context(detail="concise")</code>, <code>history(limit=)</code>), conflict policy per predicate (<code>predicates: {p: {multi: true}}</code>, <code>context.conflicts</code>), proposed vs accepted annotations (<code>annotate(status=)</code>, <code>context.proposals</code>), trace propagation into the audit log (<code>traceparent</code> / <code>X-Keel-Tool-Call</code> / MCP <code>_meta</code>) — 0.10.0</li>
+</ul>
+<h2 id="012-semantic-search-from-the-evals-0120-shipped-2026-10-15-mrr-082-to-095-100-with-a-reranker">0.12 — semantic search, from the evals (0.12.0 shipped 2026-10-15: MRR 0.82 to 0.95, 1.00 with a reranker)<a class="headerlink" href="#012-semantic-search-from-the-evals-0120-shipped-2026-10-15-mrr-082-to-095-100-with-a-reranker" title="Permanent link">&para;</a></h2>
+<p>From research and a labeled eval bench run with real embeddings (<a href="https://github.com/angelkurten/keel/blob/master/docs/design/semantic-evals.md">design note</a>, <code>evals/semantic/</code>).</p>
+<ul>
+<li>[x] Exact-key shortcut in semantic search (id MRR 0.45 to 1.00)</li>
+<li>[x] Hybrid with convex fusion and a lexical leg (overall MRR 0.82 to 0.93)</li>
+<li>[x] <code>min_score</code>, model-specific, off by default</li>
+<li>[x] Compact relation lines; query/document roles in <code>Embedder</code>; <code>where</code> filters in <code>VectorIndex</code>; reranker adapter</li>
+<li>[ ] Real agent queries from kagent and Toche in the bench</li>
+</ul>
+<h2 id="later-2027">Later (2027)<a class="headerlink" href="#later-2027" title="Permanent link">&para;</a></h2>
+<p>Goal: the hosted product and the cartridge catalog.</p>
+<ul>
+<li>[ ] Postgres CDC adapter</li>
+<li>[ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier</li>
+<li>[ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month)</li>
+<li>[ ] SSO and retention policies for enterprise (tenant-level data export shipped in 0.2.0: <code>keel export</code>)</li>
+</ul>
+<h2 id="not-planned">Not planned<a class="headerlink" href="#not-planned" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Document/RAG ingestion (plenty of good tools exist; Keel points at their output if needed)</li>
+<li>A sixth tool</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../SPEC/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Specification">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Specification
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Contributing
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

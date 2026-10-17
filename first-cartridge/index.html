@@ -1,0 +1,1166 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/first-cartridge/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../connect/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Your first cartridge - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#your-first-cartridge-in-20-minutes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Your first cartridge
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scaffold-it-1-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scaffold it (1 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-declare-the-ontology-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Declare the ontology (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-catalog-the-events-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Catalog the events (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-write-one-handler-per-event-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Write one handler per event (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-add-your-semantics-2-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Add your semantics (2 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-validate-and-run-2-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Validate and run (2 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-point-an-agent-at-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Point an agent at it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-declare-your-agents-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Declare your agents (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-search-by-meaning-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Search by meaning (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-test-that-it-worked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The test that it worked
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../connect/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scaffold-it-1-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scaffold it (1 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-declare-the-ontology-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Declare the ontology (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-catalog-the-events-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Catalog the events (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-write-one-handler-per-event-5-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Write one handler per event (5 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-add-your-semantics-2-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Add your semantics (2 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-validate-and-run-2-min" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Validate and run (2 min)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-point-an-agent-at-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Point an agent at it
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-declare-your-agents-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Declare your agents (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-search-by-meaning-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Search by meaning (optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-test-that-it-worked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The test that it worked
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="your-first-cartridge-in-20-minutes">Your first cartridge in 20 minutes<a class="headerlink" href="#your-first-cartridge-in-20-minutes" title="Permanent link">&para;</a></h1>
+<p>A cartridge teaches Keel your vertical. It is a folder with two files. The core never changes.</p>
+<div class="highlight"><pre><span></span><code>cartridges/clinics/
+  cartridge.yaml
+  handlers.py
+</code></pre></div>
+<p>Build yours in <code>cartridges/clinics</code>, the folder for your own cartridges. The finished version is in the repo as <code>examples/clinics</code>, with its events in <code>examples/clinics/events.jsonl</code>: point any command below at <code>examples/clinics</code> to run it without writing a line.</p>
+<h2 id="1-scaffold-it-1-min">1. Scaffold it (1 min)<a class="headerlink" href="#1-scaffold-it-1-min" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>init<span class="w"> </span>cartridges/clinics
+</code></pre></div>
+<h2 id="2-declare-the-ontology-5-min">2. Declare the ontology (5 min)<a class="headerlink" href="#2-declare-the-ontology-5-min" title="Permanent link">&para;</a></h2>
+<p>List the kinds of things your product is about and how they relate. Use your product's own names.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">entities</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">patient</span><span class="p">:</span><span class="w">     </span><span class="p p-Indicator">{</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">A person treated at the clinic.</span><span class="p p-Indicator">,</span><span class="nt"> ref</span><span class="p">:</span><span class="w"> </span><span class="nv">patients.id</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">appointment</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">A scheduled visit.</span><span class="p p-Indicator">,</span><span class="nt"> ref</span><span class="p">:</span><span class="w"> </span><span class="nv">appointments.id</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">treatment</span><span class="p">:</span><span class="w">   </span><span class="p p-Indicator">{</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">A procedure performed.</span><span class="p p-Indicator">,</span><span class="nt"> ref</span><span class="p">:</span><span class="w"> </span><span class="nv">treatments.id</span><span class="w"> </span><span class="p p-Indicator">}</span>
+
+<span class="nt">relations</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">booked_by</span><span class="p">:</span><span class="w">   </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="nv">appointment</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="nv">patient</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">performed_in:{ from</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treatment,   to</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">appointment }</span>
+</code></pre></div>
+<p><code>ref</code> is a pointer to your table. Keel stores pointers and meaning, never copies of your rows.</p>
+<h2 id="3-catalog-the-events-5-min">3. Catalog the events (5 min)<a class="headerlink" href="#3-catalog-the-events-5-min" title="Permanent link">&para;</a></h2>
+<p>Write down the 10 to 20 things that happen in your product. Each has a subject kind, an owner team, and a payload shape. This list is the least technical part and the one that saves the most arguments later.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">events</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">appointment.booked</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">patient</span>
+<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduling</span>
+<span class="w">    </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> id</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="p p-Indicator">,</span><span class="nt"> starts_at</span><span class="p">:</span><span class="w"> </span><span class="nv">datetime</span><span class="p p-Indicator">,</span><span class="nt"> treatment</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">appointment.no_show</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">appointment</span>
+<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scheduling</span>
+<span class="w">    </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</code></pre></div>
+<p>The shipped cartridge adds a third one, <code>treatment.performed</code>, so the <code>treatment</code> kind gets used. Payload hints can be richer than scalars: <code>status: [booked, done]</code> is an enum, <code>tags: string[]</code> an array, <code>items: [ { code: string, qty: int } ]</code> an array of objects, <code>{ ... }</code> a nested object (see the <a href="../SPEC/#55-payload-notation">specification</a>).</p>
+<h2 id="4-write-one-handler-per-event-5-min">4. Write one handler per event (5 min)<a class="headerlink" href="#4-write-one-handler-per-event-5-min" title="Permanent link">&para;</a></h2>
+<p>A handler maps a payload to five primitives: <code>upsert_entity</code>, <code>link</code>, <code>unlink</code>, <code>open_fact</code>, <code>close_fact</code>. Ten lines each. <code>close_fact</code> ends the tenant's fact on a predicate; what agents remembered about it (task and agent memory) keeps its own lifetime.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">keel.handlers</span><span class="w"> </span><span class="kn">import</span> <span class="n">HandlerRegistry</span>
+<span class="n">registry</span> <span class="o">=</span> <span class="n">HandlerRegistry</span><span class="p">()</span>
+
+<span class="nd">@registry</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"appointment.booked"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">booked</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">store</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">payload</span>
+    <span class="n">appt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"appointment:</span><span class="si">{</span><span class="n">p</span><span class="p">[</span><span class="s1">'id'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">upsert_entity</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">tenant</span><span class="p">,</span> <span class="s2">"patient"</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">subject_id</span><span class="p">)</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">upsert_entity</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">tenant</span><span class="p">,</span> <span class="s2">"appointment"</span><span class="p">,</span> <span class="n">p</span><span class="p">[</span><span class="s2">"id"</span><span class="p">],</span> <span class="n">starts_at</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">"starts_at"</span><span class="p">])</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">tenant</span><span class="p">,</span> <span class="n">appt</span><span class="p">,</span> <span class="s2">"booked_by"</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">occurred_at</span><span class="p">)</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">open_fact</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">tenant</span><span class="p">,</span> <span class="n">appt</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="s2">"booked"</span><span class="p">,</span> <span class="n">valid_from</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">occurred_at</span><span class="p">,</span> <span class="n">evidence</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+
+<span class="nd">@registry</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"appointment.no_show"</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">no_show</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">store</span><span class="p">):</span>
+    <span class="n">store</span><span class="o">.</span><span class="n">open_fact</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">tenant</span><span class="p">,</span> <span class="n">event</span><span class="o">.</span><span class="n">subject</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="s2">"no_show"</span><span class="p">,</span> <span class="n">valid_from</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">occurred_at</span><span class="p">,</span> <span class="n">evidence</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</code></pre></div>
+<p><code>open_fact</code> closes the previous value of the same predicate instead of overwriting it, and a late event takes its place in the history rather than closing a newer value backwards. That is what makes the graph bitemporal: you can ask what was true on any date. Events are deduplicated by id, so retrying a batch is safe.</p>
+<h2 id="5-add-your-semantics-2-min">5. Add your semantics (2 min)<a class="headerlink" href="#5-add-your-semantics-2-min" title="Permanent link">&para;</a></h2>
+<p>Definitions your agents should never invent for themselves:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">rules</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">at_risk_patient</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">applies_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">patient</span>
+<span class="w">    </span><span class="nt">definition</span><span class="p">:</span><span class="w"> </span><span class="s">"A</span><span class="nv"> </span><span class="s">patient</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">at</span><span class="nv"> </span><span class="s">risk</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">churn</span><span class="nv"> </span><span class="s">after</span><span class="nv"> </span><span class="s">two</span><span class="nv"> </span><span class="s">no-shows</span><span class="nv"> </span><span class="s">in</span><span class="nv"> </span><span class="s">90</span><span class="nv"> </span><span class="s">days."</span>
+<span class="w">    </span><span class="nt">no_shows</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">days</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">90</span>
+<span class="w">  </span><span class="nt">appointment_missed</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">applies_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">appointment</span>
+<span class="w">    </span><span class="nt">definition</span><span class="p">:</span><span class="w"> </span><span class="s">"An</span><span class="nv"> </span><span class="s">appointment</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">missed</span><span class="nv"> </span><span class="s">when</span><span class="nv"> </span><span class="s">its</span><span class="nv"> </span><span class="s">status</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">no_show."</span>
+<span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> predicate</span><span class="p">:</span><span class="w"> </span><span class="nv">status</span><span class="p p-Indicator">,</span><span class="nt"> eq</span><span class="p">:</span><span class="w"> </span><span class="nv">no_show</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>The <code>context</code> tool returns the rules that apply to a subject's kind, so every agent reads the same definition. A rule with a <code>when</code> is also evaluated for you: <code>context</code> returns <code>evaluation: {appointment_missed: true}</code> next to the rule, so the agent neither defines nor computes it. <code>at_risk_patient</code> needs a count over 90 days, so it has no <code>when</code> and the agent applies the definition. Conditions compose with <code>all</code>, <code>any</code> and <code>not</code>, follow a relation with <code>via</code> (a patient is at risk if any of their appointments is missed: <code>{ via: booked_by, direction: in, any: { predicate: status, eq: no_show } }</code>), compare strings with <code>ci: true</code>, and measure how long a fact has been open with <code>open_for_days</code> or <code>open_for_business_days</code> (or how long it has held one of several values, surviving a change between them, with <code>held_for_days</code> or <code>held_for_business_days</code>). The full grammar is in the <a href="../SPEC/#54-rules-semantic-layer">specification</a>.</p>
+<h2 id="6-validate-and-run-2-min">6. Validate and run (2 min)<a class="headerlink" href="#6-validate-and-run-2-min" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>validate<span class="w"> </span>cartridges/clinics
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>validate<span class="w"> </span>cartridges/clinics<span class="w"> </span>--events<span class="w"> </span>examples/clinics/events.jsonl
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>ingest<span class="w"> </span>cartridges/clinics<span class="w"> </span>examples/clinics/events.jsonl
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>context<span class="w"> </span>cartridges/clinics<span class="w"> </span>examples/clinics/events.jsonl<span class="w"> </span>patient:P-1
+</code></pre></div>
+<p><code>validate</code> fails if an event has no handler, a handler has no event, a relation uses an undeclared kind, a payload hint does not parse, a rule's <code>when</code> uses an unknown operator or an undeclared relation, or the <code>agents</code>, <code>semantic</code>, <code>consolidate</code> or <code>predicates</code> sections are malformed. With <code>--events</code> it also checks a stream against the catalog: unknown types, wrong subject kinds, missing or mistyped payload fields.</p>
+<h2 id="7-point-an-agent-at-it">7. Point an agent at it<a class="headerlink" href="#7-point-an-agent-at-it" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>mcp
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>cartridges/clinics<span class="w"> </span>--tenant<span class="w"> </span>clinic-centro<span class="w"> </span>--events<span class="w"> </span>examples/clinics/events.jsonl
+</code></pre></div>
+<p>Any MCP client now sees <code>context</code>, <code>history</code>, <code>search</code>, <code>annotate</code>, <code>related</code>. Your second agent uses the same five tools; there is no second pipeline.</p>
+<h2 id="8-declare-your-agents-optional">8. Declare your agents (optional)<a class="headerlink" href="#8-declare-your-agents-optional" title="Permanent link">&para;</a></h2>
+<p>When more than one agent shares the graph, say who they are and what each may do. The layer enforces it; the agent never polices itself.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">agents</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">reception-bot</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Confirms appointments. Writes task memory only.</span>
+<span class="w">    </span><span class="nt">writes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">agent</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="nt">reads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> kinds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">patient</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">appointment</span><span class="p p-Indicator">],</span><span class="nt"> relations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">booked_by</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">clinic-copilot</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">writes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">agent</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tenant</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># no reads: sees everything</span>
+</code></pre></div>
+<p>An agent with no <code>writes:</code> may write <code>[task, agent]</code>; one with <code>kind: human</code> is a person and signs as <code>human:&lt;id&gt;</code>. Once <code>agents:</code> exists, every <code>Tools(...)</code> and every <code>keel serve</code> needs <code>--agent &lt;id&gt;</code>, and an id that is not declared is refused. <code>annotate</code> is signed with the agent id, so <code>keel export</code> shows who wrote what. Agent-scope memory is read only by the agent that wrote it; task-scope memory tied to a task id only by calls that pass that task.</p>
+<h2 id="9-search-by-meaning-optional">9. Search by meaning (optional)<a class="headerlink" href="#9-search-by-meaning-optional" title="Permanent link">&para;</a></h2>
+<p><code>search(text, mode="semantic")</code> finds subjects by meaning instead of by substring. Say what goes into each subject's searchable document:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">semantic</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kinds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">patient</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">appointment</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">relations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">booked_by</span><span class="p p-Indicator">]</span><span class="w">          </span><span class="c1"># an appointment's document names its patient</span>
+<span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">patient</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">allergy</span><span class="p p-Indicator">]}</span><span class="w">     </span><span class="c1"># optional: each allergy (each element, when the value is a list) is also a document of its own, so one long list does not dilute it</span>
+</code></pre></div>
+<p>Index outside ingest, from a durable store, and serve with the same index and embedder:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>ingest<span class="w"> </span>cartridges/clinics<span class="w"> </span>examples/clinics/events.jsonl<span class="w"> </span>--db<span class="w"> </span>clinic.db
+<span class="nb">export</span><span class="w"> </span><span class="nv">KEEL_EMBEDDINGS_API_KEY</span><span class="o">=</span>...<span class="w">    </span><span class="c1"># any OpenAI-compatible embeddings endpoint (KEEL_EMBEDDINGS_BASE_URL, _MODEL)</span>
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>index<span class="w"> </span>cartridges/clinics<span class="w"> </span>--tenant<span class="w"> </span>clinic-centro<span class="w"> </span>--db<span class="w"> </span>clinic.db<span class="w"> </span>--index<span class="w"> </span><span class="s2">"examples.custom_adapters:make_index?path=vectors.db"</span>
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>cartridges/clinics<span class="w"> </span>--tenant<span class="w"> </span>clinic-centro<span class="w"> </span>--db<span class="w"> </span>clinic.db<span class="w"> </span>--index<span class="w"> </span><span class="s2">"examples.custom_adapters:make_index?path=vectors.db"</span>
+</code></pre></div>
+<p><code>--embedder hash</code> runs it offline for a try. The index here is the SQLite example adapter; <code>chroma:///path</code> is the bundled one, and your own vector database is an adapter you write (<a href="../connect/#semantic-search">Connect, semantic search</a>). Run <code>keel index</code> from cron: it only re-indexes what changed.</p>
+<h2 id="the-test-that-it-worked">The test that it worked<a class="headerlink" href="#the-test-that-it-worked" title="Permanent link">&para;</a></h2>
+<p>Did you edit anything under <code>keel/</code>? If yes, some domain leaked into the core. Open an issue; that is exactly the kind of thing we want to fix.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../connect/" class="md-footer__link md-footer__link--next" aria-label="Next: Connect your events">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Connect your events
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

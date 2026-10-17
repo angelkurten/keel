@@ -1,0 +1,1569 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/connect/">
+      
+      
+        <link rel="prev" href="../first-cartridge/">
+      
+      
+        <link rel="next" href="../sdks/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Connect your events - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#connect-your-events" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Connect your events
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect your events
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The envelope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-jsonl-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A .jsonl file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-postgres-outbox-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A Postgres outbox table
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A webhook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consume-a-kafka-topic-or-an-sqs-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consume a Kafka topic or an SQS queue
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serve-the-tools-over-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serve the tools over MCP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serve-the-tools-over-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serve the tools over HTTP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-it-in-a-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run it in a container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semantic search">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-own-vector-store-or-embedding-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your own vector store or embedding model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consolidate-episodic-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consolidate episodic memory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-the-audit-trail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export the audit trail
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#erase-a-tenant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Erase a tenant
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The envelope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-jsonl-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A .jsonl file
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-postgres-outbox-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A Postgres outbox table
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A webhook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consume-a-kafka-topic-or-an-sqs-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consume a Kafka topic or an SQS queue
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serve-the-tools-over-mcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serve the tools over MCP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serve-the-tools-over-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serve the tools over HTTP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-it-in-a-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run it in a container
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Semantic search">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#your-own-vector-store-or-embedding-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your own vector store or embedding model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consolidate-episodic-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consolidate episodic memory
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-the-audit-trail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export the audit trail
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#erase-a-tenant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Erase a tenant
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="connect-your-events">Connect your events<a class="headerlink" href="#connect-your-events" title="Permanent link">&para;</a></h1>
+<p>Keel ingests envelopes, never raw rows. Every source produces the same shape, and the cartridge's handlers are the only code that reads a payload. Pick the source that matches where your events already are.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>Every setting the CLI reads from the environment can live in a <code>.env</code> file: <code>keel</code> loads <code>./.env</code> when it exists, or the file named by <code>--env-file</code> (or <code>KEEL_ENV_FILE</code>). Variables already set in the environment win, so a deployment can override the file. <code>KEY=VALUE</code> lines, <code>#</code> comments, optional <code>export</code> and quotes; no interpolation. Copy <a href="https://github.com/angelkurten/keel/blob/master/.env.example"><code>.env.example</code></a> and fill in what you use; keep <code>.env</code> out of git (it holds secrets).</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Used by</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KEEL_DB</code></td>
+<td>every command with <code>--db</code></td>
+<td>the durable graph: a SQLite file or <code>mysql://user:pass@host:3306/db</code></td>
+</tr>
+<tr>
+<td><code>KEEL_TENANT</code></td>
+<td>every command that takes a tenant; <code>serve</code> (<code>--tenant</code>)</td>
+<td>the default tenant; with <code>serve --transport http</code> it is used when <code>X-Keel-Tenant</code> is absent</td>
+</tr>
+<tr>
+<td><code>KEEL_AGENT</code></td>
+<td><code>serve</code>, <code>context</code>... (<code>--agent</code>)</td>
+<td>the declared agent acting here</td>
+</tr>
+<tr>
+<td><code>KEEL_CERTFILE</code>, <code>KEEL_KEYFILE</code></td>
+<td><code>serve --transport http</code></td>
+<td>TLS certificate and key (PEM) to serve https (<code>--certfile</code>, <code>--keyfile</code>)</td>
+</tr>
+<tr>
+<td><code>KEEL_SECRET</code></td>
+<td><code>serve --transport http</code></td>
+<td>the shared bearer secret (<code>--secret-env</code> names another variable)</td>
+</tr>
+<tr>
+<td><code>KEEL_INDEX</code>, <code>KEEL_EMBEDDER</code></td>
+<td><code>index</code>, <code>serve</code></td>
+<td>the vector index and embedder specs (<code>--index</code>, <code>--embedder</code>)</td>
+</tr>
+<tr>
+<td><code>KEEL_INDEX_CURSOR</code>, <code>KEEL_INDEX_WORKERS</code></td>
+<td><code>index</code></td>
+<td>where the cursor of the last run is kept (on a volume) and how many embedding batches go out at once (<code>--cursor</code>, <code>--workers</code>)</td>
+</tr>
+<tr>
+<td><code>KEEL_EMBEDDINGS_BASE_URL</code>, <code>_MODEL</code>, <code>_API_KEY</code>, <code>_QUERY_PREFIX</code>, <code>_DOCUMENT_PREFIX</code></td>
+<td><code>--embedder openai</code></td>
+<td>any OpenAI-compatible <code>/v1/embeddings</code> endpoint</td>
+</tr>
+<tr>
+<td><code>KEEL_RERANK_BASE_URL</code>, <code>_MODEL</code>, <code>_API_KEY</code></td>
+<td><code>serve --reranker http\|llm</code></td>
+<td>the reranker endpoint</td>
+</tr>
+<tr>
+<td><code>KEEL_SUMMARIZER_BASE_URL</code>, <code>_MODEL</code>, <code>_API_KEY</code></td>
+<td><code>consolidate --summarizer llm</code></td>
+<td>the chat model that writes summaries</td>
+</tr>
+</tbody>
+</table>
+<p>A flag on the command line beats both.</p>
+<p><strong>No end-customers?</strong> Keel keys everything on a tenant, but nothing forces you to have many. Pick one fixed value, put it in every envelope's <code>tenant</code> and in <code>KEEL_TENANT=default</code>, and stop passing <code>--tenant</code>: every command, <code>keel serve</code> and the HTTP API (no <code>X-Keel-Tenant</code> needed) use it. The <code>tenant</code> scope then simply means "shared by every agent".</p>
+<p>The Python API reads nothing from <code>.env</code>: a program that embeds Keel passes its settings itself.</p>
+<h2 id="the-envelope">The envelope<a class="headerlink" href="#the-envelope" title="Permanent link">&para;</a></h2>
+<p>One event, as the development adapter reads it from <code>examples/fleet/events.jsonl</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"tenant"</span><span class="p">:</span><span class="w"> </span><span class="s2">"acme-logistics"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unit.registered"</span><span class="p">,</span><span class="w"> </span><span class="nt">"subject"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unit:MXK-4821"</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"occurred_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-09-01T09:00:00Z"</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fleet.vehicles"</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MXK-4821"</span><span class="p">,</span><span class="w"> </span><span class="nt">"plate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MXK-4821"</span><span class="p">,</span><span class="w"> </span><span class="nt">"model"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Freightliner Cascadia"</span><span class="p">}}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant</code></td>
+<td>yes</td>
+<td>The end-customer this fact belongs to. Opaque to Keel.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>yes</td>
+<td>Dotted lowercase type from the cartridge catalog.</td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td>yes</td>
+<td><code>&lt;kind&gt;:&lt;id&gt;</code> of the entity the fact is about.</td>
+</tr>
+<tr>
+<td><code>occurred_at</code></td>
+<td>yes</td>
+<td>When it happened in the world. Timezone-aware.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>yes</td>
+<td>System of record or adapter name.</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>no</td>
+<td>Generated when absent. Becomes the <code>evidence</code> of derived facts.</td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td>no</td>
+<td>When Keel learned it. Defaults to now.</td>
+</tr>
+<tr>
+<td><code>payload</code></td>
+<td>no</td>
+<td>Event data. Only handlers read it.</td>
+</tr>
+</tbody>
+</table>
+<p>The full rules are in the <a href="../SPEC/#2-event-envelope">specification</a>.</p>
+<h2 id="a-jsonl-file">A <code>.jsonl</code> file<a class="headerlink" href="#a-jsonl-file" title="Permanent link">&para;</a></h2>
+<p>For development and tests. One envelope per line; blank lines and lines starting with <code>#</code> are ignored.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>ingest<span class="w"> </span>examples/fleet<span class="w"> </span>examples/fleet/events.jsonl
+</code></pre></div>
+<p>The command prints <code>processed</code>, <code>duplicates</code>, <code>unhandled</code>, <code>errors</code> and <code>skipped</code> (events for a forgotten tenant, see <a href="#erase-a-tenant">Erase a tenant</a>) and carries on past a bad event. <code>--strict</code> stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (5000 events) is rolled back.</p>
+<h2 id="a-postgres-outbox-table">A Postgres outbox table<a class="headerlink" href="#a-postgres-outbox-table" title="Permanent link">&para;</a></h2>
+<p>Your SaaS inserts envelopes into a table. Keel polls it in order and remembers the last row it took in a cursor file, so a restart resumes instead of re-ingesting.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">keel_events</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">seq</span><span class="w">          </span><span class="n">bigserial</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">id</span><span class="w">           </span><span class="nb">text</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">tenant</span><span class="w">       </span><span class="nb">text</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">type</span><span class="w">         </span><span class="nb">text</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">subject</span><span class="w">      </span><span class="nb">text</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">occurred_at</span><span class="w">  </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">recorded_at</span><span class="w">  </span><span class="n">timestamptz</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">now</span><span class="p">(),</span>
+<span class="w">    </span><span class="k">source</span><span class="w">       </span><span class="nb">text</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">payload</span><span class="w">      </span><span class="n">jsonb</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">'{}'</span>
+<span class="p">);</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>postgres
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">psycopg</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">keel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ingestor</span><span class="p">,</span> <span class="n">MemoryStore</span><span class="p">,</span> <span class="n">SqliteStore</span><span class="p">,</span> <span class="n">load_cartridge</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">keel.adapters.postgres</span><span class="w"> </span><span class="kn">import</span> <span class="n">PostgresTableAdapter</span>
+
+<span class="n">ingestor</span> <span class="o">=</span> <span class="n">Ingestor</span><span class="p">(</span><span class="n">load_cartridge</span><span class="p">(</span><span class="s2">"examples/fleet"</span><span class="p">),</span> <span class="n">SqliteStore</span><span class="p">(</span><span class="s2">"keel.db"</span><span class="p">))</span>  <span class="c1"># durable; MemoryStore() for a throwaway graph</span>
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">PostgresTableAdapter</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">psycopg</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">DSN</span><span class="p">),</span> <span class="n">table</span><span class="o">=</span><span class="s2">"keel_events"</span><span class="p">,</span> <span class="n">cursor_path</span><span class="o">=</span><span class="s2">".keel/cursor"</span><span class="p">)</span>
+
+<span class="n">ingestor</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">adapter</span><span class="p">)</span>                      <span class="c1"># one pass over everything after the cursor</span>
+<span class="n">ingestor</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">follow</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>   <span class="c1"># or poll forever</span>
+</code></pre></div>
+<p>Delivery is at-least-once: <code>Ingestor.ingest</code> moves the cursor only after each commit (it calls the adapter's <code>ack()</code>), so with <code>batch=N</code> a batch that rolls back, or a crash mid-batch, is read again whole; the store skips what it already applied as duplicates. Iterating the adapter by hand, the cursor moves when you ask for the next event; call <code>adapter.ack()</code> after storing instead if you batch your own writes. The table name, the cursor column and the batch size are parameters (<code>table=</code>, <code>cursor_column="seq"</code>, <code>batch_size=500</code>). Any DB-API 2.0 connection works; pass <code>placeholder="?"</code> for sqlite3.</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant S as Your SaaS
+    participant T as keel_events
+    participant A as PostgresTableAdapter
+    participant C as cursor file
+    participant I as Ingestor
+    S-&gt;&gt;T: INSERT envelope (seq 41)
+    A-&gt;&gt;C: read position
+    C--&gt;&gt;A: 40
+    A-&gt;&gt;T: SELECT * WHERE seq &gt; 40 ORDER BY seq LIMIT 500
+    T--&gt;&gt;A: row 41
+    A-&gt;&gt;I: Event 41
+    I-&gt;&gt;I: dispatch to the handler
+    I-&gt;&gt;A: next event?
+    A-&gt;&gt;C: write 41
+    Note over A,I: a crash before "write 41" re-delivers event 41 on restart</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Concurrent writers</p>
+<p>A serial cursor can skip a row that commits late while a later row was already read. Use one writer per table, or a <code>recorded_at</code> cursor with a lag, if that bites.</p>
+</div>
+<h2 id="a-webhook">A webhook<a class="headerlink" href="#a-webhook" title="Permanent link">&para;</a></h2>
+<p>Keel receives envelopes over HTTP, validates them and ingests them in the request.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>webhook
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># app.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">keel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ingestor</span><span class="p">,</span> <span class="n">MemoryStore</span><span class="p">,</span> <span class="n">SqliteStore</span><span class="p">,</span> <span class="n">load_cartridge</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">keel.adapters.webhook</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_app</span>
+
+<span class="n">ingestor</span> <span class="o">=</span> <span class="n">Ingestor</span><span class="p">(</span><span class="n">load_cartridge</span><span class="p">(</span><span class="s2">"examples/fleet"</span><span class="p">),</span> <span class="n">SqliteStore</span><span class="p">(</span><span class="s2">"keel.db"</span><span class="p">))</span>  <span class="c1"># durable; MemoryStore() for a throwaway graph</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">build_app</span><span class="p">(</span><span class="n">ingestor</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="s2">"shared-secret"</span><span class="p">)</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>app:app<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>localhost:8000/events<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer shared-secret"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'[{"tenant": "acme-logistics", "type": "unit.registered", "subject": "unit:MXK-4821", "occurred_at": "2026-09-01T09:00:00Z", "source": "fleet.vehicles", "payload": {"id": "MXK-4821", "plate": "MXK-4821", "model": "Freightliner Cascadia"}}]'</span>
+</code></pre></div>
+<p>The body is one envelope or a list. The response is the ingest report: <code>processed</code>, <code>duplicates</code> (ids the store had already applied), <code>unhandled</code> types, <code>errors</code>, <code>forgotten</code> (the tenants this batch erased, with what was deleted) and <code>skipped</code> (events for a forgotten tenant). <code>build_app(ingestor, token=..., strict=True)</code> fails the request at the first unhandled type or handler error instead of reporting it; on a SQL store the request's batch is rolled back, so the sender can retry it whole. A malformed envelope is a <code>422</code>; a wrong token is a <code>401</code>. Without a token the endpoint accepts any caller, so use that only on localhost.</p>
+<h2 id="consume-a-kafka-topic-or-an-sqs-queue">Consume a Kafka topic or an SQS queue<a class="headerlink" href="#consume-a-kafka-topic-or-an-sqs-queue" title="Permanent link">&para;</a></h2>
+<p>Your SaaS publishes envelopes as JSON messages; Keel consumes them. <code>uv sync --extra kafka</code> (confluent-kafka) or <code>--extra sqs</code> (boto3).</p>
+<p>For SQS there is a command; run it as a long-lived service:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">AWS_ACCESS_KEY_ID</span><span class="o">=</span>...<span class="w"> </span><span class="nv">AWS_SECRET_ACCESS_KEY</span><span class="o">=</span>...<span class="w"> </span><span class="nv">AWS_REGION</span><span class="o">=</span>us-east-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>consume<span class="w"> </span>cartridges/mine<span class="w"> </span>--queue<span class="w"> </span>https://sqs.us-east-1.amazonaws.com/123456789012/keel-events<span class="w"> </span>--db<span class="w"> </span>keel.db
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>consume<span class="w"> </span>cartridges/mine<span class="w"> </span>--queue<span class="w"> </span>http://elasticmq:9324/000000000000/keel-events<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w">   </span><span class="c1"># SQS-compatible: the queue's host is the endpoint</span>
+</code></pre></div>
+<p>Each message is one transaction and is deleted only once stored. A message that fails (not an envelope, a type with no handler, a handler error) is logged and left on the queue, so SQS redelivers it after the visibility timeout and, after the queue's <code>maxReceiveCount</code>, moves it to its dead-letter queue: give the queue one. <code>--once</code> drains what is queued and stops (exit code 1 if anything failed). An erasure prints one JSON line (<code>{"forgot": &lt;tenant&gt;, "event": ..., "entities": ...}</code>) on stdout for your audit log; everything else goes to stderr. <code>KEEL_QUEUE</code> and <code>KEEL_DB</code> stand in for the flags. Kafka has no per-message redelivery (committing a later offset skips a failed one), so it has no command yet; use <code>KafkaAdapter</code> from Python:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">keel.adapters.bus</span><span class="w"> </span><span class="kn">import</span> <span class="n">KafkaAdapter</span><span class="p">,</span> <span class="n">SqsAdapter</span>
+
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">KafkaAdapter</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"broker:9092"</span><span class="p">,</span> <span class="n">topic</span><span class="o">=</span><span class="s2">"keel-events"</span><span class="p">,</span> <span class="n">group_id</span><span class="o">=</span><span class="s2">"keel"</span><span class="p">)</span>
+<span class="n">adapter</span> <span class="o">=</span> <span class="n">SqsAdapter</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"https://sqs.us-east-1.amazonaws.com/123456789012/keel-events"</span><span class="p">)</span>
+<span class="n">ingestor</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">adapter</span><span class="p">)</span>            <span class="c1"># drain what is there now, then stop</span>
+<span class="n">ingestor</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">follow</span><span class="p">())</span>   <span class="c1"># consume forever</span>
+</code></pre></div>
+<p>Delivery is at-least-once: the offset is committed, or the SQS message deleted, only after the batch that holds it is committed (<code>Ingestor.ingest</code> calls the adapter's <code>ack()</code>), so a crash mid-batch redelivers the whole batch. With <code>batch=N</code> on SQS, keep the visibility timeout above the time a batch takes. A message that is not a valid envelope raises and stays on the bus; pass <code>dead_letter=lambda body, error: ...</code> to log it somewhere and move on. <code>KafkaAdapter.connect(..., **config)</code> merges extra keys into the confluent-kafka consumer config (dotted keys go through a dict: <code>**{"security.protocol": "SSL"}</code>); <code>SqsAdapter.connect(queue_url, **kwargs)</code> passes them to <code>boto3.client("sqs", ...)</code>. <code>connect</code> also takes the adapter's own options as keywords: <code>KafkaAdapter.connect(..., poll_timeout=1.0, dead_letter=...)</code>, <code>SqsAdapter.connect(queue_url, batch_size=10, wait_seconds=10, dead_letter=...)</code>; or build the adapter from your own client with the same keywords: <code>KafkaAdapter(consumer, ...)</code>, <code>SqsAdapter(client, queue_url, ...)</code>. Both adapters only need two calls from their client (<code>poll</code>/<code>commit</code>, <code>receive_message</code>/<code>delete_message</code>), which is how the tests run them on fakes and how you would wrap another client.</p>
+<h2 id="serve-the-tools-over-mcp">Serve the tools over MCP<a class="headerlink" href="#serve-the-tools-over-mcp" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>mcp
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--events<span class="w"> </span>examples/fleet/events.jsonl
+</code></pre></div>
+<p>With Claude Code, one command registers the server. The agent sees exactly five tools and nothing else:</p>
+<div class="highlight"><pre><span></span><code>claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>keel<span class="w"> </span>--<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>--directory<span class="w"> </span><span class="nv">$PWD</span><span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--events<span class="w"> </span>examples/fleet/events.jsonl
+</code></pre></div>
+<p>With Codex CLI (OpenAI), declare the server in <code>~/.codex/config.toml</code>. Keel annotates <code>context</code>, <code>history</code>, <code>search</code> and <code>related</code> as read-only, so Codex runs them without asking even under <code>approval_policy = "never"</code>; <code>annotate</code> writes, so it prompts unless you set <code>default_tools_approval_mode = "auto"</code> on the server:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[mcp_servers.keel]</span>
+<span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"uv"</span>
+<span class="n">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"run"</span><span class="p">,</span><span class="w"> </span><span class="s2">"--directory"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/keel"</span><span class="p">,</span><span class="w"> </span><span class="s2">"keel"</span><span class="p">,</span><span class="w"> </span><span class="s2">"serve"</span><span class="p">,</span><span class="w"> </span><span class="s2">"examples/fleet"</span><span class="p">,</span><span class="w"> </span><span class="s2">"--tenant"</span><span class="p">,</span><span class="w"> </span><span class="s2">"acme-logistics"</span><span class="p">,</span><span class="w"> </span><span class="s2">"--events"</span><span class="p">,</span><span class="w"> </span><span class="s2">"examples/fleet/events.jsonl"</span><span class="p">]</span>
+<span class="n">startup_timeout_sec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+</code></pre></div>
+<p>A headless run, for a smoke test or CI:</p>
+<div class="highlight"><pre><span></span><code>codex<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--json<span class="w"> </span><span class="s2">"Which tires on unit:MXK-4821 are critical according to the cartridge's own rules? Use only the keel tools."</span><span class="w"> </span>&lt;<span class="w"> </span>/dev/null
+</code></pre></div>
+<p>Checked on 2026-10-14 with Codex CLI 0.162 and <code>openai/gpt-5.2-codex</code> behind an OpenAI-compatible gateway: seven calls (<code>search</code>, <code>related</code>, <code>context</code>, <code>history</code> with <code>predicate=depth_mm</code>), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares <code>agents:</code>, add <code>--agent &lt;id&gt;</code>: the server then reads and writes only what that agent may, and signs its annotations. Agent-scope memory is read only by the agent that wrote it, so a server started without <code>--agent</code> reads none.</p>
+<div class="admonition note">
+<p class="admonition-title">Where is the graph stored?</p>
+<p>In memory with <code>--events</code>: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass <code>--db keel.db</code> instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while <code>keel serve</code> reads it. Or point <code>--db</code> at a MySQL or MariaDB you already run: <code>--db mysql://user:password@host:3306/keel</code> (<code>mariadb://</code> is accepted too; <code>uv sync --extra mysql</code>); the tables are created on first use and the same conformance suite runs against it in CI. Sharing the database with your application: <code>?prefix=keel_</code> names the tables <code>keel_entities</code>, <code>keel_facts</code>, and so on. In code, the same option is a constructor argument: <code>SqliteStore("keel.db", prefix="keel_")</code>, <code>MysqlStore.from_url(url, prefix="keel_")</code> or <code>MysqlStore(connect, prefix="keel_")</code>.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>ingest<span class="w"> </span>examples/fleet<span class="w"> </span>examples/fleet/events.jsonl<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w">   </span><span class="c1"># or adapter.follow() in your own process</span>
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>replay<span class="w"> </span>examples/fleet<span class="w"> </span>examples/fleet/events.jsonl<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w">   </span><span class="c1"># wipe one tenant, rebuild it from the log</span>
+</code></pre></div>
+<p>The log is the truth and the file is derived: <code>replay</code> rebuilds one tenant from the external log (your outbox table, your bus, a <code>.jsonl</code>) and never from the file itself. What agents and people wrote through <code>annotate</code>, and consolidations of it, is not in the log, so <code>replay</code> keeps it and the events land around it. The store is pluggable: <code>SqliteStore</code> is the default, and any store that passes <code>tests/test_store.py</code> (see <a href="../contributing/">contributing</a>) can take its place.</p>
+</div>
+<h2 id="serve-the-tools-over-http">Serve the tools over HTTP<a class="headerlink" href="#serve-the-tools-over-http" title="Permanent link">&para;</a></h2>
+<p>For a backend, or for many tenants from one process, serve the same five operations as a JSON API (<code>uv sync --extra http</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nv">KEEL_SECRET</span><span class="o">=</span>change-me<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+</code></pre></div>
+<p>The secret is read from <code>KEEL_SECRET</code>; <code>--secret-env OTHER_VAR</code> reads it from another variable. If the variable is unset, the server starts open only on a loopback host (<code>127.0.0.1</code>, the default, <code>::1</code> or <code>localhost</code>), with a warning. On any other <code>--host</code> it refuses to start unless you pass <code>--allow-open</code>, for when your own proxy authenticates every request.</p>
+<p><strong>Browse the graph.</strong> <code>--ui</code> also serves a read-only page at <code>/ui</code>: search a tenant, open a subject's context (optionally <code>as of</code> a past instant, with its rules evaluated), click a predicate for its history and a neighbour in the graph to walk to it. The page holds no data; it asks for the secret, the tenant and, when the cartridge declares agents, the agent, keeps them for the browser tab only, and reads through the same <code>/v1</code> API, so every scope and registry rule applies. Off by default.</p>
+<p><strong>TLS and HTTP/2.</strong> <code>--certfile</code> and <code>--keyfile</code> (PEM; or <code>KEEL_CERTFILE</code>, <code>KEEL_KEYFILE</code>) serve https. <code>--http2</code> runs the server on Hypercorn instead of uvicorn (<code>uv sync --extra http2</code>) and speaks HTTP/1.1 and HTTP/2 on the same port: h2 negotiated by ALPN over TLS, or cleartext h2c (prior knowledge or <code>Upgrade</code>) without it, which is what a proxy in front that talks h2c to its origin uses. HTTP/1.1 clients keep working. On the client side, <code>keel.client.Client(..., http_client=httpx.Client(http2=True))</code> (<a href="../sdks/">SDKs</a>).</p>
+<div class="highlight"><pre><span></span><code><span class="nv">KEEL_SECRET</span><span class="o">=</span>change-me<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--http2<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--certfile<span class="w"> </span>cert.pem<span class="w"> </span>--keyfile<span class="w"> </span>key.pem
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Body (<code>?</code> optional, default in parentheses)</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /v1/events</code></td>
+<td>one envelope or a list</td>
+<td>the ingest report: <code>processed</code>, <code>duplicates</code>, <code>unhandled</code>, <code>errors</code>, <code>forgotten</code>, <code>skipped</code></td>
+</tr>
+<tr>
+<td><code>POST /v1/context</code></td>
+<td><code>{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("full" or "concise")}</code></td>
+<td>what <code>context</code> returns</td>
+</tr>
+<tr>
+<td><code>POST /v1/history</code></td>
+<td><code>{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"?}</code></td>
+<td>facts</td>
+</tr>
+<tr>
+<td><code>POST /v1/search</code></td>
+<td><code>{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?}</code></td>
+<td>entities and facts</td>
+</tr>
+<tr>
+<td><code>POST /v1/annotate</code></td>
+<td><code>{"subject", "predicate", "value", "scope"? ("task"), "evidence"?, "by"?, "task"?, "key"?, "status"?}</code></td>
+<td>the fact</td>
+</tr>
+<tr>
+<td><code>POST /v1/related</code></td>
+<td><code>{"subject", "relation"?, "as_of"?}</code></td>
+<td>neighbours</td>
+</tr>
+<tr>
+<td><code>GET /health</code></td>
+<td></td>
+<td><code>{"ok", "cartridge", "mcp"}</code></td>
+</tr>
+<tr>
+<td><code>GET /openapi.json</code></td>
+<td></td>
+<td>the contract, for generated clients</td>
+</tr>
+</tbody>
+</table>
+<p>Times are ISO 8601 strings. Every request carries <code>Authorization: Bearer $KEEL_SECRET</code>, <code>X-Keel-Tenant</code> (optional when the server is bound with <code>--tenant</code> or <code>KEEL_TENANT</code>, which is then the default) and, when the cartridge declares agents, <code>X-Keel-Agent</code>. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. <code>/health</code>, <code>/openapi.json</code>, <code>/docs</code> and <code>/redoc</code> need no token. Two optional headers are stored with every write the request makes: <code>traceparent</code> (W3C trace context) and <code>X-Keel-Tool-Call</code> (the agent's tool call id).</p>
+<p>On <code>/v1/events</code>, <code>X-Keel-Tenant</code> is optional: each envelope names its tenant, and when the header is present every envelope must match it. The agent registry does not apply to ingest.</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>400</code></td>
+<td>bad input: missing <code>X-Keel-Tenant</code>, an envelope of another tenant, an unknown rule, an invalid <code>mode</code> or <code>detail</code></td>
+</tr>
+<tr>
+<td><code>401</code></td>
+<td>bad or missing bearer token</td>
+</tr>
+<tr>
+<td><code>403</code></td>
+<td>a refusal (scope policy, agent registry), with its reason</td>
+</tr>
+<tr>
+<td><code>422</code></td>
+<td>a malformed body, such as an envelope that fails validation</td>
+</tr>
+</tbody>
+</table>
+<p>With <code>--tenant</code>, the same server also exposes <code>/mcp</code> (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>localhost:8000/v1/context<span class="w"> </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer change-me"</span><span class="w"> </span>-H<span class="w"> </span><span class="s2">"X-Keel-Tenant: acme-logistics"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span>-d<span class="w"> </span><span class="s1">'{"subject": "tire:T-9001"}'</span>
+</code></pre></div>
+<p>Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send <code>X-Keel-Agent</code> to read your own). Task-scope memory tied to a task id is read only by calls that pass that <code>task</code> (<code>history</code>'s <code>task</code> is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, <code>__global__</code>, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name.</p>
+<h2 id="run-it-in-a-container">Run it in a container<a class="headerlink" href="#run-it-in-a-container" title="Permanent link">&para;</a></h2>
+<p><code>ghcr.io/angelkurten/keel</code> serves the tools over HTTP (<code>/v1</code>, and <code>/mcp</code> when <code>KEEL_TENANT</code> is set) on port 8000, for amd64 and arm64. Tags follow the releases: <code>0.24.0</code>, <code>0.24</code>, <code>latest</code>, and <code>-slim</code> variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at <code>/cartridge</code>.</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8000</span>:8000<span class="w"> </span>-e<span class="w"> </span><span class="nv">KEEL_SECRET</span><span class="o">=</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">KEEL_DB</span><span class="o">=</span>mysql://keel:secret@db.internal:3306/keel<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>./examples/fleet:/cartridge:ro<span class="w"> </span>-v<span class="w"> </span>keel-data:/data<span class="w"> </span>ghcr.io/angelkurten/keel:0.24.0
+</code></pre></div>
+<ul>
+<li>It refuses to start without <code>KEEL_SECRET</code> (or <code>--allow-open</code> behind your own auth proxy), since it listens on every interface.</li>
+<li><code>/data</code> is the working directory and a volume: a SQLite graph (<code>KEEL_DB=/data/keel.db</code>), the <code>keel index</code> cursor (<code>/data/.keel/</code>) and a <code>.env</code> live there.</li>
+<li>It runs as an unprivileged user and checks its own <code>/health</code> (no <code>curl</code> needed in the image). Configuration is the environment (§ Configuration); every command reads <code>KEEL_DB</code>, <code>KEEL_TENANT</code> and <code>KEEL_INDEX</code>.</li>
+<li>Any other command runs the same way: <code>docker run ... ghcr.io/angelkurten/keel:0.24.0 index /cartridge</code> (the entrypoint is <code>keel</code>).</li>
+<li>To ship your cartridge inside, two lines: <code>FROM ghcr.io/angelkurten/keel:0.24.0</code> and <code>COPY cartridges/mine /cartridge</code>.</li>
+</ul>
+<p><code>deploy/docker-compose.yml</code> runs Keel with its own MySQL, a Chroma server and <code>keel index</code> every 15 minutes: <code>KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d</code>. <code>docker build -t keel .</code> builds this checkout; <code>--build-arg KEEL_VERSION=0.24.0</code> builds a release from PyPI. <code>deploy/smoke.sh &lt;image&gt;</code> checks an image end to end.</p>
+<h2 id="semantic-search">Semantic search<a class="headerlink" href="#semantic-search" title="Permanent link">&para;</a></h2>
+<p><code>search(text, mode="semantic")</code> finds subjects by meaning ("worn-out tyre" finds a tire at 2.6 mm), filtered by tenant, the agent's read slice, <code>kind</code> and <code>rule</code>. Two adapters, both replaceable: where vectors live and where embeddings come from.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>chroma<span class="w">        </span><span class="c1"># only for the bundled Chroma adapter; Python 3.11+ (chromadb needs onnxruntime)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">KEEL_EMBEDDINGS_BASE_URL</span><span class="o">=</span>https://api.openai.com/v1<span class="w"> </span><span class="nv">KEEL_EMBEDDINGS_MODEL</span><span class="o">=</span>text-embedding-3-small<span class="w"> </span><span class="nv">KEEL_EMBEDDINGS_API_KEY</span><span class="o">=</span>...
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>index<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--index<span class="w"> </span>chroma:///var/keel/vectors<span class="w">   </span><span class="c1"># cron it: incremental</span>
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>serve<span class="w"> </span>examples/fleet<span class="w"> </span>--transport<span class="w"> </span>http<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--index<span class="w"> </span>chroma:///var/keel/vectors
+</code></pre></div>
+<p><code>keel index</code> keeps the time of its last run in a cursor file and indexes only what changed since; <code>--full</code> rebuilds the tenant's index. The cursor sits next to a <code>chroma:///path</code> index (<code>keel-index-&lt;tenant&gt;.cursor</code>), else in <code>.keel/index-&lt;tenant&gt;.cursor</code> under the working directory; <code>--cursor</code> or <code>KEEL_INDEX_CURSOR</code> puts it elsewhere. In a container, keep it on the same volume as the index: a cursor lost on deploy makes the next run a full rebuild, and <code>keel index</code> says so when it starts without one. Embedding batches go out four at a time (<code>--workers</code>, <code>KEEL_INDEX_WORKERS</code>), and a rate limit or a 5xx from the embeddings API is retried with backoff. <code>--all-tenants</code> indexes every tenant in the store, each with its own cursor (<code>--cursor-dir</code> or <code>KEEL_INDEX_CURSOR_DIR</code> puts them all in one folder), and clears the documents of every tenant forgotten since its last run. One run per tenant at a time: a run that finds another holding the lock next to the cursor skips (two runs at once corrupt a Chroma index), so a cron that overlaps a slow run is safe. <code>--embedder</code> on <code>index</code> and <code>serve</code> picks where embeddings come from: <code>openai</code> (the default, configured by the <code>KEEL_EMBEDDINGS_*</code> variables), <code>hash</code> (deterministic, for tests) or your own <code>pkg.module:factory?k=v</code>. Use the same one for both.</p>
+<p>Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM).</p>
+<p><code>chroma:///path</code> opens the index inside the process. When <code>keel serve</code> and <code>keel index</code> run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with <code>Error finding id</code>. Run Chroma as a server and point both at it with <code>chroma://host:port</code>; keep <code>chroma:///path</code> for a single process or for tests.</p>
+<p>The Chroma adapter ranks the lexical leg itself: it pulls a kind's documents once, keeps their BM25 in memory and reuses it until the collection's count changes or 300 seconds pass (<code>ChromaIndex(bm25_ttl=...)</code>), so a re-index by another process shows in the lexical leg within that time (the dense leg sees it at once). Each document carries its subject as metadata, so <code>related_to</code> filters inside Chroma; a collection built before 0.21 lacks it and filters after retrieval, slower, until one <code>keel index --full</code>.</p>
+<p><strong>Weaviate.</strong> <code>uv sync --extra weaviate</code> and <code>--index weaviate://host:8080</code> (Weaviate 1.25 or later). Query parameters: <code>grpc_port</code> (default 50051), <code>grpc_host</code> (default the same host), <code>secure=true</code> for TLS on both, <code>collection</code> (default <code>Keel</code>); the API key comes from <code>KEEL_WEAVIATE_API_KEY</code>, never the URL. Keel uses one multi-tenant collection and makes each Keel tenant a Weaviate tenant, so the server isolates them. Vectors come from Keel's embedder (the collection has no vectorizer), and the lexical leg is Weaviate's own BM25, so nothing is pulled into Keel's memory and a re-index by another process shows at once. Its tokenizer splits <code>cus-1974</code> into two words where Keel's keeps one, so lexical scores differ slightly from Chroma's. Run the conformance tests against a server with <code>KEEL_WEAVIATE_URL=weaviate://localhost:8080 uv run pytest tests/test_semantic.py</code>.</p>
+<h3 id="your-own-vector-store-or-embedding-model">Your own vector store or embedding model<a class="headerlink" href="#your-own-vector-store-or-embedding-model" title="Permanent link">&para;</a></h3>
+<p>Another vector database (pgvector, Qdrant, Pinecone, OpenSearch...) or your own model is an adapter you write: a plain class, nothing to inherit or register. <code>examples/custom_adapters.py</code> is a complete, tested one, a vector index on SQLite and an embedder wrapping any encode function. Run it with <code>uv run python examples/custom_adapters.py</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MyIndex</span><span class="p">:</span>                                                     <span class="c1"># keel.semantic.VectorIndex</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">upsert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tenant</span><span class="p">,</span> <span class="n">items</span><span class="p">):</span> <span class="o">...</span>                           <span class="c1"># items: [(subject key, vector, document)]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tenant</span><span class="p">,</span> <span class="n">keys</span><span class="p">):</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tenant</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> <span class="o">...</span>            <span class="c1"># [(key, cosine)], best first, this tenant only</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tenant</span><span class="p">):</span> <span class="o">...</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyEmbedder</span><span class="p">:</span>                                                  <span class="c1"># keel.semantic.Embedder</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">embed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">texts</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">"document"</span><span class="p">):</span> <span class="o">...</span>                   <span class="c1"># one vector per text, same dimension</span>
+</code></pre></div>
+<p>The rules an index must keep: every call is scoped by tenant and never returns another tenant's keys; <code>query</code> returns <code>(key, score)</code> with the score a cosine in [-1, 1], best first, at most <code>k</code>. Two capabilities are optional and detected from the signature: <code>where={"kind": [...]}</code> on <code>query</code> filters inside the index (without it Keel filters after retrieval, which an approximate index can miss), and a <code>text_query(tenant, text, k, where=None)</code> method adds the lexical leg for hybrid search. An embedder that takes <code>role</code> gets <code>"query"</code> for questions and <code>"document"</code> for what it indexes.</p>
+<p>Name them by a spec, <code>module:factory?param=value</code> (parameters arrive as text), on <code>index</code> and <code>serve</code> alike, and check them with the same conformance suite as the bundled adapters:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>index<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--index<span class="w"> </span><span class="s2">"examples.custom_adapters:make_index?path=vectors.db"</span><span class="w"> </span>--embedder<span class="w"> </span>examples.custom_adapters:make_embedder
+<span class="nv">KEEL_VECTOR_INDEX</span><span class="o">=</span><span class="s2">"examples.custom_adapters:make_index?path=/tmp/v.db"</span><span class="w"> </span><span class="nv">KEEL_EMBEDDER</span><span class="o">=</span>examples.custom_adapters:make_embedder<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/test_semantic.py
+</code></pre></div>
+<p><strong>Vectors you already compute.</strong> Keel embeds the document it renders for each subject (key, attributes, open facts, the relations the cartridge names) and the query text, with the same embedder, so both sides live in one vector space. It does not take precomputed vectors. To use your own model, wrap it as the embedder: a function from texts to vectors is enough (<code>ModelEmbedder</code> in the example). Vectors you computed elsewhere, from other text, would not match the documents Keel searches.</p>
+<p>Search is hybrid by default: ids in the query come first, then a dense and a lexical leg are fused (the lexical weight is <code>semantic.lexical_weight</code>, 0.3). Add <code>--reranker llm</code> (any OpenAI-compatible chat model, <code>KEEL_RERANK_BASE_URL</code> / <code>_MODEL</code> / <code>_API_KEY</code>) or <code>--reranker http</code> (the Cohere, Jina or Voyage <code>/rerank</code> API) to reorder the best candidates. For asymmetric embedders set <code>KEEL_EMBEDDINGS_QUERY_PREFIX</code> / <code>_DOCUMENT_PREFIX</code> (e5: <code>"query: "</code>, <code>"passage: "</code>). How much each piece buys, measured: <code>docs/design/semantic-evals.md</code>.</p>
+<p>Indexing never runs in ingest, so ingest stays deterministic and offline. Only tenant and global knowledge is indexed: task and agent memory and pending proposals are not. The cartridge decides the rest:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">semantic</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kinds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">card</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">cliente</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">comentario</span><span class="p p-Indicator">]</span><span class="w">      </span><span class="c1"># comments full of URLs and technical noise stay out</span>
+<span class="w">  </span><span class="nt">relations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">de_cliente</span><span class="p p-Indicator">]</span><span class="w">    </span><span class="c1"># "de_cliente: cliente:BAT (nombre: ...)" goes into the card's document</span>
+</code></pre></div>
+<h2 id="consolidate-episodic-memory">Consolidate episodic memory<a class="headerlink" href="#consolidate-episodic-memory" title="Permanent link">&para;</a></h2>
+<p>Agents write task and agent memory that expires. A cartridge's <code>consolidate:</code> section declares which of it becomes a durable fact: the source predicate and scopes (task memory by default; agent memory is private and is read only when <code>from.scopes</code> lists it), an optional <code>within:</code> window on world time (<code>valid_from</code>, so a reingested history keeps its dates), how many observations make a pattern, a reducer (<code>mode</code>, <code>latest</code>, <code>count</code>, <code>min</code>, <code>max</code>, <code>avg</code>, <code>distinct</code> or <code>summary</code>) and the predicate and scope to write. It runs as a job, never in ingest:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>consolidate<span class="w"> </span>examples/fleet<span class="w"> </span>--tenant<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>expire<span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--consolidate<span class="w"> </span>examples/fleet<span class="w">   </span><span class="c1"># consolidate, then drop expired memory</span>
+uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>expire<span class="w"> </span>--all-tenants<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--consolidate<span class="w"> </span>examples/fleet<span class="w">     </span><span class="c1"># every tenant in the store, one after another</span>
+</code></pre></div>
+<p>Each run prints <code>written</code> and <code>unchanged</code> per consolidation and is idempotent: the same inputs never write twice. The originals stay until their TTL. <code>reduce: summary</code> needs <code>--summarizer</code>: <code>llm</code> (any OpenAI-compatible chat model, from <code>KEEL_SUMMARIZER_BASE_URL</code>, <code>KEEL_SUMMARIZER_MODEL</code> and <code>KEEL_SUMMARIZER_API_KEY</code>), <code>join</code> (the distinct values joined, deterministic) or your own <code>pkg.module:factory</code>. The other reducers are deterministic and need none.</p>
+<h2 id="export-the-audit-trail">Export the audit trail<a class="headerlink" href="#export-the-audit-trail" title="Permanent link">&para;</a></h2>
+<p>One tenant, everything Keel knows about it, as JSONL: entities, relations and facts, closed ones included, each with <code>source</code>, <code>evidence</code>, <code>scope</code>, <code>recorded_at</code> and <code>corrected_by</code>. Hand it to the customer, an auditor, or a diff.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span><span class="nb">export</span><span class="w"> </span>acme-logistics<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--out<span class="w"> </span>acme-logistics.jsonl
+</code></pre></div>
+<p>Each line is one record: <code>{"record": "fact", "subject": "tire:T-9001", "predicate": "depth_mm", "value": 5.2, "valid_from": ..., "valid_to": ..., "source": "tires.measurements", "evidence": "&lt;event id&gt;", ...}</code>. Another tenant's export never contains this one's rows.</p>
+<h2 id="erase-a-tenant">Erase a tenant<a class="headerlink" href="#erase-a-tenant" title="Permanent link">&para;</a></h2>
+<p>When an end-customer leaves and the law (Colombia's Ley 1581, GDPR's right to erasure) or your privacy notice says their data goes, Keel deletes everything it stores for that tenant: entities, relations, facts of every scope, what agents and people annotated, the ids of the events it applied and, through the index, its semantic documents. Declare the event your SaaS sends when the customer is deleted:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">events</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">household.deleted</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">household</span>
+<span class="w">    </span><span class="nt">forgets</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant</span><span class="w">      </span><span class="c1"># no handler: Keel erases the event's tenant</span>
+<span class="w">    </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> id</span><span class="p">:</span><span class="w"> </span><span class="nv">string</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p>It arrives through the same stream, in order. The erasure is one transaction, and a tombstone (the tenant and the time) stays: any later event for that tenant, an old redelivery included, is skipped (<code>skipped</code> in the report) and <code>annotate</code> is refused, so nothing revives it. The ingest report lists what was deleted (<code>forgotten</code>), and <code>keel consume</code> prints it as a JSON line for your audit log. A second erasure deletes nothing and keeps the first time. The semantic documents go on the next <code>keel index --all-tenants</code> (or <code>keel index --tenant &lt;t&gt;</code>).</p>
+<p>From the command line, for one tenant:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>keel<span class="w"> </span>forget<span class="w"> </span>household-42<span class="w"> </span>--db<span class="w"> </span>keel.db<span class="w"> </span>--index<span class="w"> </span>chroma://chroma:8000<span class="w"> </span>--yes
+<span class="c1"># {"tenant": "household-42", "forgotten_at": "...", "entities": 31, "relations": 40, "facts": 212, "annotations": 3, "ingested": 120, "index": true}</span>
+</code></pre></div>
+<p>Keel erases only what it stores. The external log is yours: delete or expire the tenant's rows in your outbox table, and remember that consumed queue messages are already gone. Global memory is every tenant's and is kept, so never promote a customer's personal data to it. The tombstone holds the tenant id and the time; pick tenant ids that are not personal data on their own.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../first-cartridge/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Your first cartridge">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Your first cartridge
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../sdks/" class="md-footer__link md-footer__link--next" aria-label="Next: SDKs">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                SDKs
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
