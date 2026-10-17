@@ -48,6 +48,11 @@ class BusAdapter:
         for ack in pending:
             ack()
 
+    def nack(self) -> None:
+        """What was taken since the last ack() was not stored: leave it unacknowledged, so the bus redelivers
+        it (SQS after its visibility timeout, and to the queue's dead-letter queue after maxReceiveCount)."""
+        self._pending = []
+
     def _fetch(self) -> list[tuple[bytes | str, Ack]]:  # pragma: no cover - abstract
         raise NotImplementedError
 

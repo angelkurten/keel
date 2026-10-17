@@ -185,7 +185,8 @@ def build_http_app(
         if t and any(e.tenant != t for e in batch):
             raise HTTPException(400, f"every envelope must belong to tenant '{t}'")
         report = ingestor.ingest(batch, batch=len(batch))
-        return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors}
+        return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
+                "forgotten": [{"tenant": t, **n} for t, n in report.forgotten], "skipped": report.skipped}
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> Any:

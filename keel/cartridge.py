@@ -60,7 +60,12 @@ class Cartridge:
         for etype, spec in self.events.items():
             if spec.get("subject") not in self.entities:
                 problems.append(f"event '{etype}' subject kind '{spec.get('subject')}' is not declared")
-            if etype not in self.registry.types():
+            forgets = (spec or {}).get("forgets")
+            if forgets is not None and forgets != "tenant":
+                problems.append(f"event '{etype}': forgets is `tenant` (the event erases its tenant), not '{forgets}'")
+            if forgets and etype in self.registry.types():
+                problems.append(f"event '{etype}' forgets its tenant, so its handler would never run; remove it")
+            elif not forgets and etype not in self.registry.types():
                 problems.append(f"event '{etype}' has no handler in handlers.py")
         for etype in self.registry.types() - set(self.events):
             problems.append(f"handler for '{etype}' exists but the event is not in the catalog")

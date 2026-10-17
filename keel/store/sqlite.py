@@ -34,13 +34,15 @@ class SqliteStore(SqlStore):
       task TEXT, idempotency_key TEXT, closed_at TEXT, status TEXT, trace TEXT);
     CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
     CREATE INDEX IF NOT EXISTS facts_recorded ON facts (tenant, recorded_at);
-    CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id))
+    CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id));
+    CREATE TABLE IF NOT EXISTS forgotten (tenant TEXT NOT NULL PRIMARY KEY, at TEXT NOT NULL)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "
         "ON CONFLICT (tenant, kind, id) DO UPDATE SET ref = excluded.ref, attrs = excluded.attrs"
     )
     REMEMBER = "INSERT OR IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
+    TOMBSTONE = "INSERT OR IGNORE INTO forgotten (tenant, at) VALUES (?, ?)"
     INDEX_IF_NOT_EXISTS = True
     ADDED_FACT_COLUMNS = (
         ("task", "TEXT", "CREATE INDEX IF NOT EXISTS facts_task ON facts (tenant, task)"),

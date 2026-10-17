@@ -56,7 +56,7 @@ For development and tests. One envelope per line; blank lines and lines starting
 uv run keel ingest examples/fleet examples/fleet/events.jsonl
 ```
 
-The command prints `processed`, `duplicates`, `unhandled` and `errors` and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (5000 events) is rolled back.
+The command prints `processed`, `duplicates`, `unhandled`, `errors` and `skipped` (events for a forgotten tenant, see [Erase a tenant](#erase-a-tenant)) and carries on past a bad event. `--strict` stops at the first unhandled type or handler error instead; on a SQL store the batch in flight (5000 events) is rolled back.
 
 ## A Postgres outbox table
 
@@ -141,11 +141,21 @@ curl -X POST localhost:8000/events \
   -d '[{"tenant": "acme-logistics", "type": "unit.registered", "subject": "unit:MXK-4821", "occurred_at": "2026-09-01T09:00:00Z", "source": "fleet.vehicles", "payload": {"id": "MXK-4821", "plate": "MXK-4821", "model": "Freightliner Cascadia"}}]'
 ```
 
-The body is one envelope or a list. The response is the ingest report: `processed`, `duplicates` (ids the store had already applied), `unhandled` types and `errors`. `build_app(ingestor, token=..., strict=True)` fails the request at the first unhandled type or handler error instead of reporting it; on a SQL store the request's batch is rolled back, so the sender can retry it whole. A malformed envelope is a `422`; a wrong token is a `401`. Without a token the endpoint accepts any caller, so use that only on localhost.
+The body is one envelope or a list. The response is the ingest report: `processed`, `duplicates` (ids the store had already applied), `unhandled` types, `errors`, `forgotten` (the tenants this batch erased, with what was deleted) and `skipped` (events for a forgotten tenant). `build_app(ingestor, token=..., strict=True)` fails the request at the first unhandled type or handler error instead of reporting it; on a SQL store the request's batch is rolled back, so the sender can retry it whole. A malformed envelope is a `422`; a wrong token is a `401`. Without a token the endpoint accepts any caller, so use that only on localhost.
 
 ## Consume a Kafka topic or an SQS queue
 
 Your SaaS publishes envelopes as JSON messages; Keel consumes them. `uv sync --extra kafka` (confluent-kafka) or `--extra sqs` (boto3).
+
+For SQS there is a command; run it as a long-lived service:
+
+```bash
+AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_REGION=us-east-1 \
+  uv run keel consume cartridges/mine --queue https://sqs.us-east-1.amazonaws.com/123456789012/keel-events --db keel.db
+uv run keel consume cartridges/mine --queue http://elasticmq:9324/000000000000/keel-events --db keel.db   # SQS-compatible: the queue's host is the endpoint
+```
+
+Each message is one transaction and is deleted only once stored. A message that fails (not an envelope, a type with no handler, a handler error) is logged and left on the queue, so SQS redelivers it after the visibility timeout and, after the queue's `maxReceiveCount`, moves it to its dead-letter queue: give the queue one. `--once` drains what is queued and stops (exit code 1 if anything failed). An erasure prints one JSON line (`{"forgot": <tenant>, "event": ..., "entities": ...}`) on stdout for your audit log; everything else goes to stderr. `KEEL_QUEUE` and `KEEL_DB` stand in for the flags. Kafka has no per-message redelivery (committing a later offset skips a failed one), so it has no command yet; use `KafkaAdapter` from Python:
 
 ```python
 from keel.adapters.bus import KafkaAdapter, SqsAdapter
@@ -220,7 +230,7 @@ KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --http2 
 
 | Call | Body (`?` optional, default in parentheses) | Returns |
 | --- | --- | --- |
-| `POST /v1/events` | one envelope or a list | the ingest report: `processed`, `duplicates`, `unhandled`, `errors` |
+| `POST /v1/events` | one envelope or a list | the ingest report: `processed`, `duplicates`, `unhandled`, `errors`, `forgotten`, `skipped` |
 | `POST /v1/context` | `{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("full" or "concise")}` | what `context` returns |
 | `POST /v1/history` | `{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"?}` | facts |
 | `POST /v1/search` | `{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?}` | entities and facts |
@@ -278,13 +288,15 @@ uv run keel index examples/fleet --tenant acme-logistics --db keel.db --index ch
 uv run keel serve examples/fleet --transport http --db keel.db --index chroma:///var/keel/vectors
 ```
 
-`keel index` keeps the time of its last run in a cursor file and indexes only what changed since; `--full` rebuilds the tenant's index. The cursor sits next to a `chroma:///path` index (`keel-index-<tenant>.cursor`), else in `.keel/index-<tenant>.cursor` under the working directory; `--cursor` or `KEEL_INDEX_CURSOR` puts it elsewhere. In a container, keep it on the same volume as the index: a cursor lost on deploy makes the next run a full rebuild, and `keel index` says so when it starts without one. Embedding batches go out four at a time (`--workers`, `KEEL_INDEX_WORKERS`), and a rate limit or a 5xx from the embeddings API is retried with backoff. One run per tenant at a time: a run that finds another holding the lock next to the cursor skips (two runs at once corrupt a Chroma index), so a cron that overlaps a slow run is safe. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
+`keel index` keeps the time of its last run in a cursor file and indexes only what changed since; `--full` rebuilds the tenant's index. The cursor sits next to a `chroma:///path` index (`keel-index-<tenant>.cursor`), else in `.keel/index-<tenant>.cursor` under the working directory; `--cursor` or `KEEL_INDEX_CURSOR` puts it elsewhere. In a container, keep it on the same volume as the index: a cursor lost on deploy makes the next run a full rebuild, and `keel index` says so when it starts without one. Embedding batches go out four at a time (`--workers`, `KEEL_INDEX_WORKERS`), and a rate limit or a 5xx from the embeddings API is retried with backoff. `--all-tenants` indexes every tenant in the store, each with its own cursor (`--cursor-dir` or `KEEL_INDEX_CURSOR_DIR` puts them all in one folder), and clears the documents of every tenant forgotten since its last run. One run per tenant at a time: a run that finds another holding the lock next to the cursor skips (two runs at once corrupt a Chroma index), so a cron that overlaps a slow run is safe. `--embedder` on `index` and `serve` picks where embeddings come from: `openai` (the default, configured by the `KEEL_EMBEDDINGS_*` variables), `hash` (deterministic, for tests) or your own `pkg.module:factory?k=v`. Use the same one for both.
 
 Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM).
 
 `chroma:///path` opens the index inside the process. When `keel serve` and `keel index` run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with `Error finding id`. Run Chroma as a server and point both at it with `chroma://host:port`; keep `chroma:///path` for a single process or for tests.
 
 The Chroma adapter ranks the lexical leg itself: it pulls a kind's documents once, keeps their BM25 in memory and reuses it until the collection's count changes or 300 seconds pass (`ChromaIndex(bm25_ttl=...)`), so a re-index by another process shows in the lexical leg within that time (the dense leg sees it at once). Each document carries its subject as metadata, so `related_to` filters inside Chroma; a collection built before 0.21 lacks it and filters after retrieval, slower, until one `keel index --full`.
+
+**Weaviate.** `uv sync --extra weaviate` and `--index weaviate://host:8080` (Weaviate 1.25 or later). Query parameters: `grpc_port` (default 50051), `grpc_host` (default the same host), `secure=true` for TLS on both, `collection` (default `Keel`); the API key comes from `KEEL_WEAVIATE_API_KEY`, never the URL. Keel uses one multi-tenant collection and makes each Keel tenant a Weaviate tenant, so the server isolates them. Vectors come from Keel's embedder (the collection has no vectorizer), and the lexical leg is Weaviate's own BM25, so nothing is pulled into Keel's memory and a re-index by another process shows at once. Its tokenizer splits `cus-1974` into two words where Keel's keeps one, so lexical scores differ slightly from Chroma's. Run the conformance tests against a server with `KEEL_WEAVIATE_URL=weaviate://localhost:8080 uv run pytest tests/test_semantic.py`.
 
 ### Your own vector store or embedding model
 
@@ -332,6 +344,7 @@ Agents write task and agent memory that expires. A cartridge's `consolidate:` se
 ```bash
 uv run keel consolidate examples/fleet --tenant acme-logistics --db keel.db
 uv run keel expire acme-logistics --db keel.db --consolidate examples/fleet   # consolidate, then drop expired memory
+uv run keel expire --all-tenants --db keel.db --consolidate examples/fleet     # every tenant in the store, one after another
 ```
 
 Each run prints `written` and `unchanged` per consolidation and is idempotent: the same inputs never write twice. The originals stay until their TTL. `reduce: summary` needs `--summarizer`: `llm` (any OpenAI-compatible chat model, from `KEEL_SUMMARIZER_BASE_URL`, `KEEL_SUMMARIZER_MODEL` and `KEEL_SUMMARIZER_API_KEY`), `join` (the distinct values joined, deterministic) or your own `pkg.module:factory`. The other reducers are deterministic and need none.
@@ -345,3 +358,26 @@ uv run keel export acme-logistics --db keel.db --out acme-logistics.jsonl
 ```
 
 Each line is one record: `{"record": "fact", "subject": "tire:T-9001", "predicate": "depth_mm", "value": 5.2, "valid_from": ..., "valid_to": ..., "source": "tires.measurements", "evidence": "<event id>", ...}`. Another tenant's export never contains this one's rows.
+
+## Erase a tenant
+
+When an end-customer leaves and the law (Colombia's Ley 1581, GDPR's right to erasure) or your privacy notice says their data goes, Keel deletes everything it stores for that tenant: entities, relations, facts of every scope, what agents and people annotated, the ids of the events it applied and, through the index, its semantic documents. Declare the event your SaaS sends when the customer is deleted:
+
+```yaml
+events:
+  household.deleted:
+    subject: household
+    forgets: tenant      # no handler: Keel erases the event's tenant
+    payload: { id: string }
+```
+
+It arrives through the same stream, in order. The erasure is one transaction, and a tombstone (the tenant and the time) stays: any later event for that tenant, an old redelivery included, is skipped (`skipped` in the report) and `annotate` is refused, so nothing revives it. The ingest report lists what was deleted (`forgotten`), and `keel consume` prints it as a JSON line for your audit log. A second erasure deletes nothing and keeps the first time. The semantic documents go on the next `keel index --all-tenants` (or `keel index --tenant <t>`).
+
+From the command line, for one tenant:
+
+```bash
+uv run keel forget household-42 --db keel.db --index chroma://chroma:8000 --yes
+# {"tenant": "household-42", "forgotten_at": "...", "entities": 31, "relations": 40, "facts": 212, "annotations": 3, "ingested": 120, "index": true}
+```
+
+Keel erases only what it stores. The external log is yours: delete or expire the tenant's rows in your outbox table, and remember that consumed queue messages are already gone. Global memory is every tenant's and is kept, so never promote a customer's personal data to it. The tombstone holds the tenant id and the time; pick tenant ids that are not personal data on their own.

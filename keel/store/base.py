@@ -111,3 +111,15 @@ class Store(Protocol):
     def expire(self, tenant: str, now: datetime | None = None) -> int: ...  # drop facts past expires_at
 
     def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int: ...  # expire a task's memory
+
+    # erasure (optional; the Ingestor requires it when the cartridge declares an event that `forgets: tenant`)
+    # forget: in one transaction, everything about the tenant (entities, relations, facts of every scope,
+    # annotations, applied event ids) is deleted and a tombstone (tenant, time) is left, so nothing revives it.
+    # Idempotent: a second call deletes whatever slipped in since and keeps the first tombstone's time.
+    # Returns what it deleted: {"entities", "relations", "facts", "annotations", "ingested"}.
+    # def forget(self, tenant: str) -> dict[str, int]: ...
+    # def forgotten(self, tenant: str) -> datetime | None: ...   # the tombstone's time
+    # def forgotten_tenants(self) -> dict[str, datetime]: ...      # every tombstone, for index sweeps
+
+    # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
+    # def tenants(self) -> list[str]: ...

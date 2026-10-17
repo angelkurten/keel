@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from keel.envelope import Event, utcnow
-from keel.scopes import Scope
+from keel.scopes import GLOBAL_TENANT, Scope
 from keel.store.base import DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
     changed_after,
@@ -120,8 +120,9 @@ class SqlStore:
     SCHEMA = ""  # statements separated by ';', run at start, all IF NOT EXISTS
     UPSERT_ENTITY = ""  # (tenant, kind, id, ref, attrs); on conflict update ref and attrs
     REMEMBER = ""  # (tenant, id); insert or ignore
+    TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -579,6 +580,38 @@ class SqlStore:
             yield _relation(row)
         for row in self._rows("SELECT * FROM facts WHERE tenant = ? ORDER BY seq", (tenant,)):
             yield _fact(row)
+
+    def forget(self, tenant: str) -> dict[str, int]:
+        """Erase the tenant and leave a tombstone, in one transaction (Store protocol). Idempotent."""
+        if tenant == GLOBAL_TENANT:
+            raise ValueError("the global partition is every tenant's; it cannot be forgotten")
+        if self._bulk is not None:
+            raise RuntimeError("forget inside a bulk batch would be undone by its flush")
+        with self.transaction():
+            counts = {
+                "entities": self._exec("DELETE FROM entities WHERE tenant = ?", (tenant,)),
+                "relations": self._exec("DELETE FROM relations WHERE tenant = ?", (tenant,)),
+                "annotations": self._exec("DELETE FROM facts WHERE tenant = ? AND (source LIKE ? OR source LIKE ?)", (tenant, "annotate:%", "consolidate:%")),
+                "facts": self._exec("DELETE FROM facts WHERE tenant = ?", (tenant,)),
+                "ingested": self._exec("DELETE FROM ingested WHERE tenant = ?", (tenant,)),
+            }
+            self._exec(self.TOMBSTONE, (tenant, _ts(utcnow())))
+            if self._cache is not None:
+                self._cache.clear()
+        return {k: counts[k] for k in ("entities", "relations", "facts", "annotations", "ingested")}
+
+    def tenants(self) -> list[str]:
+        """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
+        # ponytail: DISTINCT over the (tenant, ...) indexes; a tenants table if it ever shows in a profile
+        rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts")
+        return sorted({r["tenant"] for r in rows} - {GLOBAL_TENANT})
+
+    def forgotten(self, tenant: str) -> datetime | None:
+        row = self._one("SELECT at FROM forgotten WHERE tenant = ?", (tenant,))
+        return _dt(row["at"]) if row else None
+
+    def forgotten_tenants(self) -> dict[str, datetime]:
+        return {r["tenant"]: _dt(r["at"]) for r in self._rows("SELECT tenant, at FROM forgotten")}
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With

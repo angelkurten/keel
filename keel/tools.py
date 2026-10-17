@@ -874,6 +874,9 @@ class Tools:
             raise ValueError("status is None (accepted), 'proposed' or 'rejected'")
         sc = Scope(scope)
         self._readable(subject)
+        forgotten = getattr(self.store, "forgotten", None)
+        if forgotten and (at := forgotten(self.tenant)) is not None:  # an erased tenant is not revived by a late write
+            raise PermissionError(f"tenant '{self.tenant}' was forgotten at {at.isoformat()}; nothing more is written for it")
         if self.agent and status == "proposed" and not self.agent.writes:
             raise PermissionError(f"agent '{self.agent.id}' may not write anything, so it may not propose")
         if self.agent and status != "proposed" and not self.agent.can_write(sc):

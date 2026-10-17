@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -67,6 +68,17 @@ def _store(db: str | None):
         return MysqlStore.from_url(db)
     return SqliteStore(db)
 TENANT = typer.Argument(..., envvar="KEEL_TENANT", help="The end-customer (KEEL_TENANT when omitted). A product with no end-customers sets one fixed value.", show_default=False)
+ALL = typer.Option(False, "--all-tenants", help="Every tenant in the store, one after another (a tenant per end-customer means many).")
+
+
+def _tenants(store, tenant: str | None, all_tenants: bool) -> list[str]:
+    if all_tenants:
+        return store.tenants()
+    if not tenant:
+        raise typer.BadParameter("name the tenant (or set KEEL_TENANT), or pass --all-tenants")
+    return [tenant]
+
+
 AGENT = typer.Option(None, "--agent", envvar="KEEL_AGENT", help="The declared agent acting here. Required when the cartridge declares `agents:`; it bounds what is read and written.")
 
 
@@ -200,9 +212,70 @@ def _run(cartridge: Path, events: Path | None, strict: bool = False, db: str | N
 def ingest(cartridge: Path, events: Path, strict: bool = False, db: str | None = DB):
     """Ingest a .jsonl event stream into the graph (in memory, or the --db file) and report."""
     _, _, _, report = _run(cartridge, events, strict, db)
-    typer.echo(f"processed={report.processed} duplicates={report.duplicates} unhandled={len(report.unhandled)} errors={len(report.errors)}")
+    typer.echo(f"processed={report.processed} duplicates={report.duplicates} unhandled={len(report.unhandled)} errors={len(report.errors)} skipped={report.skipped}")
+    for t, counts in report.forgotten:
+        typer.echo("  forgot " + json.dumps({"tenant": t, **counts}))
     for eid, err in report.errors:
         typer.echo(f"  {eid}: {err}")
+
+
+def _queue(url: str):
+    """sqs: an https://sqs.<region>.amazonaws.com/... queue URL, or any SQS-compatible one (ElasticMQ:
+    http://elasticmq:9324/000000000000/keel); credentials and region from the usual AWS_* variables.
+    ponytail: SQS only. Kafka has no per-message redelivery (a later commit skips a failed offset), so it
+    needs a dead-letter topic of its own before it gets a command; KafkaAdapter works from Python."""
+    from urllib.parse import urlparse
+
+    from keel.adapters.bus import SqsAdapter
+
+    u = urlparse(url)
+    if u.scheme not in ("http", "https"):
+        raise typer.BadParameter(f"{url}: an SQS queue URL (http[s]://...)", param_hint="--queue")
+    aws = u.hostname or ""
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or (aws.split(".")[1] if aws.endswith(".amazonaws.com") else "us-east-1")
+    endpoint = None if aws.endswith(".amazonaws.com") else f"{u.scheme}://{u.netloc}"  # an SQS-compatible server answers at the queue's host
+    return SqsAdapter.connect(url, wait_seconds=20, region_name=region, endpoint_url=endpoint)
+
+
+@app.command()
+def consume(
+    cartridge: Path,
+    queue: str = typer.Option(..., "--queue", envvar="KEEL_QUEUE", help="An SQS queue URL, AWS or SQS-compatible like ElasticMQ (AWS_* variables for credentials and region)."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    once: bool = typer.Option(False, "--once", help="Drain what is queued now and stop, instead of consuming forever."),
+):
+    """Consume envelopes from a queue into the graph, one transaction per message. A message is acknowledged only once it is
+    stored; one that fails (not an envelope, no handler, a handler error) stays unacknowledged, so the queue redelivers it and,
+    after its maxReceiveCount, moves it to its dead-letter queue. Erasures (`forgets: tenant`) print one JSON line for your audit log."""
+    c, store = load_cartridge(cartridge), _store(db)
+    ing, adapter = Ingestor(c, store), _queue(queue)
+    adapter.manual_ack = True
+    done = errors = 0
+    typer.echo(f"consuming {queue} into {c.name}", err=True)
+    while True:
+        try:
+            for ev in (adapter if once else adapter.follow()):
+                try:
+                    report = ing.ingest([ev], strict=True)
+                except Exception as exc:  # noqa: BLE001 (left for the queue to redeliver)
+                    adapter.nack()
+                    errors += 1
+                    typer.echo(f"failed id={ev.id} type={ev.type} tenant={ev.tenant}: {type(exc).__name__}: {exc}", err=True)
+                    continue
+                adapter.ack()
+                done += 1
+                for t, counts in report.forgotten:
+                    typer.echo(json.dumps({"forgot": t, "event": ev.id, **counts}))
+        except Exception as exc:  # noqa: BLE001 (a message that is not an envelope: unacknowledged, redelivered, dead-lettered)
+            adapter.nack()
+            errors += 1
+            typer.echo(f"failed message: {type(exc).__name__}: {exc}", err=True)
+            if not once:
+                time.sleep(1)
+            continue  # the bad message is invisible until its visibility timeout: carry on with the rest
+        if once:
+            typer.echo(f"consumed={done} failed={errors}")
+            raise typer.Exit(1 if errors else 0)
 
 
 @app.command()
@@ -215,20 +288,24 @@ def replay(cartridge: Path, events: Path, tenant: str = TENANT, db: str | None =
 
 @app.command()
 def expire(
-    tenant: str = TENANT,
+    tenant: str | None = typer.Argument(None, envvar="KEEL_TENANT", help="The end-customer (KEEL_TENANT when omitted).", show_default=False),
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
     task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
     consolidate: Path | None = typer.Option(None, "--consolidate", help="Consolidate first, with this cartridge's `consolidate:` section, so nothing is dropped unsummarized."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="With --consolidate: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
+    all_tenants: bool = ALL,
 ):
-    """Drop task/agent memory past its expiry for one tenant. Reads already ignore expired facts; run this from cron to reclaim space."""
+    """Drop task/agent memory past its expiry for one tenant (or all). Reads already ignore expired facts; run this from cron to reclaim space."""
     store = _store(db)
-    if consolidate:
-        _consolidate(load_cartridge(consolidate), store, tenant, summarizer)
-    if task:
-        typer.echo(f"closed task={task} facts={store.close_task(tenant, task)}")
-    n = store.expire(tenant)
-    typer.echo(f"expired tenant={tenant} dropped={n}")
+    if task and all_tenants:
+        raise typer.BadParameter("--task closes one tenant's task: name the tenant")
+    c = load_cartridge(consolidate) if consolidate else None
+    for t in _tenants(store, tenant, all_tenants):
+        if c:
+            _consolidate(c, store, t, summarizer)
+        if task:
+            typer.echo(f"closed task={task} facts={store.close_task(t, task)}")
+        typer.echo(f"expired tenant={t} dropped={store.expire(t)}")
 
 
 def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
@@ -236,18 +313,21 @@ def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
 
     report = consolidate_tenant(c, store, tenant, summarizer=load_summarizer(summarizer) if summarizer else None)
     for name in report.written:
-        typer.echo(f"consolidated {name}: written={report.written[name]} unchanged={report.unchanged[name]}")
+        typer.echo(f"consolidated {name}: written={report.written[name]} unchanged={report.unchanged[name]} tenant={tenant}")
 
 
 @app.command(name="consolidate")
 def consolidate_cmd(
     cartridge: Path,
-    tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to consolidate."),
+    tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer to consolidate."),
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="For `reduce: summary`: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
+    all_tenants: bool = ALL,
 ):
     """Summarize episodic memory into durable facts, as the cartridge's `consolidate:` section declares. Idempotent; a job, never ingest."""
-    _consolidate(load_cartridge(cartridge), _store(db), tenant, summarizer)
+    c, store = load_cartridge(cartridge), _store(db)
+    for t in _tenants(store, tenant, all_tenants):
+        _consolidate(c, store, t, summarizer)
 
 
 @app.command()
@@ -278,33 +358,74 @@ def export(
 @app.command(name="index")
 def index_cmd(
     cartridge: Path,
-    tenant: str = typer.Option(..., envvar="KEEL_TENANT", help="The end-customer to index."),
+    tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer to index."),
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
-    index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, or your adapter: pkg.module:factory?k=v"),
+    index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, weaviate://host:port, or your adapter: pkg.module:factory?k=v"),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
     full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),
-    cursor: Path | None = typer.Option(None, "--cursor", envvar="KEEL_INDEX_CURSOR", help="Where the watermark of the last run is kept. Default: next to a chroma:///path index, else .keel/index-<tenant>.cursor. Keep it on a volume."),
+    cursor: Path | None = typer.Option(None, "--cursor", envvar="KEEL_INDEX_CURSOR", help="Where the watermark of the last run is kept (one tenant). Default: next to a chroma:///path index, else .keel/index-<tenant>.cursor. Keep it on a volume."),
+    cursor_dir: Path | None = typer.Option(None, "--cursor-dir", envvar="KEEL_INDEX_CURSOR_DIR", help="A folder for every tenant's cursor (index-<tenant>.cursor), instead of the default place."),
     workers: int = typer.Option(4, "--workers", envvar="KEEL_INDEX_WORKERS", help="Embedding batches requested at once."),
+    all_tenants: bool = typer.Option(False, "--all-tenants", help="Every tenant in the store, one after another; also deletes the documents of tenants forgotten since their last run."),
 ):
-    """Bring the semantic index up to date for one tenant, outside ingest: only subjects changed since the last run.
+    """Bring the semantic index up to date for one tenant (or all), outside ingest: only subjects changed since the last run.
     One run per tenant at a time: a second one finds the lock next to the cursor and skips."""
-    from keel.envelope import parse_iso
-    from keel.semantic import index_tenant, load_embedder, load_index
+    from keel.semantic import load_embedder, load_index
 
-    c = load_cartridge(cartridge)
-    path = cursor or _index_cursor(index, tenant)
+    if cursor and all_tenants:
+        raise typer.BadParameter("--cursor is one tenant's file; with --all-tenants use --cursor-dir")
+    c, store, vectors, emb = load_cartridge(cartridge), _store(db), load_index(index), load_embedder(embedder)
+    place = lambda t: cursor or (cursor_dir / f"index-{t}.cursor" if cursor_dir else _index_cursor(index, t))
+    for t in _tenants(store, tenant, all_tenants):
+        _index_one(c, store, vectors, emb, t, place(t), full, workers)
+    if all_tenants:  # a tenant erased by an event: its documents go, once (its cursor marks it as not yet swept)
+        for t in sorted(store.forgotten_tenants()):
+            if place(t).exists():
+                _index_one(c, store, vectors, emb, t, place(t), full, workers)
+
+
+def _index_one(c, store, vectors, emb, tenant: str, path: Path, full: bool, workers: int) -> None:
+    from keel.envelope import parse_iso
+    from keel.semantic import index_tenant
+
     path.parent.mkdir(parents=True, exist_ok=True)
     with _exclusive(path.with_name(path.name + ".lock")) as mine:
         if not mine:  # two runs over one index corrupt it (Chroma's compaction): the one running covers this
             typer.echo(f"skipped tenant={tenant}: another keel index holds {path}.lock")
             return
+        if store.forgotten(tenant) is not None:
+            vectors.clear(tenant)
+            path.unlink(missing_ok=True)
+            typer.echo(f"cleared tenant={tenant}: forgotten")
+            return
         if not full and not path.exists():
             typer.echo(f"no cursor at {path}: indexing the whole tenant. Keep it on a volume (--cursor, KEEL_INDEX_CURSOR) or every deploy rebuilds the index.", err=True)
         since = None if full or not path.exists() else parse_iso(path.read_text(encoding="utf-8").strip())
-        report = index_tenant(_store(db), tenant, load_embedder(embedder), load_index(index), since=since, policy=c.semantic, workers=workers)
+        report = index_tenant(store, tenant, emb, vectors, since=since, policy=c.semantic, workers=workers)
         if report.cursor is not None:
             path.write_text(report.cursor.isoformat(), encoding="utf-8")
     typer.echo(f"indexed tenant={tenant} subjects={report.indexed} removed={report.deleted} mode={'full' if since is None else 'incremental'}")
+
+
+@app.command()
+def forget(
+    tenant: str = typer.Argument(..., help="The end-customer to erase. Never read from KEEL_TENANT: name it.", show_default=False),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Also delete its documents from this semantic index."),
+    yes: bool = typer.Option(False, "--yes", help="Required to erase: it cannot be undone."),
+):
+    """Erase one tenant for good: entities, relations, facts of every scope, annotations, applied event ids and, with --index,
+    its semantic documents. A tombstone stays, so later events for it are skipped and writes refused. Prints what it deleted, as JSON.
+    A tenant erased by an event (`forgets: tenant`) loses its semantic documents on the next `keel index --all-tenants`."""
+    store = _store(db)
+    if not yes:
+        raise typer.BadParameter("erasing a tenant cannot be undone: add --yes")
+    counts = store.forget(tenant)
+    if index:
+        from keel.semantic import load_index
+
+        load_index(index).clear(tenant)
+    typer.echo(json.dumps({"tenant": tenant, "forgotten_at": store.forgotten(tenant).isoformat(), **counts, "index": bool(index)}))
 
 
 def _index_cursor(index: str, tenant: str) -> Path:

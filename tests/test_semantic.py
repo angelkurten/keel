@@ -27,6 +27,8 @@ def _indexes():
         params.append("chroma")
     except ImportError:
         pass
+    if os.environ.get("KEEL_WEAVIATE_URL"):  # a running server: KEEL_WEAVIATE_URL=weaviate://localhost:8080
+        params.append("weaviate")
     if os.environ.get("KEEL_VECTOR_INDEX"):
         params.append("external")
     return params
@@ -38,6 +40,9 @@ def index(request):
         return MemoryIndex()
     if request.param == "chroma":
         return load_index("chroma://")
+    if request.param == "weaviate":
+        url = os.environ["KEEL_WEAVIATE_URL"]
+        return load_index(url + ("&" if "?" in url else "?") + "collection=KeelTest")
     return load_index(os.environ["KEEL_VECTOR_INDEX"])
 
 

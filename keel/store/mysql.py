@@ -40,13 +40,15 @@ class MysqlStore(SqlStore):
       task VARCHAR(191), idempotency_key VARCHAR(191), closed_at VARCHAR(40), status VARCHAR(16), trace TEXT,
       KEY facts_subject (tenant, subject), KEY facts_predicate (tenant, subject, predicate),
       KEY facts_recorded (tenant, recorded_at), KEY facts_closed (tenant, closed_at), KEY facts_task (tenant, task));
-    CREATE TABLE IF NOT EXISTS ingested (tenant VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL, PRIMARY KEY (tenant, id))
+    CREATE TABLE IF NOT EXISTS ingested (tenant VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL, PRIMARY KEY (tenant, id));
+    CREATE TABLE IF NOT EXISTS forgotten (tenant VARCHAR(191) NOT NULL PRIMARY KEY, at VARCHAR(40) NOT NULL)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "
         "ON DUPLICATE KEY UPDATE ref = VALUES(ref), attrs = VALUES(attrs)"
     )
     REMEMBER = "INSERT IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
+    TOMBSTONE = "INSERT IGNORE INTO forgotten (tenant, at) VALUES (?, ?)"
     ADDED_FACT_COLUMNS = (
         ("task", "VARCHAR(191)", "CREATE INDEX facts_task ON facts (tenant, task)"),
         ("idempotency_key", "VARCHAR(191)", None),

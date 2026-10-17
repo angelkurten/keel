@@ -52,6 +52,8 @@ class IngestReport:
     duplicates: int = 0  # ids already applied: skipped, so at-least-once delivery and client retries are safe
     unhandled: list[str] = field(default_factory=list)
     errors: list[tuple[str, str]] = field(default_factory=list)
+    forgotten: list[tuple[str, dict[str, int]]] = field(default_factory=list)  # (tenant, what forget deleted), for an audit log
+    skipped: int = 0  # events for a tenant already forgotten: never applied, so a late redelivery cannot revive it
 
 
 BATCH = 5000  # events per commit for a bulk load (a file, a replay): fewer prefetch statements per event
@@ -77,6 +79,11 @@ class Ingestor:
         # convenience that grows with every event, so a server or a bulk load leaves it off
         self.keep_log = keep_log
         self.log: list[Event] = []
+        # event types the cartridge declares `forgets: tenant`: Keel erases the tenant, no handler runs
+        self.forgets = {t for t, spec in cartridge.events.items() if (spec or {}).get("forgets") == "tenant"}
+        self._gone: set[str] = set()
+        if self.forgets and not callable(getattr(store, "forget", None)):
+            raise TypeError(f"the cartridge declares events that forget a tenant ({', '.join(sorted(self.forgets))}); {type(store).__name__} has no forget()")
 
     def ingest(self, events: Iterable[Event], strict: bool = False, batch: int = 1) -> IngestReport:
         """Dispatch every event. When the store has transactions, each event is one (its primitives and
@@ -95,10 +102,22 @@ class Ingestor:
         report = IngestReport()
         tx = getattr(self.store, "transaction", None)
         bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
+        forgotten = getattr(self.store, "forgotten", None)
         for chunk in _chunks(events, max(1, batch)):
-            scope = bulk(chunk) if bulk and len(chunk) > 1 else (tx() if tx else nullcontext())
+            erases = any(ev.type in self.forgets for ev in chunk)  # a batch overlay would write back what forget deleted
+            scope = bulk(chunk) if bulk and len(chunk) > 1 and not erases else (tx() if tx else nullcontext())
+            # a tombstone is permanent, so only tenants not yet known to be forgotten are asked, once per chunk
+            self._gone |= {t for t in {ev.tenant for ev in chunk} - self._gone if forgotten and forgotten(t)}
             with scope:
                 for ev in chunk:
+                    if ev.tenant in self._gone:
+                        report.skipped += 1
+                        continue
+                    if ev.type in self.forgets:
+                        report.forgotten.append((ev.tenant, self.store.forget(ev.tenant)))
+                        self._gone.add(ev.tenant)
+                        report.processed += 1
+                        continue
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
                         continue

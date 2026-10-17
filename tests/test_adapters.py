@@ -78,7 +78,7 @@ def test_webhook_validates_authenticates_and_ingests():
     r = client.post("/events", json=events[:1], headers=ok)
     assert r.status_code == 200 and r.json()["processed"] == 1
     r = client.post("/events", json=events[1:], headers=ok)
-    assert r.json() == {"processed": 3, "duplicates": 0, "unhandled": [], "errors": []}
+    assert r.json() == {"processed": 3, "duplicates": 0, "unhandled": [], "errors": [], "forgotten": [], "skipped": 0}
     assert any(f["predicate"] == "paid" for f in Tools(c, s, "salon-luna").context("appointment:A-900")["facts"])
 
 
@@ -350,3 +350,21 @@ def test_bus_acks_only_what_a_batch_committed(kind, tmp_path):
         Ingestor(c, SqliteStore(tmp_path / "keel.db")).ingest(adapter, strict=True, batch=3)
     acked = client.committed if kind == "kafka" else client.deleted
     assert len(acked) == 6  # messages 6..8 stay unacknowledged and come back
+
+
+def test_consume_acks_what_it_stored_and_leaves_the_rest_to_the_dead_letter_queue(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    import keel.cli
+    from keel import SqliteStore
+    from keel.adapters.bus import SqsAdapter
+    from keel.cli import app
+
+    bad_type = json.dumps({"tenant": TENANT, "type": "nobody.handles", "subject": "unit:X", "occurred_at": "2026-09-01T00:00:00Z", "source": "t"})
+    client = _Sqs(_lines() + [bad_type, "not json"])
+    monkeypatch.setattr(keel.cli, "_queue", lambda url: SqsAdapter(client, url))
+    db = str(tmp_path / "keel.db")
+    res = CliRunner().invoke(app, ["consume", FLEET, "--queue", "http://elasticmq:9324/000000000000/keel", "--db", db, "--once"])
+    assert res.exit_code == 1 and "consumed=12 failed=2" in res.output, res.output
+    assert len(client.deleted) == 12 and len(client.pending) == 2  # the two failures wait for redelivery, then the DLQ
+    assert SqliteStore(db).entity(TENANT, "unit:MXK-4821") is not None

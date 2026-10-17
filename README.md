@@ -47,7 +47,7 @@ related(subject, relation?, as_of?, depth?)
   -> neighbors by relation type, up to three hops
 ```
 
-`search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/connect.md#semantic-search), [example](examples/custom_adapters.py)).
+`search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, Weaviate, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/connect.md#semantic-search), [example](examples/custom_adapters.py)).
 
 Expose them over MCP (`keel serve`) and point any agent framework at them. Declare `agents:` in the cartridge and `keel serve --agent <id>` binds a server to one of them: what it may read and write is enforced by the layer, not by the agent.
 

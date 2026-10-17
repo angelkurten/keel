@@ -1,7 +1,8 @@
 """Semantic search: two adapter contracts, an indexer, and the adapters Keel ships.
 
     VectorIndex  where vectors live, namespaced by tenant (MemoryIndex here; ChromaIndex in
-                 keel.semantic_chroma; Qdrant, pgvector, Pinecone are other implementations)
+                 keel.semantic_chroma; WeaviateIndex in keel.semantic_weaviate; Qdrant, pgvector,
+                 Pinecone are other implementations)
     Embedder     text -> vectors (OpenAIEmbedder for any /v1/embeddings API: OpenAI, OfoxAI, Azure,
                  Ollama, vLLM; HashEmbedder, deterministic, for tests)
 
@@ -481,6 +482,10 @@ def index_tenant(
     and unlinks carry no transaction time, so changes to them alone are picked up by `--full`.
     `workers` embeds that many batches at once (an embeddings API is a round trip per batch); the
     index is still written one batch at a time, in order, from this thread."""
+    forgotten = getattr(store, "forgotten", None)
+    if forgotten and forgotten(tenant) is not None:  # erased (Store.forget): its documents go too
+        index.clear(tenant)
+        return IndexReport(indexed=0, deleted=0, cursor=None)
     marks = [m for m in (store.watermark(tenant), store.watermark(GLOBAL_TENANT)) if m is not None]
     cursor = max(marks) if marks else None
     # global memory is every tenant's: a global fact re-indexes the subject where this tenant knows it
@@ -528,6 +533,7 @@ def _factory(spec: str) -> Any:
 
 def load_index(spec: str) -> VectorIndex:
     """`memory`, `chroma:///abs/path` (persistent), `chroma://host:port` (server), `chroma://` (ephemeral),
+    `weaviate://host:port?grpc_port=50051&secure=true&collection=Keel` (API key from KEEL_WEAVIATE_API_KEY),
     or `pkg.module:factory?param=value` for your own adapter."""
     if spec == "memory":
         return MemoryIndex()
@@ -540,6 +546,11 @@ def load_index(spec: str) -> VectorIndex:
         if u.hostname:
             return ChromaIndex(host=u.hostname, port=u.port or 8000)
         return ChromaIndex()
+    if spec.startswith("weaviate:"):
+        from keel.semantic_weaviate import WeaviateIndex
+
+        u = urlparse(spec)
+        return WeaviateIndex(host=u.hostname or "localhost", port=u.port or 8080, **dict(parse_qsl(u.query)))
     return _factory(spec)
 
 

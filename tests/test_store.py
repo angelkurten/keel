@@ -42,7 +42,7 @@ def store(request, tmp_path):
         from keel.store.mysql import MysqlStore
 
         s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested"):
+        for table in ("entities", "relations", "facts", "ingested", "forgotten"):
             s._exec(f"DELETE FROM {table}")  # a clean database per test
         return s
     module, _, factory = EXTERNAL.partition(":")
@@ -1022,3 +1022,84 @@ def test_the_state_now_reads_only_open_facts(tmp_path):
     later = datetime(2100, 1, 1, tzinfo=UTC)
     assert len(store.facts(TENANT, "tire:T-1", at=now, known_at=later)) == 1  # known_at reads the history, same answer
     assert len(store.facts_of(TENANT, ["tire:T-1"], at=base + timedelta(days=5, hours=1))["tire:T-1"]) == 1
+
+
+def _forgetting_fleet():
+    c = load_cartridge(FLEET)
+    c.events["fleet.closed"] = {"subject": "unit", "forgets": "tenant"}  # the customer deleted their account
+    return c
+
+
+def test_forget_erases_one_tenant_for_good(store):
+    from keel.envelope import Event
+
+    c = _forgetting_fleet()
+    log = list(JsonlAdapter(EVENTS))
+    other = [e.model_copy(update={"tenant": "beta"}) for e in log]
+    assert not Ingestor(c, store).ingest(log + other, strict=True).errors
+    Tools(c, store, TENANT).annotate("unit:MXK-4821", "note", "keep the spare", scope="tenant", evidence="call:1")
+    Tools(c, store, TENANT).annotate("unit:MXK-4821", "fleet_rule", "x", scope="global", evidence="doc:1")
+    beta = len(list(store.dump("beta")))
+    closed = Event(tenant=TENANT, type="fleet.closed", subject="unit:MXK-4821", occurred_at=datetime(2026, 10, 1, tzinfo=UTC), source="t")
+    # one call: the erasure in the middle of a batch, then an old redelivery that must not revive it
+    report = Ingestor(c, store).ingest([closed] + log, strict=True, batch=5000)
+    (tenant, counts), = report.forgotten
+    assert tenant == TENANT and counts["annotations"] == 1 and counts["ingested"] == len(log)
+    assert all(counts[k] > 0 for k in ("entities", "relations", "facts"))
+    assert report.skipped == len(log) and report.processed == 1
+    assert list(store.dump(TENANT)) == [] and store.forgotten(TENANT) is not None
+    assert len(list(store.dump("beta"))) == beta > 0  # the other tenant is untouched
+    assert any(f.predicate == "fleet_rule" for f in store.facts("__global__", "unit:MXK-4821"))  # every tenant's, kept
+    at = store.forgotten(TENANT)
+    assert store.forget(TENANT) == dict.fromkeys(("entities", "relations", "facts", "annotations", "ingested"), 0)  # idempotent
+    assert store.forgotten(TENANT) == at and TENANT in store.forgotten_tenants()
+    with pytest.raises(PermissionError):
+        Tools(c, store, TENANT).annotate("unit:MXK-4821", "note", "late", scope="tenant", evidence="call:2")
+    assert Ingestor(c, store).replay(TENANT, events=log).skipped == len(log) and list(store.dump(TENANT)) == []
+    with pytest.raises(ValueError):
+        store.forget("__global__")
+
+
+def test_forget_events_need_no_handler_and_validate():
+    c = _forgetting_fleet()
+    assert c.validate() == []
+    c.events["fleet.closed"]["forgets"] = "subject"
+    assert any("forgets is `tenant`" in p for p in c.validate())
+    c.events["unit.registered"]["forgets"] = "tenant"
+    assert any("would never run" in p for p in c.validate())
+
+
+def test_forget_cli_and_the_index(tmp_path):
+    from keel.semantic import HashEmbedder, MemoryIndex, index_tenant
+
+    db = str(tmp_path / "keel.db")
+    run = CliRunner().invoke
+    assert run(app, ["ingest", FLEET, EVENTS, "--db", db]).exit_code == 0
+    assert run(app, ["forget", TENANT, "--db", db]).exit_code != 0  # --yes is required
+    out = run(app, ["forget", TENANT, "--db", db, "--yes", "--index", "memory"])
+    assert out.exit_code == 0, out.output
+    got = json.loads(out.output)
+    assert got["tenant"] == TENANT and got["entities"] > 0 and got["index"] is True
+    index = MemoryIndex()
+    index.upsert(TENANT, [("unit:MXK-4821", [1.0, 0.0], "a unit")])
+    index_tenant(SqliteStore(db), TENANT, HashEmbedder(), index)  # a forgotten tenant's documents go
+    assert index.query(TENANT, [1.0, 0.0], 5) == []
+
+
+def test_jobs_sweep_every_tenant(tmp_path):
+    db, cursors = str(tmp_path / "keel.db"), tmp_path / "cursors"
+    store = SqliteStore(db)
+    log = list(JsonlAdapter(EVENTS))
+    Ingestor(load_cartridge(FLEET), store).ingest(log + [e.model_copy(update={"tenant": "beta"}) for e in log], strict=True)
+    assert store.tenants() == [TENANT, "beta"]
+    run = lambda *a: CliRunner().invoke(app, list(a))
+    out = run("expire", "--all-tenants", "--db", db).output
+    assert f"tenant={TENANT}" in out and "tenant=beta" in out
+    index = ["index", FLEET, "--all-tenants", "--db", db, "--index", "memory", "--embedder", "hash", "--cursor-dir", str(cursors)]
+    out = run(*index).output
+    assert out.count("indexed tenant=") == 2 and (cursors / "index-beta.cursor").exists(), out
+    store.forget("beta")
+    out = run(*index).output
+    assert "cleared tenant=beta: forgotten" in out and not (cursors / "index-beta.cursor").exists()
+    assert "beta" not in run(*index).output  # swept once
+    assert run("consolidate", FLEET, "--all-tenants", "--db", db).exit_code == 0

@@ -9,7 +9,7 @@
 FROM python:3.12-slim
 
 ARG KEEL_VERSION=
-ARG KEEL_EXTRAS=http2,mysql,chroma
+ARG KEEL_EXTRAS=http2,mysql,chroma,weaviate,sqs
 COPY . /src
 RUN if [ -n "$KEEL_VERSION" ]; then pip install --no-cache-dir "keel-context[$KEEL_EXTRAS]==$KEEL_VERSION"; \
     else pip install --no-cache-dir "/src[$KEEL_EXTRAS]"; fi \
