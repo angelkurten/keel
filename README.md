@@ -161,11 +161,11 @@ Shipped:
 - [x] SDKs generated from the cartridge: TypeScript, Python, Go, PHP
 - [x] Bulk ingest (a million events in under a minute and a half on MySQL)
 - [x] Semantic search: hybrid, ids first, rerankers, pluggable vector index and embedder, with an eval bench
+- [x] Postgres CDC: follow your own tables through logical replication (on master, unreleased)
 
 Open:
 
 - [ ] Real agent queries from pilots in the semantic-search eval bench
-- [ ] Postgres CDC adapter
 - [ ] Cartridge catalog, hosted Keel, enterprise features (2027)
 
 ## License

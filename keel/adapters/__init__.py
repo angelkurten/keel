@@ -2,8 +2,8 @@
 
 Shipped: JsonlAdapter (keel.ingest) for development, PostgresTableAdapter
 (table + polling with a cursor), webhook `build_app` (FastAPI, push),
-KafkaAdapter and SqsAdapter (keel.adapters.bus, at-least-once).
-Planned: Postgres CDC.
+KafkaAdapter and SqsAdapter (keel.adapters.bus, at-least-once), PostgresCdcAdapter
+(keel.adapters.pgcdc, logical replication of your own tables).
 Each adapter only produces envelopes; it never understands payloads.
 """
 

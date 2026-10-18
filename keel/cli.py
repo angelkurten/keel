@@ -233,6 +233,53 @@ def _queue(url: str):
 
 
 @app.command()
+def cdc(
+    cartridge: Path,
+    dsn: str = typer.Option(..., "--dsn", envvar="KEEL_PG_DSN", help="The Postgres to read: postgresql://user:pass@host:5432/db (wal_level = logical)."),
+    map_file: Path = typer.Option(..., "--map", help="YAML mapping tables to kinds: `table: {kind, id, tenant, columns?}`."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    slot: str = typer.Option("keel", "--slot", help="The logical replication slot."),
+    publication: str = typer.Option("keel", "--publication", help="The publication listing the mapped tables."),
+    tenant: str | None = typer.Option(None, "--tenant", help="A fixed tenant, for tables with no tenant column."),
+    setup: bool = typer.Option(False, "--setup", help="Create the publication and slot if missing, and set REPLICA IDENTITY FULL on tables with a tenant column."),
+    once: bool = typer.Option(False, "--once", help="Read what the slot holds now and stop, instead of following."),
+    interval: float = typer.Option(2.0, "--interval", help="Seconds between reads when nothing is new."),
+):
+    """Follow row changes in Postgres tables (logical replication, pgoutput) as events: <kind>.created|updated|deleted.
+    The slot moves only after the graph has stored a read, so a failure reads it again. Prints one line per read."""
+    import time
+
+    import yaml
+
+    try:
+        import psycopg
+    except ImportError as exc:
+        raise SystemExit("keel cdc needs the optional dependency: uv sync --extra postgres") from exc
+    from keel.adapters.pgcdc import PostgresCdcAdapter
+
+    adapter = PostgresCdcAdapter(lambda: psycopg.connect(dsn), yaml.safe_load(map_file.read_text(encoding="utf-8")),
+                                 slot=slot, publication=publication, tenant=tenant)
+    c, _, ing, _ = _run(cartridge, None, db=db)
+    missing = sorted(f"{m.kind}.{op}" for m in adapter.tables.values() for op in ("created", "updated", "deleted")
+                     if f"{m.kind}.{op}" not in c.events)
+    if missing:  # a read stops at the first change it cannot handle, so say so before reading
+        raise typer.BadParameter(f"the cartridge does not declare {', '.join(missing)}; declare them (a handler may do nothing)", param_hint="--map")
+    if setup:
+        adapter.setup()
+    adapter.manual_ack = True
+    while True:
+        events = list(adapter)
+        if events:
+            r = ing.ingest(events, strict=True, batch=len(events))
+            typer.echo(f"processed={r.processed} duplicates={r.duplicates} unhandled={len(r.unhandled)} skipped={r.skipped}")
+        adapter.ack()  # also past transactions on tables that are not mapped, so the server releases their WAL
+        if once:
+            return
+        if not events:
+            time.sleep(interval)
+
+
+@app.command()
 def consume(
     cartridge: Path,
     queue: str = typer.Option(..., "--queue", envvar="KEEL_QUEUE", help="An SQS queue URL, AWS or SQS-compatible like ElasticMQ (AWS_* variables for credentials and region)."),

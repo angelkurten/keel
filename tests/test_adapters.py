@@ -401,3 +401,94 @@ def test_consume_stores_a_batch_per_transaction_and_stops_when_the_store_is_gone
     res = CliRunner().invoke(app, args)
     assert res.exit_code == 2 and "store unavailable" in res.output, res.output
     assert client.deleted == [] and len(client.pending) == 12  # nothing acknowledged, nothing dead-lettered by us
+
+
+def test_pgoutput_decode_without_a_server():
+    import struct
+
+    from keel.adapters.pgcdc import decode
+
+    s = lambda x: x.encode() + b"\0"
+    col = lambda name, oid: struct.pack("!b", 1) + s(name) + struct.pack("!Ii", oid, -1)
+    rel = b"R" + struct.pack("!I", 7) + s("public") + s("tires") + b"d" + struct.pack("!h", 3) + col("serial", 25) + col("depth_mm", 1700) + col("ok", 16)
+    tup = lambda *vals: struct.pack("!h", len(vals)) + b"".join(b"n" if v is None else b"t" + struct.pack("!i", len(v)) + v.encode() for v in vals)
+    begin = b"B" + struct.pack("!Qqi", (1 << 32) + 0x2A, 1_000_000, 9)  # 1 second after 2000-01-01
+    ins = b"I" + struct.pack("!I", 7) + b"N" + tup("T-1", "5.2", "t")
+    upd = b"U" + struct.pack("!I", 7) + b"O" + tup("T-1", "5.2", "t") + b"N" + tup("T-1", "3", None)
+    dele = b"D" + struct.pack("!I", 7) + b"K" + tup("T-1", None, None)
+    commit = b"C" + struct.pack("!bQQq", 0, (1 << 32) + 0x2A, (1 << 32) + 0x40, 1_000_000)
+    out = list(decode([begin, rel, ins, upd, dele, commit]))
+    assert [(o[0], o[2], o[4]) for o in out] == [
+        ("1/2A", "created", {"serial": "T-1", "depth_mm": 5.2, "ok": True}),
+        ("1/2A", "updated", {"serial": "T-1", "depth_mm": 3, "ok": None}),  # the new row, after the old one
+        ("1/2A", "deleted", {"serial": "T-1", "depth_mm": None, "ok": None}),
+        ("1/40", "commit", {}),  # the end lsn to confirm
+    ]
+    assert out[0][1].isoformat() == "2000-01-01T00:00:01+00:00" and out[0][3].name == "tires"
+
+
+PG = os.environ.get("KEEL_PG_URL")  # postgresql://postgres:keel@127.0.0.1:5432/postgres, with wal_level=logical
+
+
+@pytest.mark.skipif(not PG, reason="set KEEL_PG_URL to a Postgres with wal_level=logical")
+def test_cdc_follows_a_table_and_moves_the_slot_only_after_storing(tmp_path):
+    psycopg = pytest.importorskip("psycopg")
+    from typer.testing import CliRunner
+
+    from keel.cli import app
+
+    cart = tmp_path / "tires"
+    cart.mkdir()
+    (cart / "cartridge.yaml").write_text("""name: tires
+entities:
+  tire: {description: A tire.}
+relations: {}
+events:
+  tire.created: {subject: tire, owner: core, payload: {serial: string, depth_mm: number}}
+  tire.updated: {subject: tire, owner: core, payload: {serial: string, depth_mm: number}}
+  tire.deleted: {subject: tire, owner: core, payload: {serial: string}}
+rules: {}
+memory: {ttl: {task: 14d, agent: 1d}, requires_evidence: [global, tenant]}
+""", encoding="utf-8")
+    (cart / "handlers.py").write_text('''from keel.handlers import HandlerRegistry
+
+registry = HandlerRegistry()
+
+
+@registry.on("tire.created")
+@registry.on("tire.updated")
+def depth(event, store):
+    store.upsert_entity(event.tenant, "tire", event.payload["serial"], ref=event.source)
+    store.open_fact(event.tenant, event.subject, "depth_mm", event.payload["depth_mm"], event.occurred_at, source=event.source, evidence=event.id)
+
+
+@registry.on("tire.deleted")
+def gone(event, store):
+    store.close_fact(event.tenant, event.subject, "depth_mm", event.occurred_at)
+''', encoding="utf-8")
+    (tmp_path / "cdc.yaml").write_text("tires: {kind: tire, id: serial, tenant: fleet_id, columns: [depth_mm]}\n", encoding="utf-8")
+    slot = f"keel_test_{os.getpid()}"
+    c = psycopg.connect(PG, autocommit=True)
+    c.execute("DROP TABLE IF EXISTS tires; CREATE TABLE tires (serial text PRIMARY KEY, fleet_id text, depth_mm numeric, secret text)")
+    c.execute(f"DROP PUBLICATION IF EXISTS {slot}")
+    db = str(tmp_path / "g.db")
+    args = ["cdc", str(cart), "--dsn", PG, "--map", str(tmp_path / "cdc.yaml"), "--db", db, "--slot", slot, "--publication", slot, "--once"]
+    try:
+        assert CliRunner().invoke(app, [*args, "--setup"]).exit_code == 0
+        c.execute("INSERT INTO tires VALUES ('T-1', 'acme', 5.2, 'not for keel')")
+        c.execute("UPDATE tires SET depth_mm = 2.6 WHERE serial = 'T-1'")
+        c.execute("DELETE FROM tires WHERE serial = 'T-1'")
+        out = CliRunner().invoke(app, args)
+        assert out.exit_code == 0 and "processed=3" in out.output
+        from keel.store.sqlite import SqliteStore
+
+        facts = SqliteStore(db).facts("acme", "tire:T-1")
+        assert [f.value for f in facts] == [5.2, 2.6] and all(f.valid_to for f in facts)  # history kept, closed by the delete
+        assert "secret" not in SqliteStore(db).entity("acme", "tire:T-1").attrs
+        assert "processed" not in CliRunner().invoke(app, args).output  # the slot moved past what was stored
+        bad = tmp_path / "bad.yaml"
+        bad.write_text("tires: {kind: wheel, id: serial, tenant: fleet_id}\n", encoding="utf-8")
+        assert CliRunner().invoke(app, ["cdc", str(cart), "--dsn", PG, "--map", str(bad), "--db", db, "--once"]).exit_code != 0  # undeclared types
+    finally:
+        c.execute(f"SELECT pg_drop_replication_slot('{slot}') WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = '{slot}')")
+        c.execute(f"DROP PUBLICATION IF EXISTS {slot}")

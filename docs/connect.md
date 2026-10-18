@@ -117,6 +117,27 @@ sequenceDiagram
 !!! warning "Concurrent writers"
     A serial cursor can skip a row that commits late while a later row was already read. Use one writer per table, or a `recorded_at` cursor with a lag, if that bites.
 
+## Postgres CDC: your own tables, no outbox
+
+If you would rather not write an outbox, Keel can follow row changes in the tables you already have, through logical replication. It uses the built-in `pgoutput` plugin (Postgres 10 or later, also RDS, Cloud SQL, Azure and Supabase), read through SQL functions, so there is no extension to install. The database needs `wal_level = logical`.
+
+Map each table to a kind in a small YAML file:
+
+```yaml
+# cdc.yaml
+inspections: {kind: inspection, id: id, tenant: tenant_id}
+tires:       {kind: tire, id: serial, tenant: fleet_id, columns: [depth_mm, unit_id]}
+```
+
+Each inserted, updated or deleted row becomes an event `<kind>.created`, `<kind>.updated` or `<kind>.deleted`, with the subject `<kind>:<id column>`, the transaction's commit time as `occurred_at`, and the row (only `columns`, plus the id, when you list them: pointers, not copies) as payload. Declare those event types in your cartridge; `keel cdc` refuses to start while one is missing, because a read would stop at it.
+
+```bash
+uv sync --extra postgres
+uv run keel cdc cartridges/mine --dsn postgresql://user:pass@host:5432/app --map cdc.yaml --db keel.db --setup
+```
+
+`--setup` creates the publication and the replication slot (`keel` by default) and sets `REPLICA IDENTITY FULL` on tables with a tenant column, since by default a delete carries only the primary key. The slot moves only after Keel has stored what it read, so a crash reads it again and dedupe skips what was already stored (event ids are `pgcdc:<commit lsn>:<n>`). `--once` reads what is there and stops; without it, `keel cdc` follows. A slot nobody reads keeps WAL on the database server's disk: drop it with `SELECT pg_drop_replication_slot('keel')` when you stop for good.
+
 ## A webhook
 
 Keel receives envelopes over HTTP, validates them and ingests them in the request.
