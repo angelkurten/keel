@@ -99,11 +99,15 @@ class MysqlStore(SqlStore):
     def _cursor(self, conn: Any) -> Any:
         pymysql = type(conn).__module__.startswith("pymysql")
         now = time.monotonic()
-        if now - self._pings.setdefault(id(conn), now) > 10:  # servers drop idle connections: reconnect after a pause, not per statement
-            if pymysql:
-                conn.ping()  # reconnects by default
-            else:
-                conn.ping(reconnect=True, attempts=1, delay=0)
+        idle = now - self._pings.setdefault(id(conn), now) > 10  # servers drop idle connections: check after a pause, not per statement
+        if idle or (pymysql and not conn.open):  # PyMySQL closes it when a statement loses the server
+            try:
+                conn.ping()  # PyMySQL >= 1.1 no longer reconnects here: it raises "Already closed"
+            except Exception as exc:  # gone: open a new session (a server that is down raises from here)
+                if self._in_tx and conn is self.db:  # a new session would autocommit the rest of the transaction
+                    raise ConnectionError("mysql: the connection dropped inside a transaction") from exc
+                conn.connect() if pymysql else conn.reconnect(attempts=1, delay=0)
+                self._prepare(conn)
         self._pings[id(conn)] = now
         if pymysql:
             import pymysql.cursors

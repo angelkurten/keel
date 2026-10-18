@@ -30,6 +30,7 @@ from typing import Any
 from keel.cartridge import Cartridge
 from keel.envelope import Event, parse_iso
 from keel.ingest import Ingestor
+from keel.semantic import Unavailable
 from keel.store.base import Store
 from keel.tools import Tools
 
@@ -115,6 +116,8 @@ def build_http_app(
             raise HTTPException(403, str(exc)) from exc
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
+        except Unavailable as exc:  # the embeddings provider, after its retries: the caller may retry
+            raise HTTPException(503, str(exc), headers={"Retry-After": "5"}) from exc
 
     class ContextIn(BaseModel):
         subject: str | list[str]

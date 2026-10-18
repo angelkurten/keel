@@ -1103,3 +1103,23 @@ def test_jobs_sweep_every_tenant(tmp_path):
     assert "cleared tenant=beta: forgotten" in out and not (cursors / "index-beta.cursor").exists()
     assert "beta" not in run(*index).output  # swept once
     assert run("consolidate", FLEET, "--all-tenants", "--db", db).exit_code == 0
+
+
+@pytest.mark.skipif(not MYSQL, reason="KEEL_MYSQL_URL not set")
+def test_mysql_reconnects_when_the_server_drops_the_connection():
+    from keel.store.mysql import MysqlStore
+
+    s, admin = MysqlStore.from_url(MYSQL), MysqlStore.from_url(MYSQL)
+    s.upsert_entity(TENANT, "unit", "A")
+    admin._exec(f"KILL {s.db.thread_id()}")  # what wait_timeout does to an idle consumer
+    s._pings[id(s.db)] = 0  # idle long enough to be checked
+    s.upsert_entity(TENANT, "unit", "B")
+    s.db.close()  # what PyMySQL leaves after a statement lost the server
+    with s.transaction():
+        s.upsert_entity(TENANT, "unit", "C")
+    assert all(s.entity(TENANT, f"unit:{x}") for x in "ABC")
+    with pytest.raises(ConnectionError), s.transaction():  # never half a transaction on a new session
+        s.upsert_entity(TENANT, "unit", "D")
+        s.db.close()
+        s.upsert_entity(TENANT, "unit", "E")
+    assert s.entity(TENANT, "unit:D") is None and s.entity(TENANT, "unit:E") is None

@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -243,36 +242,58 @@ def consume(
     queue: str = typer.Option(..., "--queue", envvar="KEEL_QUEUE", help="An SQS queue URL, AWS or SQS-compatible like ElasticMQ (AWS_* variables for credentials and region)."),
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
     once: bool = typer.Option(False, "--once", help="Drain what is queued now and stop, instead of consuming forever."),
+    batch: int = typer.Option(100, "--batch", min=1, help="Messages stored per transaction: one long poll, topped up with what is already queued."),
 ):
-    """Consume envelopes from a queue into the graph, one transaction per message. A message is acknowledged only once it is
-    stored; one that fails (not an envelope, no handler, a handler error) stays unacknowledged, so the queue redelivers it and,
-    after its maxReceiveCount, moves it to its dead-letter queue. Erasures (`forgets: tenant`) print one JSON line for your audit log."""
+    """Consume envelopes from a queue into the graph, a batch per transaction. A message is acknowledged only once it is
+    stored; when a batch fails it is retried one message at a time, and one that still fails (not an envelope, no handler,
+    a handler error) stays unacknowledged, so the queue redelivers it and, after its maxReceiveCount, moves it to its
+    dead-letter queue. If the store itself stops answering, the command exits (code 2) for its supervisor to restart it,
+    instead of dead-lettering everything. Erasures (`forgets: tenant`) print one JSON line for your audit log."""
+    from keel.adapters.bus import parse
+
     c, store = load_cartridge(cartridge), _store(db)
     ing, adapter = Ingestor(c, store), _queue(queue)
-    adapter.manual_ack = True
     done = errors = 0
     typer.echo(f"consuming {queue} into {c.name}", err=True)
-    while True:
+
+    def store_up() -> bool:
         try:
-            for ev in (adapter if once else adapter.follow()):
+            with store.transaction():  # the write connection, reconnected if the server dropped it
+                store.entity("__keel__", "probe:probe")
+            return True
+        except Exception as exc:  # noqa: BLE001 (any driver's error means the same: nothing can be stored)
+            typer.echo(f"store unavailable: {type(exc).__name__}: {exc}", err=True)
+            return False
+
+    def stored(events: list[Event], acks: list[Callable[[], None]]) -> None:
+        nonlocal done
+        report = ing.ingest(events, strict=True, batch=len(events))
+        adapter.ack_all(acks)
+        done += len(events)
+        for t, counts in report.forgotten:
+            erasure = next((e.id for e in events if e.tenant == t and e.type in ing.forgets), None)
+            typer.echo(json.dumps({"forgot": t, "event": erasure, **counts}))
+
+    while True:
+        for msgs in adapter.batches(batch):
+            good: list[tuple[Event, Callable[[], None]]] = []
+            for body, ack in msgs:
                 try:
-                    report = ing.ingest([ev], strict=True)
-                except Exception as exc:  # noqa: BLE001 (left for the queue to redeliver)
-                    adapter.nack()
+                    good.append((parse(body), ack))
+                except (TypeError, ValueError) as exc:  # unacknowledged: redelivered, then dead-lettered
                     errors += 1
-                    typer.echo(f"failed id={ev.id} type={ev.type} tenant={ev.tenant}: {type(exc).__name__}: {exc}", err=True)
-                    continue
-                adapter.ack()
-                done += 1
-                for t, counts in report.forgotten:
-                    typer.echo(json.dumps({"forgot": t, "event": ev.id, **counts}))
-        except Exception as exc:  # noqa: BLE001 (a message that is not an envelope: unacknowledged, redelivered, dead-lettered)
-            adapter.nack()
-            errors += 1
-            typer.echo(f"failed message: {type(exc).__name__}: {exc}", err=True)
-            if not once:
-                time.sleep(1)
-            continue  # the bad message is invisible until its visibility timeout: carry on with the rest
+                    typer.echo(f"failed message: {type(exc).__name__}: {exc}", err=True)
+            try:
+                stored([e for e, _ in good], [a for _, a in good])
+            except Exception:  # noqa: BLE001 (find the message that fails: the rest is stored)
+                for ev, ack in good:
+                    try:
+                        stored([ev], [ack])
+                    except Exception as exc:  # (left for the queue to redeliver)
+                        errors += 1
+                        typer.echo(f"failed id={ev.id} type={ev.type} tenant={ev.tenant}: {type(exc).__name__}: {exc}", err=True)
+                        if not store_up():
+                            raise typer.Exit(2) from exc
         if once:
             typer.echo(f"consumed={done} failed={errors}")
             raise typer.Exit(1 if errors else 0)

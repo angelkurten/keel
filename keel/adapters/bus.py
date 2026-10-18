@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterator
+from functools import partial
 from typing import Any
 
 from keel.adapters import Following
@@ -31,6 +32,11 @@ from keel.envelope import Event
 
 Ack = Callable[[], None]
 DeadLetter = Callable[[bytes | str, Exception], None]
+
+
+def parse(body: bytes | str) -> Event:
+    """A message body as an envelope; TypeError or ValueError when it is not one."""
+    return Event.model_validate(json.loads(body))
 
 
 class BusAdapter:
@@ -45,7 +51,11 @@ class BusAdapter:
     def ack(self) -> None:
         """Everything taken so far is stored: acknowledge it."""
         pending, self._pending = self._pending, []
-        for ack in pending:
+        self.ack_all(pending)
+
+    def ack_all(self, acks: list[Ack]) -> None:
+        """Acknowledge these messages (a bus with a batch call overrides it)."""
+        for ack in acks:
             ack()
 
     def nack(self) -> None:
@@ -53,8 +63,18 @@ class BusAdapter:
         it (SQS after its visibility timeout, and to the queue's dead-letter queue after maxReceiveCount)."""
         self._pending = []
 
-    def _fetch(self) -> list[tuple[bytes | str, Ack]]:  # pragma: no cover - abstract
+    def _fetch(self, wait: bool = True) -> list[tuple[bytes | str, Ack]]:  # pragma: no cover - abstract
+        """Raw messages; `wait=False` returns at once with what is already there."""
         raise NotImplementedError
+
+    def batches(self, size: int = 100) -> Iterator[list[tuple[bytes | str, Ack]]]:
+        """One pass in batches of raw (body, ack) messages, for a caller that stores each batch in one
+        transaction and acknowledges each message itself: one waiting fetch, topped up with what is already
+        there until about `size` (SQS returns at most 10 per call). Stops when the bus has nothing."""
+        while batch := self._fetch():
+            while len(batch) < size and (more := self._fetch(wait=False)):
+                batch += more
+            yield batch
 
     def __iter__(self) -> Iterator[Event]:
         """One pass: consume until the bus has nothing more right now, then stop."""
@@ -64,7 +84,7 @@ class BusAdapter:
                 return
             for body, ack in batch:
                 try:
-                    event = Event.model_validate(json.loads(body))
+                    event = parse(body)
                 except (TypeError, ValueError) as exc:  # not JSON, not an object, not an envelope
                     if self.dead_letter is None:
                         raise
@@ -118,8 +138,8 @@ class KafkaAdapter(BusAdapter):
         consumer.subscribe([topic])
         return cls(consumer, poll_timeout=poll_timeout, dead_letter=dead_letter)
 
-    def _fetch(self) -> list[tuple[bytes | str, Ack]]:
-        msg = self.consumer.poll(self.poll_timeout)
+    def _fetch(self, wait: bool = True) -> list[tuple[bytes | str, Ack]]:
+        msg = self.consumer.poll(self.poll_timeout if wait else 0)
         if msg is None:
             return []
         if msg.error():
@@ -152,11 +172,18 @@ class SqsAdapter(BusAdapter):
             raise SystemExit("SqsAdapter needs the optional dependency: uv sync --extra sqs") from exc
         return cls(boto3.client("sqs", **boto3_kwargs), queue_url, batch_size=batch_size, wait_seconds=wait_seconds, dead_letter=dead_letter)
 
-    def _fetch(self) -> list[tuple[bytes | str, Ack]]:
+    def _fetch(self, wait: bool = True) -> list[tuple[bytes | str, Ack]]:
         res = self.client.receive_message(
-            QueueUrl=self.queue_url, MaxNumberOfMessages=self.batch_size, WaitTimeSeconds=self.wait_seconds
+            QueueUrl=self.queue_url, MaxNumberOfMessages=self.batch_size, WaitTimeSeconds=self.wait_seconds if wait else 0
         )
         return [
-            (m["Body"], lambda h=m["ReceiptHandle"]: self.client.delete_message(QueueUrl=self.queue_url, ReceiptHandle=h))
+            (m["Body"], partial(self.client.delete_message, QueueUrl=self.queue_url, ReceiptHandle=m["ReceiptHandle"]))
             for m in res.get("Messages", [])
         ]
+
+    def ack_all(self, acks: list[Ack]) -> None:
+        """Ten deletions per call. One that fails is redelivered later and skipped as a duplicate."""
+        handles = [a.keywords["ReceiptHandle"] for a in acks]  # type: ignore[attr-defined]
+        for i in range(0, len(handles), 10):
+            entries = [{"Id": str(j), "ReceiptHandle": h} for j, h in enumerate(handles[i : i + 10])]
+            self.client.delete_message_batch(QueueUrl=self.queue_url, Entries=entries)

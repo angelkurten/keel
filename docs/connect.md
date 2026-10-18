@@ -155,7 +155,7 @@ AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... AWS_REGION=us-east-1 \
 uv run keel consume cartridges/mine --queue http://elasticmq:9324/000000000000/keel-events --db keel.db   # SQS-compatible: the queue's host is the endpoint
 ```
 
-Each message is one transaction and is deleted only once stored. A message that fails (not an envelope, a type with no handler, a handler error) is logged and left on the queue, so SQS redelivers it after the visibility timeout and, after the queue's `maxReceiveCount`, moves it to its dead-letter queue: give the queue one. `--once` drains what is queued and stops (exit code 1 if anything failed). An erasure prints one JSON line (`{"forgot": <tenant>, "event": ..., "entities": ...}`) on stdout for your audit log; everything else goes to stderr. `KEEL_QUEUE` and `KEEL_DB` stand in for the flags. Kafka has no per-message redelivery (committing a later offset skips a failed one), so it has no command yet; use `KafkaAdapter` from Python:
+Messages are stored a batch per transaction (`--batch`, default 100: one long poll, topped up with what is already queued) and deleted, ten per call, only once stored. When a batch fails it is retried one message at a time, and a message that still fails (not an envelope, a type with no handler, a handler error) is logged and left on the queue, so SQS redelivers it after the visibility timeout and, after the queue's `maxReceiveCount`, moves it to its dead-letter queue: give the queue one. If the store itself stops answering (MySQL down), the command exits with code 2 instead of dead-lettering every message: run it under a supervisor that restarts it. A connection the server dropped while idle (`wait_timeout`) is reopened. `--once` drains what is queued and stops (exit code 1 if anything failed). An erasure prints one JSON line (`{"forgot": <tenant>, "event": ..., "entities": ...}`) on stdout for your audit log; everything else goes to stderr. `KEEL_QUEUE` and `KEEL_DB` stand in for the flags. Kafka has no per-message redelivery (committing a later offset skips a failed one), so it has no command yet; use `KafkaAdapter` from Python:
 
 ```python
 from keel.adapters.bus import KafkaAdapter, SqsAdapter
@@ -249,6 +249,7 @@ On `/v1/events`, `X-Keel-Tenant` is optional: each envelope names its tenant, an
 | `401` | bad or missing bearer token |
 | `403` | a refusal (scope policy, agent registry), with its reason |
 | `422` | a malformed body, such as an envelope that fails validation |
+| `503` | the embeddings provider is rate limiting or down, still after Keel's retries (semantic search); retry after `Retry-After` seconds |
 
 With `--tenant`, the same server also exposes `/mcp` (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.
 
@@ -261,21 +262,21 @@ Reads follow the memory scopes. Agent-scope memory is read only by the agent tha
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.24.0`, `0.24`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.24.1`, `0.24`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.24.0
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.24.1
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment (§ Configuration); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.24.0 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.24.0` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.24.1 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.24.1` and `COPY cartridges/mine /cartridge`.
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.24.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.24.1` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Semantic search
 

@@ -519,7 +519,8 @@ class Tools:
         `after` (the last key you got). The work list of a sweep, routing or orchestrator-workers.
 
         What each result carries:
-        `detail="concise"` adds the entity's current facts as {predicate: value}, `"full"` as facts, so
+        `detail="key"` returns only the keys, as strings (a fact hit gives its subject, each key once): the
+        cheapest listing, e.g. every table of a model to page through. `detail="concise"` adds the entity's current facts as {predicate: value}, `"full"` as facts, so
         a result needs no `context` call to be understood; `depth=1` adds its neighbours (relation,
         direction, subject, and their facts when `detail` asks for them). `per_kind=n` returns the best n
         of every kind instead of one ranking: with `related_to` for the scope and `mode="semantic"`, the
@@ -545,10 +546,12 @@ class Tools:
         min_score: float | None, related_to: str | None, via: str | None, detail: str, depth: int, per_kind: int | None,
         exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph,
     ) -> list[Any]:
-        if detail not in ("entity", "concise", "full"):
-            raise ValueError("search detail is 'entity', 'concise' or 'full'")
+        if detail not in ("key", "entity", "concise", "full"):
+            raise ValueError("search detail is 'key', 'entity', 'concise' or 'full'")
         if depth not in (0, 1):
             raise ValueError("search depth is 0 or 1")
+        if detail == "key" and depth:
+            raise ValueError("detail='key' returns keys only; depth=1 needs detail 'entity' or more")
         hide = set(exclude or ())
         if where is not None and (not isinstance(where, dict) or not where):
             raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
@@ -581,6 +584,8 @@ class Tools:
         else:
             hits = self._search(text, kinds, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        if detail == "key":  # a listing's keys, each once (a fact hit gives its subject)
+            return list(dict.fromkeys(h.get("key") or h["subject"] for h in hits))
         self._explain(hits, text, mode, hide, graph)
         return self._enrich(hits, detail, depth, hide, graph)
 

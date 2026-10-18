@@ -159,6 +159,11 @@ class _Sqs:
         self.pending.pop(ReceiptHandle)
         self.deleted.append(ReceiptHandle)
 
+    def delete_message_batch(self, QueueUrl, Entries):
+        assert len(Entries) <= 10
+        for e in Entries:
+            self.delete_message(QueueUrl, e["ReceiptHandle"])
+
 
 def _lines():
     from pathlib import Path
@@ -368,3 +373,31 @@ def test_consume_acks_what_it_stored_and_leaves_the_rest_to_the_dead_letter_queu
     assert res.exit_code == 1 and "consumed=12 failed=2" in res.output, res.output
     assert len(client.deleted) == 12 and len(client.pending) == 2  # the two failures wait for redelivery, then the DLQ
     assert SqliteStore(db).entity(TENANT, "unit:MXK-4821") is not None
+
+
+def test_consume_stores_a_batch_per_transaction_and_stops_when_the_store_is_gone(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+
+    import keel.cli
+    from keel.adapters.bus import SqsAdapter
+    from keel.cli import app
+
+    calls = []
+    real = keel.cli.Ingestor.ingest
+    monkeypatch.setattr(keel.cli.Ingestor, "ingest", lambda self, evs, **kw: calls.append(len(evs)) or real(self, evs, **kw))
+    client = _Sqs(_lines())
+    monkeypatch.setattr(keel.cli, "_queue", lambda url: SqsAdapter(client, url))
+    args = ["consume", FLEET, "--queue", "http://elasticmq:9324/000000000000/keel", "--db", str(tmp_path / "keel.db"), "--once"]
+    res = CliRunner().invoke(app, args)
+    assert res.exit_code == 0 and "consumed=12 failed=0" in res.output, res.output
+    assert calls == [12] and len(client.deleted) == 12  # SQS hands 10 per receive; the batch is topped up to all 12
+
+    def down(*a, **kw):
+        raise ConnectionError("Already closed")
+
+    client = _Sqs(_lines())
+    monkeypatch.setattr(keel.cli.Ingestor, "ingest", down)
+    monkeypatch.setattr(keel.store.sqlite.SqliteStore, "entity", down)
+    res = CliRunner().invoke(app, args)
+    assert res.exit_code == 2 and "store unavailable" in res.output, res.output
+    assert client.deleted == [] and len(client.pending) == 12  # nothing acknowledged, nothing dead-lettered by us

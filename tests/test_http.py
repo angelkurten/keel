@@ -187,3 +187,21 @@ def test_ui_is_opt_in_open_and_carries_no_data():
     page = _client(c, MemoryStore(), ui=True).get("/ui")
     assert page.status_code == 200 and "text/html" in page.headers["content-type"]
     assert 'fetch("v1/" + tool' in page.text  # the page reads through the same /v1 API, with the secret
+
+
+def test_a_rate_limited_embedder_is_503_with_retry_after_and_keys_list_cheaply():
+    from keel.semantic import MemoryIndex, Unavailable
+
+    class Limited:
+        def embed(self, texts):
+            raise Unavailable("embeddings 429: slow down")
+
+    c, store = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    client = _client(c, store, embedder=Limited(), index=MemoryIndex())
+    h = {**AUTH, "X-Keel-Tenant": TENANT}
+    res = client.post("/v1/search", json={"text": "worn tire", "mode": "semantic"}, headers=h)
+    assert res.status_code == 503 and res.headers["retry-after"] == "5", res.text
+    keys = client.post("/v1/search", json={"kind": "tire", "detail": "key"}, headers=h).json()
+    assert keys and all(isinstance(k, str) and k.startswith("tire:") for k in keys)
+    assert client.post("/v1/search", json={"kind": "tire", "detail": "key", "depth": 1}, headers=h).status_code == 400

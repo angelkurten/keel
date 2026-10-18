@@ -255,6 +255,11 @@ class HashEmbedder:
         return out
 
 
+class Unavailable(RuntimeError):
+    """The embeddings provider is rate limiting or down, still after the retries: try again later
+    (the HTTP server answers 503 with Retry-After)."""
+
+
 class OpenAIEmbedder:
     """Any OpenAI-compatible /v1/embeddings endpoint, stdlib only.
 
@@ -300,12 +305,12 @@ class OpenAIEmbedder:
                     break
                 except urllib.error.HTTPError as exc:
                     if exc.code not in (429, 500, 502, 503, 504) or attempt == self.RETRIES:
-                        raise RuntimeError(f"embeddings {exc.code}: {exc.read()[:300].decode(errors='replace')}") from exc
+                        raise (Unavailable if exc.code in (429, 500, 502, 503, 504) else RuntimeError)(f"embeddings {exc.code}: {exc.read()[:300].decode(errors='replace')}") from exc
                     wait = exc.headers.get("Retry-After") if exc.headers else None
                     time.sleep(float(wait) if wait and wait.replace(".", "", 1).isdigit() else 2**attempt)
-                except (urllib.error.URLError, TimeoutError):
+                except (urllib.error.URLError, TimeoutError) as exc:
                     if attempt == self.RETRIES:
-                        raise
+                        raise Unavailable(f"embeddings: {exc}") from exc
                     time.sleep(2**attempt)
             out += [d["embedding"] for d in sorted(data, key=lambda d: d["index"])]
         return out
