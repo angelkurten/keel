@@ -14,7 +14,9 @@ LABEL io.modelcontextprotocol.server.name="io.github.angelkurten/keel"
 ARG KEEL_VERSION=
 ARG KEEL_EXTRAS=http2,mysql,chroma,weaviate,sqs
 COPY . /src
-RUN if [ -n "$KEEL_VERSION" ]; then pip install --no-cache-dir "keel-context[$KEEL_EXTRAS]==$KEEL_VERSION"; \
+# a just-published release can be missing from the PyPI mirror one platform's pip hits: retry before failing
+RUN if [ -n "$KEEL_VERSION" ]; then for i in 1 2 3 4 5; do pip install --no-cache-dir "keel-context[$KEEL_EXTRAS]==$KEEL_VERSION" && break; \
+        [ $i = 5 ] && exit 1; sleep 30; done; \
     else pip install --no-cache-dir "/src[$KEEL_EXTRAS]"; fi \
     && rm -rf /src \
     && useradd --uid 10001 --create-home keel \
