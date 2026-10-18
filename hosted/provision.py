@@ -92,7 +92,8 @@ class CoolifyProvisioner:
             "project_uuid": self.project, "server_uuid": self.server, "environment_name": self.environment,
             "docker_registry_image_name": "ghcr.io/angelkurten/keel", "docker_registry_image_tag": self.image_tag,
             "ports_exposes": "8000", "name": f"keel-{account}", "description": f"Keel for account {account} (hosted)",
-            "domains": endpoint, "health_check_enabled": True, "health_check_path": "/health", "instant_deploy": False,
+            # Coolify's own health check needs curl or wget in the image; Keel's image checks /health itself (HEALTHCHECK)
+            "domains": endpoint, "health_check_enabled": False, "instant_deploy": False,
         })
         uuid = app["uuid"]
         for name, content in files.items():
