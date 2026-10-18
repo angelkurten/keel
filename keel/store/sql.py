@@ -122,8 +122,9 @@ class SqlStore:
     UPSERT_ENTITY = ""  # (tenant, kind, id, ref, attrs); on conflict update ref and attrs
     REMEMBER = ""  # (tenant, id); insert or ignore
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
+    METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|metering|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -614,6 +615,20 @@ class SqlStore:
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return {r["tenant"]: _dt(r["at"]) for r in self._rows("SELECT tenant, at FROM forgotten")}
+
+    # ---- metering (keel/usage.py): counters, not tenant data, so forget and reset leave them ----
+
+    def meter(self, rows: list[tuple[str, str, str, int]]) -> None:
+        """Add (tenant, day, item, n) to the counters: item is `events` or a tool's name, day `YYYY-MM-DD`."""
+        if rows:
+            with self.transaction():
+                for row in rows:
+                    self._exec(self.METER, row)
+
+    def usage(self, since: str | None = None, until: str | None = None) -> list[tuple[str, str, str, int]]:
+        """(tenant, day, item, n) with `since <= day < until` (days or months as ISO prefixes)."""
+        rows = self._rows("SELECT tenant, day, item, n FROM metering WHERE day >= ? AND day < ? ORDER BY tenant, day, item", (since or "", until or "9999"))
+        return [(r["tenant"], r["day"], r["item"], int(r["n"])) for r in rows]
 
     # ---- API keys (keel/keys.py): not tenant data, so forget and reset leave them ----
 

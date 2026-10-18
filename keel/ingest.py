@@ -7,6 +7,7 @@ upsert per event, and can be rebuilt by replaying the log for a tenant.
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Iterable, Iterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
@@ -14,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from keel.cartridge import Cartridge
-from keel.envelope import Event
+from keel.envelope import Event, utcnow
 from keel.handlers import UnhandledEvent
 from keel.store.base import Store
 
@@ -95,7 +96,7 @@ class Ingestor:
         before: its cursor or offsets cover only what is stored."""
         return self._ingest(events, strict, batch, source=events)
 
-    def _ingest(self, events: Iterable[Event], strict: bool, batch: int, source: Any) -> IngestReport:
+    def _ingest(self, events: Iterable[Event], strict: bool, batch: int, source: Any, metered: bool = True) -> IngestReport:
         ack = getattr(source, "ack", None)
         if ack:
             source.manual_ack = True
@@ -103,7 +104,9 @@ class Ingestor:
         tx = getattr(self.store, "transaction", None)
         bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
         forgotten = getattr(self.store, "forgotten", None)
+        meter = getattr(self.store, "meter", None) if metered else None  # keel/usage.py; a replay is not new usage
         for chunk in _chunks(events, max(1, batch)):
+            applied: Counter[str] = Counter()
             erases = any(ev.type in self.forgets for ev in chunk)  # a batch overlay would write back what forget deleted
             scope = bulk(chunk) if bulk and len(chunk) > 1 and not erases else (tx() if tx else nullcontext())
             # a tombstone is permanent, so only tenants not yet known to be forgotten are asked, once per chunk
@@ -117,10 +120,12 @@ class Ingestor:
                         report.forgotten.append((ev.tenant, self.store.forget(ev.tenant)))
                         self._gone.add(ev.tenant)
                         report.processed += 1
+                        applied[ev.tenant] += 1
                         continue
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
                         continue
+                    applied[ev.tenant] += 1
                     if self.keep_log:
                         self.log.append(ev)
                     try:
@@ -134,6 +139,9 @@ class Ingestor:
                         report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
                         if strict:
                             raise
+            if meter and applied:  # after the commit: a crash in between undercounts, never bills twice
+                day = utcnow().date().isoformat()
+                meter([(t, day, "events", n) for t, n in applied.items()])
             if ack:
                 ack()
         return report
@@ -154,4 +162,4 @@ class Ingestor:
             reset(tenant, keep_annotations=True) if _accepts(reset, "keep_annotations") else reset(tenant)
         if events is None:
             events, self.log = [e for e in self.log if e.tenant == tenant], [e for e in self.log if e.tenant != tenant]
-        return self._ingest((e for e in events if e.tenant == tenant), False, BATCH, source=events)
+        return self._ingest((e for e in events if e.tenant == tenant), False, BATCH, source=events, metered=False)

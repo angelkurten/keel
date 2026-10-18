@@ -165,6 +165,7 @@ class MemoryStore:
         self._watermark: dict[str, datetime] = {}  # tenant -> latest recorded_at or closed_at
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
+        self._metering: dict[tuple[str, str, str], int] = defaultdict(int)  # (tenant, day, item) -> n (keel/usage.py)
 
     def _mark(self, tenant: str, t: datetime | None) -> None:
         if t is not None and (tenant not in self._watermark or t > self._watermark[tenant]):
@@ -343,6 +344,15 @@ class MemoryStore:
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return dict(self._forgotten)
+
+    # ---- metering (keel/usage.py): counters, not tenant data, so forget and reset leave them ----
+
+    def meter(self, rows: list[tuple[str, str, str, int]]) -> None:
+        for tenant, day, item, n in rows:
+            self._metering[(tenant, day, item)] += n
+
+    def usage(self, since: str | None = None, until: str | None = None) -> list[tuple[str, str, str, int]]:
+        return [(*k, n) for k, n in sorted(self._metering.items()) if (since or "") <= k[1] < (until or "9999")]
 
     # ---- API keys (keel/keys.py): not tenant data, so forget and reset leave them ----
 

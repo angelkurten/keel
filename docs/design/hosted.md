@@ -1,6 +1,6 @@
 # Design note: hosted Keel
 
-Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed, on master and not yet released (`keel/keys.py`, `keel keys`); the rest is not implemented yet.
+Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (`keel/keys.py`, `keel keys`), and metering with one change (counters, not `ingested.recorded_at`, below) (`keel/usage.py`, `keel usage`), on master and not yet released; the rest is not implemented yet.
 
 ## Problem
 
@@ -57,9 +57,10 @@ A new table, `api_keys` (`KEYS` is reserved in MySQL), sits in the same store, s
 
 ### Metering
 
-`ingested` gains `recorded_at`, written in the same transaction that applies the event. Only first applications count: an id the store already applied is skipped before it is recorded, so retries and replays of a duplicate are free. `keel usage [--month 2027-01] [--account acme]` groups the table by account (the tenant prefix), tenant and month. Rows from before the migration have no time and are reported apart, as "before metering".
+Counters per tenant, day and item in a `metering` table: `(tenant, day, item, n)`, where item is `events` or a tool's name. `keel usage [--month 2027-01] [--account acme]` groups them by account (the tenant prefix), tenant and month.
 
-Tool calls are counted but not billed: a `usage` table keeps one counter per account, tenant, day and tool (aggregates, never a row per call), incremented by the HTTP layer. It feeds quotas, abuse detection and the plain question of whether agents use Keel at all. `keel usage` shows it next to events.
+- **Events** are counted by the Ingestor after each commit: events applied for the first time, from any path. Duplicates and events for a forgotten tenant are not counted, and neither is `replay`. The first proposal, a `recorded_at` on `ingested`, would have billed a replay twice: `reset` deletes a tenant's applied ids so the log can be applied again. Counting after the commit means a crash in between undercounts, never bills twice.
+- **Tool calls** are counted but not billed: `Tools(meter=)` calls the meter once per tool call, and the HTTP transport passes one that keeps counts in memory and writes them every ten seconds and at shutdown (`/v1` and `/mcp`). It feeds quotas, abuse detection and the plain question of whether agents use Keel at all.
 
 ### Quotas
 
@@ -94,7 +95,7 @@ Accounts, keys, metering and dated forget do not wait for the gate. They are sma
 
 | Phase | Items | Where |
 |---|---|---|
-| Now | accounts as tenant prefix, `keys` table and `keel keys`, `recorded_at` and `keel usage` | core |
+| Now | accounts as tenant prefix, `api_keys` table and `keel keys`, `metering` counters and `keel usage` | core |
 | Now | `forgets: before` and `keel forget --before` | core |
 | With the second hosted customer | quotas, a database per account, operations (backups, per-account jobs, usage panel), Postgres CDC | core + infra |
 | By contract | SSO in front of `/ui`, a retention policy per account | infra |

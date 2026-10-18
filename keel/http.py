@@ -41,6 +41,7 @@ from keel.keys import check_tenant, has_keys, resolve
 from keel.semantic import Unavailable
 from keel.store.base import Store
 from keel.tools import Tools
+from keel.usage import Meter
 
 OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui holds no data; its calls carry the secret
 
@@ -106,12 +107,13 @@ def build_http_app(
     except ImportError as exc:
         raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
 
-    lifespan = None
+    meter = Meter(store)  # tool calls per tenant and day (keel/usage.py), flushed every few seconds and at shutdown
+    server = None
     mcp_app = None
     if tenant is not None:
         from keel.mcp_server import build_server
 
-        server = build_server(Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker))
+        server = build_server(Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter))
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
@@ -122,10 +124,16 @@ def build_http_app(
                 pass
         mcp_app = server.streamable_http_app(**kw)
 
-        @asynccontextmanager
-        async def lifespan(_app: Any):
-            async with server.session_manager.run():
+    @asynccontextmanager
+    async def lifespan(_app: Any):
+        try:
+            if server is None:
                 yield
+            else:
+                async with server.session_manager.run():
+                    yield
+        finally:
+            meter.flush()
 
     app = FastAPI(title=f"keel:{cartridge.name}", version="1", lifespan=lifespan)
     ingestor = Ingestor(cartridge, store)
@@ -160,7 +168,7 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, store, t, who, trace=trace, embedder=embedder, index=index, reranker=reranker)
+            return Tools(cartridge, store, t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 

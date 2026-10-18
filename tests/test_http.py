@@ -268,3 +268,18 @@ def test_first_key_closes_an_open_server():
     assert auth("acme/c1")._binds(key) and not auth("zeta/c1")._binds(key) and not auth("c1")._binds(key)
     _, bot = create_key(store, "acme", tenant="c1", agent="bot")
     assert auth("acme/c1", "bot")._binds(bot) and not auth("acme/c2", "bot")._binds(bot) and not auth("acme/c1")._binds(bot)
+
+
+def test_tool_calls_are_metered_per_tenant():
+    from keel.keys import create_key
+    from keel.usage import report
+
+    store = MemoryStore()
+    acme, _ = create_key(store, "acme")
+    with _client(load_cartridge(FLEET), store) as client:  # the context manager runs the lifespan: flush on exit
+        h = {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c1"}
+        for _ in range(3):
+            client.post("/v1/search", json={"text": "T-9001"}, headers=h)
+        client.post("/v1/context", json={"subject": "tire:T-9001"}, headers=h)
+    (row,) = report(store, account="acme")
+    assert (row["tenant"], row["events"], row["calls"]) == ("acme/c1", 0, {"search": 3, "context": 1})

@@ -259,7 +259,7 @@ class _Graph:
 class Tools:
     def __init__(
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
-        embedder: Any = None, index: Any = None, reranker: Any = None,
+        embedder: Any = None, index: Any = None, reranker: Any = None, meter: Callable[[str, str], None] | None = None,
     ) -> None:
         self.cartridge = cartridge
         self.store = store
@@ -275,6 +275,7 @@ class Tools:
         self.multi = {p for p, spec in cartridge.predicates.items() if isinstance(spec, dict) and spec.get("multi")}
         self.trace = trace  # set per request by the transport (traceparent, tool call id); stored with every write
         self.embedder, self.index, self.reranker = embedder, index, reranker  # keel.semantic adapters
+        self.meter = meter  # keel.usage.Meter: counts each tool call per tenant and day
 
     # ---- registry enforcement: the agent never polices itself -------------------------------
 
@@ -381,6 +382,8 @@ class Tools:
         answer); rules still evaluate on the whole truth. `only` returns just those predicates (the
         evidence a reviewer needs from many subjects, without the rest of their facts); with a list of
         subjects, their facts and relations are read in a few statements, not one per subject."""
+        if self.meter:
+            self.meter(self.tenant, "context")
         if detail not in ("full", "concise"):
             raise ValueError("detail is 'full' or 'concise'")
         if only is not None and (not isinstance(only, list) or not only or not all(isinstance(p, str) for p in only)):
@@ -462,6 +465,8 @@ class Tools:
         returned. `as_known_at`: as Keel knew them
         then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
         with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run"."""
+        if self.meter:
+            self.meter(self.tenant, "history")
         since, until, as_known_at, changed_since = _t(since), _t(until), _t(as_known_at), _t(changed_since)
         if subject is None:
             if changed_since is None:
@@ -537,6 +542,8 @@ class Tools:
 
         `kind` may be a list: the listing covers those kinds (still ordered by key), a semantic ranking
         only them, and `per_kind` takes the best n of each of them (the first n by key in text mode)."""
+        if self.meter:
+            self.meter(self.tenant, "search")
         graph = self._graph(_t(as_of) or utcnow())  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
             return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph) for t in text]
@@ -876,6 +883,8 @@ class Tools:
         `proposals`, and needs no write right on `scope` (only some write right), so an agent can propose
         a tenant fact a person then accepts. An accepted write (no status) or `status="rejected"`
         decides: it closes the predicate's open proposals and needs the right on `scope`."""
+        if self.meter:
+            self.meter(self.tenant, "annotate")
         if status not in (None, "proposed", "rejected"):
             raise ValueError("status is None (accepted), 'proposed' or 'rejected'")
         sc = Scope(scope)
@@ -936,6 +945,8 @@ class Tools:
         direction `both`. `depth` 2 or 3 walks further through the same relations, each subject once,
         nearest first; every entry then says how many `hops` away it is and which subject it was reached
         `via` (its direction is relative to that subject)."""
+        if self.meter:
+            self.meter(self.tenant, "related")
         if depth not in (1, 2, 3):
             raise ValueError("related depth is 1, 2 or 3")
         self._readable(subject)

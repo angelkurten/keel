@@ -72,3 +72,14 @@ def test_keys_cli(tmp_path):
     assert CliRunner().invoke(app, ["keys", "create", "Bad/Name", "--db", db]).exit_code != 0
     assert CliRunner().invoke(app, ["keys", "revoke", made["id"], "--db", db]).exit_code == 0
     assert CliRunner().invoke(app, ["keys", "revoke", made["id"], "--db", db]).exit_code != 0
+
+
+def test_usage_cli(tmp_path):
+    from keel.store.sqlite import SqliteStore
+
+    db = str(tmp_path / "u.db")
+    SqliteStore(db).meter([("acme/c1", "2027-01-05", "events", 7), ("solo", "2027-02-01", "events", 1)])
+    out = CliRunner().invoke(app, ["usage", "--db", db, "--month", "2027-01"])
+    assert out.exit_code == 0 and [json.loads(x) for x in out.output.splitlines()] == [
+        {"account": "acme", "tenant": "acme/c1", "month": "2027-01", "events": 7, "calls": {}}]
+    assert CliRunner().invoke(app, ["usage", "--db", db, "--month", "2027-13"]).exit_code != 0

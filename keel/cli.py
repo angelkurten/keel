@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, consolidate, export, index, context, serve, keys."""
+"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, consolidate, export, index, context, serve, keys, usage."""
 
 from __future__ import annotations
 
@@ -447,6 +447,24 @@ def forget(
 
         load_index(index).clear(tenant)
     typer.echo(json.dumps({"tenant": tenant, "forgotten_at": store.forgotten(tenant).isoformat(), **counts, "index": bool(index)}))
+
+
+@app.command()
+def usage(
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    month: str | None = typer.Option(None, "--month", help="Only this month, YYYY-MM. Default: every month metered."),
+    account: str | None = typer.Option(None, "--account", help="Only this account's tenants (acme/...)."),
+):
+    """What each tenant used, one JSON line per account, tenant and month: `events` applied for the first time (the
+    billing unit; duplicates and replays are not counted) and `calls` per tool through `keel serve --transport http`."""
+    import re
+
+    from keel.usage import report
+
+    if month and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+        raise typer.BadParameter("YYYY-MM", param_hint="--month")
+    for row in report(_store(db), month, account):
+        typer.echo(json.dumps(row))
 
 
 keys_app = typer.Typer(help="API keys: one account per SaaS on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)

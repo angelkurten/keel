@@ -38,7 +38,9 @@ class SqliteStore(SqlStore):
     CREATE TABLE IF NOT EXISTS forgotten (tenant TEXT NOT NULL PRIMARY KEY, at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS api_keys (
       id TEXT NOT NULL PRIMARY KEY, hash TEXT NOT NULL UNIQUE, account TEXT NOT NULL, tenant TEXT, agent TEXT,
-      glob INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, revoked_at TEXT)
+      glob INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, revoked_at TEXT);
+    CREATE TABLE IF NOT EXISTS metering (
+      tenant TEXT NOT NULL, day TEXT NOT NULL, item TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (tenant, day, item))
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "
@@ -46,6 +48,7 @@ class SqliteStore(SqlStore):
     )
     REMEMBER = "INSERT OR IGNORE INTO ingested (tenant, id) VALUES (?, ?)"
     TOMBSTONE = "INSERT OR IGNORE INTO forgotten (tenant, at) VALUES (?, ?)"
+    METER = "INSERT INTO metering (tenant, day, item, n) VALUES (?, ?, ?, ?) ON CONFLICT (tenant, day, item) DO UPDATE SET n = n + excluded.n"
     INDEX_IF_NOT_EXISTS = True
     ADDED_FACT_COLUMNS = (
         ("task", "TEXT", "CREATE INDEX IF NOT EXISTS facts_task ON facts (tenant, task)"),

@@ -42,7 +42,7 @@ def store(request, tmp_path):
         from keel.store.mysql import MysqlStore
 
         s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested", "forgotten"):
+        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering"):
             s._exec(f"DELETE FROM {table}")  # a clean database per test
         return s
     module, _, factory = EXTERNAL.partition(":")
@@ -1199,3 +1199,24 @@ def test_api_keys_and_account_global_partitions(store):
     assert store.tenants() == ["acme/c1"]
     with pytest.raises(ValueError):
         store.forget("acme/__global__")
+
+
+def test_metering_counts_first_applications_only(store):
+    from keel.usage import report, today
+
+    c = load_cartridge("examples/fleet")
+    events = list(JsonlAdapter("examples/fleet/events.jsonl"))
+    ing = Ingestor(c, store)
+    ing.ingest(events)
+    ing.ingest(events, batch=100)  # a redelivery: all duplicates
+    ing.replay(events[0].tenant, events=events)  # a rebuild is not new usage
+    store.meter([("acme/c1", "2026-12-31", "search", 2), ("acme/c1", "2027-01-01", "search", 1), ("acme/c1", "2026-12-31", "search", 3)])
+    assert store.usage("2026-12", "2027-01") == [("acme/c1", "2026-12-31", "search", 5)]
+    rows = report(store)
+    assert {(r["tenant"], r["month"]): (r["events"], r["calls"]) for r in rows} == {
+        (events[0].tenant, today()[:7]): (len(events), {}),
+        ("acme/c1", "2026-12"): (0, {"search": 5}),
+        ("acme/c1", "2027-01"): (0, {"search": 1}),
+    }
+    assert [r["month"] for r in report(store, "2026-12", account="acme")] == ["2026-12"]
+    assert report(store, account="zeta") == []

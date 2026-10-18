@@ -273,7 +273,16 @@ uv run keel keys list acme --db keel.db                           # JSON lines; 
 uv run keel keys revoke kk_3f9a1c2b7d4e --db keel.db              # refused by running servers within seconds
 ```
 
-`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design and what comes next (metering, quotas): `docs/design/hosted.md`.
+`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design and what comes next (quotas): `docs/design/hosted.md`.
+
+What each tenant used, per month, one JSON line per account, tenant and month:
+
+```bash
+uv run keel usage --db keel.db --month 2027-01 --account acme
+{"account": "acme", "tenant": "acme/cliente-42", "month": "2027-01", "events": 18342, "calls": {"context": 911, "search": 2380}}
+```
+
+`events` counts events applied for the first time, whatever path brought them (`/v1/events`, `keel ingest`, `keel consume`); duplicates, events for a forgotten tenant and `keel replay` are not counted, so a retry or a rebuild is never counted twice. `calls` counts tool calls through `keel serve --transport http` (`/v1` and `/mcp`), kept in memory and written every ten seconds and at shutdown. Both live as daily counters in the `metering` table; a tenant with no account prefix is reported with `"account": null`.
 
 ## Run it in a container
 
