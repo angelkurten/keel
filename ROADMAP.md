@@ -151,12 +151,12 @@ From exploring the hosted product ([design note](https://github.com/angelkurten/
 
 Goal: the hosted product and the cartridge catalog.
 
-- [x] Postgres CDC adapter: `keel cdc` follows your own tables through logical replication (`pgoutput`, no extension), a YAML map from tables to kinds, `<kind>.created|updated|deleted`, the slot advanced only after the store commits (on master, unreleased)
+- [x] Postgres CDC adapter: `keel cdc` follows your own tables through logical replication (`pgoutput`, no extension), a YAML map from tables to kinds, `<kind>.created|updated|deleted`, the slot advanced only after the store commits (0.28.0)
 - [ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier
 - [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month). Built: `keel serve --account` and the control plane in `hosted/` (invite-only sign-up, a database and a Coolify container per account, the usage panel); left: running it on Coolify, once the gate in the [design note](https://github.com/angelkurten/keel/blob/master/docs/design/hosted.md) holds: real usage measured at kagent, a second SaaS pilot, a customer asking to pay
-- [x] Quotas per account (requests per second, events per month; 429 with `Retry-After`) and a database per account for enterprise, `keel accounts set|list` (pulled forward on 2026-10-18: hosted is built before the second pilot; on master, unreleased)
-- [x] A retention policy per account: `keel accounts set --retention 3y` and `keel forget --policy` to schedule (on master, unreleased)
-- [x] SSO in front of `/ui` (a proxy, no code in Keel): `deploy/sso`, Caddy and oauth2-proxy with any OIDC provider; agents keep their own host with keys (on master) (tenant-level data export shipped in 0.2.0: `keel export`)
+- [x] Quotas per account (requests per second, events per month; 429 with `Retry-After`) and a database per account for enterprise, `keel accounts set|list` (pulled forward on 2026-10-18: hosted is built before the second pilot; 0.28.0)
+- [x] A retention policy per account: `keel accounts set --retention 3y` and `keel forget --policy` to schedule (0.28.0)
+- [x] SSO in front of `/ui` (a proxy, no code in Keel): `deploy/sso`, Caddy and oauth2-proxy with any OIDC provider; agents keep their own host with keys (0.28.0) (tenant-level data export shipped in 0.2.0: `keel export`)
 
 ## Not planned
 
