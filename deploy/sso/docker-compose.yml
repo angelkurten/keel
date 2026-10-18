@@ -1,0 +1,42 @@
+# SSO in front of /ui: add this file to deploy/docker-compose.yml.
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/sso/docker-compose.yml up -d
+#
+# Needs: KEEL_API_HOST, KEEL_UI_HOST (DNS pointing here; Caddy gets the certificates),
+# OIDC_ISSUER_URL, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET (an app at your identity provider whose redirect
+# URL is https://$KEEL_UI_HOST/oauth2/callback), OAUTH2_COOKIE_SECRET (python -c "import os,base64;
+# print(base64.urlsafe_b64encode(os.urandom(32)).decode())") and SSO_EMAIL_DOMAINS (who may sign in).
+services:
+  keel:
+    ports: !reset []  # only Caddy is reachable from outside
+
+  caddy:
+    image: caddy:2.10
+    ports: ["80:80", "443:443"]
+    environment:
+      KEEL_API_HOST: ${KEEL_API_HOST:?set KEEL_API_HOST}
+      KEEL_UI_HOST: ${KEEL_UI_HOST:?set KEEL_UI_HOST}
+      KEEL_SECRET: ${KEEL_SECRET:?set KEEL_SECRET}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [keel, oauth2-proxy]
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+    environment:
+      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:?set OIDC_ISSUER_URL}
+      OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID}
+      OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET}
+      OAUTH2_PROXY_COOKIE_SECRET: ${OAUTH2_COOKIE_SECRET:?set OAUTH2_COOKIE_SECRET}
+      OAUTH2_PROXY_EMAIL_DOMAINS: ${SSO_EMAIL_DOMAINS:?set SSO_EMAIL_DOMAINS}
+      OAUTH2_PROXY_REDIRECT_URL: https://${KEEL_UI_HOST}/oauth2/callback
+      OAUTH2_PROXY_HTTP_ADDRESS: 0.0.0.0:4180
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true"
+      OAUTH2_PROXY_UPSTREAMS: static://202
+      OAUTH2_PROXY_COOKIE_SECURE: "true"
+
+volumes:
+  caddy-data:

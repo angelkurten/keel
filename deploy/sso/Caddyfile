@@ -1,0 +1,26 @@
+# Two hosts in front of Keel (deploy/sso/README.md):
+#   KEEL_API_HOST  agents and products, with an API key or the secret: straight to Keel
+#   KEEL_UI_HOST   people: signed in by oauth2-proxy (OIDC), then Keel as the operator
+{$KEEL_API_HOST} {
+	reverse_proxy keel:8000
+}
+
+{$KEEL_UI_HOST} {
+	handle /oauth2/* {
+		reverse_proxy oauth2-proxy:4180
+	}
+	handle {
+		forward_auth oauth2-proxy:4180 {
+			uri /oauth2/auth
+			copy_headers X-Auth-Request-Email
+			@signin status 401
+			handle_response @signin {
+				redir * /oauth2/sign_in?rd={scheme}://{host}{uri}
+			}
+		}
+		reverse_proxy keel:8000 {
+			# a signed-in person browses as the operator: leave the UI's secret field empty
+			header_up Authorization "Bearer {$KEEL_SECRET}"
+		}
+	}
+}

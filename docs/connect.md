@@ -342,6 +342,8 @@ docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
 - Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.27.1 index /cartridge` (the entrypoint is `keel`).
 - To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.27.1` and `COPY cartridges/mine /cartridge`.
 
+Single sign-on for your team in front of `/ui`, with Caddy and oauth2-proxy and no code in Keel: [`deploy/sso`](https://github.com/angelkurten/keel/tree/master/deploy/sso).
+
 `deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.27.1` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Semantic search
