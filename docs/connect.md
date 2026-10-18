@@ -199,7 +199,7 @@ codex exec --json "Which tires on unit:MXK-4821 are critical according to the ca
 Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares `agents:`, add `--agent <id>`: the server then reads and writes only what that agent may, and signs its annotations. Agent-scope memory is read only by the agent that wrote it, so a server started without `--agent` reads none.
 
 !!! note "Where is the graph stored?"
-    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use (with `utf8mb4_bin`, so keys compare exactly) and the same conformance suite runs against it in CI. Tables created before 0.24.2 took the server's collation, under which `page:RENDIMIENTO` and `page:Rendimiento` (or `Numero` and `Número`) were one entity; the first start of 0.24.2 converts them, which rewrites each table once, and warns with the subjects that had already collided (`MysqlStore.collided()` lists them): publish those entities again. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
+    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use (with `utf8mb4_bin`, so keys compare exactly) and the same conformance suite runs against it in CI. Tables created before 0.25.0 took the server's collation, under which `page:RENDIMIENTO` and `page:Rendimiento` (or `Numero` and `Número`) were one entity; the first start of 0.25.0 converts them, which rewrites each table once, and warns with the subjects that had already collided (`MysqlStore.collided()` lists them): publish those entities again. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
 
     ```bash
     uv run keel ingest examples/fleet examples/fleet/events.jsonl --db keel.db   # or adapter.follow() in your own process
@@ -219,7 +219,7 @@ KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --db kee
 
 The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
 
-**Browse the graph.** `--ui` also serves a read-only page at `/ui`: search a tenant, open a subject's context (optionally `as of` a past instant, with its rules evaluated), click a predicate for its history and a neighbour in the graph to walk to it. The page holds no data; it asks for the secret, the tenant and, when the cartridge declares agents, the agent, keeps them for the browser tab only, and reads through the same `/v1` API, so every scope and registry rule applies. Off by default.
+**Browse the graph.** `--ui` also serves a read-only page at `/ui`: search a tenant, open a subject's context (optionally `as of` a past instant, with its rules evaluated), click a predicate for its history, and explore the graph: a force layout of the subject's neighbours up to 3 hops, where node size follows links, labels fade in as you zoom, hovering highlights a node's neighbours and a click opens a node and adds its own neighbours (wheel to zoom, drag to pan or move a node, double click to fit; up to 3,000 nodes). The page holds no data; it asks for the secret, the tenant and, when the cartridge declares agents, the agent, keeps them for the browser tab only, and reads through the same `/v1` API, so every scope and registry rule applies. Off by default.
 
 **TLS and HTTP/2.** `--certfile` and `--keyfile` (PEM; or `KEEL_CERTFILE`, `KEEL_KEYFILE`) serve https. `--http2` runs the server on Hypercorn instead of uvicorn (`uv sync --extra http2`) and speaks HTTP/1.1 and HTTP/2 on the same port: h2 negotiated by ALPN over TLS, or cleartext h2c (prior knowledge or `Upgrade`) without it, which is what a proxy in front that talks h2c to its origin uses. HTTP/1.1 clients keep working. On the client side, `keel.client.Client(..., http_client=httpx.Client(http2=True))` ([SDKs](sdks.md)).
 
@@ -262,21 +262,21 @@ Reads follow the memory scopes. Agent-scope memory is read only by the agent tha
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.24.2`, `0.24`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.25.0`, `0.25`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.24.2
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.25.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment (§ Configuration); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.24.2 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.24.2` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.25.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.25.0` and `COPY cartridges/mine /cartridge`.
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.24.2` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.25.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Semantic search
 
