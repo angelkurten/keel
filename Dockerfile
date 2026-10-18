@@ -1,12 +1,15 @@
 # Keel: the five tools over HTTP (/v1, /mcp) for one cartridge, on SQLite or MySQL.
 #
 #   docker build -t keel .                                  # this checkout
-#   docker build --build-arg KEEL_VERSION=0.27.0 -t keel .  # a release from PyPI
+#   docker build --build-arg KEEL_VERSION=0.27.1 -t keel .  # a release from PyPI
 #   docker run -p 8000:8000 -e KEEL_SECRET=... -v ./examples/fleet:/cartridge:ro -v keel-data:/data keel
 #
 # The cartridge is not in the image: mount it at /cartridge, or `FROM ghcr.io/angelkurten/keel` and COPY it there.
 # /data is the working directory: a SQLite graph, the `keel index` cursor (.keel/) and a .env live there.
 FROM python:3.12-slim
+
+# the official MCP registry checks this label against server.json
+LABEL io.modelcontextprotocol.server.name="io.github.angelkurten/keel"
 
 ARG KEEL_VERSION=
 ARG KEEL_EXTRAS=http2,mysql,chroma,weaviate,sqs

@@ -143,6 +143,7 @@ From exploring the hosted product ([design note](https://github.com/angelkurten/
 
 - [x] Accounts as a tenant prefix (the account is a slug, at most 32 characters, never renamed): an API key resolves to an account and the server turns `X-Keel-Tenant: t` into `account/t`; a client cannot choose the prefix; the global partition becomes `account/__global__` (0.27.0)
 - [x] API keys in an `api_keys` table in the store (hash only, optional tenant and agent; only a `--global` key writes `account/__global__`), `keel keys create|list|revoke`; with no keys, the single secret keeps working (0.27.0)
+- [x] Listed for MCP directories: `server.json` for the official registry, the `mcp-name` marker and the OCI label that prove ownership, `glama.json`, and a `keel-context` command so `uvx keel-context serve ...` works; a LangGraph example over the five tools (`examples/fleet/agent_langgraph.py`) (0.27.1)
 - [x] Metering: daily counters in a `metering` table, events applied for the first time (the billing unit; duplicates and replays not counted) and tool calls per tool (not billed), and `keel usage --month --account` (0.27.0)
 - [x] Retention as a dated forget: `forgets: before` in the catalog and `keel forget <tenant> --before` (or `--all-tenants`, a policy to schedule) delete facts, annotations and relations closed by the cutoff; the cutoff is kept and `replay` applies it again (0.27.0)
 

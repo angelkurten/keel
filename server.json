@@ -1,0 +1,95 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.angelkurten/keel",
+  "title": "Keel",
+  "description": "Per-tenant bitemporal context graph built from domain events, shared by agents via five tools.",
+  "version": "0.27.1",
+  "websiteUrl": "https://angelkurten.github.io/keel/",
+  "repository": {
+    "url": "https://github.com/angelkurten/keel",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "keel-context",
+      "version": "0.27.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "mcp>=1.2",
+          "description": "The MCP server is an optional extra of keel-context"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        },
+        {
+          "type": "positional",
+          "valueHint": "cartridge_dir",
+          "isRequired": true,
+          "description": "Folder of your cartridge (keel init <dir> scaffolds one)"
+        },
+        {
+          "type": "named",
+          "name": "--tenant",
+          "isRequired": true,
+          "description": "The tenant this server is bound to: an end-customer, a household, a team"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "KEEL_DB",
+          "description": "A SQLite file or a mysql:// URL; in memory when unset"
+        },
+        {
+          "name": "KEEL_AGENT",
+          "description": "The agent id, when the cartridge declares agents"
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/angelkurten/keel:0.27.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-i"
+        },
+        {
+          "type": "named",
+          "name": "-v",
+          "valueHint": "cartridge_dir:/cartridge:ro",
+          "isRequired": true,
+          "description": "Mount your cartridge at /cartridge"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        },
+        {
+          "type": "positional",
+          "value": "/cartridge"
+        },
+        {
+          "type": "named",
+          "name": "--tenant",
+          "isRequired": true,
+          "description": "The tenant this server is bound to"
+        }
+      ]
+    }
+  ]
+}
