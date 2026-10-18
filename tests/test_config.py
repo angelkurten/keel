@@ -94,3 +94,30 @@ def test_forget_before_cli(tmp_path):
     assert CliRunner().invoke(app, ["forget", "--db", db, "--yes"]).exit_code != 0  # names no tenant
     out = CliRunner().invoke(app, ["forget", "--all-tenants", "--db", db, "--before", "2026-10-05", "--yes"])
     assert out.exit_code == 0 and json.loads(out.output) == {"tenant": "acme-logistics", "before": "2026-10-05T00:00:00+00:00", "facts": 1, "annotations": 0, "relations": 0}
+
+
+def test_accounts_cli(tmp_path):
+    db = str(tmp_path / "a.db")
+    out = CliRunner().invoke(app, ["accounts", "set", "acme", "--db", db, "--rps", "5", "--retention", "90d"])
+    assert out.exit_code == 0 and json.loads(out.output) == {"account": "acme", "rps": 5, "events_month": None, "store": None, "retention": "90d"}
+    assert CliRunner().invoke(app, ["accounts", "set", "acme", "--db", db, "--retention", "forever"]).exit_code != 0
+    assert '"acme"' in CliRunner().invoke(app, ["accounts", "list", "--db", db]).output
+
+
+def test_forget_policy_uses_each_accounts_retention(tmp_path):
+    from keel.accounts import set_account
+    from keel.store.sqlite import SqliteStore
+
+    root = Path(__file__).resolve().parent.parent
+    shared, own = str(tmp_path / "s.db"), str(tmp_path / "own.db")
+    lines = (root / "examples/fleet/events.jsonl").read_text(encoding="utf-8").splitlines()
+    for path, tenant in ((shared, "acme/c1"), (own, "big/c1"), (shared, "solo")):
+        f = tmp_path / f"{tenant.replace('/', '_')}.jsonl"
+        f.write_text("\n".join(x.replace('"acme-logistics"', f'"{tenant}"') for x in lines if x.strip() and not x.startswith("#")), encoding="utf-8")
+        assert CliRunner().invoke(app, ["ingest", f"{root}/examples/fleet", str(f), "--db", path]).exit_code == 0
+    s = SqliteStore(shared)
+    set_account(s, "acme", retention="1d")
+    set_account(s, "big", retention="1d", store=own)
+    out = CliRunner().invoke(app, ["forget", "--policy", "--db", shared, "--yes"])
+    rows = [json.loads(x) for x in out.output.splitlines()]
+    assert out.exit_code == 0 and sorted((r["account"], r["tenant"], r["facts"]) for r in rows) == [("acme", "acme/c1", 2), ("big", "big/c1", 2)]

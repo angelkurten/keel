@@ -283,3 +283,52 @@ def test_tool_calls_are_metered_per_tenant():
         client.post("/v1/context", json={"subject": "tire:T-9001"}, headers=h)
     (row,) = report(store, account="acme")
     assert (row["tenant"], row["events"], row["calls"]) == ("acme/c1", 0, {"search": 3, "context": 1})
+
+
+def test_quotas_per_account_answer_429():
+    from keel.accounts import set_account
+    from keel.keys import create_key
+
+    store = MemoryStore()
+    acme, _ = create_key(store, "acme")
+    free, _ = create_key(store, "free")
+    set_account(store, "acme", rps=2, events_month=15)
+    client = _client(load_cartridge(FLEET), store)
+    h = lambda k: {"Authorization": f"Bearer {k}", "X-Keel-Tenant": "c1"}
+    codes = [client.post("/v1/search", json={"text": "x"}, headers=h(acme)).status_code for _ in range(4)]
+    assert codes[:2] == [200, 200] and 429 in codes[2:]
+    limited = client.post("/v1/search", json={"text": "x"}, headers=h(acme))
+    assert limited.status_code == 429 and int(limited.headers["Retry-After"]) >= 1
+    assert all(client.post("/v1/search", json={"text": "x"}, headers=h(free)).status_code == 200 for _ in range(5))  # no row: no limit
+    from pathlib import Path
+
+    lines = [json.loads(x) for x in Path(EVENTS).read_text(encoding="utf-8").splitlines() if x.strip() and not x.startswith("#")]
+    for e in lines:
+        e["tenant"] = "c1"
+    time.sleep(1.1)
+    assert client.post("/v1/events", json=lines, headers=h(acme)).status_code == 200  # 12 of 15
+    time.sleep(1.1)
+    over = client.post("/v1/events", json=lines[:4], headers=h(acme))
+    assert over.status_code == 429 and int(over.headers["Retry-After"]) > 0 and "this month" in over.json()["detail"]
+
+
+def test_an_account_can_have_its_own_database(tmp_path):
+    from keel.accounts import set_account
+    from keel.keys import create_key
+    from keel.store.sqlite import SqliteStore
+    from keel.usage import report
+
+    shared = SqliteStore(tmp_path / "shared.db")
+    big, _ = create_key(shared, "big")
+    set_account(shared, "big", store=str(tmp_path / "big.db"))
+    client = _client(load_cartridge(FLEET), shared)
+    from pathlib import Path
+
+    lines = [json.loads(x) for x in Path(EVENTS).read_text(encoding="utf-8").splitlines() if x.strip() and not x.startswith("#")]
+    for e in lines:
+        e["tenant"] = "c1"
+    h = {"Authorization": f"Bearer {big}", "X-Keel-Tenant": "c1"}
+    assert client.post("/v1/events", json=lines, headers=h).json()["processed"] == 12
+    assert shared.tenants() == [] and SqliteStore(tmp_path / "big.db").tenants() == ["big/c1"]  # its data, its database
+    assert client.post("/v1/context", json={"subject": "tire:T-9001"}, headers=h).json()["evaluation"] == {"tire_critical": True}
+    assert report(shared, account="big")[0]["events"] == 12  # usage stays where keel usage reads it

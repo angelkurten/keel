@@ -56,7 +56,9 @@ class MysqlStore(SqlStore):
       glob TINYINT NOT NULL DEFAULT 0, created_at VARCHAR(40) NOT NULL, revoked_at VARCHAR(40), UNIQUE KEY api_keys_hash (hash)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
     CREATE TABLE IF NOT EXISTS metering (
       tenant VARCHAR(191) NOT NULL, day CHAR(10) NOT NULL, item VARCHAR(32) NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (tenant, day, item)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-    CREATE TABLE IF NOT EXISTS cutoffs (tenant VARCHAR(191) NOT NULL PRIMARY KEY, cut VARCHAR(40) NOT NULL, at VARCHAR(40) NOT NULL) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+    CREATE TABLE IF NOT EXISTS cutoffs (tenant VARCHAR(191) NOT NULL PRIMARY KEY, cut VARCHAR(40) NOT NULL, at VARCHAR(40) NOT NULL) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+    CREATE TABLE IF NOT EXISTS accounts (
+      id VARCHAR(64) NOT NULL PRIMARY KEY, rps INT, events_month BIGINT, store TEXT, retention VARCHAR(16)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "

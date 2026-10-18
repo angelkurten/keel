@@ -74,9 +74,10 @@ def _chunks(events: Iterable[Event], size: int) -> Iterator[list[Event]]:
 
 
 class Ingestor:
-    def __init__(self, cartridge: Cartridge, store: Store, keep_log: bool = False) -> None:
+    def __init__(self, cartridge: Cartridge, store: Store, keep_log: bool = False, meter: Any = None) -> None:
         self.cartridge = cartridge
         self.store = store
+        self.meter = meter  # where usage is counted (keel/usage.py); default the store itself, the shared one for an account's own database
         # opt-in copy of every event, for replay(tenant) without an external log: a development
         # convenience that grows with every event, so a server or a bulk load leaves it off
         self.keep_log = keep_log
@@ -109,7 +110,7 @@ class Ingestor:
         tx = getattr(self.store, "transaction", None)
         bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
         forgotten = getattr(self.store, "forgotten", None)
-        meter = getattr(self.store, "meter", None) if metered else None  # keel/usage.py; a replay is not new usage
+        meter = (self.meter or getattr(self.store, "meter", None)) if metered else None  # keel/usage.py; a replay is not new usage
         for chunk in _chunks(events, max(1, batch)):
             applied: Counter[str] = Counter()
             erases = any(ev.type in self.forgets or ev.type in self.retains for ev in chunk)  # a batch overlay would write back what forget deleted

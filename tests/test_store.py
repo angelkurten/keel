@@ -42,7 +42,7 @@ def store(request, tmp_path):
         from keel.store.mysql import MysqlStore
 
         s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs"):
+        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts"):
             s._exec(f"DELETE FROM {table}")  # a clean database per test
         return s
     module, _, factory = EXTERNAL.partition(":")
@@ -1260,3 +1260,23 @@ def test_retention_forgets_what_closed_before_a_cutoff(store):
     assert [f.value for f in store.facts(t, "tire:T-9001") if f.predicate == "note"] == ["checked"]
     with pytest.raises(ValueError):
         store.forget_before("__global__", d("2026-10-05"))
+
+
+def test_accounts_and_retention_cutoffs(store):
+    from datetime import datetime, timezone
+
+    from keel.accounts import cutoff_for, set_account
+
+    a = set_account(store, "acme", rps=20, events_month=1000, retention="3Y")
+    assert (a.rps, a.events_month, a.retention, a.store) == (20, 1000, "3y", None)
+    set_account(store, "acme", rps=0, store="acme.db")  # 0 clears a limit; what is not passed stays
+    got = store.account("acme")
+    assert (got.rps, got.events_month, got.retention, got.store) == (None, 1000, "3y", "acme.db")
+    set_account(store, "zeta")
+    assert [x.id for x in store.accounts()] == ["acme", "zeta"] and store.account("nope") is None
+    with pytest.raises(ValueError):
+        set_account(store, "acme", retention="3 years")
+    now = datetime(2026, 3, 31, 12, tzinfo=timezone.utc)
+    assert cutoff_for("3y", now) == datetime(2023, 3, 28, 12, tzinfo=timezone.utc)
+    assert cutoff_for("18m", now) == datetime(2024, 9, 28, 12, tzinfo=timezone.utc)
+    assert cutoff_for("90d", now) == datetime(2025, 12, 31, 12, tzinfo=timezone.utc)

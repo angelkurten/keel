@@ -1,6 +1,6 @@
 # Design note: hosted Keel
 
-Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (`keel/keys.py`, `keel keys`), metering with one change (counters, not `ingested.recorded_at`, below) (`keel/usage.py`, `keel usage`), and retention with two simplifications (below) (`forgets: before`, `keel forget --before`), shipped in 0.27.0; the rest is not implemented yet.
+Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (`keel/keys.py`, `keel keys`), metering with one change (counters, not `ingested.recorded_at`, below) (`keel/usage.py`, `keel usage`), and retention with two simplifications (below) (`forgets: before`, `keel forget --before`), shipped in 0.27.0. Quotas, a database per account and a retention policy per account (`keel/accounts.py`, `keel accounts`, `keel forget --policy`) are on master, not yet released; the rest is not implemented yet.
 
 ## Problem
 
@@ -93,14 +93,16 @@ The goal of 0.1 is "used by two SaaS products that are not ours". Building the h
 
 Accounts, keys, metering and dated forget do not wait for the gate. They are small, and they are useful to self-hosted deployments too.
 
+**Revised on 2026-10-18 (later the same day):** the whole hosted product is built before looking for the second pilot, on the reasoning that a pilot says yes more easily to a hosted Keel it can sign up for than to a deployment it has to run. The gate still decides when hosted is announced and billed; it no longer decides when it is built. Operations run on Coolify.
+
 ## Phases
 
 | Phase | Items | Where |
 |---|---|---|
 | Now | accounts as tenant prefix, `api_keys` table and `keel keys`, `metering` counters and `keel usage` | core |
 | Now | `forgets: before` and `keel forget --before` | core |
-| With the second hosted customer | quotas, a database per account, operations (backups, per-account jobs, usage panel), Postgres CDC | core + infra |
-| By contract | SSO in front of `/ui`, a retention policy per account | infra |
+| Next (revised 2026-10-18) | quotas, a database per account, a retention policy per account, Postgres CDC | core |
+| Next (revised 2026-10-18) | operations on Coolify (backups, per-account jobs), self-serve sign-up, a usage panel, SSO in front of `/ui` through a proxy | infra + product |
 
 ## Decided on 2026-10-18
 

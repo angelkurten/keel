@@ -282,7 +282,19 @@ uv run keel keys list acme --db keel.db                           # JSON lines; 
 uv run keel keys revoke kk_3f9a1c2b7d4e --db keel.db              # refused by running servers within seconds
 ```
 
-`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design and what comes next (quotas): `docs/design/hosted.md`.
+`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design: `docs/design/hosted.md`.
+
+An account can also have limits, its own database and a retention policy:
+
+```bash
+uv run keel accounts set acme --db keel.db --rps 20 --events-month 1000000   # 0 removes a limit
+uv run keel accounts set big --db keel.db --store mysql://user:pass@host:3306/big   # "" goes back to the shared database
+uv run keel accounts set acme --db keel.db --retention 3y                    # 3y, 18m or 90d
+uv run keel accounts list --db keel.db
+uv run keel forget --policy --db keel.db --yes                               # schedule it: each account's retention, on its tenants
+```
+
+Over its requests per second (a token bucket in each server process) or its events for the month (from the metering counters), a key gets 429 with `Retry-After`. An account with no row is not limited. With `--store`, the server keeps that account's graph in its own database, opened on first use, while keys, accounts and usage stay in the shared one, so `keel usage` still sees it; jobs for that account (`keel index`, `keel expire`) run with `--db` pointing at its database. `--policy` applies each account's retention like `keel forget --before`, in its own database when it has one.
 
 What each tenant used, per month, one JSON line per account, tenant and month:
 

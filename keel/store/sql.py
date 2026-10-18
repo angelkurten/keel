@@ -24,7 +24,7 @@ from typing import Any
 
 from keel.envelope import Event, utcnow
 from keel.scopes import Scope, is_global
-from keel.store.base import ApiKey, DuplicateKey, Entity, Fact, Relation
+from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
     changed_after,
     filter_facts,
@@ -124,7 +124,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -659,6 +659,20 @@ class SqlStore:
 
     # ---- API keys (keel/keys.py): not tenant data, so forget and reset leave them ----
 
+    def put_account(self, account: Account) -> None:
+        """Insert or replace an account's limits (keel/accounts.py)."""
+        with self.transaction():
+            self._exec("DELETE FROM accounts WHERE id = ?", (account.id,))
+            self._exec("INSERT INTO accounts (id, rps, events_month, store, retention) VALUES (?, ?, ?, ?, ?)",
+                       (account.id, account.rps, account.events_month, account.store, account.retention))
+
+    def account(self, account_id: str) -> Account | None:
+        row = self._one("SELECT * FROM accounts WHERE id = ?", (account_id,))
+        return _account(row) if row else None
+
+    def accounts(self) -> list[Account]:
+        return [_account(r) for r in self._rows("SELECT * FROM accounts ORDER BY id")]
+
     def put_key(self, key: ApiKey) -> None:
         self._exec(
             "INSERT INTO api_keys (id, hash, account, tenant, agent, glob, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -685,6 +699,11 @@ class SqlStore:
         self._exec(f"DELETE FROM facts WHERE tenant = ?{keep}", (tenant, "annotate:%", "consolidate:%") if keep_annotations else (tenant,))
         if self._cache is not None:
             self._cache.clear()
+
+
+def _account(row: Any) -> Account:
+    num = lambda v: None if v is None else int(v)
+    return Account(id=row["id"], rps=num(row["rps"]), events_month=num(row["events_month"]), store=row["store"], retention=row["retention"])
 
 
 def _key(row: Any) -> ApiKey:

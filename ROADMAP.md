@@ -154,8 +154,9 @@ Goal: the hosted product and the cartridge catalog.
 - [ ] Postgres CDC adapter
 - [ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier
 - [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month), once the gate in the [design note](https://github.com/angelkurten/keel/blob/master/docs/design/hosted.md) holds: real usage measured at kagent, a second SaaS pilot, a customer asking to pay
-- [ ] Quotas per account (requests per second, events per month; 429 with `Retry-After`) and a database per account for enterprise, with the second hosted customer
-- [ ] SSO in front of `/ui` (a proxy, no code in Keel) and a retention policy per account, by contract (tenant-level data export shipped in 0.2.0: `keel export`)
+- [x] Quotas per account (requests per second, events per month; 429 with `Retry-After`) and a database per account for enterprise, `keel accounts set|list` (pulled forward on 2026-10-18: hosted is built before the second pilot; on master, unreleased)
+- [x] A retention policy per account: `keel accounts set --retention 3y` and `keel forget --policy` to schedule (on master, unreleased)
+- [ ] SSO in front of `/ui` (a proxy, no code in Keel) (pulled forward on 2026-10-18) (tenant-level data export shipped in 0.2.0: `keel export`)
 
 ## Not planned
 

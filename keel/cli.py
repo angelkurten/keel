@@ -14,8 +14,6 @@ import typer
 from keel.cartridge import load_cartridge
 from keel.envelope import Event
 from keel.ingest import BATCH, Ingestor, IngestReport, JsonlAdapter
-from keel.store.memory import MemoryStore
-from keel.store.sqlite import SqliteStore
 from keel.tools import Tools
 
 app = typer.Typer(help="Keel: a context layer for the AI agents in a product.", no_args_is_help=True)
@@ -59,13 +57,9 @@ DB = typer.Option(None, "--db", envvar="KEEL_DB", help="A durable graph: a SQLit
 
 
 def _store(db: str | None):
-    if not db:
-        return MemoryStore()
-    if db.startswith(("mysql://", "mariadb://")):
-        from keel.store.mysql import MysqlStore
+    from keel.store import open_store
 
-        return MysqlStore.from_url(db)
-    return SqliteStore(db)
+    return open_store(db)
 TENANT = typer.Argument(..., envvar="KEEL_TENANT", help="The tenant: an end-customer, a household, a team (KEEL_TENANT when omitted). A product with one sets one fixed value.", show_default=False)
 ALL = typer.Option(False, "--all-tenants", help="Every tenant in the store, one after another (a tenant per end-customer means many).")
 
@@ -440,6 +434,7 @@ def forget(
     yes: bool = typer.Option(False, "--yes", help="Required to erase: it cannot be undone."),
     before: str | None = typer.Option(None, "--before", help="Retention: delete only facts and relations that closed at or before this ISO date or time (UTC); open ones and entities stay."),
     all_tenants: bool = typer.Option(False, "--all-tenants", help="With --before: every tenant in the store (a retention policy)."),
+    policy: bool = typer.Option(False, "--policy", help="Each account's own retention (keel accounts set --retention), on its tenants and in its own database if it has one. Schedule it."),
 ):
     """Erase one tenant for good: entities, relations, facts of every scope, annotations, applied event ids and, with --index,
     its semantic documents. A tombstone stays, so later events for it are skipped and writes refused. Prints what it deleted, as JSON.
@@ -450,6 +445,17 @@ def forget(
     store = _store(db)
     if not yes:
         raise typer.BadParameter("erasing cannot be undone: add --yes")
+    if policy:
+        from keel.accounts import cutoff_for
+
+        for acct in store.accounts():
+            if not acct.retention:
+                continue
+            graph, cut = (_store(acct.store) if acct.store else store), cutoff_for(acct.retention)
+            for t in graph.tenants():
+                if t.startswith(f"{acct.id}/"):
+                    typer.echo(json.dumps({"account": acct.id, "tenant": t, "before": cut.isoformat(), **graph.forget_before(t, cut)}))
+        return
     if before is not None:
         from keel.envelope import parse_iso
 
@@ -488,6 +494,40 @@ def usage(
         raise typer.BadParameter("YYYY-MM", param_hint="--month")
     for row in report(_store(db), month, account):
         typer.echo(json.dumps(row))
+
+
+accounts_app = typer.Typer(help="Accounts: quotas, database and retention per product on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
+app.add_typer(accounts_app, name="accounts")
+
+
+def _account_row(a: Any) -> dict[str, Any]:
+    return {"account": a.id, "rps": a.rps, "events_month": a.events_month, "store": a.store, "retention": a.retention}
+
+
+@accounts_app.command("set")
+def accounts_set(
+    account: str = typer.Argument(..., help="The account (the same slug its keys carry).", show_default=False),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file or a mysql:// URL."),
+    rps: int | None = typer.Option(None, "--rps", min=0, help="Requests per second through the HTTP API; 0 removes the limit."),
+    events_month: int | None = typer.Option(None, "--events-month", min=0, help="Events applied per calendar month (UTC); 0 removes the limit."),
+    store: str | None = typer.Option(None, "--store", help="Its own database (a SQLite path or mysql:// URL); \"\" goes back to the shared one."),
+    retention: str | None = typer.Option(None, "--retention", help="3y, 18m or 90d: what closed longer ago goes on `keel forget --policy`; \"\" removes it."),
+):
+    """Create or update an account. Options left out keep their value. Prints the account as JSON."""
+    from keel.accounts import set_account
+
+    try:
+        a = set_account(_store(db), account, rps=rps, events_month=events_month, store=store, retention=retention)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(_account_row(a)))
+
+
+@accounts_app.command("list")
+def accounts_list(db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL.")):
+    """Every account with limits, as JSON lines. Accounts with keys but no row are not limited."""
+    for a in _store(db).accounts():
+        typer.echo(json.dumps(_account_row(a)))
 
 
 keys_app = typer.Typer(help="API keys: one account per product on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)

@@ -33,6 +33,17 @@ class Entity:
 
 
 @dataclass
+class Account:
+    """What a hosted account may use (keel/accounts.py). None means no limit, the shared store, no retention."""
+
+    id: str
+    rps: int | None = None  # requests per second through the HTTP API
+    events_month: int | None = None  # events applied per calendar month (UTC)
+    store: str | None = None  # its own database (a SQLite path or mysql:// URL) instead of the shared one
+    retention: str | None = None  # e.g. "3y", "18m", "90d": what closed longer ago goes (keel forget --policy)
+
+
+@dataclass
 class ApiKey:
     """A credential for the HTTP API (keel/keys.py). Only the hash is stored; `id` is the public prefix."""
 

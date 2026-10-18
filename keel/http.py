@@ -29,11 +29,13 @@ operator's credential and reaches every tenant unprefixed.
 # no `from __future__ import annotations` here: FastAPI resolves the request models defined inside
 # build_http_app from real annotations, not strings.
 import hmac
+import threading
 import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
+from keel.accounts import Quotas
 from keel.cartridge import Cartridge
 from keel.envelope import Event, parse_iso
 from keel.ingest import Ingestor
@@ -52,8 +54,8 @@ class _Auth:
     nor any key the server is open, as before keys existed. Raw ASGI so that MCP's streaming responses
     pass through untouched. `/mcp` is bound to one tenant: a key reaches it only if that tenant is its own."""
 
-    def __init__(self, app: Any, secret: str | None, store: Store, mcp_tenant: str | None, mcp_agent: str | None) -> None:
-        self.app, self.secret, self.store = app, secret, store
+    def __init__(self, app: Any, secret: str | None, store: Store, mcp_tenant: str | None, mcp_agent: str | None, quotas: Any = None) -> None:
+        self.app, self.secret, self.store, self.quotas = app, secret, store, quotas
         self.mcp_tenant, self.mcp_agent = mcp_tenant, mcp_agent
         self._keyed: tuple[float, bool] = (-1e9, False)
 
@@ -75,6 +77,10 @@ class _Auth:
             elif token.startswith("kk_") and (key := resolve(self.store, token)) is not None:
                 if scope["path"].startswith("/mcp") and not self._binds(key):
                     await JSONResponse({"detail": "this key does not reach the tenant /mcp is bound to"}, status_code=403)(scope, receive, send)
+                    return
+                if self.quotas and (wait := self.quotas.request(key.account)) is not None:
+                    await JSONResponse({"detail": f"account '{key.account}' is over its requests per second"}, status_code=429,
+                                       headers={"Retry-After": str(max(1, round(wait)))})(scope, receive, send)
                     return
                 scope.setdefault("state", {})["key"] = key
             elif self.secret or self.keyed():
@@ -108,6 +114,7 @@ def build_http_app(
         raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
 
     meter = Meter(store)  # tool calls per tenant and day (keel/usage.py), flushed every few seconds and at shutdown
+    quotas = Quotas(store)  # per account (keel/accounts.py), for requests made with an API key
     server = None
     mcp_app = None
     if tenant is not None:
@@ -137,6 +144,22 @@ def build_http_app(
 
     app = FastAPI(title=f"keel:{cartridge.name}", version="1", lifespan=lifespan)
     ingestor = Ingestor(cartridge, store)
+    own: dict[str, tuple[Store, Ingestor]] = {}  # an account's own database (keel accounts set --store), opened once
+    own_lock = threading.Lock()
+
+    def graph_for(key: Any) -> tuple[Store, Ingestor]:
+        """The store and ingestor a request works on: its account's own database, or the shared one. Usage is
+        always counted in the shared store, where `keel usage` reads it."""
+        acct = quotas.account(key.account) if key is not None else None
+        if acct is None or not acct.store:
+            return store, ingestor
+        with own_lock:
+            if acct.store not in own:
+                from keel.store import open_store
+
+                s = open_store(acct.store)
+                own[acct.store] = (s, Ingestor(cartridge, s, meter=getattr(store, "meter", None)))
+            return own[acct.store]
 
     def key_of(request: Request) -> Any:
         return request.scope.get("state", {}).get("key")
@@ -168,7 +191,7 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, store, t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter)
+            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -253,7 +276,9 @@ def build_http_app(
         key = key_of(request)
         if key is not None:  # the account's own tenants, prefixed like every read
             batch = [e.model_copy(update={"tenant": scoped(key, e.tenant)}) for e in batch]
-        report = ingestor.ingest(batch, batch=len(batch))
+            if (wait := quotas.events(key.account, len(batch))) is not None:
+                raise HTTPException(429, f"account '{key.account}' has used its events for this month", headers={"Retry-After": str(int(wait))})
+        report = graph_for(key)[1].ingest(batch, batch=len(batch))
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
                 "forgotten": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, **n} for t, n in report.forgotten], "skipped": report.skipped,
                 "retained": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, "before": b, **n} for t, b, n in report.retained]}
@@ -296,4 +321,4 @@ def build_http_app(
 
     if mcp_app is not None:
         app.mount("/", mcp_app)
-    return _Auth(app, secret, store, tenant, agent)
+    return _Auth(app, secret, store, tenant, agent, quotas)

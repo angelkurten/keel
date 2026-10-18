@@ -16,7 +16,7 @@ from typing import Any
 
 from keel.envelope import utcnow
 from keel.scopes import Scope, is_global
-from keel.store.base import ApiKey, DuplicateKey, Entity, Fact, Relation
+from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relation
 
 # ---- shared by every store: build a fact, filter rows the bitemporal way, search ---------
 
@@ -166,6 +166,7 @@ class MemoryStore:
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
         self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
+        self._accounts: dict[str, Account] = {}  # id -> limits (keel/accounts.py)
         self._metering: dict[tuple[str, str, str], int] = defaultdict(int)  # (tenant, day, item) -> n (keel/usage.py)
 
     def _mark(self, tenant: str, t: datetime | None) -> None:
@@ -382,6 +383,15 @@ class MemoryStore:
 
     def put_key(self, key: ApiKey) -> None:
         self._keys[key.id] = key
+
+    def put_account(self, account: Account) -> None:
+        self._accounts[account.id] = account
+
+    def account(self, account_id: str) -> Account | None:
+        return self._accounts.get(account_id)
+
+    def accounts(self) -> list[Account]:
+        return sorted(self._accounts.values(), key=lambda a: a.id)
 
     def api_key(self, digest: str) -> ApiKey | None:
         return next((k for k in self._keys.values() if k.hash == digest), None)
