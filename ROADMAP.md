@@ -137,14 +137,24 @@ From research and a labeled eval bench run with real embeddings ([design note](h
 - [x] Compact relation lines; query/document roles in `Embedder`; `where` filters in `VectorIndex`; reranker adapter
 - [ ] Real agent queries from kagent and Toche in the bench
 
+## Hosted foundations — ahead of 2027 (decided 2026-10-18)
+
+From exploring the hosted product ([design note](https://github.com/angelkurten/keel/blob/master/docs/design/hosted.md)). These pieces are pulled forward because they are small and serve self-hosted deployments with several customers too. The hosted launch still waits for its gate.
+
+- [ ] Accounts as a tenant prefix (the account is a slug, at most 32 characters, never renamed): an API key resolves to an account and the server turns `X-Keel-Tenant: t` into `account/t`; a client cannot choose the prefix; the global partition becomes `account/__global__`
+- [ ] API keys in a `keys` table in the store (hash only, optional tenant and agent; only a `--global` key writes `account/__global__`), `keel keys create|list|revoke`; with no keys, the single secret keeps working
+- [ ] Metering: `recorded_at` on `ingested` (first applications only, the billing unit), tool calls counted per account, tenant, day and tool (not billed), and `keel usage --month --account`
+- [ ] Retention as a dated forget: `forgets: before` in the catalog and `keel forget <tenant> --before`, a tombstone with the cutoff, deterministic on replay
+
 ## Later (2027)
 
 Goal: the hosted product and the cartridge catalog.
 
 - [ ] Postgres CDC adapter
 - [ ] Cartridge catalog: a public index of cartridges with versioning and a verified tier
-- [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month)
-- [ ] SSO and retention policies for enterprise (tenant-level data export shipped in 0.2.0: `keel export`)
+- [ ] Hosted Keel (Kubbo operates graph, bus and jobs; billed by events ingested per month), once the gate in the [design note](https://github.com/angelkurten/keel/blob/master/docs/design/hosted.md) holds: real usage measured at kagent, a second SaaS pilot, a customer asking to pay
+- [ ] Quotas per account (requests per second, events per month; 429 with `Retry-After`) and a database per account for enterprise, with the second hosted customer
+- [ ] SSO in front of `/ui` (a proxy, no code in Keel) and a retention policy per account, by contract (tenant-level data export shipped in 0.2.0: `keel export`)
 
 ## Not planned
 

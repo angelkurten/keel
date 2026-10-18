@@ -42,6 +42,7 @@ nav:
       - Ingesting millions of events: design/bulk-ingest.md
       - What agentic workflows demand: design/agentic-workflows.md
       - Semantic search, research and evals: design/semantic-evals.md
+      - Hosted Keel: design/hosted.md
 
 markdown_extensions:
   - admonition
