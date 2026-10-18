@@ -66,6 +66,10 @@ Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridg
 
 In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php examples/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
 
+## Pilot it with us
+
+Run Keel on your product's events with your agents, with our help: [your first pilot in a day](https://angelkurten.github.io/keel/pilot/) is the path, with a time budget per step. Open a [pilot request](https://github.com/angelkurten/keel/issues/new?template=pilot_request.yml), book 30 minutes at [calendar.app.google/3oKUSqXTQPYmjya56](https://calendar.app.google/3oKUSqXTQPYmjya56), or write to angel@angelkurten.com.
+
 ## Connect a real event stream
 
 Point an MCP client at the five tools:

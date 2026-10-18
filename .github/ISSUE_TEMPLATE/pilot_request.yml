@@ -1,0 +1,53 @@
+name: Pilot request
+description: Run Keel with your product's events and agents, with our help. See docs/pilot.md for the path.
+title: "Pilot: "
+labels: [pilot]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for wanting to try Keel. Share only what you are comfortable making public; for anything private,
+        write to angel@angelkurten.com or book 30 minutes at https://calendar.app.google/3oKUSqXTQPYmjya56.
+  - type: input
+    id: product
+    attributes:
+      label: Product and domain
+      placeholder: A fleet maintenance SaaS, a household finance app, an internal BI tool
+    validations:
+      required: true
+  - type: textarea
+    id: agents
+    attributes:
+      label: Agents you run or plan to run
+      description: What each one does, and which of them work on the same customers or records.
+    validations:
+      required: true
+  - type: dropdown
+    id: events
+    attributes:
+      label: Where your events live today
+      multiple: true
+      options:
+        - Postgres tables
+        - MySQL tables
+        - Webhooks
+        - Kafka
+        - SQS
+        - Files or exports
+        - Not sure yet
+    validations:
+      required: true
+  - type: input
+    id: tenant
+    attributes:
+      label: What one tenant is in your product
+      placeholder: an end-customer, a household, a team
+  - type: textarea
+    id: goal
+    attributes:
+      label: What would make the pilot a success for you
+  - type: input
+    id: contact
+    attributes:
+      label: How to reach you
+      description: Optional. An email, or leave it empty and we answer here.

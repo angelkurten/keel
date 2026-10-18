@@ -269,7 +269,7 @@ curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Kee
 
 Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send `X-Keel-Agent` to read your own). Task-scope memory tied to a task id is read only by calls that pass that `task` (`history`'s `task` is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, `__global__`, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name. A tenant of an account (`acme/t`, see below) reads `acme/__global__` instead.
 
-### Several SaaS products on one deployment: accounts and API keys
+### Several products on one deployment: accounts and API keys
 
 One server can serve several products, each confined to its own data. An account is one product (a short slug: lowercase letters, digits and hyphens, at most 32 characters); its tenants are its end-customers. An API key belongs to one account, and the server puts the account in front of the tenant: `X-Keel-Tenant: cliente-42` with a key of `acme` reads and writes the tenant `acme/cliente-42`, and envelopes posted to `/v1/events` are prefixed the same way. A tenant sent with a `/` is refused, so a key cannot reach another account.
 

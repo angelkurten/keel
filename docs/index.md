@@ -11,6 +11,9 @@ You describe your vertical once, in a *cartridge*: ontology, event catalog, sema
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
+!!! tip "Pilot it with us"
+    Run Keel on your product's events with your agents, with our help: [your first pilot in a day](pilot.md). Open a [pilot request](https://github.com/angelkurten/keel/issues/new?template=pilot_request.yml), book 30 minutes at [calendar.app.google/3oKUSqXTQPYmjya56](https://calendar.app.google/3oKUSqXTQPYmjya56), or write to angel@angelkurten.com.
+
 ## The problem
 
 Every new agent in a product repeats the same work: extract the customer's data, normalize it, decide what "critical" means, keep its own memory, expose its own tools to the model. Four agents, four copies of the customer's context, four definitions of "critical", four memories that never talk.
