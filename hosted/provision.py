@@ -74,7 +74,11 @@ class CoolifyProvisioner:
         import httpx
 
         self.base_domain, self.image_tag, self.project, self.server, self.environment = base_domain, image_tag, project_uuid, server_uuid, environment
-        self.http = http or httpx.Client(base_url=url.rstrip("/") + "/api/v1", headers={"Authorization": f"Bearer {token}"}, timeout=60)
+        from keel import __version__
+
+        # a User-Agent of its own: Cloudflare in front of a Coolify instance refuses httpx's default (error 1010)
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json", "User-Agent": f"keel-hosted/{__version__}"}
+        self.http = http or httpx.Client(base_url=url.rstrip("/") + "/api/v1", headers=headers, timeout=60)
 
     def _call(self, method: str, path: str, **kw: Any) -> Any:
         r = self.http.request(method, path, **kw)
