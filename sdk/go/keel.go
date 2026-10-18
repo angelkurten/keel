@@ -57,6 +57,7 @@ type Fact struct {
 	ClosedAt    *string `json:"closed_at,omitempty"` // transaction time of the close
 	Status      *string `json:"status,omitempty"`    // nil = accepted, "proposed", "rejected"
 	Trace       *string `json:"trace,omitempty"`
+	Cartridge   *string `json:"cartridge,omitempty"` // annotations: name@version#rules they were made under
 }
 
 type RelationRow struct {

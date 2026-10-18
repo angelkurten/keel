@@ -199,6 +199,7 @@ def consolidate_tenant(
                 store.open_fact(
                     tenant, subject, dst["predicate"], value, valid_from=now, source=f"consolidate:{name}",
                     scope=Scope(dst.get("scope", "tenant")), evidence=evidence, idempotency_key=key, corrected_by=f"job:consolidate:{name}",
+                    cartridge=cartridge.ident,
                 )
             except DuplicateKey:  # another run of the job wrote it first
                 unchanged += 1

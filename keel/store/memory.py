@@ -38,6 +38,7 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
         idempotency_key=kw.get("idempotency_key"),
         status=kw.get("status"),
         trace=kw.get("trace"),
+        cartridge=kw.get("cartridge"),
     )
 
 

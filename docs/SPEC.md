@@ -1,6 +1,6 @@
 # Keel specification
 
-Version 0.25 · 2026-10-18 · Status: normative for the 0.25.x line; anything marked *planned* is not implemented yet.
+Version 0.26 · 2026-10-18 · Status: normative for the 0.26.x line; anything marked *planned* is not implemented yet.
 
 This document is the contract. `CLAUDE.md` says how to work on the code; `README.md` says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.
 
@@ -100,6 +100,7 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. |
 | `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
 | `trace` | string? | The caller's W3C `traceparent` and tool call id at write time (HTTP `traceparent` / `X-Keel-Tool-Call` headers, MCP `_meta`), so a Langfuse or LangSmith trace joins the audit export. |
+| `cartridge` | string? | Annotations and consolidations: the cartridge they were made under, `name@version#rules` (`Cartridge.ident`; the hash covers the rules and the calendar, so a rule edited without bumping `version` still shows). To replay a decision under its rules, check out that cartridge and replay the log. Facts from events leave it empty: the event log is their record. |
 
 **Bitemporal rule.** `open_fact(subject, predicate, value, valid_from)` MUST place the new fact in the predicate's history by `valid_from`: it closes the fact current at that instant (`valid_to = valid_from`) and, when a later fact already exists, closes itself at that fact's start. Arrival order does not change the result (§4). A predicate's history is one slot per memory scope: a fact never closes one of another scope, so a private note does not end a shared diagnosis and a promotion leaves the narrower fact to its own lifetime. Task memory has one slot per task, agent memory one per writing agent, and with `per_source=True` (multi-valued predicates and proposals) one per author. Facts are never mutated or deleted by handlers. The store MAY physically drop facts whose `expires_at` has passed (consolidation, §8).
 
@@ -140,7 +141,7 @@ close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant") ->
     # The tenant default is what a handler means: it never closes agent or task memory.
 ```
 
-`open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, and `per_source` (one history per author, §3.3). A store MUST reject a second fact with the same `idempotency_key` on a subject by raising `DuplicateKey` (carrying the fact already written), atomically, so two writers racing on one key write once; the SQL stores do it with a unique index.
+`open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, `cartridge`, and `per_source` (one history per author, §3.3). A store MUST reject a second fact with the same `idempotency_key` on a subject by raising `DuplicateKey` (carrying the fact already written), atomically, so two writers racing on one key write once; the SQL stores do it with a unique index.
 
 Reads:
 
@@ -423,7 +424,7 @@ Without `kind` and `rule`: case-insensitive substring match over entity keys and
 
 ### 7.4 `annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None, status=None) -> Fact`
 
-Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6); refused for a forgotten tenant (§4). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task or status raises. `status="proposed"` writes a proposal: it never touches accepted facts, waits in `context.proposals`, and needs only some write right (not the right on `scope`), so an agent can propose a tenant fact a person accepts; the evidence policy of `scope` still applies. An accepted write (no `status`) or `status="rejected"` is a decision: it needs the right on `scope` and closes the predicate's open proposals; a rejection is recorded closed at once, in `history` only. Proposals are kept one open per author per predicate, in their own history beside the accepted facts. Store `close_fact` takes `status` so handlers never close proposals. Returns the stored fact including `expires_at`, `status` and `trace`.
+Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6); refused for a forgotten tenant (§4). `source` is `annotate:<agent, or by, or 'agent'>` (`annotate:human:<id>` for a person); `corrected_by` is `by`, else the caller. `task` ties the fact to one job: `history(task=)` and `context(task=)` read it, and closing the task (`store.close_task`, `keel expire --task`) expires its memory at once. `key` makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task or status raises. `status="proposed"` writes a proposal: it never touches accepted facts, waits in `context.proposals`, and needs only some write right (not the right on `scope`), so an agent can propose a tenant fact a person accepts; the evidence policy of `scope` still applies. An accepted write (no `status`) or `status="rejected"` is a decision: it needs the right on `scope` and closes the predicate's open proposals; a rejection is recorded closed at once, in `history` only. Proposals are kept one open per author per predicate, in their own history beside the accepted facts. Store `close_fact` takes `status` so handlers never close proposals. Returns the stored fact including `expires_at`, `status`, `trace` and `cartridge` (the cartridge's `ident`).
 
 ### 7.5 `related(subject, relation=None, as_of=None, depth=1) -> [{relation, direction, subject, since}]`
 

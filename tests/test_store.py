@@ -1156,3 +1156,21 @@ def test_mysql_tables_from_before_0_24_2_get_exact_keys_and_name_what_collided()
     assert s.collided() == [(TENANT, "page:Rendimiento")]
     s.upsert_entity(TENANT, "page", "Rendimiento")  # the source publishes it again
     assert s.collided() == [] and [f.value for f in s.facts(TENANT, "page:Rendimiento")] == ["Rendimiento"]
+
+
+def test_annotations_record_the_cartridge_and_rules_they_were_made_under(store):
+    from keel.consolidate import consolidate_tenant
+
+    c = load_cartridge(FLEET)
+    c.consolidate = {"recurring": {"from": {"predicate": "assessment"}, "applies_to": "tire", "min_count": 2, "reduce": "mode", "into": {"predicate": "recurring_issue"}}}
+    t = _with_notes(store, c, [("slow leak", "a"), ("slow leak", "b")])
+    consolidate_tenant(c, store, TENANT)
+    before = c.ident
+    assert before.startswith("fleet@0.1.0#")
+    facts = store.facts(TENANT, "tire:T-9001")
+    assert {f.cartridge for f in facts if f.predicate in ("assessment", "recurring_issue")} == {before}
+    assert all(f.cartridge is None for f in facts if not (f.source or "").startswith(("annotate:", "consolidate:")))  # from events: the log is their record
+    c.rules["tire_critical"] = {**c.rules["tire_critical"], "description": "edited without bumping version"}
+    assert c.ident != before and c.ident.startswith("fleet@0.1.0#")  # an edited rule shows even at the same version
+    t.annotate("tire:T-9001", "assessment", "replaced", by="c")
+    assert t.history("tire:T-9001", predicate="assessment")[-1]["cartridge"] == c.ident

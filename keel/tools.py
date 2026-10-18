@@ -917,6 +917,7 @@ class Tools:
                 idempotency_key=key,
                 status=status,
                 trace=self.trace,
+                cartridge=self.cartridge.ident,
                 per_source=status is not None or predicate in self.multi,
             )
         except DuplicateKey as dup:  # a concurrent call with the same key wrote first

@@ -199,7 +199,7 @@ codex exec --json "Which tires on unit:MXK-4821 are critical according to the ca
 Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares `agents:`, add `--agent <id>`: the server then reads and writes only what that agent may, and signs its annotations. Agent-scope memory is read only by the agent that wrote it, so a server started without `--agent` reads none.
 
 !!! note "Where is the graph stored?"
-    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use (with `utf8mb4_bin`, so keys compare exactly) and the same conformance suite runs against it in CI. Tables created before 0.25.0 took the server's collation, under which `page:RENDIMIENTO` and `page:Rendimiento` (or `Numero` and `Número`) were one entity; the first start of 0.25.0 converts them, which rewrites each table once, and warns with the subjects that had already collided (`MysqlStore.collided()` lists them): publish those entities again. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
+    In memory with `--events`: the server ingests the stream at start and serves it, which is enough for a demo. For a deployment, pass `--db keel.db` instead: a SQLite file (stdlib, WAL mode) that an ingest process fills while `keel serve` reads it. Or point `--db` at a MySQL or MariaDB you already run: `--db mysql://user:password@host:3306/keel` (`mariadb://` is accepted too; `uv sync --extra mysql`); the tables are created on first use (with `utf8mb4_bin`, so keys compare exactly) and the same conformance suite runs against it in CI. Tables created before 0.26.0 took the server's collation, under which `page:RENDIMIENTO` and `page:Rendimiento` (or `Numero` and `Número`) were one entity; the first start of 0.26.0 converts them, which rewrites each table once, and warns with the subjects that had already collided (`MysqlStore.collided()` lists them): publish those entities again. Sharing the database with your application: `?prefix=keel_` names the tables `keel_entities`, `keel_facts`, and so on. In code, the same option is a constructor argument: `SqliteStore("keel.db", prefix="keel_")`, `MysqlStore.from_url(url, prefix="keel_")` or `MysqlStore(connect, prefix="keel_")`.
 
     ```bash
     uv run keel ingest examples/fleet examples/fleet/events.jsonl --db keel.db   # or adapter.follow() in your own process
@@ -262,21 +262,21 @@ Reads follow the memory scopes. Agent-scope memory is read only by the agent tha
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.25.0`, `0.25`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.26.0`, `0.26`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.25.0
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.26.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment (§ Configuration); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.25.0 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.25.0` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.26.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.26.0` and `COPY cartridges/mine /cartridge`.
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.25.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.26.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Semantic search
 

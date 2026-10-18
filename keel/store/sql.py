@@ -88,12 +88,13 @@ def _fact(row: Any) -> Fact:
         closed_at=_dt(row["closed_at"]),
         status=row["status"],
         trace=row["trace"],
+        cartridge=row["cartridge"],
     )
 
 
 FACT_COLUMNS = (
     "tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
-    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace"
+    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace, cartridge"
 )
 # Two indexed branches, never `a = ? OR b = ?`: without table statistics SQLite plans that OR on the
 # tenant prefix alone and scans the whole tenant, so each read (and ingest) grew with the tenant.
@@ -107,12 +108,12 @@ def _once(rows: list[Any]) -> list[Any]:
     return [r for r in rows if not (r["seq"] in seen or seen.add(r["seq"]))]
 
 
-INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(17))})"
+INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(18))})"
 
 
 def _fact_row(f: Fact) -> tuple[Any, ...]:
     return (f.tenant, f.subject, f.predicate, json.dumps(f.value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
-            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at), f.status, f.trace)
+            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at), f.status, f.trace, f.cartridge)
 
 
 class SqlStore:

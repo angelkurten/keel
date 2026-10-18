@@ -63,6 +63,7 @@ class Fact:
     closed_at: datetime | None = None  # transaction time of the close: when Keel learned valid_to
     status: str | None = None  # None = accepted; "proposed" waits for a decision; "rejected" records one
     trace: str | None = None  # the caller's W3C traceparent / tool call id, joining traces to the audit
+    cartridge: str | None = None  # annotations: the cartridge (name@version#rules) the decision was made under
 
 
 class DuplicateKey(ValueError):

@@ -59,6 +59,8 @@ export type Fact = {
   status?: "proposed" | "rejected" | null;
   /** The caller's traceparent / tool call id at write time. */
   trace?: string | null;
+  /** Annotations: the cartridge they were made under, `name@version#rules` (the hash changes when a rule does). */
+  cartridge?: string | null;
 };
 export type RelationRow = {
   tenant: string;

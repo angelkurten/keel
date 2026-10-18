@@ -50,6 +50,17 @@ class Cartridge:
     consolidate: dict[str, Any] = field(default_factory=dict)  # episodic memory -> durable facts (keel.consolidate)
     version: str | None = None
 
+    @property
+    def ident(self) -> str:
+        """`name@version#rules`: what every annotation records, so a decision can be replayed under the rules
+        it was made with. The hash covers the rules and the calendar they use, so editing a rule without
+        bumping `version` still shows."""
+        import hashlib
+        import json
+
+        rules = json.dumps({"rules": self.rules, "calendar": self.calendar.__dict__}, sort_keys=True, default=str)
+        return f"{self.name}@{self.version or '0'}#{hashlib.sha256(rules.encode()).hexdigest()[:8]}"
+
     def validate(self) -> list[str]:
         problems: list[str] = []
         for rel, spec in self.relations.items():
