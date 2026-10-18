@@ -141,8 +141,8 @@ From research and a labeled eval bench run with real embeddings ([design note](h
 
 From exploring the hosted product ([design note](https://github.com/angelkurten/keel/blob/master/docs/design/hosted.md)). These pieces are pulled forward because they are small and serve self-hosted deployments with several customers too. The hosted launch still waits for its gate.
 
-- [ ] Accounts as a tenant prefix (the account is a slug, at most 32 characters, never renamed): an API key resolves to an account and the server turns `X-Keel-Tenant: t` into `account/t`; a client cannot choose the prefix; the global partition becomes `account/__global__`
-- [ ] API keys in a `keys` table in the store (hash only, optional tenant and agent; only a `--global` key writes `account/__global__`), `keel keys create|list|revoke`; with no keys, the single secret keeps working
+- [x] Accounts as a tenant prefix (the account is a slug, at most 32 characters, never renamed): an API key resolves to an account and the server turns `X-Keel-Tenant: t` into `account/t`; a client cannot choose the prefix; the global partition becomes `account/__global__` (on master, unreleased)
+- [x] API keys in an `api_keys` table in the store (hash only, optional tenant and agent; only a `--global` key writes `account/__global__`), `keel keys create|list|revoke`; with no keys, the single secret keeps working (on master, unreleased)
 - [ ] Metering: `recorded_at` on `ingested` (first applications only, the billing unit), tool calls counted per account, tenant, day and tool (not billed), and `keel usage --month --account`
 - [ ] Retention as a dated forget: `forgets: before` in the catalog and `keel forget <tenant> --before`, a tombstone with the cutoff, deterministic on replay
 

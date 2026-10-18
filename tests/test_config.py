@@ -1,5 +1,6 @@
 """Configuration from a .env file: the CLI reads it, the real environment wins."""
 
+import json
 import os
 
 from typer.testing import CliRunner
@@ -59,3 +60,15 @@ def test_keel_db_reaches_every_command_with_db(tmp_path, monkeypatch):
     for args in (["export"], ["expire"], ["consolidate", cart], ["index", cart, "--index", "memory", "--embedder", "hash"]):
         res = CliRunner().invoke(app, args)
         assert res.exit_code == 0 and "Missing option" not in res.output, (args, res.output)
+
+
+def test_keys_cli(tmp_path):
+    db = str(tmp_path / "k.db")
+    res = CliRunner().invoke(app, ["keys", "create", "acme", "--db", db, "--tenant", "c1"])
+    made = json.loads(res.output)
+    assert res.exit_code == 0 and made["key"].startswith(made["id"]) and made["tenant"] == "c1"
+    listed = CliRunner().invoke(app, ["keys", "list", "--db", db]).output
+    assert made["id"] in listed and made["key"] not in listed  # never printed again
+    assert CliRunner().invoke(app, ["keys", "create", "Bad/Name", "--db", db]).exit_code != 0
+    assert CliRunner().invoke(app, ["keys", "revoke", made["id"], "--db", db]).exit_code == 0
+    assert CliRunner().invoke(app, ["keys", "revoke", made["id"], "--db", db]).exit_code != 0

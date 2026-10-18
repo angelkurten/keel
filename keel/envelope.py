@@ -14,7 +14,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from keel.scopes import GLOBAL_TENANT
+from keel.scopes import is_global
 
 
 def utcnow() -> datetime:
@@ -54,8 +54,8 @@ class Event(BaseModel):
     @field_validator("tenant")
     @classmethod
     def _not_global(cls, v: str) -> str:
-        if v == GLOBAL_TENANT:
-            raise ValueError(f"tenant '{GLOBAL_TENANT}' is reserved for global-scope memory; events never write it")
+        if is_global(v):
+            raise ValueError(f"tenant '{v}' is reserved for global-scope memory; events never write it")
         return v
 
     @field_validator("subject")

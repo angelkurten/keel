@@ -1,6 +1,6 @@
 # Design note: hosted Keel
 
-Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Nothing here is implemented yet.
+Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed, on master and not yet released (`keel/keys.py`, `keel keys`); the rest is not implemented yet.
 
 ## Problem
 
@@ -41,7 +41,7 @@ Envelopes posted to `/v1/ingest` go through the same rule: their `tenant` is pre
 
 ### Keys
 
-A new table, `keys`, sits in the same store, so there is one backup and rotation needs no restart:
+A new table, `api_keys` (`KEYS` is reserved in MySQL), sits in the same store, so there is one backup and rotation needs no restart:
 
 | column | meaning |
 |---|---|
@@ -53,7 +53,7 @@ A new table, `keys`, sits in the same store, so there is one backup and rotation
 | `global` | true for the account's privileged key: the only one that may `annotate(scope="global")`, and only into `account/__global__` |
 | `created_at`, `revoked_at` | when it was issued and when it stopped working |
 
-`keel keys create <account> [--tenant] [--agent] [--global]`, `keel keys list <account>` and `keel keys revoke <id>` manage the table. The middleware looks a key up by hash, refuses revoked ones, and caches lookups for a few seconds. When the table is empty, the single secret of today keeps working, so nothing changes for anyone who never creates a key.
+`keel keys create <account> [--tenant] [--agent] [--global]`, `keel keys list <account>` and `keel keys revoke <id>` manage the table. The middleware looks a key up by hash, refuses revoked ones, and caches lookups for a few seconds. When the table is empty, the single secret of today keeps working, so nothing changes for anyone who never creates a key. Once keys exist, the secret stays the operator's credential: it reaches every tenant by its full name.
 
 ### Metering
 

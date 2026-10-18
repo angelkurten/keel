@@ -205,3 +205,66 @@ def test_a_rate_limited_embedder_is_503_with_retry_after_and_keys_list_cheaply()
     keys = client.post("/v1/search", json={"kind": "tire", "detail": "key"}, headers=h).json()
     assert keys and all(isinstance(k, str) and k.startswith("tire:") for k in keys)
     assert client.post("/v1/search", json={"kind": "tire", "detail": "key", "depth": 1}, headers=h).status_code == 400
+
+
+def test_api_keys_confine_an_account():
+    from keel.keys import create_key
+
+    c = load_cartridge(FLEET)
+    store = MemoryStore()
+    acme, _ = create_key(store, "acme")
+    narrow, _ = create_key(store, "acme", tenant="c1")
+    admin, _ = create_key(store, "acme", glob=True)
+    zeta, _ = create_key(store, "zeta")
+    client = _client(c, store)
+    bearer = lambda k, t=None: {"Authorization": f"Bearer {k}", **({"X-Keel-Tenant": t} if t else {})}
+    from pathlib import Path
+
+    lines = [json.loads(line) for line in Path(EVENTS).read_text(encoding="utf-8").splitlines() if line.strip() and not line.startswith("#")]
+    for e in lines:
+        e["tenant"] = "c1"
+    assert client.post("/v1/events", json=lines, headers=bearer(acme)).json()["processed"] == 12
+    assert store.tenants() == ["acme/c1"]  # the server prefixed the account
+    tire = {"subject": "tire:T-9001"}
+    assert client.post("/v1/context", json=tire, headers=bearer(acme, "c1")).json()["evaluation"] == {"tire_critical": True}
+    assert client.post("/v1/context", json=tire, headers=bearer(narrow)).json()["entity"] is not None  # its tenant is fixed
+    assert client.post("/v1/context", json=tire, headers=bearer(narrow, "c2")).status_code == 403
+    assert client.post("/v1/context", json=tire, headers=bearer(zeta, "c1")).json()["entity"] is None  # zeta/c1, empty
+    assert client.post("/v1/context", json=tire, headers=bearer(acme, "zeta/c1")).status_code == 400  # no choosing the prefix
+    assert client.post("/v1/events", json=lines, headers=bearer(narrow, "c1")).json()["duplicates"] == 12
+    for e in lines:
+        e["tenant"] = "c2"
+    assert client.post("/v1/events", json=lines, headers=bearer(narrow)).status_code == 403
+    assert client.post("/v1/context", json=tire, headers={**AUTH, "X-Keel-Tenant": "acme/c1"}).json()["entity"] is not None  # the operator
+    assert client.post("/v1/context", json=tire, headers=bearer("kk_nope_x", "c1")).status_code == 401
+    note = {**tire, "predicate": "glossary", "value": "a tire under 3 mm is critical", "scope": "global", "evidence": "manual"}
+    assert client.post("/v1/annotate", json=note, headers=bearer(acme, "c1")).status_code == 403
+    assert client.post("/v1/annotate", json=note, headers=bearer(admin, "c1")).status_code == 200
+    assert [f.value for f in store.facts("acme/__global__", "tire:T-9001")] == ["a tire under 3 mm is critical"]
+    store.upsert_entity("zeta/c1", "tire", "T-9001")
+    seen = lambda k: [f["value"] for f in client.post("/v1/history", json={**tire, "predicate": "glossary"}, headers=bearer(k, "c1")).json()]
+    assert seen(acme) == ["a tire under 3 mm is critical"] and seen(zeta) == []  # global memory stays in its account
+
+
+def test_first_key_closes_an_open_server():
+    from keel.http import _Auth
+    from keel.keys import create_key
+
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from keel.http import build_http_app
+
+    store = MemoryStore()
+    client = TestClient(build_http_app(load_cartridge(FLEET), store))  # no secret: open
+    h = {"X-Keel-Tenant": TENANT}
+    assert client.post("/v1/context", json={"subject": "unit:X"}, headers=h).status_code == 200
+    full, key = create_key(store, "acme")
+    client = TestClient(build_http_app(load_cartridge(FLEET), store))
+    assert client.post("/v1/context", json={"subject": "unit:X"}, headers=h).status_code == 401
+    assert client.post("/v1/context", json={"subject": "unit:X"}, headers={**h, "Authorization": f"Bearer {full}"}).status_code == 200
+    # /mcp is bound to one tenant: a key reaches it only when that tenant is its account's
+    auth = lambda t, a=None: _Auth(None, None, store, t, a)
+    assert auth("acme/c1")._binds(key) and not auth("zeta/c1")._binds(key) and not auth("c1")._binds(key)
+    _, bot = create_key(store, "acme", tenant="c1", agent="bot")
+    assert auth("acme/c1", "bot")._binds(bot) and not auth("acme/c2", "bot")._binds(bot) and not auth("acme/c1")._binds(bot)

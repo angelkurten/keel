@@ -22,7 +22,7 @@ from keel.agents import resolve
 from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
 from keel.rules import Calendar, evaluate
-from keel.scopes import GLOBAL_TENANT, Scope
+from keel.scopes import Scope, global_of, is_global
 from keel.semantic import (
     accepts,
     as_text,
@@ -263,9 +263,10 @@ class Tools:
     ) -> None:
         self.cartridge = cartridge
         self.store = store
-        if tenant == GLOBAL_TENANT:
-            raise ValueError(f"tenant '{GLOBAL_TENANT}' is reserved for global-scope memory")
+        if is_global(tenant):
+            raise ValueError(f"tenant '{tenant}' is reserved for global-scope memory")
         self.tenant = tenant  # tools are always scoped to one end-customer
+        self.glob = global_of(tenant)  # the global partition this tenant reads: its account's, when it has one
         self.agent_id = agent  # who is calling; the host decides, Keel records
         self.agent = resolve(cartridge.agents, agent)  # the spec to enforce; None when the cartridge declares no agents
         # the author this caller writes as, and the only one whose agent-scope memory it reads
@@ -304,7 +305,7 @@ class Tools:
     def _fetch(self, subject: str, task: str | None = None, **kw: Any) -> list[Fact]:
         """A subject's facts in this tenant plus the global partition's, as this caller may see them."""
         # ponytail: one extra indexed lookup per subject read; a has-global flag if it ever shows in profiles
-        glob = [f for f in self.store.facts(GLOBAL_TENANT, subject, **kw) if f.scope == Scope.GLOBAL]
+        glob = [f for f in self.store.facts(self.glob, subject, **kw) if f.scope == Scope.GLOBAL]
         facts = self.store.facts(self.tenant, subject, **kw)
         if glob:
             facts = sorted(facts + glob, key=lambda f: f.valid_from)
@@ -316,7 +317,7 @@ class Tools:
         many = getattr(self.store, "facts_of", None)
         if many is None:
             return {s: self._fetch(s, task, **kw) for s in subjects}
-        mine, glob = many(self.tenant, subjects, **kw), many(GLOBAL_TENANT, subjects, **kw)
+        mine, glob = many(self.tenant, subjects, **kw), many(self.glob, subjects, **kw)
         out = {}
         for s in subjects:
             g = [f for f in glob.get(s, []) if f.scope == Scope.GLOBAL]
@@ -330,7 +331,7 @@ class Tools:
 
     def _watermark(self) -> datetime | None:
         wm = getattr(self.store, "watermark", None)
-        marks = [m for m in (wm(self.tenant), wm(GLOBAL_TENANT)) if m is not None] if wm else []
+        marks = [m for m in (wm(self.tenant), wm(self.glob)) if m is not None] if wm else []
         return max(marks) if marks else None
 
     def _rules_for(self, subject: str) -> dict[str, Any]:
@@ -465,7 +466,7 @@ class Tools:
         if subject is None:
             if changed_since is None:
                 raise ValueError("history needs a subject, or changed_since for the whole tenant")
-            facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(GLOBAL_TENANT, changed_since) if f.scope == Scope.GLOBAL], changed_since)
+            facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(self.glob, changed_since) if f.scope == Scope.GLOBAL], changed_since)
             facts = [f for f in facts if self._sees(f, task)]
             if self.agent:
                 facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
@@ -681,7 +682,7 @@ class Tools:
         if mode == "semantic":
             return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, graph, where, vector)
         if kind is None and rule is None:
-            hits = self.store.search(self.tenant, text) + [h for h in self.store.search(GLOBAL_TENANT, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
+            hits = self.store.search(self.tenant, text) + [h for h in self.store.search(self.glob, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
             hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
             if self.agent:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
@@ -887,7 +888,7 @@ class Tools:
         if self.agent and status != "proposed" and not self.agent.can_write(sc):
             raise PermissionError(f"agent '{self.agent.id}' may not write scope '{sc.value}'")
         self.cartridge.policy.check_write(sc, evidence)
-        part = GLOBAL_TENANT if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
+        part = self.glob if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
 
         def replayed(f: Fact) -> dict[str, Any]:
             if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):

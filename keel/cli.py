@@ -1,4 +1,4 @@
-"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, consolidate, export, index, context, serve."""
+"""keel CLI: init, validate, schema, sdk, ingest, replay, expire, consolidate, export, index, context, serve, keys."""
 
 from __future__ import annotations
 
@@ -449,6 +449,55 @@ def forget(
     typer.echo(json.dumps({"tenant": tenant, "forgotten_at": store.forgotten(tenant).isoformat(), **counts, "index": bool(index)}))
 
 
+keys_app = typer.Typer(help="API keys: one account per SaaS on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
+app.add_typer(keys_app, name="keys")
+KEYS_DB = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file or a mysql:// URL.")
+
+
+def _key_row(k: Any) -> dict[str, Any]:
+    return {"id": k.id, "account": k.account, "tenant": k.tenant, "agent": k.agent, "global": k.glob,
+            "created_at": k.created_at.isoformat(), "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None}
+
+
+@keys_app.command("create")
+def keys_create(
+    account: str = typer.Argument(..., help="The account: lowercase letters, digits and hyphens, at most 32. Created with its first key.", show_default=False),
+    db: str = KEYS_DB,
+    tenant: str | None = typer.Option(None, "--tenant", help="Only this tenant of the account."),
+    agent: str | None = typer.Option(None, "--agent", help="Calls are made as this agent (the cartridge's registry applies)."),
+    glob: bool = typer.Option(False, "--global", help="The account's privileged key: the only one that may annotate(scope=\"global\")."),
+):
+    """Create a key. Prints it once, as JSON with the record; only its hash is stored. The first key makes the server
+    require a key or the secret on every call."""
+    from keel.keys import create_key
+
+    try:
+        full, key = create_key(_store(db), account, tenant, agent, glob)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps({"key": full, **_key_row(key)}))
+
+
+@keys_app.command("list")
+def keys_list(
+    account: str | None = typer.Argument(None, help="Only this account's keys.", show_default=False),
+    db: str = KEYS_DB,
+):
+    """List keys as JSON lines, revoked ones included. Never prints a key, only its id."""
+    for k in _store(db).api_keys(account):
+        typer.echo(json.dumps(_key_row(k)))
+
+
+@keys_app.command("revoke")
+def keys_revoke(key_id: str = typer.Argument(..., help="The key's id (kk_...).", show_default=False), db: str = KEYS_DB):
+    """Revoke a key. Running servers stop accepting it within a few seconds."""
+    from keel.keys import revoke_key
+
+    if not revoke_key(_store(db), key_id):
+        raise typer.BadParameter(f"no live key '{key_id}'")
+    typer.echo(json.dumps({"id": key_id, "revoked": True}))
+
+
 def _index_cursor(index: str, tenant: str) -> Path:
     """Next to a persistent Chroma (its volume), else under .keel in the working directory."""
     from urllib.parse import urlparse
@@ -539,9 +588,11 @@ def serve(
     if transport != "http":
         raise typer.BadParameter("stdio or http", param_hint="--transport")
     secret = os.environ.get(secret_env)
-    if not secret and not _loopback(host) and not allow_open:
+    from keel.keys import has_keys
+
+    if not secret and not _loopback(host) and not allow_open and not has_keys(store):  # keys close the server too
         raise typer.BadParameter(
-            f"{secret_env} is unset and {host} is reachable from the network: set the secret, bind 127.0.0.1, "
+            f"{secret_env} is unset, no API key exists and {host} is reachable from the network: set the secret, create a key, bind 127.0.0.1, "
             "or pass --allow-open if your own proxy authenticates", param_hint="--host",
         )
     if bool(certfile) != bool(keyfile):

@@ -35,7 +35,10 @@ class SqliteStore(SqlStore):
     CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
     CREATE INDEX IF NOT EXISTS facts_recorded ON facts (tenant, recorded_at);
     CREATE TABLE IF NOT EXISTS ingested (tenant TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (tenant, id));
-    CREATE TABLE IF NOT EXISTS forgotten (tenant TEXT NOT NULL PRIMARY KEY, at TEXT NOT NULL)
+    CREATE TABLE IF NOT EXISTS forgotten (tenant TEXT NOT NULL PRIMARY KEY, at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT NOT NULL PRIMARY KEY, hash TEXT NOT NULL UNIQUE, account TEXT NOT NULL, tenant TEXT, agent TEXT,
+      glob INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, revoked_at TEXT)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "

@@ -20,6 +20,17 @@ from enum import Enum
 GLOBAL_TENANT = "__global__"  # the partition global-scope facts live in; every tenant reads it, no event writes it
 
 
+def global_of(tenant: str) -> str:
+    """The global partition a tenant reads. A tenant `account/t` (hosted: the server prefixes the
+    account, docs/design/hosted.md) reads `account/__global__`; any other tenant reads `__global__`."""
+    account, sep, _ = tenant.partition("/")
+    return f"{account}/{GLOBAL_TENANT}" if sep else GLOBAL_TENANT
+
+
+def is_global(tenant: str) -> bool:
+    return tenant == GLOBAL_TENANT or tenant.endswith(f"/{GLOBAL_TENANT}")
+
+
 class Scope(str, Enum):
     GLOBAL = "global"
     TENANT = "tenant"

@@ -13,16 +13,23 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     GET  /openapi.json, /health
     GET  /ui           with ui=True (`keel serve --ui`): a read-only browser over the same API
 
-Every request carries `Authorization: Bearer <secret>` (unset secret = open: localhost only),
-`X-Keel-Tenant`, and `X-Keel-Agent` when the cartridge declares agents. The product
-authenticates its users and sets the two headers; Keel takes them as given (SPEC §6.1) and
+Every request carries `Authorization: Bearer <secret>` (unset secret and no API keys = open:
+localhost only), `X-Keel-Tenant`, and `X-Keel-Agent` when the cartridge declares agents. The
+product authenticates its users and sets the two headers; Keel takes them as given (SPEC §6.1) and
 builds a `Tools` per request, so nothing is shared across tenants. A refusal is a 403 with
 its reason; bad input is a 400; a malformed envelope is a 422.
+
+API keys (`keel keys create`, keel/keys.py) serve several SaaS products from one deployment: the
+bearer is a key of one account, and the tenant becomes `account/<X-Keel-Tenant>` (envelopes posted to
+/v1/events likewise), so a key never reaches another account. A key narrowed to a tenant or an agent
+fixes that header; only a global key may annotate(scope="global"). The shared secret stays the
+operator's credential and reaches every tenant unprefixed.
 """
 
 # no `from __future__ import annotations` here: FastAPI resolves the request models defined inside
 # build_http_app from real annotations, not strings.
 import hmac
+import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
@@ -30,6 +37,7 @@ from typing import Any
 from keel.cartridge import Cartridge
 from keel.envelope import Event, parse_iso
 from keel.ingest import Ingestor
+from keel.keys import check_tenant, has_keys, resolve
 from keel.semantic import Unavailable
 from keel.store.base import Store
 from keel.tools import Tools
@@ -37,22 +45,46 @@ from keel.tools import Tools
 OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui holds no data; its calls carry the secret
 
 
-class _Bearer:
-    """ASGI middleware: one shared secret for every path but the open ones. Raw ASGI so that MCP's
-    streaming responses pass through untouched."""
+class _Auth:
+    """ASGI middleware for every path but the open ones: the shared secret (the operator), or an API key
+    (one account), whose record goes to the endpoints in `scope["state"]["key"]`. With neither a secret
+    nor any key the server is open, as before keys existed. Raw ASGI so that MCP's streaming responses
+    pass through untouched. `/mcp` is bound to one tenant: a key reaches it only if that tenant is its own."""
 
-    def __init__(self, app: Any, secret: str | None) -> None:
-        self.app, self.secret = app, secret
+    def __init__(self, app: Any, secret: str | None, store: Store, mcp_tenant: str | None, mcp_agent: str | None) -> None:
+        self.app, self.secret, self.store = app, secret, store
+        self.mcp_tenant, self.mcp_agent = mcp_tenant, mcp_agent
+        self._keyed: tuple[float, bool] = (-1e9, False)
+
+    def keyed(self) -> bool:
+        """Whether any key exists, re-read every few seconds: the first `keel keys create` closes an open server."""
+        if time.monotonic() - self._keyed[0] > 5:
+            self._keyed = (time.monotonic(), has_keys(self.store))
+        return self._keyed[1]
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
-        if scope["type"] == "http" and self.secret and scope["path"] not in OPEN_PATHS:
-            given = dict(scope["headers"]).get(b"authorization", b"").decode()
-            if not hmac.compare_digest(given, f"Bearer {self.secret}"):
-                from starlette.responses import JSONResponse
+        if scope["type"] == "http" and scope["path"] not in OPEN_PATHS:
+            from starlette.responses import JSONResponse
 
+            given = dict(scope["headers"]).get(b"authorization", b"").decode()
+            token = given.removeprefix("Bearer ") if given.startswith("Bearer ") else ""
+            key = None
+            if self.secret and hmac.compare_digest(given, f"Bearer {self.secret}"):
+                pass  # the operator
+            elif token.startswith("kk_") and (key := resolve(self.store, token)) is not None:
+                if scope["path"].startswith("/mcp") and not self._binds(key):
+                    await JSONResponse({"detail": "this key does not reach the tenant /mcp is bound to"}, status_code=403)(scope, receive, send)
+                    return
+                scope.setdefault("state", {})["key"] = key
+            elif self.secret or self.keyed():
                 await JSONResponse({"detail": "bad or missing bearer token"}, status_code=401)(scope, receive, send)
                 return
         await self.app(scope, receive, send)
+
+    def _binds(self, key: Any) -> bool:
+        account, _, tenant = (self.mcp_tenant or "").partition("/")
+        return (account == key.account and bool(tenant) and key.tenant in (None, tenant)
+                and key.agent in (None, self.mcp_agent))
 
 
 def build_http_app(
@@ -98,14 +130,37 @@ def build_http_app(
     app = FastAPI(title=f"keel:{cartridge.name}", version="1", lifespan=lifespan)
     ingestor = Ingestor(cartridge, store)
 
-    def tools_for(request: Request) -> Tools:
-        t = request.headers.get("x-keel-tenant") or tenant
+    def key_of(request: Request) -> Any:
+        return request.scope.get("state", {}).get("key")
+
+    def scoped(key: Any, t: str | None) -> str:
+        """The tenant a key's request is about: its own tenant, or the header's, under its account."""
+        t = t or key.tenant
         if not t:
             raise HTTPException(400, "X-Keel-Tenant header required")
+        if key.tenant is not None and t != key.tenant:
+            raise HTTPException(403, f"this key reaches only tenant '{key.tenant}'")
+        try:
+            return f"{key.account}/{check_tenant(t)}"
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    def tools_for(request: Request) -> Tools:
+        key, who = key_of(request), request.headers.get("x-keel-agent")
+        if key is not None:
+            t = scoped(key, request.headers.get("x-keel-tenant"))
+            if key.agent is not None and who not in (None, key.agent):
+                raise HTTPException(403, f"this key calls as agent '{key.agent}'")
+            who = key.agent or who
+        else:
+            t = request.headers.get("x-keel-tenant") or tenant
+            who = who or agent
+            if not t:
+                raise HTTPException(400, "X-Keel-Tenant header required")
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, store, t, request.headers.get("x-keel-agent") or agent, trace=trace, embedder=embedder, index=index, reranker=reranker)
+            return Tools(cartridge, store, t, who, trace=trace, embedder=embedder, index=index, reranker=reranker)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -187,9 +242,12 @@ def build_http_app(
         t = request.headers.get("x-keel-tenant")
         if t and any(e.tenant != t for e in batch):
             raise HTTPException(400, f"every envelope must belong to tenant '{t}'")
+        key = key_of(request)
+        if key is not None:  # the account's own tenants, prefixed like every read
+            batch = [e.model_copy(update={"tenant": scoped(key, e.tenant)}) for e in batch]
         report = ingestor.ingest(batch, batch=len(batch))
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
-                "forgotten": [{"tenant": t, **n} for t, n in report.forgotten], "skipped": report.skipped}
+                "forgotten": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, **n} for t, n in report.forgotten], "skipped": report.skipped}
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> Any:
@@ -208,6 +266,8 @@ def build_http_app(
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
+        if body.scope == "global" and (key := key_of(request)) is not None and not key.glob:
+            raise HTTPException(403, "only the account's global key may write global memory (keel keys create --global)")
         return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key, body.status))
 
     @app.post("/v1/related")
@@ -227,4 +287,4 @@ def build_http_app(
 
     if mcp_app is not None:
         app.mount("/", mcp_app)
-    return _Bearer(app, secret)
+    return _Auth(app, secret, store, tenant, agent)

@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlparse
 
-from keel.scopes import GLOBAL_TENANT, Scope
+from keel.scopes import Scope, global_of
 from keel.store.base import Store
 
 
@@ -414,7 +414,7 @@ def render(store: Store, tenant: str, subject: str, policy: dict[str, Any] | Non
     now = datetime.now(timezone.utc)
     ent = store.entity(tenant, subject)
     facts = [f for f in store.facts(tenant, subject, at=now) if f.status is None and f.scope in INDEXED_SCOPES]
-    facts += [f for f in store.facts(GLOBAL_TENANT, subject, at=now) if f.status is None and f.scope == Scope.GLOBAL]
+    facts += [f for f in store.facts(global_of(tenant), subject, at=now) if f.status is None and f.scope == Scope.GLOBAL]
     if "predicates" in policy:
         facts = [f for f in facts if f.predicate in policy["predicates"]]
     facts = [f for f in facts if f.predicate not in (policy.get("exclude") or [])]
@@ -453,7 +453,7 @@ def split_docs(store: Store, tenant: str, subject: str, policy: dict[str, Any] |
     preds = set(((policy or {}).get("split") or {}).get(subject.split(":", 1)[0]) or ())
     if not preds:
         return [], set()
-    history = store.facts(tenant, subject) + [f for f in store.facts(GLOBAL_TENANT, subject) if f.scope == Scope.GLOBAL]
+    history = store.facts(tenant, subject) + [f for f in store.facts(global_of(tenant), subject) if f.scope == Scope.GLOBAL]
     key = lambda f, v: f"{subject}{SPLIT}{f.predicate}{SPLIT}{value_hash(v)}"
     parts = lambda f: f.value if isinstance(f.value, list) and f.value else [f.value]
     # the whole value's key too: a list indexed as one document before 0.20 is deleted when it changes
@@ -491,7 +491,7 @@ def index_tenant(
     if forgotten and forgotten(tenant) is not None:  # erased (Store.forget): its documents go too
         index.clear(tenant)
         return IndexReport(indexed=0, deleted=0, cursor=None)
-    marks = [m for m in (store.watermark(tenant), store.watermark(GLOBAL_TENANT)) if m is not None]
+    marks = [m for m in (store.watermark(tenant), store.watermark(global_of(tenant))) if m is not None]
     cursor = max(marks) if marks else None
     # global memory is every tenant's: a global fact re-indexes the subject where this tenant knows it
     known = lambda s: store.entity(tenant, s) is not None or bool(store.facts(tenant, s))
@@ -500,7 +500,7 @@ def index_tenant(
         subjects = sorted({e.key for e in store.entities(tenant)} | {f.subject for f in store.changes(tenant, EPOCH)})
     else:
         changed = {f.subject for f in store.changes(tenant, since)}
-        changed |= {f.subject for f in store.changes(GLOBAL_TENANT, since) if known(f.subject)}
+        changed |= {f.subject for f in store.changes(global_of(tenant), since) if known(f.subject)}
         if (policy or {}).get("relations"):
             for r in store.relation_changes(tenant, since):
                 changed |= {r.src, r.dst}

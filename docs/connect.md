@@ -12,7 +12,7 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 | `KEEL_TENANT` | every command that takes a tenant; `serve` (`--tenant`) | the default tenant; with `serve --transport http` it is used when `X-Keel-Tenant` is absent |
 | `KEEL_AGENT` | `serve`, `context`... (`--agent`) | the declared agent acting here |
 | `KEEL_CERTFILE`, `KEEL_KEYFILE` | `serve --transport http` | TLS certificate and key (PEM) to serve https (`--certfile`, `--keyfile`) |
-| `KEEL_SECRET` | `serve --transport http` | the shared bearer secret (`--secret-env` names another variable) |
+| `KEEL_SECRET` | `serve --transport http` | the shared bearer secret, the operator's credential (`--secret-env` names another variable); per-account API keys: `keel keys` |
 | `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
 | `KEEL_INDEX_CURSOR`, `KEEL_INDEX_WORKERS` | `index` | where the cursor of the last run is kept (on a volume) and how many embedding batches go out at once (`--cursor`, `--workers`) |
 | `KEEL_EMBEDDINGS_BASE_URL`, `_MODEL`, `_API_KEY`, `_QUERY_PREFIX`, `_DOCUMENT_PREFIX` | `--embedder openai` | any OpenAI-compatible `/v1/embeddings` endpoint |
@@ -217,7 +217,7 @@ For a backend, or for many tenants from one process, serve the same five operati
 KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --db keel.db --host 0.0.0.0 --port 8000
 ```
 
-The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset, the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
+The secret is read from `KEEL_SECRET`; `--secret-env OTHER_VAR` reads it from another variable. If the variable is unset and the store holds no API key (below), the server starts open only on a loopback host (`127.0.0.1`, the default, `::1` or `localhost`), with a warning. On any other `--host` it refuses to start unless you pass `--allow-open`, for when your own proxy authenticates every request.
 
 **Browse the graph.** `--ui` also serves a read-only page at `/ui`: search a tenant, open a subject's context (optionally `as of` a past instant, with its rules evaluated), click a predicate for its history, and explore the graph: a force layout of the subject's neighbours up to 3 hops, where node size follows links, labels fade in as you zoom, hovering highlights a node's neighbours and a click opens a node and adds its own neighbours (wheel to zoom, drag to pan or move a node, double click to fit; up to 3,000 nodes). The page holds no data; it asks for the secret, the tenant and, when the cartridge declares agents, the agent, keeps them for the browser tab only, and reads through the same `/v1` API, so every scope and registry rule applies. Off by default.
 
@@ -258,7 +258,22 @@ curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Kee
   -H "Content-Type: application/json" -d '{"subject": "tire:T-9001"}'
 ```
 
-Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send `X-Keel-Agent` to read your own). Task-scope memory tied to a task id is read only by calls that pass that `task` (`history`'s `task` is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, `__global__`, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name.
+Reads follow the memory scopes. Agent-scope memory is read only by the agent that wrote it (send `X-Keel-Agent` to read your own). Task-scope memory tied to a task id is read only by calls that pass that `task` (`history`'s `task` is an exact filter); task-scope memory with no task id belongs to the tenant. Global-scope memory lives in a reserved partition, `__global__`, that every tenant reads and no event may write; neither a tool call nor an envelope may use that tenant name. A tenant of an account (`acme/t`, see below) reads `acme/__global__` instead.
+
+### Several SaaS products on one deployment: accounts and API keys
+
+One server can serve several products, each confined to its own data. An account is one product (a short slug: lowercase letters, digits and hyphens, at most 32 characters); its tenants are its end-customers. An API key belongs to one account, and the server puts the account in front of the tenant: `X-Keel-Tenant: cliente-42` with a key of `acme` reads and writes the tenant `acme/cliente-42`, and envelopes posted to `/v1/events` are prefixed the same way. A tenant sent with a `/` is refused, so a key cannot reach another account.
+
+```bash
+uv run keel keys create acme --db keel.db                         # any tenant of acme
+uv run keel keys create acme --db keel.db --tenant cliente-42     # only that tenant (the header may be left out)
+uv run keel keys create acme --db keel.db --agent tires-bot       # calls are made as that agent
+uv run keel keys create acme --db keel.db --global                # the only key that may annotate(scope="global")
+uv run keel keys list acme --db keel.db                           # JSON lines; never prints a key again
+uv run keel keys revoke kk_3f9a1c2b7d4e --db keel.db              # refused by running servers within seconds
+```
+
+`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design and what comes next (metering, quotas): `docs/design/hosted.md`.
 
 ## Run it in a container
 

@@ -1174,3 +1174,28 @@ def test_annotations_record_the_cartridge_and_rules_they_were_made_under(store):
     assert c.ident != before and c.ident.startswith("fleet@0.1.0#")  # an edited rule shows even at the same version
     t.annotate("tire:T-9001", "assessment", "replaced", by="c")
     assert t.history("tire:T-9001", predicate="assessment")[-1]["cartridge"] == c.ident
+
+
+def test_api_keys_and_account_global_partitions(store):
+    from keel.keys import create_key, resolve, revoke_key
+    from keel.scopes import global_of
+
+    full, key = create_key(store, "acme", tenant="c1", agent="bot")
+    assert full.startswith(key.id + "_") and key.hash != full  # only the hash is kept
+    got = resolve(store, full)
+    assert (got.account, got.tenant, got.agent, got.glob) == ("acme", "c1", "bot", False)
+    create_key(store, "zeta", glob=True)
+    assert [k.account for k in store.api_keys()] == ["acme", "zeta"] and [k.id for k in store.api_keys("acme")] == [key.id]
+    assert revoke_key(store, key.id) and not revoke_key(store, key.id)
+    assert resolve(store, full) is None and store.api_keys("acme")[0].revoked_at is not None
+    with pytest.raises(ValueError):
+        create_key(store, "Acme/x")
+    with pytest.raises(ValueError):
+        create_key(store, "acme", tenant="a/b")
+    # an account's tenants read its own global partition; tenants without an account read __global__
+    assert (global_of("acme/c1"), global_of("plain")) == ("acme/__global__", "__global__")
+    store.upsert_entity("acme/c1", "unit", "U1")
+    store.upsert_entity("acme/__global__", "unit", "U1")
+    assert store.tenants() == ["acme/c1"]
+    with pytest.raises(ValueError):
+        store.forget("acme/__global__")

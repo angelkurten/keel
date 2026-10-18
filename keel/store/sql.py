@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from keel.envelope import Event, utcnow
-from keel.scopes import GLOBAL_TENANT, Scope
-from keel.store.base import DuplicateKey, Entity, Fact, Relation
+from keel.scopes import Scope, is_global
+from keel.store.base import ApiKey, DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
     changed_after,
     filter_facts,
@@ -123,7 +123,7 @@ class SqlStore:
     REMEMBER = ""  # (tenant, id); insert or ignore
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -585,7 +585,7 @@ class SqlStore:
 
     def forget(self, tenant: str) -> dict[str, int]:
         """Erase the tenant and leave a tombstone, in one transaction (Store protocol). Idempotent."""
-        if tenant == GLOBAL_TENANT:
+        if is_global(tenant):
             raise ValueError("the global partition is every tenant's; it cannot be forgotten")
         if self._bulk is not None:
             raise RuntimeError("forget inside a bulk batch would be undone by its flush")
@@ -606,7 +606,7 @@ class SqlStore:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
         # ponytail: DISTINCT over the (tenant, ...) indexes; a tenants table if it ever shows in a profile
         rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts")
-        return sorted({r["tenant"] for r in rows} - {GLOBAL_TENANT})
+        return sorted(t for t in {r["tenant"] for r in rows} if not is_global(t))
 
     def forgotten(self, tenant: str) -> datetime | None:
         row = self._one("SELECT at FROM forgotten WHERE tenant = ?", (tenant,))
@@ -614,6 +614,25 @@ class SqlStore:
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return {r["tenant"]: _dt(r["at"]) for r in self._rows("SELECT tenant, at FROM forgotten")}
+
+    # ---- API keys (keel/keys.py): not tenant data, so forget and reset leave them ----
+
+    def put_key(self, key: ApiKey) -> None:
+        self._exec(
+            "INSERT INTO api_keys (id, hash, account, tenant, agent, glob, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (key.id, key.hash, key.account, key.tenant, key.agent, int(key.glob), _ts(key.created_at), _ts(key.revoked_at)),
+        )
+
+    def api_key(self, digest: str) -> ApiKey | None:
+        row = self._one("SELECT * FROM api_keys WHERE hash = ?", (digest,))
+        return _key(row) if row else None
+
+    def api_keys(self, account: str | None = None) -> list[ApiKey]:
+        where, params = (" WHERE account = ?", (account,)) if account is not None else ("", ())
+        return [_key(r) for r in self._rows(f"SELECT * FROM api_keys{where} ORDER BY account, created_at", params)]
+
+    def revoke_key(self, key_id: str, at: datetime) -> bool:
+        return self._exec("UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", (_ts(at), key_id)) > 0
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With
@@ -624,6 +643,11 @@ class SqlStore:
         self._exec(f"DELETE FROM facts WHERE tenant = ?{keep}", (tenant, "annotate:%", "consolidate:%") if keep_annotations else (tenant,))
         if self._cache is not None:
             self._cache.clear()
+
+
+def _key(row: Any) -> ApiKey:
+    return ApiKey(id=row["id"], hash=row["hash"], account=row["account"], created_at=_dt(row["created_at"]), tenant=row["tenant"],
+                  agent=row["agent"], glob=bool(row["glob"]), revoked_at=_dt(row["revoked_at"]))
 
 
 def _in(n: int) -> str:

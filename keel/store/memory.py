@@ -15,8 +15,8 @@ from datetime import datetime
 from typing import Any
 
 from keel.envelope import utcnow
-from keel.scopes import GLOBAL_TENANT, Scope
-from keel.store.base import DuplicateKey, Entity, Fact, Relation
+from keel.scopes import Scope, is_global
+from keel.store.base import ApiKey, DuplicateKey, Entity, Fact, Relation
 
 # ---- shared by every store: build a fact, filter rows the bitemporal way, search ---------
 
@@ -164,6 +164,7 @@ class MemoryStore:
         self._tx: list[tuple[str, str]] | None = None
         self._watermark: dict[str, datetime] = {}  # tenant -> latest recorded_at or closed_at
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
+        self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
 
     def _mark(self, tenant: str, t: datetime | None) -> None:
         if t is not None and (tenant not in self._watermark or t > self._watermark[tenant]):
@@ -323,7 +324,7 @@ class MemoryStore:
 
     def forget(self, tenant: str) -> dict[str, int]:
         """Erase the tenant and leave a tombstone (Store protocol). Idempotent."""
-        if tenant == GLOBAL_TENANT:
+        if is_global(tenant):
             raise ValueError("the global partition is every tenant's; it cannot be forgotten")
         facts = self._all_facts.get(tenant, [])
         ann = sum(1 for f in facts if is_annotation(f))
@@ -338,10 +339,28 @@ class MemoryStore:
 
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
-        return sorted((set(self._entities) | set(self._all_facts) | set(self._all_rels)) - {GLOBAL_TENANT} - set(self._forgotten))
+        return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels)) - set(self._forgotten) if not is_global(t))
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return dict(self._forgotten)
+
+    # ---- API keys (keel/keys.py): not tenant data, so forget and reset leave them ----
+
+    def put_key(self, key: ApiKey) -> None:
+        self._keys[key.id] = key
+
+    def api_key(self, digest: str) -> ApiKey | None:
+        return next((k for k in self._keys.values() if k.hash == digest), None)
+
+    def api_keys(self, account: str | None = None) -> list[ApiKey]:
+        return sorted((k for k in self._keys.values() if account in (None, k.account)), key=lambda k: (k.account, k.created_at))
+
+    def revoke_key(self, key_id: str, at: datetime) -> bool:
+        k = self._keys.get(key_id)
+        if k is None or k.revoked_at is not None:
+            return False
+        k.revoked_at = at
+        return True
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With

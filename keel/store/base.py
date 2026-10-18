@@ -33,6 +33,20 @@ class Entity:
 
 
 @dataclass
+class ApiKey:
+    """A credential for the HTTP API (keel/keys.py). Only the hash is stored; `id` is the public prefix."""
+
+    id: str
+    hash: str
+    account: str
+    created_at: datetime
+    tenant: str | None = None  # only this tenant of the account
+    agent: str | None = None  # calls are made as this agent
+    glob: bool = False  # may annotate(scope="global") into account/__global__
+    revoked_at: datetime | None = None
+
+
+@dataclass
 class Relation:
     tenant: str
     src: str  # entity key
