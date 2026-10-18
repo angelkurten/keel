@@ -18,7 +18,7 @@ from keel.store.memory import MemoryStore
 from keel.store.sqlite import SqliteStore
 from keel.tools import Tools
 
-app = typer.Typer(help="Keel: a context layer for AI agents in vertical SaaS.", no_args_is_help=True)
+app = typer.Typer(help="Keel: a context layer for the AI agents in a product.", no_args_is_help=True)
 
 
 def load_env_file(path: Path) -> list[str]:
@@ -49,7 +49,7 @@ def load_env_file(path: Path) -> list[str]:
 def _config(
     env_file: Path = typer.Option(Path(".env"), "--env-file", envvar="KEEL_ENV_FILE", help="Configuration as KEY=VALUE lines (KEEL_SECRET, KEEL_DB, KEEL_EMBEDDINGS_*...). Variables already set win."),
 ) -> None:
-    """Keel: a context layer for AI agents in vertical SaaS."""
+    """Keel: a context layer for the AI agents in a product."""
     if env_file.is_file():
         load_env_file(env_file)
     elif env_file != Path(".env"):  # the default is optional; a file you named is not
@@ -66,7 +66,7 @@ def _store(db: str | None):
 
         return MysqlStore.from_url(db)
     return SqliteStore(db)
-TENANT = typer.Argument(..., envvar="KEEL_TENANT", help="The end-customer (KEEL_TENANT when omitted). A product with no end-customers sets one fixed value.", show_default=False)
+TENANT = typer.Argument(..., envvar="KEEL_TENANT", help="The tenant: an end-customer, a household, a team (KEEL_TENANT when omitted). A product with one sets one fixed value.", show_default=False)
 ALL = typer.Option(False, "--all-tenants", help="Every tenant in the store, one after another (a tenant per end-customer means many).")
 
 
@@ -490,7 +490,7 @@ def usage(
         typer.echo(json.dumps(row))
 
 
-keys_app = typer.Typer(help="API keys: one account per SaaS on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
+keys_app = typer.Typer(help="API keys: one account per product on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
 app.add_typer(keys_app, name="keys")
 KEYS_DB = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file or a mysql:// URL.")
 

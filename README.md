@@ -6,7 +6,7 @@
 
 Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 
-Keel is a context layer for AI agents inside vertical SaaS products. Domain events from your product go in; a bitemporal context graph per end-customer comes out; every agent you build reads and writes it through the same five MCP tools.
+Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from your product go in; a bitemporal context graph per tenant comes out, whatever your unit is (an end-customer, a household, a team); every agent you build reads and writes it through the same five MCP tools.
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
@@ -16,16 +16,16 @@ You describe your vertical once, in a *cartridge* (ontology, event catalog, sema
 
 ## The problem
 
-Every new agent in a SaaS product repeats the same work: extract the customer's data, normalize it, decide what "critical" means, keep its own memory, expose its own tools to the model. Four agents, four copies of the customer's context, four definitions of "critical", four memories that never talk.
+Every new agent in a product repeats the same work: extract the customer's data, normalize it, decide what "critical" means, keep its own memory, expose its own tools to the model. Four agents, four copies of the customer's context, four definitions of "critical", four memories that never talk.
 
-Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text and documents and model memory per user or per agent. None of them start from **domain events**, and none model the **tenant of the tenant**: the end-customer of a B2B SaaS.
+Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text and documents and model memory per user or per agent. None of them start from **domain events**, and none model the **tenant** your product already has: the end-customer of a B2B SaaS, the household of a consumer app, the team of an internal tool.
 
 ## How Keel is different
 
 1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
 2. **Events in, not documents.** Keel ingests structured facts with time (Postgres tables, webhooks, Kafka, SQS). Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
-4. **Tenant of the tenant.** One subgraph per end-customer, with its own permissions and expiry.
+4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.
 
 ## Five tools, any agent
 
@@ -105,7 +105,7 @@ The table shape and the envelope fields are in `keel/adapters/postgres.py` and `
 ## Architecture
 
 ```
-  your SaaS (Postgres)   webhooks   Kafka / SQS
+  your app (Postgres)     webhooks   Kafka / SQS
             \               |            /
              v              v           v
    +-------------------------------------------------+      +------------------+
