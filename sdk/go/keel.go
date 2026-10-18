@@ -297,7 +297,7 @@ type SearchOptions struct {
 	Mode                    string         // "semantic": ranked by meaning, each result with a "score"
 	MinScore                float64        // semantic: drop results whose cosine is below this; 0 = no floor
 	RelatedTo, Via          string         // only RelatedTo's neighbours (through Via when set)
-	Detail                  string         // "concise": each result carries its current facts as {predicate: value}; "full": as facts
+	Detail                  string         // "concise" (SearchKeys for "key"): each result carries its current facts as {predicate: value}; "full": as facts
 	Depth                   int            // 1: each result carries its neighbours
 	PerKind                 int            // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
 	Exclude                 []string       // predicates left out of what is returned
@@ -337,6 +337,15 @@ func (o SearchOptions) body(text any) map[string]any {
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
 	var out []map[string]any
+	err := c.post(ctx, "/v1/search", o.body(o.Text), &out)
+	return out, err
+}
+
+// SearchKeys is SearchWith returning only the keys (detail "key"), each once: the cheapest listing.
+// o.Detail and o.Depth are ignored.
+func (c *Client) SearchKeys(ctx context.Context, o SearchOptions) ([]string, error) {
+	o.Detail, o.Depth = "key", 0
+	var out []string
 	err := c.post(ctx, "/v1/search", o.body(o.Text), &out)
 	return out, err
 }

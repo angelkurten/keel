@@ -102,6 +102,9 @@ func TestGeneratedClient(t *testing.T) {
 	if tires, err := c.SearchWith(ctx, keel.SearchOptions{Kind: "tire"}); err != nil || len(tires) != 1 {
 		t.Fatalf("search kind: %v %+v", err, tires)
 	}
+	if keys, err := c.SearchKeys(ctx, keel.SearchOptions{Kind: "tire"}); err != nil || len(keys) != 1 || keys[0] != "tire:T-9001" {
+		t.Fatalf("search keys: %v %v", err, keys)
+	}
 	if p, err := c.Annotate(ctx, keel.Annotation{Subject: "tire:T-9001", Predicate: "swap", Value: true, Status: "proposed"}); err != nil || p.Status == nil || *p.Status != "proposed" {
 		t.Fatalf("proposal: %v %+v", err, p)
 	}

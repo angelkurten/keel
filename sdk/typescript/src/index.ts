@@ -125,7 +125,7 @@ export type SearchOptions<S extends string = string> = {
   minScore?: number;
   relatedTo?: S;
   via?: string;
-  /** "concise": each result carries its current facts as {predicate: value}; "full": as facts */
+  /** "concise": each result carries its current facts as {predicate: value}; "full": as facts (searchKeys for keys only) */
   detail?: "entity" | "concise" | "full";
   /** 1: each result carries its neighbours */
   depth?: 0 | 1;
@@ -298,6 +298,11 @@ export class Client<S extends string = string> {
    * `detail: "concise"` puts each result's facts in it, `depth: 1` its neighbours, `perKind` the best of every kind. */
   search(text = "", opts: SearchOptions<S> = {}): Promise<Array<Entity | Fact>> {
     return this.post("/v1/search", this.searchBody(text, opts));
+  }
+
+  /** `search` that returns only the keys (`detail: "key"`), each once: the cheapest listing, e.g. every table of a model. */
+  searchKeys(text = "", opts: Omit<SearchOptions<S>, "detail" | "depth"> = {}): Promise<S[]> {
+    return this.post("/v1/search", { ...this.searchBody(text, opts), detail: "key" });
   }
 
   /** `search` for many texts in one call: one result list per text, in order. */
