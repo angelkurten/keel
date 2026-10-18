@@ -1123,3 +1123,36 @@ def test_mysql_reconnects_when_the_server_drops_the_connection():
         s.db.close()
         s.upsert_entity(TENANT, "unit", "E")
     assert s.entity(TENANT, "unit:D") is None and s.entity(TENANT, "unit:E") is None
+
+
+def test_keys_that_differ_only_in_case_or_accents_are_different_subjects(store):
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    keys = ["page:RENDIMIENTO", "page:Rendimiento", "bookmark:Numero", "bookmark:Número"]
+    for key in keys:
+        kind, id = key.split(":")
+        store.upsert_entity(TENANT, kind, id, title=id)
+        store.open_fact(TENANT, key, "title", id, valid_from=now)
+    assert [store.entity(TENANT, k).attrs["title"] for k in keys] == ["RENDIMIENTO", "Rendimiento", "Numero", "Número"]
+    got = store.facts_of(TENANT, keys) if hasattr(store, "facts_of") else {k: store.facts(TENANT, k) for k in keys}
+    assert {k: [f.value for f in fs] for k, fs in got.items()} == {k: [k.split(":")[1]] for k in keys}
+
+
+@pytest.mark.skipif(not MYSQL, reason="KEEL_MYSQL_URL not set")
+def test_mysql_tables_from_before_0_24_2_get_exact_keys_and_name_what_collided():
+    from keel.store.mysql import MysqlStore
+
+    s = MysqlStore.from_url(MYSQL, prefix="ci_")
+    for t in s.TABLES:
+        s._exec(f"DELETE FROM {t}")
+        s._exec(f"ALTER TABLE {t} CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci")  # what 0.24.1 created
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    for id in ("RENDIMIENTO", "Rendimiento"):
+        s.upsert_entity(TENANT, "page", id)
+        s.open_fact(TENANT, f"page:{id}", "title", id, valid_from=now)
+    s.open_fact(TENANT, "note:alone", "text", "no entity, nothing alike", valid_from=now)
+    with pytest.warns(UserWarning, match="1 subjects .* acme-logistics/page:Rendimiento"):
+        s = MysqlStore.from_url(MYSQL, prefix="ci_")
+    assert all(s._collation(t) == "utf8mb4_bin" for t in s.TABLES)
+    assert s.collided() == [(TENANT, "page:Rendimiento")]
+    s.upsert_entity(TENANT, "page", "Rendimiento")  # the source publishes it again
+    assert s.collided() == [] and [f.value for f in s.facts(TENANT, "page:Rendimiento")] == ["Rendimiento"]

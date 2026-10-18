@@ -471,7 +471,8 @@ class SqlStore:
         open_at = kw.get("at") if kw.get("known_at") is None else None
         for i in range(0, len(subs), _Bulk.CHUNK):
             for r in self._fact_rows(tenant, subs[i : i + _Bulk.CHUNK], open_at):
-                out[r["subject"]].append(_fact(r))
+                if r["subject"] in out:  # exactly: a case-insensitive collation also matches its look-alikes
+                    out[r["subject"]].append(_fact(r))
         return {s: filter_facts(fs, kw.get("at"), kw.get("since"), kw.get("until"), kw.get("known_at")) for s, fs in out.items()}
 
     def relations_of(self, tenant: str, keys: list[str], at: datetime | None = None) -> dict[str, list[Relation]]:
