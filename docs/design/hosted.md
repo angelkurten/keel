@@ -77,6 +77,10 @@ Rule 1 says the graph must be rebuildable from events. Physical deletion of hist
 
 Two simplifications against the first proposal. Applied event ids are kept, because they are what stops an old redelivery from reviving deleted history, and they are hashes, not content. Events are not skipped by the cutoff: an event that occurred before it can still open a fact that is current today, and skipping it would lose that fact. The price is that an event arriving later with a valid time before the cutoff stays until the next run, so the policy is scheduled, not run once.
 
+### Isolation: a container per account (decided 2026-10-18)
+
+A cartridge carries Python (`handlers.py`). A shared server that loaded every account's cartridge would run one customer's code in a process that holds every other customer's data. So hosted runs **one Keel container per account**, with its cartridge and its own database, and a shared **control plane** (sign-up, keys, accounts, usage, a panel) on a shared database. `keel serve --account acme --db <shared>` makes a server accept only that account's keys and keep its graph in the account's database (`accounts.store`), while keys, limits and usage come from the shared one. The control plane creates each account's container on Coolify through its API. Declarative handlers, which would let one server load many cartridges safely, stay a later option.
+
 ### Storage per account
 
 By default every account shares one MySQL database, isolated by the tenant prefix. An enterprise account can get its own database: the server maps the account to a store URL (`accounts.store`), opened lazily and kept in a small pool. The store is pluggable already, so this is configuration in the HTTP layer, not a change to any store.

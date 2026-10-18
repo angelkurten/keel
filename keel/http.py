@@ -54,8 +54,9 @@ class _Auth:
     nor any key the server is open, as before keys existed. Raw ASGI so that MCP's streaming responses
     pass through untouched. `/mcp` is bound to one tenant: a key reaches it only if that tenant is its own."""
 
-    def __init__(self, app: Any, secret: str | None, store: Store, mcp_tenant: str | None, mcp_agent: str | None, quotas: Any = None) -> None:
-        self.app, self.secret, self.store, self.quotas = app, secret, store, quotas
+    def __init__(self, app: Any, secret: str | None, store: Store, mcp_tenant: str | None, mcp_agent: str | None, quotas: Any = None,
+                 account: str | None = None) -> None:
+        self.app, self.secret, self.store, self.quotas, self.account = app, secret, store, quotas, account
         self.mcp_tenant, self.mcp_agent = mcp_tenant, mcp_agent
         self._keyed: tuple[float, bool] = (-1e9, False)
 
@@ -75,6 +76,9 @@ class _Auth:
             if self.secret and hmac.compare_digest(given, f"Bearer {self.secret}"):
                 pass  # the operator
             elif token.startswith("kk_") and (key := resolve(self.store, token)) is not None:
+                if self.account is not None and key.account != self.account:  # one container per account (hosted)
+                    await JSONResponse({"detail": f"this server serves account '{self.account}' only"}, status_code=403)(scope, receive, send)
+                    return
                 if scope["path"].startswith("/mcp") and not self._binds(key):
                     await JSONResponse({"detail": "this key does not reach the tenant /mcp is bound to"}, status_code=403)(scope, receive, send)
                     return
@@ -105,8 +109,11 @@ def build_http_app(
     index: Any = None,
     reranker: Any = None,
     ui: bool = False,
+    account: str | None = None,
 ) -> Any:
-    """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`)."""
+    """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
+    (hosted: one container per account), only that account's keys are accepted and its graph lives in the
+    account's own database (`keel accounts set --store`); keys, limits and usage stay in `store`."""
     try:
         from fastapi import FastAPI, HTTPException, Request
         from pydantic import BaseModel
@@ -150,7 +157,8 @@ def build_http_app(
     def graph_for(key: Any) -> tuple[Store, Ingestor]:
         """The store and ingestor a request works on: its account's own database, or the shared one. Usage is
         always counted in the shared store, where `keel usage` reads it."""
-        acct = quotas.account(key.account) if key is not None else None
+        name = key.account if key is not None else account  # a server bound to one account works on its graph
+        acct = quotas.account(name) if name else None
         if acct is None or not acct.store:
             return store, ingestor
         with own_lock:
@@ -321,4 +329,4 @@ def build_http_app(
 
     if mcp_app is not None:
         app.mount("/", mcp_app)
-    return _Auth(app, secret, store, tenant, agent, quotas)
+    return _Auth(app, secret, store, tenant, agent, quotas, account)

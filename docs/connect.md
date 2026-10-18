@@ -317,6 +317,8 @@ uv run keel forget --policy --db keel.db --yes                               # s
 
 Over its requests per second (a token bucket in each server process) or its events for the month (from the metering counters), a key gets 429 with `Retry-After`. An account with no row is not limited. With `--store`, the server keeps that account's graph in its own database, opened on first use, while keys, accounts and usage stay in the shared one, so `keel usage` still sees it; jobs for that account (`keel index`, `keel expire`) run with `--db` pointing at its database. `--policy` applies each account's retention like `keel forget --before`, in its own database when it has one.
 
+When accounts bring their own cartridges, run one server per account: a cartridge carries Python, and it should never run next to another customer's data. `keel serve <its cartridge> --transport http --db <shared> --account acme` accepts only `acme`'s keys (others get 403) and keeps its graph in the account's database (`keel accounts set acme --store ...`), while keys, limits and usage stay in the shared one. Hosted Keel runs this way, one container per account (`docs/design/hosted.md`).
+
 What each tenant used, per month, one JSON line per account, tenant and month:
 
 ```bash

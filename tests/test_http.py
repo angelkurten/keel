@@ -332,3 +332,31 @@ def test_an_account_can_have_its_own_database(tmp_path):
     assert shared.tenants() == [] and SqliteStore(tmp_path / "big.db").tenants() == ["big/c1"]  # its data, its database
     assert client.post("/v1/context", json={"subject": "tire:T-9001"}, headers=h).json()["evaluation"] == {"tire_critical": True}
     assert report(shared, account="big")[0]["events"] == 12  # usage stays where keel usage reads it
+
+
+def test_a_server_bound_to_one_account(tmp_path):
+    from keel.accounts import set_account
+    from keel.keys import create_key
+    from keel.store.sqlite import SqliteStore
+
+    shared = SqliteStore(tmp_path / "control.db")
+    acme, _ = create_key(shared, "acme")
+    zeta, _ = create_key(shared, "zeta")
+    set_account(shared, "acme", store=str(tmp_path / "acme.db"))
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from keel.http import build_http_app
+
+    client = TestClient(build_http_app(load_cartridge(FLEET), shared, secret="s3cret", account="acme"))
+    from pathlib import Path
+
+    lines = [json.loads(x) for x in Path(EVENTS).read_text(encoding="utf-8").splitlines() if x.strip() and not x.startswith("#")]
+    for e in lines:
+        e["tenant"] = "c1"
+    assert client.post("/v1/events", json=lines, headers={"Authorization": f"Bearer {acme}"}).json()["processed"] == 12
+    res = client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={"Authorization": f"Bearer {zeta}", "X-Keel-Tenant": "c1"})
+    assert res.status_code == 403 and "acme" in res.json()["detail"]  # another account's key, refused here
+    assert SqliteStore(tmp_path / "acme.db").tenants() == ["acme/c1"] and shared.tenants() == []
+    op = client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={**AUTH, "X-Keel-Tenant": "acme/c1"})
+    assert op.json()["entity"] is not None  # the operator reads this account's graph
