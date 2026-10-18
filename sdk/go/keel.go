@@ -113,6 +113,7 @@ type IngestReport struct {
 	Errors     [][2]string      `json:"errors"`
 	Forgotten  []map[string]any `json:"forgotten"` // tenants erased by a `forgets: tenant` event: {"tenant", "entities", ...}
 	Skipped    int              `json:"skipped"`   // events for a forgotten tenant, never applied
+	Retained   []map[string]any `json:"retained"`  // `forgets: before` events: {"tenant", "before", "facts", ...}
 }
 
 // Error is a non-2xx answer: a refusal (403: scope policy, agent registry), bad input (400), bad secret (401).

@@ -214,6 +214,8 @@ def ingest(cartridge: Path, events: Path, strict: bool = False, db: str | None =
     typer.echo(f"processed={report.processed} duplicates={report.duplicates} unhandled={len(report.unhandled)} errors={len(report.errors)} skipped={report.skipped}")
     for t, counts in report.forgotten:
         typer.echo("  forgot " + json.dumps({"tenant": t, **counts}))
+    for t, cut, counts in report.retained:
+        typer.echo("  retained " + json.dumps({"tenant": t, "before": cut, **counts}))
     for eid, err in report.errors:
         typer.echo(f"  {eid}: {err}")
 
@@ -273,6 +275,8 @@ def consume(
         for t, counts in report.forgotten:
             erasure = next((e.id for e in events if e.tenant == t and e.type in ing.forgets), None)
             typer.echo(json.dumps({"forgot": t, "event": erasure, **counts}))
+        for t, cut, counts in report.retained:
+            typer.echo(json.dumps({"retained": t, "before": cut, **counts}))
 
     while True:
         for msgs in adapter.batches(batch):
@@ -430,17 +434,36 @@ def _index_one(c, store, vectors, emb, tenant: str, path: Path, full: bool, work
 
 @app.command()
 def forget(
-    tenant: str = typer.Argument(..., help="The end-customer to erase. Never read from KEEL_TENANT: name it.", show_default=False),
+    tenant: str | None = typer.Argument(None, help="The end-customer to erase. Never read from KEEL_TENANT: name it.", show_default=False),
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
     index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Also delete its documents from this semantic index."),
     yes: bool = typer.Option(False, "--yes", help="Required to erase: it cannot be undone."),
+    before: str | None = typer.Option(None, "--before", help="Retention: delete only facts and relations that closed at or before this ISO date or time (UTC); open ones and entities stay."),
+    all_tenants: bool = typer.Option(False, "--all-tenants", help="With --before: every tenant in the store (a retention policy)."),
 ):
     """Erase one tenant for good: entities, relations, facts of every scope, annotations, applied event ids and, with --index,
     its semantic documents. A tombstone stays, so later events for it are skipped and writes refused. Prints what it deleted, as JSON.
-    A tenant erased by an event (`forgets: tenant`) loses its semantic documents on the next `keel index --all-tenants`."""
+    A tenant erased by an event (`forgets: tenant`) loses its semantic documents on the next `keel index --all-tenants`.
+
+    With --before, retention instead: what closed at or before that time goes (annotations too), the cutoff is kept so a replay
+    applies it again, and one JSON line per tenant says what was deleted. Run it again to purge what arrived late."""
     store = _store(db)
     if not yes:
-        raise typer.BadParameter("erasing a tenant cannot be undone: add --yes")
+        raise typer.BadParameter("erasing cannot be undone: add --yes")
+    if before is not None:
+        from keel.envelope import parse_iso
+
+        try:
+            cut = parse_iso(before)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc), param_hint="--before") from exc
+        if bool(tenant) == all_tenants:
+            raise typer.BadParameter("name one tenant or pass --all-tenants")
+        for t in store.tenants() if all_tenants else [tenant]:
+            typer.echo(json.dumps({"tenant": t, "before": cut.isoformat(), **store.forget_before(t, cut)}))
+        return
+    if not tenant or all_tenants:
+        raise typer.BadParameter("name the tenant to erase; --all-tenants goes only with --before")
     counts = store.forget(tenant)
     if index:
         from keel.semantic import load_index

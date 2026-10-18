@@ -164,6 +164,7 @@ class MemoryStore:
         self._tx: list[tuple[str, str]] | None = None
         self._watermark: dict[str, datetime] = {}  # tenant -> latest recorded_at or closed_at
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
+        self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
         self._metering: dict[tuple[str, str, str], int] = defaultdict(int)  # (tenant, day, item) -> n (keel/usage.py)
 
@@ -337,6 +338,29 @@ class MemoryStore:
 
     def forgotten(self, tenant: str) -> datetime | None:
         return self._forgotten.get(tenant)
+
+    def forget_before(self, tenant: str, before: datetime) -> dict[str, int]:
+        """Delete what closed at or before `before` and keep the cutoff (Store protocol). Idempotent."""
+        if is_global(tenant):
+            raise ValueError("the global partition is every tenant's; retention runs per tenant")
+        old = lambda x: x.valid_to is not None and x.valid_to <= before
+        gone = [f for f in self._all_facts.get(tenant, []) if old(f)]
+        ann = sum(1 for f in gone if is_annotation(f))
+        rels = sum(1 for r in self._all_rels.get(tenant, []) if old(r))
+        if gone:
+            self._all_facts[tenant] = [f for f in self._all_facts[tenant] if not old(f)]
+            for subject, facts in self._facts[tenant].items():
+                self._facts[tenant][subject] = [f for f in facts if not old(f)]
+        if rels:
+            self._all_rels[tenant] = [r for r in self._all_rels[tenant] if not old(r)]
+            for key, touching in self._rels[tenant].items():
+                self._rels[tenant][key] = [r for r in touching if not old(r)]
+        if tenant not in self._cutoffs or before > self._cutoffs[tenant]:
+            self._cutoffs[tenant] = before
+        return {"facts": len(gone) - ann, "annotations": ann, "relations": rels}
+
+    def cutoff(self, tenant: str) -> datetime | None:
+        return self._cutoffs.get(tenant)
 
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""

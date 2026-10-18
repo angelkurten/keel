@@ -42,7 +42,7 @@ def store(request, tmp_path):
         from keel.store.mysql import MysqlStore
 
         s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering"):
+        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs"):
             s._exec(f"DELETE FROM {table}")  # a clean database per test
         return s
     module, _, factory = EXTERNAL.partition(":")
@@ -1220,3 +1220,43 @@ def test_metering_counts_first_applications_only(store):
     }
     assert [r["month"] for r in report(store, "2026-12", account="acme")] == ["2026-12"]
     assert report(store, account="zeta") == []
+
+
+def test_retention_forgets_what_closed_before_a_cutoff(store):
+    from datetime import datetime, timezone
+
+    from keel.envelope import Event
+
+    d = lambda s: datetime.fromisoformat(s).replace(tzinfo=timezone.utc)
+    c = load_cartridge("examples/fleet")
+    c.events["retention.applied"] = {"subject": "unit", "forgets": "before"}
+    assert not [p for p in c.validate() if "retention" in p]
+    t = "acme-logistics"
+    events = list(JsonlAdapter("examples/fleet/events.jsonl"))
+    ing = Ingestor(c, store)
+    ing.ingest(events)
+    store.link(t, "unit:MXK-4821", "assigned_to", "driver:D-1", d("2026-01-01"))
+    store.unlink(t, "unit:MXK-4821", "assigned_to", "driver:D-1", d("2026-02-01"))
+    tools = Tools(c, store, t)
+    tools.annotate("tire:T-9001", "note", "check again", scope="tenant", evidence="e")
+    tools.annotate("tire:T-9001", "note", "checked", scope="tenant", evidence="e")  # closes the first one now
+    cut = Event(tenant=t, type="retention.applied", subject="unit:MXK-4821", occurred_at="2026-10-05T00:00:00Z", source="ops", payload={})
+    report = ing.ingest([cut])
+    (tenant, before, counts) = report.retained[0]
+    assert (tenant, before, counts["facts"], counts["relations"]) == (t, "2026-10-05T00:00:00+00:00", 1, 1)
+    depths = [f.value for f in store.facts(t, "tire:T-9001") if f.predicate == "depth_mm"]
+    assert depths == [2.6]  # 5.2 closed on Oct 3, before the cutoff; the open fact stays
+    assert [f.value for f in store.facts(t, "ticket:TK-3608") if f.predicate == "status"]  # closed Oct 12: after it
+    assert "driver:D-1" not in {r.src for r in store.relations(t, "unit:MXK-4821")} | {r.dst for r in store.relations(t, "unit:MXK-4821")}
+    assert store.entity(t, "unit:MXK-4821") is not None
+    assert store.cutoff(t) == d("2026-10-05")
+    store.forget_before(t, d("2026-01-01"))  # an older cutoff deletes nothing more and keeps the latest
+    assert store.cutoff(t) == d("2026-10-05")
+    ing.replay(t, events=events)  # the log brings 5.2 back; the kept cutoff takes it again
+    assert [f.value for f in store.facts(t, "tire:T-9001") if f.predicate == "depth_mm"] == [2.6]
+    from keel.envelope import utcnow
+
+    assert store.forget_before(t, utcnow())["annotations"] == 1  # "check again" closed when "checked" was written
+    assert [f.value for f in store.facts(t, "tire:T-9001") if f.predicate == "note"] == ["checked"]
+    with pytest.raises(ValueError):
+        store.forget_before("__global__", d("2026-10-05"))

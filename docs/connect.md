@@ -406,3 +406,23 @@ uv run keel forget household-42 --db keel.db --index chroma://chroma:8000 --yes
 ```
 
 Keel erases only what it stores. The external log is yours: delete or expire the tenant's rows in your outbox table, and remember that consumed queue messages are already gone. Global memory is every tenant's and is kept, so never promote a customer's personal data to it. The tombstone holds the tenant id and the time; pick tenant ids that are not personal data on their own.
+
+### Retention: forget what closed before a date
+
+A contract or a privacy policy may ask for history older than N years to go while the customer stays. Retention deletes facts and relations that closed at or before a cutoff (`valid_to <= cutoff`), annotations included; open facts, current relations and entities stay. Declare the event your SaaS sends, or run it from the command line:
+
+```yaml
+events:
+  retention.applied:
+    subject: household
+    forgets: before      # no handler: Keel deletes what closed before the event's occurred_at
+    payload: {}
+```
+
+```bash
+uv run keel forget household-42 --before 2024-01-01 --db keel.db --yes
+uv run keel forget --all-tenants --before 2024-01-01 --db keel.db --yes      # a retention policy, one JSON line per tenant
+# {"tenant": "household-42", "before": "2024-01-01T00:00:00+00:00", "facts": 180, "annotations": 4, "relations": 12}
+```
+
+The ingest report lists each run (`retained`) and `keel consume` prints it for your audit log. The cutoff is kept per tenant (the latest wins), and `replay` applies it again after rebuilding, so what the log brings back goes again. An event that arrives later with a valid time before the cutoff is kept until the next run: schedule the policy (cron, a Kubernetes CronJob) rather than running it once. Semantic documents follow on the next full `keel index`.

@@ -34,6 +34,7 @@ def build_app(ingestor: Ingestor, token: str | None = None, strict: bool = False
         batch = body if isinstance(body, list) else [body]
         report = ingestor.ingest(batch, strict=strict, batch=len(batch))
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
-            "forgotten": [{"tenant": t, **n} for t, n in report.forgotten], "skipped": report.skipped}
+            "forgotten": [{"tenant": t, **n} for t, n in report.forgotten], "skipped": report.skipped,
+            "retained": [{"tenant": t, "before": b, **n} for t, b, n in report.retained]}
 
     return app

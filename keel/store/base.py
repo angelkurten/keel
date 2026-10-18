@@ -136,5 +136,12 @@ class Store(Protocol):
     # def forgotten(self, tenant: str) -> datetime | None: ...   # the tombstone's time
     # def forgotten_tenants(self) -> dict[str, datetime]: ...      # every tombstone, for index sweeps
 
+    # retention (optional; the Ingestor requires it when the cartridge declares an event that `forgets: before`)
+    # forget_before: in one transaction, facts (annotations included) and relations that closed at or before
+    # `before` (valid_to <= before) are deleted; open ones and entities stay. The cutoff is kept (the latest
+    # wins), so replay applies it again. Idempotent. Returns {"facts", "annotations", "relations"}.
+    # def forget_before(self, tenant: str, before: datetime) -> dict[str, int]: ...
+    # def cutoff(self, tenant: str) -> datetime | None: ...
+
     # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
     # def tenants(self) -> list[str]: ...

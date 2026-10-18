@@ -60,7 +60,7 @@ def test_generated_python_client(tmp_path, server):
         m.emit.tire_depth_measured(TENANT, m.subjects.tire("T-9001"), "2026-09-10T08:00:00Z", "tires", {"unit_id": "MXK-4821", "position": "P3", "depth_mm": 5.2}),
         m.emit.tire_depth_measured(TENANT, m.subjects.tire("T-9001"), "2026-10-03T08:00:00Z", "tires", {"unit_id": "MXK-4821", "position": "P3", "depth_mm": 2.6}),
     ])
-    assert report == {"processed": 3, "duplicates": 0, "unhandled": [], "errors": [], "forgotten": [], "skipped": 0}
+    assert report == {"processed": 3, "duplicates": 0, "unhandled": [], "errors": [], "forgotten": [], "skipped": 0, "retained": []}
     assert keel.context(m.subjects.tire("T-9001"))["evaluation"] == {"tire_critical": True}
     assert keel.context(m.subjects.tire("T-9001"), as_of="2026-09-20")["evaluation"] == {"tire_critical": False}
     assert [f["value"] for f in keel.history(m.subjects.tire("T-9001"), predicate="depth_mm")] == [5.2, 2.6]

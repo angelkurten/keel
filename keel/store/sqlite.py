@@ -40,7 +40,8 @@ class SqliteStore(SqlStore):
       id TEXT NOT NULL PRIMARY KEY, hash TEXT NOT NULL UNIQUE, account TEXT NOT NULL, tenant TEXT, agent TEXT,
       glob INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, revoked_at TEXT);
     CREATE TABLE IF NOT EXISTS metering (
-      tenant TEXT NOT NULL, day TEXT NOT NULL, item TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (tenant, day, item))
+      tenant TEXT NOT NULL, day TEXT NOT NULL, item TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (tenant, day, item));
+    CREATE TABLE IF NOT EXISTS cutoffs (tenant TEXT NOT NULL PRIMARY KEY, cut TEXT NOT NULL, at TEXT NOT NULL)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "

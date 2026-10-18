@@ -1,6 +1,6 @@
 # Design note: hosted Keel
 
-Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (`keel/keys.py`, `keel keys`), and metering with one change (counters, not `ingested.recorded_at`, below) (`keel/usage.py`, `keel usage`), on master and not yet released; the rest is not implemented yet.
+Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated `forget`. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (`keel/keys.py`, `keel keys`), metering with one change (counters, not `ingested.recorded_at`, below) (`keel/usage.py`, `keel usage`), and retention with two simplifications (below) (`forgets: before`, `keel forget --before`), on master and not yet released; the rest is not implemented yet.
 
 ## Problem
 
@@ -68,12 +68,14 @@ They go in the same middleware as the keys: a token bucket per account for reque
 
 ### Retention as a dated forget
 
-Rule 1 says the graph must be rebuildable from events. Physical deletion of history is compatible with it if the deletion is itself recorded, applied deterministically, and replays to the same result. That is what `forgets: tenant` already does for a whole tenant (0.24.0). Retention extends it:
+Rule 1 says the graph must be rebuildable from events. Physical deletion of history is compatible with it if the deletion is itself recorded and applied again on every rebuild. That is what `forgets: tenant` already does for a whole tenant (0.24.0). Retention extends it:
 
-- An event declared `forgets: before` in the catalog makes the Ingestor call `store.forget(tenant, before=event.occurred_at)` in its transaction. It deletes facts and relations whose `valid_to` is earlier than the cutoff, along with the applied ids of events that occurred before it. Open facts and entities with a current fact stay. The report says what was deleted, and a tombstone records the cutoff.
-- `keel forget <tenant> --before 2024-01-01 --db --yes` does the same for operators. An account-wide retention policy is a job that runs it per tenant.
-- Replay from a log trimmed at the same cutoff rebuilds the same graph. Replay from an untrimmed log re-applies the `forgets: before` event and reaches it too.
-- Annotations follow their own TTL (`MemoryPolicy`). A retention cutoff also removes closed annotations older than the cutoff, because a contract that asks for deletion means all of it.
+- An event declared `forgets: before` in the catalog makes the Ingestor call `store.forget_before(tenant, event.occurred_at)` in its transaction. It deletes facts (annotations included) and relations whose `valid_to` is at or before the cutoff. Open facts, current relations and entities stay. The report says what was deleted (`retained`), and the store keeps the cutoff per tenant, the latest one winning.
+- `keel forget <tenant> --before 2024-01-01 --db --yes` does the same for operators, and `--all-tenants` makes it a retention policy to schedule.
+- `replay` rebuilds from the log and then applies the kept cutoff again, so what the log brought back goes again.
+- Annotations follow their own TTL (`MemoryPolicy`). A retention cutoff also removes closed annotations older than it, because a contract that asks for deletion means all of it.
+
+Two simplifications against the first proposal. Applied event ids are kept, because they are what stops an old redelivery from reviving deleted history, and they are hashes, not content. Events are not skipped by the cutoff: an event that occurred before it can still open a fact that is current today, and skipping it would lose that fact. The price is that an event arriving later with a valid time before the cutoff stays until the next run, so the policy is scheduled, not run once.
 
 ### Storage per account
 

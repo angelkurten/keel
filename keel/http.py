@@ -255,7 +255,8 @@ def build_http_app(
             batch = [e.model_copy(update={"tenant": scoped(key, e.tenant)}) for e in batch]
         report = ingestor.ingest(batch, batch=len(batch))
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
-                "forgotten": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, **n} for t, n in report.forgotten], "skipped": report.skipped}
+                "forgotten": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, **n} for t, n in report.forgotten], "skipped": report.skipped,
+                "retained": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, "before": b, **n} for t, b, n in report.retained]}
 
     @app.post("/v1/context")
     def context(body: ContextIn, request: Request) -> Any:

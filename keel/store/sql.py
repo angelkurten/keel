@@ -124,7 +124,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|metering|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
@@ -612,6 +612,33 @@ class SqlStore:
     def forgotten(self, tenant: str) -> datetime | None:
         row = self._one("SELECT at FROM forgotten WHERE tenant = ?", (tenant,))
         return _dt(row["at"]) if row else None
+
+    def forget_before(self, tenant: str, before: datetime) -> dict[str, int]:
+        """Delete what closed at or before `before` and keep the cutoff, in one transaction (Store protocol). Idempotent."""
+        if is_global(tenant):
+            raise ValueError("the global partition is every tenant's; retention runs per tenant")
+        if self._bulk is not None:
+            raise RuntimeError("forget_before inside a bulk batch would be undone by its flush")
+        cut = _ts(before)
+        closed = "tenant = ? AND valid_to IS NOT NULL AND valid_to <= ?"
+        with self.transaction():
+            counts = {
+                "annotations": self._exec(f"DELETE FROM facts WHERE {closed} AND (source LIKE ? OR source LIKE ?)", (tenant, cut, "annotate:%", "consolidate:%")),
+                "facts": self._exec(f"DELETE FROM facts WHERE {closed}", (tenant, cut)),
+                "relations": self._exec(f"DELETE FROM relations WHERE {closed}", (tenant, cut)),
+            }
+            row = self._one("SELECT cut FROM cutoffs WHERE tenant = ?", (tenant,))
+            if row is None:
+                self._exec("INSERT INTO cutoffs (tenant, cut, at) VALUES (?, ?, ?)", (tenant, cut, _ts(utcnow())))
+            elif _dt(row["cut"]) < before:
+                self._exec("UPDATE cutoffs SET cut = ?, at = ? WHERE tenant = ?", (cut, _ts(utcnow()), tenant))
+            if self._cache is not None:
+                self._cache.clear()
+        return {k: counts[k] for k in ("facts", "annotations", "relations")}
+
+    def cutoff(self, tenant: str) -> datetime | None:
+        row = self._one("SELECT cut FROM cutoffs WHERE tenant = ?", (tenant,))
+        return _dt(row["cut"]) if row else None
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return {r["tenant"]: _dt(r["at"]) for r in self._rows("SELECT tenant, at FROM forgotten")}

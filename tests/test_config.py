@@ -2,6 +2,7 @@
 
 import json
 import os
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -83,3 +84,13 @@ def test_usage_cli(tmp_path):
     assert out.exit_code == 0 and [json.loads(x) for x in out.output.splitlines()] == [
         {"account": "acme", "tenant": "acme/c1", "month": "2027-01", "events": 7, "calls": {}}]
     assert CliRunner().invoke(app, ["usage", "--db", db, "--month", "2027-13"]).exit_code != 0
+
+
+def test_forget_before_cli(tmp_path):
+    root = Path(__file__).resolve().parent.parent
+    db = str(tmp_path / "r.db")
+    assert CliRunner().invoke(app, ["ingest", f"{root}/examples/fleet", f"{root}/examples/fleet/events.jsonl", "--db", db]).exit_code == 0
+    assert CliRunner().invoke(app, ["forget", "acme-logistics", "--db", db, "--before", "2026-10-05"]).exit_code != 0  # no --yes
+    assert CliRunner().invoke(app, ["forget", "--db", db, "--yes"]).exit_code != 0  # names no tenant
+    out = CliRunner().invoke(app, ["forget", "--all-tenants", "--db", db, "--before", "2026-10-05", "--yes"])
+    assert out.exit_code == 0 and json.loads(out.output) == {"tenant": "acme-logistics", "before": "2026-10-05T00:00:00+00:00", "facts": 1, "annotations": 0, "relations": 0}

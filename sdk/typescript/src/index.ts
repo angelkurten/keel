@@ -152,6 +152,7 @@ export type IngestReport = {
   processed: number; duplicates: number; unhandled: string[]; errors: Array<[string, string]>;
   forgotten: Array<{ tenant: string } & Record<string, number | string>>; // tenants erased by a `forgets: tenant` event, with what was deleted
   skipped: number; // events for a forgotten tenant, never applied
+  retained?: Array<{ tenant: string; before: string } & Record<string, number | string>>; // `forgets: before` events: the cutoff and what was deleted
 };
 
 export type ClientOptions = {
