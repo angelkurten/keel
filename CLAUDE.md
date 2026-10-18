@@ -4,7 +4,7 @@ Read this before changing anything. It says what Keel is, what it is not, and th
 
 ## What Keel is
 
-A context layer for AI agents inside vertical SaaS products. Domain events from the SaaS go in; a bitemporal context graph **per end-customer** (the tenant of the tenant) comes out; every agent reads and writes it through the same five tools.
+A context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from the product go in; a bitemporal context graph **per tenant** (whatever unit the product has: the end-customer of a SaaS, a household, a team) comes out; every agent reads and writes it through the same five tools.
 
 The domain is declared once in a **cartridge** (YAML + a few ten-line handlers). The core knows nothing about any domain.
 
@@ -14,7 +14,7 @@ Positioning, in one line: *stop rebuilding the pipeline for every agent.* "Share
 
 - Not an agent framework. Agents live in LangGraph, ADK, the Claude SDK, wherever. Keel is what they consult.
 - Not a document/RAG memory. We ingest structured events with time, not text. Ingestion is deterministic. No LLM in the ingest path (see Open decisions).
-- Not a copy of the SaaS's database. The graph holds pointers, semantics and earned memory.
+- Not a copy of the product's database. The graph holds pointers, semantics and earned memory.
 - Not a single global memory. Memory has scopes and nothing is promoted by accident.
 
 ## Architecture

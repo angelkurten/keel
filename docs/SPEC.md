@@ -10,13 +10,13 @@ The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.
 
 ## 1. Scope and terms
 
-Keel is a context layer for AI agents inside a vertical SaaS. It turns **domain events** into a **bitemporal context graph** per **tenant**, declared by a **cartridge**, and exposes it to agents through **five tools**.
+Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. It turns **domain events** into a **bitemporal context graph** per **tenant**, declared by a **cartridge**, and exposes it to agents through **five tools**.
 
 | Term | Meaning |
 | --- | --- |
-| **SaaS** | The product that runs Keel. Has its own database and its own customers. |
-| **Tenant** | One end-customer of the SaaS (the tenant of the tenant). Every graph is partitioned by tenant. |
-| **Event** | A fact that happened in the SaaS, with world time and source, in the standard envelope (§2). |
+| **Product** | What runs Keel: a SaaS, a consumer app, an internal tool. Has its own database and its own tenants. |
+| **Tenant** | The product's unit of data: one end-customer of a SaaS, a household, a team. Every graph is partitioned by tenant. |
+| **Event** | A fact that happened in the product, with world time and source, in the standard envelope (§2). |
 | **Subject** | The entity an event or fact is about, as `<kind>:<id>`. |
 | **Entity** | A node in the graph: a kind, an id, a pointer (`ref`) to the system of record, and a few label attributes. |
 | **Relation** | A typed, time-bounded edge between two entities. |
@@ -180,7 +180,7 @@ The ingestor reads envelopes from an adapter and dispatches each to the handlers
 - Batches: a store MAY offer `bulk(events)`, a context manager the Ingestor uses for chunks larger than one event. The SQL stores read the state of the chunk's subjects in a few statements, serve the handlers from memory, and write back in a few multi-row statements; the result is the same as event by event (the conformance suite checks it on every store, forwards and shuffled), about a thousand times fewer round trips.
 - Batch reads: a store MAY offer `facts_of`, `entities_of` and `relations_of`, the same answers as `facts` and `entity` for many subjects. `context(depth=1)` reads its neighbours with them, `search(rule=)` its candidates in chunks, and a rule that follows a relation its neighbours: a few statements whatever the neighbourhood's size, where one per subject would be a round trip each on a networked database. Without them Tools reads one subject at a time.
 - Threads: a store shared by a server's threads MUST keep a transaction, its read cache and a batch in flight to the thread that opened them: another thread waits for it or reads committed state, and never writes into it (a write that joined a batch would be lost with its rollback). The MySQL store reads on one connection per thread, so reads never queue behind a writer.
-- Erasure: an event whose type the cartridge declares `forgets: tenant` runs no handler; the Ingestor calls `store.forget(tenant)` in that event's transaction (a chunk holding one is applied event by event, never through `bulk`) and lists what was deleted in `IngestReport.forgotten`. Every later event for a forgotten tenant, a late redelivery included, is skipped without being applied and counted in `IngestReport.skipped`, so nothing revives it, and a replay of it yields nothing. Keel deletes only what it stores: the external log (the bus, the outbox table) belongs to the SaaS, and global memory (§6) is every tenant's and is kept.
+- Erasure: an event whose type the cartridge declares `forgets: tenant` runs no handler; the Ingestor calls `store.forget(tenant)` in that event's transaction (a chunk holding one is applied event by event, never through `bulk`) and lists what was deleted in `IngestReport.forgotten`. Every later event for a forgotten tenant, a late redelivery included, is skipped without being applied and counted in `IngestReport.skipped`, so nothing revives it, and a replay of it yields nothing. Keel deletes only what it stores: the external log (the bus, the outbox table) belongs to the product, and global memory (§6) is every tenant's and is kept.
 - Retention: an event whose type the cartridge declares `forgets: before` runs no handler; the Ingestor marks it applied and calls `store.forget_before(tenant, event.occurred_at)` in its transaction (never through `bulk`), listing the cutoff and what was deleted in `IngestReport.retained`. `replay` applies the tenant's kept cutoff again after rebuilding. Events are not skipped by the cutoff: one arriving later with an earlier valid time stays until the next retention run.
 - Duplicates: an event whose `id` the store has already applied for that tenant is skipped and counted in `IngestReport.duplicates`. With content-hash ids this makes at-least-once adapters and client retries safe; a source that can emit two identical events at the same instant MUST give them ids.
 
@@ -471,7 +471,7 @@ The tools are plain functions first. `keel serve` exposes the same five over MCP
 - Document or conversation ingestion (RAG memory). Keel can hold a pointer to such a store's output as a fact.
 - Agent orchestration, planning or tool routing.
 - A query language exposed to agents beyond the five tools.
-- Cross-tenant analytics (do that on the SaaS's warehouse).
+- Cross-tenant analytics (do that on the product's warehouse).
 
 ---
 
