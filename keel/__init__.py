@@ -27,4 +27,4 @@ __all__ = [
     "load_cartridge",
 ]
 
-__version__ = "0.29.0"
+__version__ = "0.29.1"
