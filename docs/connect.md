@@ -281,7 +281,7 @@ On `/v1/events`, `X-Keel-Tenant` is optional: each envelope names its tenant, an
 | `422` | a malformed body, such as an envelope that fails validation |
 | `503` | the embeddings provider is rate limiting or down, still after Keel's retries (semantic search); retry after `Retry-After` seconds |
 
-With `--tenant`, the same server also exposes `/mcp` (MCP over streamable HTTP) bound to that tenant, for agents that speak MCP and cannot run a local process.
+The same server also exposes `/mcp` (MCP over streamable HTTP), for agents that speak MCP and cannot run a local process. Each call takes its tenant from `X-Keel-Tenant` (and its agent from `X-Keel-Agent`), as `/v1` does, so one server answers MCP for every tenant; a key narrowed to a tenant needs no header. With `--tenant`, `/mcp` is bound to that tenant instead.
 
 ```bash
 curl -s localhost:8000/v1/context -H "Authorization: Bearer change-me" -H "X-Keel-Tenant: acme-logistics" \
@@ -303,7 +303,7 @@ uv run keel keys list acme --db keel.db                           # JSON lines; 
 uv run keel keys revoke kk_3f9a1c2b7d4e --db keel.db              # refused by running servers within seconds
 ```
 
-`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp`, bound to one tenant with `--tenant acme/cliente-42`, accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design: `docs/design/hosted.md`.
+`create` prints the key once; only its SHA-256 is stored, in the `api_keys` table of the same database. Send it as `Authorization: Bearer kk_...`. The first key closes a server that had no secret. `KEEL_SECRET` keeps working as the operator's credential and reaches every tenant by its full name (`acme/cliente-42`). Each account has its own global memory, `acme/__global__`: its tenants read it, other accounts never do, and only its `--global` key writes it. `/mcp` follows the same rules per call; bound to one tenant with `--tenant acme/cliente-42`, it accepts only keys of that account that reach that tenant (and that agent, with `--agent`). The design: `docs/design/hosted.md`.
 
 An account can also have limits, its own database and a retention policy:
 
@@ -330,7 +330,7 @@ uv run keel usage --db keel.db --month 2027-01 --account acme
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1`, and `/mcp` when `KEEL_TENANT` is set) on port 8000, for amd64 and arm64. Tags follow the releases: `0.28.0`, `0.28`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.28.0`, `0.28`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \

@@ -679,11 +679,11 @@ def _loopback(host: str) -> bool:
 @app.command()
 def serve(
     cartridge: Path,
-    tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer this server is bound to. Required with stdio; with http it is the default when X-Keel-Tenant is absent and enables /mcp."),
+    tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer this server is bound to. Required with stdio; with http it is the default when X-Keel-Tenant is absent and binds /mcp to it."),
     events: Path | None = None,
     db: str | None = DB,
     agent: str | None = AGENT,
-    transport: str = typer.Option("stdio", help="stdio: MCP for one tenant. http: the /v1 JSON API for any tenant (X-Keel-Tenant), plus /mcp when --tenant is given."),
+    transport: str = typer.Option("stdio", help="stdio: MCP for one tenant. http: the /v1 JSON API and /mcp for any tenant (X-Keel-Tenant), or /mcp bound to --tenant."),
     host: str = typer.Option("127.0.0.1", help="http only."),
     port: int = typer.Option(8000, help="http only."),
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),

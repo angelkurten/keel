@@ -1,8 +1,8 @@
 """HTTP transport: the five tools as a JSON API for many tenants, the ingest endpoint, and MCP
 over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
 
-    keel serve examples/fleet --transport http --db keel.db                 # /v1/* for any tenant
-    keel serve examples/fleet --transport http --db keel.db --tenant acme   # plus /mcp bound to acme
+    keel serve examples/fleet --transport http --db keel.db                 # /v1/* and /mcp for any tenant (X-Keel-Tenant)
+    keel serve examples/fleet --transport http --db keel.db --tenant acme   # /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?, only?}  -> the context object (or a list)
@@ -11,6 +11,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
+    POST /mcp          MCP over streamable HTTP: bound to `tenant` when given, else per request from the key and headers
     GET  /ui           with ui=True (`keel serve --ui`): a read-only browser over the same API
 
 Every request carries `Authorization: Bearer <secret>` (unset secret and no API keys = open:
@@ -79,7 +80,7 @@ class _Auth:
                 if self.account is not None and key.account != self.account:  # one container per account (hosted)
                     await JSONResponse({"detail": f"this server serves account '{self.account}' only"}, status_code=403)(scope, receive, send)
                     return
-                if scope["path"].startswith("/mcp") and not self._binds(key):
+                if scope["path"].startswith("/mcp") and self.mcp_tenant is not None and not self._binds(key):
                     await JSONResponse({"detail": "this key does not reach the tenant /mcp is bound to"}, status_code=403)(scope, receive, send)
                     return
                 if self.quotas and (wait := self.quotas.request(key.account)) is not None:
@@ -124,10 +125,22 @@ def build_http_app(
     quotas = Quotas(store)  # per account (keel/accounts.py), for requests made with an API key
     server = None
     mcp_app = None
-    if tenant is not None:
+    from importlib.util import find_spec
+
+    if tenant is not None or find_spec("mcp") is not None:  # the http extra brings mcp; a bare FastAPI install serves /v1 only
         from keel.mcp_server import build_server
 
-        server = build_server(Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter))
+        def per_request(request: Any) -> Tools:
+            """Without a fixed tenant, /mcp builds its tools per call from the request, exactly like /v1."""
+            if request is None:
+                raise PermissionError("no HTTP request to take the tenant from")
+            try:
+                return tools_for(request)
+            except HTTPException as exc:
+                raise PermissionError(exc.detail) from exc
+
+        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter) if tenant is not None else per_request
+        server = build_server(bound, name=f"keel:{cartridge.name}")
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard

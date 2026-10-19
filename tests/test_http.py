@@ -126,6 +126,60 @@ def test_mcp_over_http_for_one_tenant():
         server.should_exit = True
 
 
+def test_mcp_over_http_for_many_tenants():
+    """Without --tenant, /mcp takes the tenant per call from the key and X-Keel-Tenant, exactly like /v1."""
+    pytest.importorskip("mcp")
+    uvicorn = pytest.importorskip("uvicorn")
+    import anyio
+    import httpx
+    from mcp import ClientSession
+    from mcp.client import streamable_http as sh
+
+    from keel.http import build_http_app
+    from keel.keys import create_key
+
+    c = load_cartridge(FLEET)
+    store = MemoryStore()
+    acme, _ = create_key(store, "acme")
+    narrow, _ = create_key(store, "acme", tenant="c2")
+    events = [e.model_copy(update={"tenant": "acme/c1"}) for e in JsonlAdapter(EVENTS)]
+    Ingestor(c, store).ingest(events)
+    port = _free_port()
+    server = uvicorn.Server(uvicorn.Config(build_http_app(c, store, host="0.0.0.0"), host="127.0.0.1", port=port, log_level="warning"))
+    threading.Thread(target=server.run, daemon=True).start()
+    for _ in range(100):
+        if server.started:
+            break
+        time.sleep(0.05)
+    connect = getattr(sh, "streamable_http_client", None) or sh.streamablehttp_client  # mcp 2.x / 1.x
+    url = f"http://127.0.0.1:{port}/mcp"
+
+    async def call(headers, subject="tire:T-9001"):
+        if "http_client" in inspect.signature(connect).parameters:
+            cm = connect(url, http_client=httpx.AsyncClient(headers=headers))
+        else:
+            cm = connect(url, headers=headers)
+        async with cm as streams, ClientSession(streams[0], streams[1]) as session:
+            await session.initialize()
+            res = await session.call_tool("context", {"subject": subject})
+            return getattr(res, "is_error", None) or getattr(res, "isError", False), res.content[0].text  # mcp 2.x / 1.x
+
+    try:
+        err, text = anyio.run(call, {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c1"})
+        assert not err and json.loads(text)["evaluation"] == {"tire_critical": True}
+        err, text = anyio.run(call, {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c2"})  # another tenant: nothing there
+        assert not err and json.loads(text)["evaluation"] != {"tire_critical": True}
+        err, text = anyio.run(call, {"Authorization": f"Bearer {narrow}", "X-Keel-Tenant": "c1"})
+        assert err and "reaches only tenant 'c2'" in text
+        err, text = anyio.run(call, {"Authorization": f"Bearer {narrow}"})  # a narrowed key needs no header
+        assert not err
+        err, text = anyio.run(call, {"Authorization": f"Bearer {acme}"})
+        assert err and "X-Keel-Tenant" in text
+        assert httpx.post(url, json={}).status_code == 401
+    finally:
+        server.should_exit = True
+
+
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from typer.testing import CliRunner
 
