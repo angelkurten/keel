@@ -102,3 +102,6 @@ class CoolifyProvisioner:
             self._call("POST", f"/applications/{uuid}/envs", json={"key": k, "value": v, "is_literal": True})
         self._call("POST", "/deploy", params={"uuid": uuid})
         return uuid, endpoint
+
+    def restart(self, uuid: str) -> None:
+        self._call("POST", f"/applications/{uuid}/restart")

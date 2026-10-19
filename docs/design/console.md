@@ -16,12 +16,11 @@ The premise: someone who wants to try Keel does as little as possible before it 
 ## The flow
 
 1. **Invitation link.** Each pilot gets `keel.angelkurten.com/?invite=<code>`. The code travels in the URL; no field for it.
-2. **Email, and an account already filled in.** The account slug is proposed from the email's domain (`angel@acme.com` → `acme`, a suffix on collision) and editable on the same screen, because it is permanent.
-3. **Magic link** through Resend: a single-use token, valid 15 minutes. Clicking it opens a session (a random token, its hash in the control database, an `HttpOnly; Secure; SameSite=Lax` cookie).
-4. **The account is created on that first click**, born with the fleet example and its events ingested into a tenant `demo`. A waiting screen shows the steps (database, container, example data, first key) by polling the control plane, which polls the container's `/health`.
-5. **The console** opens on the graph of the example, with a checklist: Keel running, example data, connect an agent, send your own events, your cartridge.
+2. **Email, an account already filled in, a password.** The account slug is proposed from the email's domain (`angel@acme.com` → `acme`, a suffix on collision) and editable on the same screen, because it is permanent. The password is stored as scrypt. Sign-up opens a session at once (a random token, its hash in the control database, an `HttpOnly; Secure; SameSite=Lax` cookie); later visits sign in with email and password.
+3. **The account is created on sign-up**, born with the fleet example and its events ingested into a tenant `demo`. A waiting screen shows the steps (database, container, example data, first key) by polling the control plane, which polls the container's `/health`.
+4. **The console** opens on the graph of the example, with a checklist: Keel running, example data, connect an agent, send your own events, your cartridge.
 
-What the user typed: an email. What they clicked: a link in their inbox.
+What the user typed: an email and a password. No mailbox round trip: the invitation link already vouches for them.
 
 ## The console
 
@@ -58,7 +57,7 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 
 | Phase | Items |
 |---|---|
-| 1. Entry | invitation link, magic link (Resend), proposed slug, account born with the example, waiting screen, SPA shell with Graph, Playground (tools and agent, with export) and Connect, the proxy, MCP for many tenants |
+| 1. Entry | invitation link, email and password, proposed slug, account born with the example, waiting screen, SPA shell with Graph, Playground (tools and agent, with export) and Connect, the proxy, MCP for many tenants |
 | 2. Data | Events (webhook and live log, upload), Keys, Usage, SDK |
 | 3. Own cartridge | replace by upload or example, the generator, CDC in hosted |
 | 4. Self-hosted | the SPA in the wheel, `keel/ui.html` removed |
@@ -66,7 +65,7 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 ## Decided on 2026-10-18
 
 - One console for hosted and `/ui`, built as a SPA (React + Vite).
-- Sign-in by magic link, sent with Resend from angelkurten.com.
+- Sign-in by email and password (first proposed as a magic link; changed the same day). No reset by email yet: the operator sets a password with `python -m hosted password <account>`.
 - Sign-up asks for no cartridge: the account starts with the fleet example and its events.
 - The invitation travels in a link.
 - Connect offers both a playground and per-client snippets.
@@ -80,4 +79,4 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 ## Open
 
 - **Teams.** One email per account for now; inviting teammates comes when a pilot asks.
-- **Resend DNS.** Verifying angelkurten.com takes SPF and DKIM records in Cloudflare.
+- **Password reset by email.** Needs a mail provider (Resend was the candidate); until then the operator resets.

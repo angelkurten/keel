@@ -1,5 +1,7 @@
-"""Hosted control plane: sign-up creates an account, its own database, its key and its container."""
+"""Hosted control plane: sign-up by invitation, an isolated account born with the example, the console's API."""
 
+import json
+import time
 from pathlib import Path
 
 import pytest
@@ -7,10 +9,11 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
-from hosted.app import ControlPlane, Settings, build_app, check_cartridge
+from hosted.app import COOKIE, ControlPlane, Settings, build_app, check_cartridge
 from keel.store.sqlite import SqliteStore
 
 ROOT = Path(__file__).resolve().parent.parent
+PW = "correct horse battery"
 
 
 class FakeDatabases:
@@ -26,7 +29,7 @@ class FakeDatabases:
 
 class FakeProvisioner:
     def __init__(self, fail: bool = False) -> None:
-        self.created, self.fail = [], fail
+        self.created, self.restarted, self.fail = [], [], fail
 
     def create(self, account, files, env):
         if self.fail:
@@ -34,42 +37,152 @@ class FakeProvisioner:
         self.created.append((account, sorted(files), env))
         return f"app-{account}", f"https://{account}.keel.example"
 
-
-def plane(tmp_path, provisioner=None):
-    return ControlPlane(SqliteStore(tmp_path / "control.db"), FakeDatabases(tmp_path), provisioner or FakeProvisioner(),
-                        Settings(invite_codes={"pilot-1"}, examples_dir=str(ROOT / "examples")))
+    def restart(self, uuid):
+        self.restarted.append(uuid)
 
 
-def test_signup_creates_an_isolated_account(tmp_path):
+class FakeKeel:
+    """The account's container and the model, as httpx sees them."""
+
+    def __init__(self, healthy_after: int = 0) -> None:
+        self.calls, self.health_checks, self.healthy_after, self.events = [], 0, healthy_after, []
+
+    def handler(self, request):
+        import httpx
+
+        body = json.loads(request.content) if request.content else None
+        self.calls.append((request.method, str(request.url), dict(request.headers), body))
+        path = request.url.path
+        if path == "/health":
+            self.health_checks += 1
+            return httpx.Response(200 if self.health_checks > self.healthy_after else 503, json={"ok": True})
+        if path == "/v1/events":
+            self.events += body
+            return httpx.Response(200, json={"processed": len(body)})
+        if path == "/v1/search":
+            return httpx.Response(200, json=[{"key": "tire:T-9001", "tenant": request.headers["x-keel-tenant"]}])
+        if path == "/v1/chat/completions":
+            if not any(m["role"] == "tool" for m in body["messages"]):
+                call = {"id": "c1", "type": "function", "function": {"name": "search", "arguments": json.dumps({"rule": "tire_critical"})}}
+                return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [call]}}]})
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": "Replace tire:T-9001."}}]})
+        return httpx.Response(404, json={"detail": "not found"})
+
+
+def plane(tmp_path, provisioner=None, keel=None, **settings):
+    import httpx
+
+    keel = keel or FakeKeel()
+    http = httpx.Client(transport=httpx.MockTransport(keel.handler))
+    s = Settings(invite_codes={"pilot-1"}, examples_dir=str(ROOT / "examples"), ready_timeout=2, ofox_key="ofox-test", **settings)
+    p = ControlPlane(SqliteStore(tmp_path / "control.db"), FakeDatabases(tmp_path), provisioner or FakeProvisioner(), s, http)
+    p.keel = keel  # the fake's record of calls, for the tests
+    return p
+
+
+def wait(client, status="ready"):
+    for _ in range(200):
+        me = client.get("/api/me").json()
+        if me["status"] in (status, "failed"):
+            return me
+        time.sleep(0.02)
+    raise AssertionError(me)
+
+
+def test_signup_creates_an_account_born_with_the_example(tmp_path):
     p = plane(tmp_path)
     client = TestClient(build_app(p))
-    assert client.get("/").status_code == 200
-    bad = client.post("/signup", data={"account": "acme", "email": "a@acme.co", "invite": "nope", "example": "fleet"})
-    assert bad.status_code == 400 and "invitation" in bad.text
-    ok = client.post("/signup", data={"account": "acme", "email": "a@acme.co", "invite": "pilot-1", "example": "fleet"})
-    assert ok.status_code == 200 and "https://acme.keel.example" in ok.text
+    assert client.get("/api/slug", params={"email": "angel@acme.com"}).json() == {"account": "acme", "available": True, "error": None}
+    assert client.get("/api/slug", params={"email": "angel.k@gmail.com"}).json()["account"] == "angel-k"
+    bad = client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "nope"})
+    assert bad.status_code == 403 and "invite" in bad.json()["detail"]
+    assert client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": "short", "invite": "pilot-1"}).status_code == 400
+    assert client.get("/api/me").status_code == 401
+    ok = client.post("/api/signup", json={"email": "A@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    assert ok.status_code == 200 and COOKIE in ok.cookies
+    me = wait(client)
+    assert me["status"] == "ready" and me["endpoint"] == "https://acme.keel.example" and [s["state"] for s in me["steps"]] == ["done"] * 4
     account, files, env = p.provisioner.created[0]
-    assert (account, files) == ("acme", ["cartridge.yaml", "handlers.py"])
-    assert env["KEEL_ACCOUNT"] == "acme" and env["KEEL_DB"] == str(tmp_path / "acme.db") and "control" not in env["KEEL_DB"]
-    own = SqliteStore(tmp_path / "acme.db")
-    assert [k.account for k in own.api_keys()] == ["acme"] and own.account("acme").events_month == 100_000  # the container enforces them
-    key = ok.text.split("<pre>")[1].split("</pre>")[0]
-    assert key.startswith("kk_")
-    panel = client.post("/panel", data={"key": key})
-    assert panel.status_code == 200 and "acme" in panel.text and "Nothing yet" in panel.text
-    assert client.post("/panel", data={"key": "kk_x_y"}).status_code == 403
-    again = client.post("/signup", data={"account": "acme", "email": "b@x.co", "invite": "pilot-1", "example": "crm"})
-    assert again.status_code == 400 and "taken" in again.text
+    assert (account, files, env["KEEL_ACCOUNT"]) == ("acme", ["cartridge.yaml", "handlers.py"], "acme") and "control" not in env["KEEL_DB"]
+    assert SqliteStore(tmp_path / "acme.db").account("acme").events_month == 100_000  # the container enforces it
+    events = p.keel.events
+    assert events and {e["tenant"] for e in events} == {"acme/demo"}
+    loaded = [c for c in p.keel.calls if c[1].endswith("/v1/events")]
+    assert loaded[0][2]["authorization"] == f"Bearer {env['KEEL_SECRET']}"
+    assert client.get("/api/cartridge").json()["name"] == "fleet" and client.get("/api/cartridge").json()["example"] is True
+    again = TestClient(build_app(p)).post("/api/signup", json={"email": "b@x.co", "account": "acme", "password": PW, "invite": "pilot-1"})
+    assert again.status_code == 400 and "taken" in again.json()["detail"]
+    # sign out, sign in
+    client.post("/api/signout")
+    assert client.get("/api/me").status_code == 401
+    assert client.post("/api/login", json={"email": "a@acme.com", "password": "wrong password"}).status_code == 403
+    assert client.post("/api/login", json={"email": "a@acme.com", "password": PW}).status_code == 200
+    assert client.get("/api/me").json()["account"] == "acme"
 
 
-def test_signup_with_an_uploaded_cartridge_and_a_failed_provision(tmp_path):
-    p = plane(tmp_path, FakeProvisioner(fail=True))
+def test_a_slow_container_is_restarted_once_and_a_failed_provision_cleans_up(tmp_path):
+    p = plane(tmp_path, keel=FakeKeel(healthy_after=10**9))
     client = TestClient(build_app(p))
-    files = {"cartridge_yaml": ("cartridge.yaml", (ROOT / "examples/clinics/cartridge.yaml").read_bytes()),
-             "handlers_py": ("handlers.py", b"raise SystemExit('never imported by the control plane')")}
-    with pytest.raises(RuntimeError):
-        client.post("/signup", data={"account": "clinic-1", "email": "c@x.co", "invite": "pilot-1"}, files=files)
-    assert p.databases.dropped == ["clinic-1"]  # nothing half-made stays behind
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    me = wait(client)
+    assert me["status"] == "failed" and "did not start" in me["error"] and p.provisioner.restarted == ["app-acme"]
+    (tmp_path / "x").mkdir()
+    p = plane(tmp_path / "x", provisioner=FakeProvisioner(fail=True))
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "c@x.co", "account": "clinic-1", "password": PW, "invite": "pilot-1"})
+    assert wait(client)["error"] == "coolify is down" and p.databases.dropped == ["clinic-1"]
+
+
+def test_the_console_calls_the_account_keel_with_its_secret(tmp_path):
+    p = plane(tmp_path)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    r = client.post("/api/v1/search", json={"text": "T-9001"}, headers={"X-Keel-Tenant": "demo"})
+    assert r.status_code == 200 and r.json()[0]["tenant"] == "acme/demo"
+    assert client.post("/api/v1/search", json={}, headers={"X-Keel-Tenant": "zeta/demo"}).status_code == 400  # no reaching out of the account
+    assert client.post("/api/v1/drop", json={}).status_code == 409
+    key = client.post("/api/keys", json={"tenant": "demo"}).json()
+    assert key["key"].startswith("kk_") and key["mcp"] == "https://acme.keel.example/mcp"
+    own = SqliteStore(tmp_path / "acme.db").api_keys()
+    assert [(k.account, k.tenant) for k in own] == [("acme", "demo")]  # the container checks this copy
+    assert TestClient(build_app(p)).post("/api/v1/search", json={}).status_code == 401
+
+
+def test_the_playground_agent_calls_tools_within_a_daily_allowance(tmp_path):
+    p = plane(tmp_path, agent_messages_day=1)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    assert client.get("/api/agent/models").json()["allowance"] == {"used": 0, "limit": 1}
+    body = {"model": "anthropic/claude-sonnet-5.5", "system": "You help a fleet.", "tools": ["search", "context"], "tenant": "demo",
+            "messages": [{"role": "user", "content": "Which tires should we replace?"}]}
+    out = client.post("/api/agent/chat", json=body).json()
+    assert out["trace"][0]["tool"] == "search" and out["trace"][0]["ok"] and out["messages"][-1]["content"] == "Replace tire:T-9001."
+    assert out["allowance"] == {"used": 1, "limit": 1}
+    model = next(c for c in p.keel.calls if c[1].endswith("/chat/completions"))
+    assert model[1].startswith("https://api.ofox.ai/") and {t["function"]["name"] for t in model[3]["tools"]} == {"search", "context"}
+    assert client.post("/api/agent/chat", json=body).status_code == 429
+    mine = client.post("/api/agent/chat", json={**body, "model": "anthropic/claude-haiku-5.5", "own_key": {"provider": "anthropic", "key": "sk-own"}})
+    assert mine.status_code == 200  # the customer's own key has no allowance
+    last = [c for c in p.keel.calls if c[1].endswith("/chat/completions")][-1]
+    assert last[1].startswith("https://api.anthropic.com/") and last[3]["model"] == "claude-haiku-5-5" and last[2]["authorization"] == "Bearer sk-own"
+    assert client.put("/api/agents/Fleet assistant", json={"config": body}).status_code == 200
+    assert client.get("/api/agents").json() == [{"name": "Fleet assistant", "config": body}]
+    client.delete("/api/agents/Fleet assistant")
+    assert client.get("/api/agents").json() == []
+
+
+def test_the_console_build_is_served_with_a_fallback(tmp_path):
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<div id=root></div>")
+    (dist / "assets" / "app.js").write_text("console.log(1)")
+    client = TestClient(build_app(plane(tmp_path, static_dir=str(dist))))
+    assert client.get("/assets/app.js").text == "console.log(1)"
+    assert client.get("/console/graph").text == "<div id=root></div>"
+    assert client.get("/../control.db").text == "<div id=root></div>"
+    assert client.get("/api/nope").status_code == 404
 
 
 def test_check_cartridge():
@@ -77,8 +190,6 @@ def test_check_cartridge():
     for bad in ({"cartridge.yaml": "name: x"}, {"cartridge.yaml": ": :", "handlers.py": ""}, {"cartridge.yaml": "name: x", "handlers.py": ""}):
         with pytest.raises(ValueError):
             check_cartridge(bad)
-
-
 def test_coolify_provisioner_calls(tmp_path):
     import json
 
