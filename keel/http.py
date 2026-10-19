@@ -15,7 +15,8 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
     POST /mcp          MCP over streamable HTTP: bound to `tenant` when given, else per request from the key and headers
-    GET  /ui           with ui=True (`keel serve --ui`): a read-only browser over the same API
+    GET  /v1/cartridge                               -> the cartridge's YAML as JSON (not handlers.py)
+    GET  /ui           with ui=True (`keel serve --ui`): the console (console/), self-hosted mode, over the same API
 
 Every request carries `Authorization: Bearer <secret>` (unset secret and no API keys = open:
 localhost only), `X-Keel-Tenant`, and `X-Keel-Agent` when the cartridge declares agents. The
@@ -51,7 +52,7 @@ from keel.store.base import Store
 from keel.tools import Tools
 from keel.usage import Meter
 
-OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui holds no data; its calls carry the secret
+OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui (and its files) hold no data; its calls carry the secret
 
 
 class _Auth:
@@ -73,7 +74,7 @@ class _Auth:
         return self._keyed[1]
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
-        if scope["type"] == "http" and scope["path"] not in OPEN_PATHS:
+        if scope["type"] == "http" and scope["path"] not in OPEN_PATHS and not scope["path"].startswith("/ui/"):
             from starlette.responses import JSONResponse
 
             given = dict(scope["headers"]).get(b"authorization", b"").decode()
@@ -390,15 +391,34 @@ def build_http_app(
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
         return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth))
 
+    @app.get("/v1/cartridge")
+    def cartridge_doc() -> dict[str, Any]:
+        """The cartridge's YAML as JSON (never handlers.py): what the console builds its forms and prompts from."""
+        import yaml
+
+        f = cartridge.path / "cartridge.yaml" if cartridge.path else None
+        doc = yaml.safe_load(f.read_text(encoding="utf-8")) if f and f.exists() else {"name": cartridge.name}
+        return {**(doc if isinstance(doc, dict) else {}), "example": False}
+
     if ui:
         from pathlib import Path
 
-        from fastapi.responses import HTMLResponse
+        from fastapi.responses import FileResponse, HTMLResponse
 
-        page = (Path(__file__).parent / "ui.html").read_text(encoding="utf-8")
+        dist = (Path(__file__).parent / "console").resolve()  # the console's build, shipped in the wheel (console/: npm run build:wheel)
+        index = dist / "index.html"
+        page = index.read_text(encoding="utf-8").replace('<base href="/">', '<base href="/ui/">') if index.exists() else None
 
         @app.get("/ui", include_in_schema=False)
-        def ui_page() -> HTMLResponse:
+        @app.get("/ui/{path:path}", include_in_schema=False)
+        def ui_page(path: str = "") -> Any:
+            """The console, in its self-hosted mode: it asks for the secret once and calls /v1 like any client."""
+            if page is None:
+                return HTMLResponse("<!doctype html><title>Keel</title><p>The console is not built in this checkout: "
+                                    "<code>cd console &amp;&amp; npm ci &amp;&amp; npm run build:wheel</code>. Releases on PyPI ship it.</p>")
+            f = (dist / path).resolve()
+            if path and f.is_file() and f.is_relative_to(dist):
+                return FileResponse(f)
             return HTMLResponse(page)
 
     if mcp_app is not None:

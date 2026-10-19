@@ -720,7 +720,7 @@ def serve(
     port: int = typer.Option(8000, help="http only."),
     secret_env: str = typer.Option("KEEL_SECRET", help="http only: the env var holding the shared bearer secret. Unset = open, localhost only."),
     allow_open: bool = typer.Option(False, "--allow-open", help="http only: serve without a secret on a non-loopback host (behind your own auth proxy)."),
-    ui: bool = typer.Option(False, "--ui", help="http only: serve a read-only graph browser at /ui (it asks for the secret and tenant)."),
+    ui: bool = typer.Option(False, "--ui", help="http only: serve the console at /ui: the graph, the five tools, events, SDKs (it asks for the secret once)."),
     account: str | None = typer.Option(None, "--account", envvar="KEEL_ACCOUNT", help="http only: serve one account (hosted, a container per account): only its keys, its graph in its own database; --db holds keys, limits and usage."),
     http2: bool = typer.Option(False, "--http2", help="http only: serve HTTP/2 too, on Hypercorn (uv sync --extra http2): over TLS with --certfile, or cleartext h2c."),
     certfile: Path | None = typer.Option(None, "--certfile", envvar="KEEL_CERTFILE", help="http only: TLS certificate (PEM). With --keyfile, serve https."),

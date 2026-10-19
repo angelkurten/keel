@@ -11,3 +11,4 @@ sdk/typescript/node_modules/
 sdk/typescript/dist/
 .keel/
 .playwright-mcp/
+keel/console/

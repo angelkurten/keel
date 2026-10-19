@@ -206,6 +206,8 @@ def test_recent_events_check_and_sdk(tmp_path):
 
         files = [(Path(FLEET) / n).read_text(encoding="utf-8") for n in ("cartridge.yaml", "handlers.py")]
         assert client.get("/health").json()["revision"] == revision(*files)  # which cartridge runs, for a control plane
+        doc = client.get("/v1/cartridge", headers=h).json()
+        assert doc["name"] == "fleet" and "tire" in doc["entities"] and "registry" not in json.dumps(doc)  # the YAML, never the handlers
 
 
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
@@ -268,7 +270,9 @@ def test_ui_is_opt_in_open_and_carries_no_data():
     assert _client(c, MemoryStore()).get("/ui").status_code == 404  # off unless asked
     page = _client(c, MemoryStore(), ui=True).get("/ui")
     assert page.status_code == 200 and "text/html" in page.headers["content-type"]
-    assert 'fetch("v1/" + tool' in page.text  # the page reads through the same /v1 API, with the secret
+    # the console's build when this checkout has one (releases do), else how to build it; open either way, no data in it
+    assert '<base href="/ui/">' in page.text or "npm run build:wheel" in page.text
+    assert _client(c, MemoryStore(), ui=True).get("/ui/console/graph").status_code == 200  # its routes, without the secret
 
 
 def test_a_rate_limited_embedder_is_503_with_retry_after_and_keys_list_cheaply():

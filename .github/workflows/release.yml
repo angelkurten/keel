@@ -22,5 +22,10 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra dev
       - run: uv run pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build:wheel  # the console, into keel/console/, shipped in the wheel
+        working-directory: console
       - run: uv build
       - uses: pypa/gh-action-pypi-publish@release/v1
