@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, type Cartridge, type Me } from "./api";
+import { api, ApiError, detectMode, env, type Cartridge, type Me } from "./api";
 import { bareTenant, Icon, Link, navigate, store, thisMonth, usePath } from "./ui";
 import { Landing } from "./screens/Landing";
 import { Starting } from "./screens/Starting";
@@ -11,16 +11,40 @@ import { Sdk } from "./screens/Sdk";
 import { Keys } from "./screens/Keys";
 import { Usage } from "./screens/Usage";
 import { CartridgeTab } from "./screens/Cartridge";
+import { SelfLanding, SECRET_KEY } from "./screens/SelfLanding";
 
 export function App() {
   const path = usePath();
-  if (path === "/console" || path.startsWith("/console/")) return <Console path={path} />;
-  return <Landing />;
+  const [mode, setMode] = useState<"hosted" | "self" | null>(null);
+  const [, setConnected] = useState(0); // env.secret is not state: re-render when it changes
+  useEffect(() => {
+    detectMode().then((m) => {
+      if (m === "self") env.secret = store.get("session", SECRET_KEY) || "";
+      setMode(m);
+    });
+  }, []);
+  if (!mode) return <div className="center muted">Loading…</div>;
+  const inConsole = path === "/console" || path.startsWith("/console/");
+  if (mode === "self") {
+    if (!env.secret) return <SelfLanding onConnected={() => { setConnected((n) => n + 1); navigate("/console/graph", true); }} />;
+    if (!inConsole) { navigate("/console/graph", true); return null; }
+    return <Console path={path} self />;
+  }
+  return inConsole ? <Console path={path} /> : <Landing />;
+}
+
+/** Self-hosted: forget the secret and go back to "Connect to this Keel". */
+export function disconnect() {
+  env.secret = "";
+  store.set("session", SECRET_KEY, null);
+  navigate("/", true);
 }
 
 /** What every console tab gets: the account, the cartridge and the tenant picked in the sidebar. */
 export type Ctx = {
   me: Me; cartridge: Cartridge | null; tenant: string;
+  /** Served by `keel serve --ui`: no account, keys, usage, cartridge deploys or hosted agent chat. */
+  self: boolean;
   /** The cartridge agent picked in the sidebar (sent as X-Keel-Agent); undefined when the cartridge declares none. */
   agent?: string;
   keyCreated: () => void; eventsSent: () => void;
@@ -28,6 +52,7 @@ export type Ctx = {
   refresh: () => void;
 };
 
+const SELF_TABS = ["graph", "playground", "connect", "events", "sdk"];
 const TABS = [
   { id: "graph", label: "Graph", icon: "graph" },
   { id: "playground", label: "Playground", icon: "play" },
@@ -39,12 +64,12 @@ const TABS = [
   { id: "usage", label: "Usage", icon: "chart" },
 ] as const;
 
-function Console({ path }: { path: string }) {
+function Console({ path, self = false }: { path: string; self?: boolean }) {
   const [me, setMe] = useState<Me | null>(null);
   const [cartridge, setCartridge] = useState<Cartridge | null>(null);
   const [cartLoaded, setCartLoaded] = useState(false); // tabs build their defaults from the cartridge on mount
   const [tenant, setTenant] = useState(() => store.get("local", "keel.tenant") || "demo");
-  const [keyed, setKeyed] = useState(() => store.get("local", "keel.keyCreated") === "1");
+  const [keyed, setKeyed] = useState(false);
   const [ownEvents, setOwnEvents] = useState(false);
   const [usageTick, setUsageTick] = useState(0);
   const [agentPick, setAgentPick] = useState(() => store.get("local", "keel.agent") || "");
@@ -53,8 +78,20 @@ function Console({ path }: { path: string }) {
   const [menu, setMenu] = useState(false);
   const [err, setErr] = useState("");
 
-  // Poll /api/me every 2s until the account is ready (or failed).
+  // Poll /api/me every 2s until the account is ready (or failed). Self-hosted there is no account: the
+  // cartridge stands in for it, and a refused secret goes back to "Connect to this Keel".
   useEffect(() => {
+    if (self) {
+      api.cartridge().then((c) => {
+        setCartridge(c);
+        setMe({ account: c.name, email: "", endpoint: window.location.origin, status: "ready", error: null, steps: [] });
+        setCartLoaded(true);
+      }).catch((e) => {
+        if (e instanceof ApiError && e.status === 401) disconnect();
+        else setErr((e as Error).message);
+      });
+      return;
+    }
     let stop = false, timer = 0;
     const poll = async () => {
       try {
@@ -72,15 +109,16 @@ function Console({ path }: { path: string }) {
   }, [pollGen]);
 
   const ready = me?.status === "ready";
+  useEffect(() => { if (me?.account) setKeyed(store.get("local", `keel.keyCreated.${me.account}`) === "1"); }, [me?.account]);
   useEffect(() => {
-    if (ready) api.cartridge().then(setCartridge).catch((e) => setErr((e as Error).message)).finally(() => setCartLoaded(true));
+    if (ready && !self) api.cartridge().then(setCartridge).catch((e) => setErr((e as Error).message)).finally(() => setCartLoaded(true));
   }, [ready, pollGen]);
 
   useEffect(() => { setMenu(false); }, [path]);
 
   // "Send your own events": any tenant but the example one has events this month.
   useEffect(() => {
-    if (!ready || ownEvents || !me) return;
+    if (!ready || ownEvents || !me || self) return;
     api.usage(thisMonth())
       .then((u) => setOwnEvents(u.rows.some((r) => r.month === thisMonth() && r.events > 0 && bareTenant(me.account, r.tenant) !== "demo")))
       .catch(() => { /* the checklist just stays open */ });
@@ -91,19 +129,21 @@ function Console({ path }: { path: string }) {
   if (!cartLoaded) return <div className="center muted">Loading…</div>;
 
   const agents = Object.keys(cartridge?.agents || {});
-  const agent = agents.length ? (agents.includes(agentPick) ? agentPick : agents[0]) : undefined;
+  // Hosted: one of the cartridge's agents is always picked. Self-hosted the agent is optional ("" = none).
+  const agent = agents.length ? (agents.includes(agentPick) ? agentPick : self ? undefined : agents[0]) : undefined;
+  const tabs = self ? TABS.filter((t) => SELF_TABS.includes(t.id)) : TABS;
   const notice = me.notice && me.notice !== dismissed ? me.notice : null;
   const tab = path.split("/")[2] || "graph";
-  if (!TABS.some((t) => t.id === tab)) { navigate("/console/graph", true); return null; }
+  if (!tabs.some((t) => t.id === tab)) { navigate("/console/graph", true); return null; }
   const ctx: Ctx = {
-    me, cartridge, tenant: tenant.trim() || "demo", agent,
+    me, cartridge, tenant: tenant.trim() || (self ? "" : "demo"), agent, self,
     refresh: () => setPollGen((n) => n + 1),
-    keyCreated: () => { setKeyed(true); store.set("local", "keel.keyCreated", "1"); },
+    keyCreated: () => { setKeyed(true); store.set("local", `keel.keyCreated.${me.account}`, "1"); },
     eventsSent: () => setUsageTick((n) => n + 1),
   };
   const steps: [string, boolean, string | null][] = [
     ["Keel running", true, "/console/graph"],
-    ["Example data", !!cartridge?.example, "/console/graph"],
+    ...(cartridge?.example ? [["Example data", true, "/console/graph"] as [string, boolean, string]] : []),
     ["Connect an agent", keyed, "/console/connect"],
     ["Send your own events", ownEvents, "/console/events"],
     ["Your cartridge", !!cartridge && !cartridge.example, "/console/cartridge"],
@@ -121,28 +161,29 @@ function Console({ path }: { path: string }) {
         </div>
         <div className="side-body">
           <div className="stack-s">
-            <div className="account mono" title="Account">{me.account}</div>
+            <div className="account mono" title={self ? "Cartridge" : "Account"}>{me.account}</div>
             <label className="field small">Tenant
               <input className="mono" value={tenant} spellCheck={false}
                 onChange={(e) => { setTenant(e.target.value); store.set("local", "keel.tenant", e.target.value); }}
-                onBlur={() => { if (!tenant.trim()) setTenant("demo"); }} />
+                onBlur={() => { if (!tenant.trim() && !self) setTenant("demo"); }} />
             </label>
             {agents.length > 0 && (
               <label className="field small">Agent
-                <select className="mono" value={agent} onChange={(e) => { setAgentPick(e.target.value); store.set("local", "keel.agent", e.target.value); }}>
+                <select className="mono" value={agent || ""} onChange={(e) => { setAgentPick(e.target.value); store.set("local", "keel.agent", e.target.value); }}>
+                  {self && <option value="">none</option>}
                   {agents.map((a) => <option key={a}>{a}</option>)}
                 </select>
               </label>
             )}
           </div>
           <div className="nav">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <Link key={t.id} to={`/console/${t.id}`} className={t.id === tab ? "on" : ""}>
                 <Icon name={t.icon} /> {t.label}
               </Link>
             ))}
           </div>
-          <div className="checklist">
+          {!self && <div className="checklist">
             <span className="eyebrow">Get started · {done}/{steps.length}</span>
             <div className="bar"><div style={{ width: `${(done / steps.length) * 100}%` }} /></div>
             {steps.map(([label, ok, to]) => {
@@ -151,14 +192,19 @@ function Console({ path }: { path: string }) {
               return to ? <Link key={label} to={to} className={ok ? "step done" : "step"}>{body}</Link>
                 : <span key={label} className="step later">{body}</span>;
             })}
-          </div>
-          <div className="side-foot">
+          </div>}
+          {self ? (
+            <div className="side-foot">
+              <span className="muted ellipsis small-text">self-hosted</span>
+              <button type="button" className="btn ghost sm" onClick={disconnect}><Icon name="out" size={14} /> Disconnect</button>
+            </div>
+          ) : <div className="side-foot">
             <span className="muted ellipsis">{me.email}</span>
             <button type="button" className="btn ghost sm" onClick={async () => {
               try { await api.signout(); } catch { /* signed out anyway */ }
               navigate("/");
             }}><Icon name="out" size={14} /> Sign out</button>
-          </div>
+          </div>}
         </div>
       </nav>
       <main className="main">

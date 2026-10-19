@@ -125,13 +125,13 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
   const starter = useMemo(() => starterPrompt(ctx.cartridge), [ctx.cartridge]);
   const [name, setName] = useState(ctx.cartridge ? `${cap(ctx.cartridge.name)} assistant` : "Assistant");
   const [models, setModels] = useState<Models | null>(null);
-  const [model, setModel] = useState("");
+  const [model, setModel] = useState(ctx.self ? "openai/gpt-4.1-mini" : "");
   const [allowance, setAllowance] = useState<Allowance | null>(null);
   const [own, setOwn] = useState<OwnKey | null>(() => {
     try { const s = store.get("session", "keel.ownKey"); return s ? (JSON.parse(s) as OwnKey) : null; } catch { return null; }
   });
   const [ownOpen, setOwnOpen] = useState(!!own);
-  const [identity, setIdentity] = useState(ctx.agent || agents[0] || "");
+  const [identity, setIdentity] = useState(ctx.agent || (ctx.self ? "" : agents[0]) || "");
   const [system, setSystem] = useState(starter);
   const [tools, setTools] = useState<string[]>([...TOOLS]);
   const [saved, setSaved] = useState<{ name: string; config: AgentConfig }[]>([]);
@@ -144,11 +144,12 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (ctx.self) return; // no control plane: no hosted models or saved agents
     api.models().then((m) => { setModels(m); setModel((cur) => cur || m.default); setAllowance(m.allowance); }).catch((e) => setMsg((e as Error).message));
     api.agents().then(setSaved).catch(() => {});
   }, []);
   useEffect(() => { if (!system && starter) setSystem(starter); }, [starter]); // eslint-disable-line
-  useEffect(() => { if (!identity && agents[0]) setIdentity(agents[0]); }, [agents.join()]); // eslint-disable-line
+  useEffect(() => { if (!identity && agents[0] && !ctx.self) setIdentity(agents[0]); }, [agents.join()]); // eslint-disable-line
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight }); }, [turns, busy]);
   useEffect(() => { store.set("session", "keel.ownKey", own && own.key ? JSON.stringify(own) : null); }, [own]);
 
@@ -195,6 +196,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
     <div className="stack">
       <div className="row wrap between">
         <div className="row wrap">
+          {!ctx.self && <>
           {saved.length > 0 && (
             <select aria-label="Load a saved agent" value="" onChange={(e) => { const s = saved.find((x) => x.name === e.target.value); if (s) load(s.config); }}>
               <option value="">Load…</option>
@@ -203,6 +205,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
           )}
           <button type="button" className="btn" onClick={save} disabled={!name.trim()}>Save</button>
           {saved.some((s) => s.name === name) && <button type="button" className="btn ghost" onClick={() => remove(name)}>Delete</button>}
+          </>}
           {msg && <span className="muted small-text">{msg}</span>}
         </div>
         <button type="button" className="btn primary" onClick={() => setExporting(!exporting)}><Icon name="download" size={14} /> Export agent</button>
@@ -211,7 +214,11 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
       <div className="split agent">
         <form className="card form" onSubmit={(e) => e.preventDefault()}>
           <label className="field">Name<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-          <label className="field">Model
+          {ctx.self ? (
+            <label className="field">Model <span className="hint inline">for the exported file</span>
+              <input className="mono" value={model} spellCheck={false} onChange={(e) => setModel(e.target.value)} placeholder="openai/gpt-4.1-mini" />
+            </label>
+          ) : <label className="field">Model
             <select value={model} onChange={(e) => setModel(e.target.value)} disabled={!models}>
               {models?.models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
@@ -219,8 +226,8 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
               <span>{allowance ? `${allowance.used}/${allowance.limit} messages today` : ""}</span>
               <button type="button" className="linkish" onClick={() => setOwnOpen(!ownOpen)}>{ownOpen ? "Use Keel's allowance" : "Use your own key"}</button>
             </span>
-          </label>
-          {ownOpen && (
+          </label>}
+          {ownOpen && !ctx.self && (
             <div className="subcard stack-s">
               <label className="field small">Provider
                 <select value={own?.provider || "openai"} onChange={(e) => setOwn({ provider: e.target.value as OwnKey["provider"], key: own?.key || "" })}>
@@ -237,6 +244,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
           {agents.length > 0 && (
             <label className="field">Agent identity <span className="hint inline">from the cartridge's agents</span>
               <select className="mono" value={identity} onChange={(e) => setIdentity(e.target.value)}>
+                {ctx.self && <option value="">none</option>}
                 {agents.map((a) => <option key={a}>{a}</option>)}
               </select>
             </label>
@@ -258,7 +266,13 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
             ))}
           </fieldset>
         </form>
-        <section className="card chat" aria-label="Chat">
+        {ctx.self ? (
+          <section className="card empty" aria-label="Chat">
+            <h2 className="h2">Chatting needs a model</h2>
+            <p className="muted">Chatting with an agent needs a model; export it and run it with your own key. The console never calls a model from your browser.</p>
+            <button type="button" className="btn primary" onClick={() => setExporting(true)}><Icon name="download" size={14} /> Export agent</button>
+          </section>
+        ) : <section className="card chat" aria-label="Chat">
           <div className="chat-head">
             <b>{name}</b>
             <span className="muted mono small-text">tenant {ctx.tenant}{identity ? ` · agent ${identity}` : ""}</span>
@@ -279,7 +293,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
               placeholder={ctx.cartridge?.example ? "Is any tire on unit MXK-4821 critical?" : "Ask about your data…"} />
             <button className="btn primary" disabled={busy || !input.trim() || !model}><Icon name="send" size={14} /> Send</button>
           </form>
-        </section>
+        </section>}
       </div>
     </div>
   );

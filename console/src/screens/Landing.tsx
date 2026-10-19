@@ -19,6 +19,11 @@ export function Landing() {
   const seq = useRef(0);
   const signup = mode === "signup";
 
+  // Already signed in: straight to the console.
+  useEffect(() => {
+    api.me().then(() => navigate("/console", true)).catch(() => { /* not signed in */ });
+  }, []);
+
   // Creating an account: propose it from the email's domain, until the user edits it.
   useEffect(() => {
     if (!signup || edited || !/^\S+@\S+\.\S+$/.test(email)) return;

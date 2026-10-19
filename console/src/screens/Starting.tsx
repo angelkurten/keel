@@ -3,12 +3,14 @@ import { Icon } from "../ui";
 
 export function Starting({ me }: { me: Me }) {
   const failed = me.status === "failed";
+  const updating = me.status === "updating"; // a new cartridge replacing the running one
   return (
     <div className="entry top">
       <div className="entry-col wide">
         <div className="stack-s">
           <span className="muted small-text">Signed in as {me.email}</span>
-          <h1 className="h1">{failed ? "Setup failed for " : "Setting up "}<span className="mono">{me.account}</span></h1>
+          {updating ? <h1 className="h1">Deploying your cartridge</h1>
+            : <h1 className="h1">{failed ? "Setup failed for " : "Setting up "}<span className="mono">{me.account}</span></h1>}
         </div>
         <ol className="card stepper">
           {me.steps.map((s) => (
@@ -28,7 +30,7 @@ export function Starting({ me }: { me: Me }) {
             <p className="err">{me.error || "Something went wrong while creating your Keel."}</p>
             <p className="muted">Write to <a href="mailto:angel@angelkurten.com">angel@angelkurten.com</a> and we'll sort it out.</p>
           </div>
-        ) : (
+        ) : updating ? null : (
           <div className="dashed">
             <span className="eyebrow">While you wait: what you'll get</span>
             <div className="grid3">

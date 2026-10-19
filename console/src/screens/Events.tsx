@@ -29,10 +29,10 @@ export function Events({ ctx }: { ctx: Ctx }) {
             {t.name}
           </button>
         ))}
-        <Link to="/console/cartridge" className="tab-link">Generate cartridge <Icon name="arrow" size={12} /></Link>
+        {!ctx.self && <Link to="/console/cartridge" className="tab-link">Generate cartridge <Icon name="arrow" size={12} /></Link>}
       </div>
       <div className="events-layout">
-        <section className="stack">{mode === "webhook" ? <Webhook ctx={ctx} /> : mode === "upload" ? <Upload ctx={ctx} /> : <Cdc ctx={ctx} />}</section>
+        <section className="stack">{mode === "webhook" ? <Webhook ctx={ctx} /> : mode === "upload" ? <Upload ctx={ctx} /> : ctx.self ? <CdcSelfHosted ctx={ctx} /> : <Cdc ctx={ctx} />}</section>
         <Live tenant={ctx.tenant} />
       </div>
     </div>
@@ -290,3 +290,22 @@ const withTenant = (events: Record<string, unknown>[], tenant: string) => events
 const Stat = ({ label, n, cls = "" }: { label: string; n: number; cls?: string }) => (
   <div className="stat"><span className={`stat-n ${cls}`}>{n}</span><span className="hint">{label}</span></div>
 );
+
+/** Self-hosted: CDC is configured where the server runs, not from the browser. */
+function CdcSelfHosted({ ctx }: { ctx: Ctx }) {
+  const name = ctx.cartridge?.name || "<cartridge>";
+  return (
+    <>
+      <div className="card stack-s">
+        <b className="row"><Icon name="db" size={16} /> Follow your Postgres tables from the server</b>
+        <p className="muted small-text">
+          On a self-hosted Keel, change data capture runs next to the server. Map each table to a kind in a small YAML file;
+          each row change becomes <span className="mono">&lt;kind&gt;.created|updated|deleted</span>, which the cartridge must declare.
+          Needs Postgres 10+ with <span className="mono">wal_level = logical</span>. See docs/connect.md, "Postgres CDC".
+        </p>
+      </div>
+      <Code title="In the server, as a thread" code={`KEEL_PG_DSN=postgresql://user:pass@host:5432/app \\\n  keel serve path/to/${name} --transport http --db keel.db --ui --cdc cdc.yaml`} />
+      <Code title="Or as its own process" code={`keel cdc path/to/${name} --dsn postgresql://user:pass@host:5432/app --map cdc.yaml --db keel.db --setup`} />
+    </>
+  );
+}

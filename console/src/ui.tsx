@@ -2,16 +2,27 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 // --- router -------------------------------------------------------------------------------
+/** Where the console is mounted, from <base href>: "" in hosted, "/ui" under `keel serve --ui`. */
+export const basePath = new URL(document.baseURI).pathname.replace(/\/$/, "");
+/** The current route, without the base path ("/console/graph"). */
+const route = () => {
+  const p = window.location.pathname;
+  const r = basePath && (p === basePath || p.startsWith(basePath + "/")) ? p.slice(basePath.length) : p;
+  return r || "/";
+};
+/** A route ("/console/graph", may carry ?query) as a URL under the base path. */
+export const href = (to: string) => basePath + to;
+
 export function navigate(to: string, replace = false) {
-  if (replace) window.history.replaceState(null, "", to);
-  else window.history.pushState(null, "", to);
+  if (replace) window.history.replaceState(null, "", href(to));
+  else window.history.pushState(null, "", href(to));
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 export function usePath(): string {
-  const [path, setPath] = useState(window.location.pathname);
+  const [path, setPath] = useState(route());
   useEffect(() => {
-    const on = () => setPath(window.location.pathname);
+    const on = () => setPath(route());
     window.addEventListener("popstate", on);
     return () => window.removeEventListener("popstate", on);
   }, []);
@@ -21,7 +32,7 @@ export function usePath(): string {
 export function Link({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
   return (
     <a
-      href={to}
+      href={href(to)}
       className={className}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;

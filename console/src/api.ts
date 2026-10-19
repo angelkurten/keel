@@ -1,4 +1,6 @@
-// Typed fetch wrappers for the control plane (same origin, cookie session, JSON; errors are {detail}).
+// Typed fetch wrappers. Hosted: the control plane (same origin, cookie session, /api/...). Self-hosted
+// (`keel serve --ui`): the Keel server's own /v1 API at the origin root, with the secret as a bearer.
+// JSON both ways; errors are {detail}.
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -6,8 +8,25 @@ export class ApiError extends Error {
   }
 }
 
+/** How this console is served; set once at startup by `detectMode()`. The secret lives in sessionStorage only. */
+export const env: { mode: "hosted" | "self"; secret: string } = { mode: "hosted", secret: "" };
+const self = () => env.mode === "self";
+
+/** GET /health answers on both without auth: a Keel server names its cartridge; the hosted control plane does not. */
+export async function detectMode(): Promise<"hosted" | "self"> {
+  try {
+    const res = await fetch(`${window.location.origin}/health`, { credentials: "same-origin" });
+    const h = (await res.json()) as { cartridge?: unknown };
+    env.mode = res.ok && h && typeof h === "object" && h.cartridge ? "self" : "hosted";
+  } catch {
+    env.mode = "hosted";
+  }
+  return env.mode;
+}
+
 async function req<T>(method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<T> {
-  const res = await fetch(path, {
+  if (self() && env.secret) headers = { Authorization: `Bearer ${env.secret}`, ...headers };
+  const res = await fetch(window.location.origin + path, {
     method,
     credentials: "same-origin",
     headers: body === undefined ? headers : { "Content-Type": "application/json", ...headers },
@@ -27,7 +46,7 @@ export type Me = {
   email: string;
   account: string;
   endpoint: string;
-  status: "creating" | "starting" | "loading" | "ready" | "failed";
+  status: "creating" | "starting" | "loading" | "updating" | "ready" | "failed";
   error: string | null;
   notice?: string | null;
   steps: { id: string; label: string; state: StepState }[];
@@ -91,15 +110,17 @@ export const api = {
   login: (body: { email: string; password: string }) => req<{ ok: true }>("POST", "/api/login", body),
   signout: () => req<{ ok: true }>("POST", "/api/signout", {}),
   me: () => req<Me>("GET", "/api/me"),
-  cartridge: () => req<Cartridge>("GET", "/api/cartridge"),
+  cartridge: () => req<Cartridge>("GET", self() ? "/v1/cartridge" : "/api/cartridge"),
+  /** Self-hosted: check a secret before keeping it. */
+  cartridgeWith: (secret: string) => req<Cartridge>("GET", "/v1/cartridge", undefined, { Authorization: `Bearer ${secret}` }),
   tool: <T = unknown>(tool: Tool, body: Record<string, unknown>, tenant: string, agent?: string) =>
-    req<T>("POST", `/api/v1/${tool}`, body, { "X-Keel-Tenant": tenant, ...(agent ? { "X-Keel-Agent": agent } : {}) }),
+    req<T>("POST", self() ? `/v1/${tool}` : `/api/v1/${tool}`, body, { "X-Keel-Tenant": tenant, ...(agent ? { "X-Keel-Agent": agent } : {}) }),
   createKey: (body: { tenant?: string; agent?: string; global?: boolean }) => req<Key>("POST", "/api/keys", body),
   keys: () => req<KeyRow[]>("GET", "/api/keys"),
   revokeKey: (id: string) => req<{ ok: true }>("DELETE", `/api/keys/${encodeURIComponent(id)}`),
-  recentEvents: (tenant: string) => req<RecentEvent[]>("GET", "/api/events/recent", undefined, { "X-Keel-Tenant": tenant }),
-  checkEvents: (tenant: string, batch: unknown[]) => req<EventProblem[]>("POST", "/api/events/check", batch, { "X-Keel-Tenant": tenant }),
-  ingestEvents: (tenant: string, batch: unknown[]) => req<IngestReport>("POST", "/api/events", batch, { "X-Keel-Tenant": tenant }),
+  recentEvents: (tenant: string) => req<RecentEvent[]>("GET", self() ? "/v1/events/recent" : "/api/events/recent", undefined, { "X-Keel-Tenant": tenant }),
+  checkEvents: (tenant: string, batch: unknown[]) => req<EventProblem[]>("POST", self() ? "/v1/events/check" : "/api/events/check", batch, { "X-Keel-Tenant": tenant }),
+  ingestEvents: (tenant: string, batch: unknown[]) => req<IngestReport>("POST", self() ? "/v1/events" : "/api/events", batch, { "X-Keel-Tenant": tenant }),
   usage: (month?: string) => req<Usage>("GET", `/api/usage${month ? `?${q({ month })}` : ""}`),
   deployCartridge: (body: CartridgeFiles | { example: Example }) => req<{ ok: true; problems: string[] }>("PUT", "/api/cartridge", body),
   checkCartridge: (body: CartridgeFiles) => req<{ problems: string[] }>("POST", "/api/cartridge/check", body),
@@ -107,7 +128,7 @@ export const api = {
   cdc: () => req<Cdc>("GET", "/api/cdc"),
   setCdc: (body: { dsn: string; map: string }) => req<Cdc>("PUT", "/api/cdc", body),
   stopCdc: () => req<{ ok: true }>("DELETE", "/api/cdc"),
-  sdk: (language: SdkLanguage) => req<Sdk>("GET", `/api/sdk/${language}`),
+  sdk: (language: SdkLanguage) => req<Sdk>("GET", self() ? `/v1/sdk/${language}` : `/api/sdk/${language}`),
   models: () => req<Models>("GET", "/api/agent/models"),
   agents: () => req<{ name: string; config: AgentConfig }[]>("GET", "/api/agents"),
   saveAgent: (name: string, config: AgentConfig) => req<unknown>("PUT", `/api/agents/${encodeURIComponent(name)}`, { config }),

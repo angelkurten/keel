@@ -1,6 +1,6 @@
 # Design note: the Keel console
 
-Status: proposed on 2026-10-18. Replaces the hosted sign-up form and usage page (`hosted/app.py`) and the read-only browser at `/ui` (`keel/ui.html`) with one console. Mockup: https://claude.ai/artifact/KbwgvjBcMGJxiWMAcNyVqF.
+Status: proposed and built on 2026-10-18, all four phases on master, unreleased (it ships in one release). Replaces the hosted sign-up form and usage page (`hosted/app.py`) and the read-only browser at `/ui` (`keel/ui.html`) with one console. Mockup: https://claude.ai/artifact/KbwgvjBcMGJxiWMAcNyVqF.
 
 ## Problem
 
@@ -50,12 +50,12 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 - **Cartridge generator.** The user pastes two or three real events; the control plane asks a model through OfoxAI (the gateway already used) for `cartridge.yaml` and `handlers.py`, checks the YAML with `check_cartridge`, shows both for review, and deploys them to the account's own container on request. Handlers run only there, as uploaded ones do. A limit of generations per account and day. An LLM here is fine: it writes the cartridge once, it is never in the ingest path (rule 10).
 - **The agent in the playground** is tried in the console and exported, never hosted: Keel stays out of the agent framework business. The control plane runs the loop: the model through OfoxAI (an allowance of messages per account and day) or the user's own Anthropic or OpenAI key, the five tools as function definitions, each call sent through the proxy. The starter prompt is a template filled from the cartridge (kinds, relations, rules, "call `context` before answering"); no LLM writes it. Agent configurations are kept per account in the control database. Export writes one runnable file per framework, connected to the account's `/mcp` with the key from an environment variable: Claude Agent SDK, LangGraph, OpenAI Agents SDK, Google ADK.
 - **SDKs.** `load_cartridge` imports `handlers.py`, so the control plane never generates them itself: the account's container, which already runs that code, serves `GET /v1/sdk/<language>` (the operator secret only) with `keel sdk`'s output, and the console compares its hash with the last download to say it is stale.
-- **Replacing the cartridge** redeploys the container with the new files and runs `keel forget demo`.
+- **Replacing the cartridge** updates the container's files and redeploys it; the control plane waits for `/health` to report the new cartridge's `revision` (a hash of its two files), puts the previous cartridge back if the new one does not start, and forgets tenant `demo` when the example goes. Problems are found without importing `handlers.py`: its `@registry.on` types are read with `ast`.
 - **Self-hosted.** The SPA's build ships inside the wheel (`keel/console/`, about 200 KB) and replaces `keel/ui.html`. Its calls carry the secret the operator types once, kept in the browser's session.
 
 ## Phases
 
-Phases 1 and 2 are on master (2026-10-18), unreleased: the console ships in one release once all four are done.
+All four are on master (2026-10-18), unreleased: the console ships in one release.
 
 | Phase | Items |
 |---|---|

@@ -13,7 +13,7 @@ export function Connect({ ctx }: { ctx: Ctx }) {
   const [err, setErr] = useState("");
   const live = key && key.tenant.split("/").pop() === ctx.tenant ? key : null; // a key made for another tenant does not apply
   const endpoint = live?.endpoint || ctx.me.endpoint;
-  const secret = live?.key || PLACEHOLDER;
+  const secret = live?.key || (ctx.self ? "<your secret or key>" : PLACEHOLDER);
   const snip = connectSnippet(client, endpoint, secret, ctx.tenant);
 
   async function create() {
@@ -35,7 +35,16 @@ export function Connect({ ctx }: { ctx: Ctx }) {
         <li><span className="num">3</span><span>Ask your agent <span className="mono fg">"{ctx.cartridge?.example ? "Is any tire on unit MXK-4821 critical?" : "What do you know about …?"}"</span></span></li>
       </ol>
 
-      <section className="card stack-s">
+      {ctx.self ? (
+        <section className="card stack-s">
+          <b>Your secret or a key</b>
+          <p className="muted small-text">
+            The snippets use the server's secret (<span className="mono">KEEL_SECRET</span>) or an API key. Create keys with{" "}
+            <span className="mono fg">keel keys create &lt;account&gt; --db &lt;your db&gt; --tenant {ctx.tenant || "<tenant>"}</span>;
+            a key reaches its account's tenants only.
+          </p>
+        </section>
+      ) : <section className="card stack-s">
         <div className="row wrap between">
           <div>
             <b>Key for tenant <span className="mono">{ctx.tenant}</span></b>
@@ -47,7 +56,7 @@ export function Connect({ ctx }: { ctx: Ctx }) {
         </div>
         {err && <p className="err">{err}</p>}
         {live && <KeyReveal value={live.key} />}
-      </section>
+      </section>}
 
       <section className="card stack-s">
         <Tabs label="Client" items={CLIENTS} value={client} onChange={setClient} />
@@ -57,7 +66,7 @@ export function Connect({ ctx }: { ctx: Ctx }) {
           <div className="row wrap between subcard">
             <div><b>Using Cursor?</b><p className="muted small-text">One click installs the server with this key and tenant.</p></div>
             {live ? <a className="btn" href={cursorDeeplink(endpoint, live.key, ctx.tenant)}>Add to Cursor</a>
-              : <span className="hint">Create a key first.</span>}
+              : <span className="hint">{ctx.self ? "Paste your secret or key into the JSON above." : "Create a key first."}</span>}
           </div>
         )}
         <p className="hint">MCP endpoint <span className="mono">{endpoint.replace(/\/$/, "")}/mcp</span></p>
