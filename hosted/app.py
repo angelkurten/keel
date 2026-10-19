@@ -30,6 +30,7 @@ import yaml
 from hosted import agent as agents
 from hosted.provision import Databases, Provisioner
 from keel.accounts import Quotas, set_account
+from keel.cartridge import revision
 from keel.envelope import parse_iso, utcnow
 from keel.keys import check_account, check_tenant, create_key, revoke_key
 from keel.store import open_store
@@ -49,10 +50,49 @@ TABLES = (
   PRIMARY KEY (account, name))""",
 )
 # columns added after the first accounts existed (2026-10-18); ADD COLUMN fails harmlessly once they are there
-COLUMNS = ("password VARCHAR(200)", "status VARCHAR(16)", "error TEXT", "secret VARCHAR(100)", "cartridge TEXT", "example VARCHAR(32)")
+COLUMNS = ("password VARCHAR(200)", "status VARCHAR(16)", "error TEXT", "secret VARCHAR(100)", "cartridge TEXT", "example VARCHAR(32)",
+           "handlers TEXT", "cdc_map TEXT", "notice TEXT")
 PUBLIC_MAIL = {"gmail", "googlemail", "outlook", "hotmail", "live", "yahoo", "icloud", "me", "proton", "protonmail", "aol", "gmx", "yandex"}
 STEPS = (("database", "Database and container created"), ("container", "Keel starting"), ("example", "Example data loaded"), ("ready", "Ready"))
 STATUS_STEP = {"creating": 0, "starting": 1, "loading": 2, "ready": 4}
+GENERATOR = """You write Keel cartridges. Keel turns a product's domain events into a bitemporal context graph per tenant
+that AI agents read through five tools. A cartridge is two files:
+
+- cartridge.yaml: `name`, `entities` (kind -> description), `relations` (name -> from/to kinds), `events` (dotted
+  lowercase type -> subject kind, owner, payload with short type hints: string, int, number, bool, date, datetime,
+  any, `string | null` for optional, `[low, normal, high]` for an enum, `string[]` for a list, `{{key: hint}}` nested),
+  `rules` (named conditions over current facts that tools evaluate), and `memory`.
+- handlers.py: `registry = HandlerRegistry()` and one small function per event type, decorated with
+  `@registry.on("<type>")`, mapping the payload to store primitives only: upsert_entity, link, unlink, open_fact,
+  close_fact. Every call takes `event.tenant` first. Facts are opened with `valid_from=event.occurred_at`,
+  `source=event.source` and `evidence=event.id`; they are closed, never deleted.
+
+Rules: pointers, not copies (an entity keeps `ref` and the few attributes a tool needs to label it); keep handlers
+about ten lines; business logic goes in `rules`, never in handlers; no network, no randomness, no imports beyond
+keel's. Declare every event type you are given, with a handler for each. Subjects are `<kind>:<id>`.
+
+A complete example (a fleet product):
+
+```yaml
+{example_yaml}
+```
+
+```python
+{example_handlers}
+```
+
+Answer with exactly two fenced blocks: first ```yaml with cartridge.yaml, then ```python with handlers.py. No other
+text."""
+
+
+def _files_in(text: str) -> dict[str, str]:
+    """The cartridge.yaml and handlers.py blocks of a model's answer."""
+    blocks = re.findall(r"```(yaml|yml|python|py)\s*\n(.*?)```", text, re.DOTALL)
+    out = {}
+    for lang, body in blocks:
+        name = "cartridge.yaml" if lang.startswith("y") else "handlers.py"
+        out.setdefault(name, body.strip() + "\n")
+    return out
 
 
 @dataclass
@@ -68,6 +108,7 @@ class Settings:
     ofox_key: str | None = None
     session_days: int = 30
     ready_timeout: float = 300  # seconds for a new container to answer /health (restarted once halfway)
+    generations_day: int = 10  # cartridges generated per account and day
 
 
 def check_cartridge(files: dict[str, str]) -> str:
@@ -83,6 +124,39 @@ def check_cartridge(files: dict[str, str]) -> str:
     if len(files["cartridge.yaml"]) + len(files["handlers.py"]) > 512_000:
         raise ValueError("the cartridge is larger than 512 KB")
     return str(doc["name"])
+
+
+def static_check(files: dict[str, str], events: list[dict[str, Any]] | None = None) -> list[str]:
+    """What `keel validate` would say, without importing handlers.py: the handled event types are read from its
+    `@registry.on("...")` decorators with `ast`, which runs nothing. With `events`, each is also checked against the
+    catalog. A cartridge whose handlers register types some other way gets "no handler" problems it may ignore."""
+    import ast
+    import tempfile
+
+    from keel.cartridge import load_cartridge
+    from keel.envelope import Event
+
+    try:
+        tree = ast.parse(files.get("handlers.py", ""))
+    except SyntaxError as exc:
+        return [f"handlers.py line {exc.lineno}: {exc.msg}"]
+    handled = {d.args[0].value for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) for d in node.decorator_list
+               if isinstance(d, ast.Call) and getattr(d.func, "attr", None) == "on" and d.args and isinstance(d.args[0], ast.Constant)}
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "cartridge.yaml").write_text(files["cartridge.yaml"], encoding="utf-8")
+        try:
+            c = load_cartridge(tmp, handlers=False)
+        except Exception as exc:  # noqa: BLE001 - any shape error in the YAML is the customer's to fix
+            return [f"cartridge.yaml: {exc}"]
+    for etype in handled:
+        c.registry.on(str(etype))(lambda _event, _store: None)
+    problems = c.validate()
+    for i, raw in enumerate(events or []):
+        try:
+            problems += [f"event {i + 1}: {p}" for p in c.check_event(Event.model_validate({"tenant": "check", **raw}))]
+        except ValueError as exc:
+            problems.append(f"event {i + 1}: not a valid envelope ({str(exc).splitlines()[0]})")
+    return problems
 
 
 def _hash(token: str) -> str:
@@ -162,8 +236,8 @@ class ControlPlane:
         base = Path(self.settings.examples_dir) / example
         files = {n: (base / n).read_text(encoding="utf-8") for n in ("cartridge.yaml", "handlers.py")}
         check_cartridge(files)
-        self.control._exec("INSERT INTO hosted_accounts (account, email, password, db, created_at, status, cartridge, example) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                           (account, email, pw, "", utcnow().isoformat(), "creating", files["cartridge.yaml"], example))
+        self.control._exec("INSERT INTO hosted_accounts (account, email, password, db, created_at, status, cartridge, handlers, example) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                           (account, email, pw, "", utcnow().isoformat(), "creating", files["cartridge.yaml"], files["handlers.py"], example))
         threading.Thread(target=self._provision, args=(account, files, example), daemon=True).start()
         return self._session(email, account)
 
@@ -192,13 +266,14 @@ class ControlPlane:
             log.exception("provisioning %s failed", account)
             self._status(account, "failed", str(exc)[:500])
 
-    def _wait_ready(self, app_id: str, endpoint: str) -> None:
+    def _wait_ready(self, app_id: str, endpoint: str, rev: str | None = None) -> None:
         """Poll /health; a container that has not answered halfway through is restarted once (a first start
         can end unhealthy, and Coolify keeps no logs of a stopped container)."""
         start, restarted = time.monotonic(), False
         while (spent := time.monotonic() - start) < self.settings.ready_timeout:
             with contextlib.suppress(Exception):  # not up yet
-                if self.http.get(f"{endpoint}/health", timeout=5).status_code == 200:
+                r = self.http.get(f"{endpoint}/health", timeout=5)
+                if r.status_code == 200 and (rev is None or r.json().get("revision") == rev):  # the old container may still answer
                     return
             if not restarted and spent > self.settings.ready_timeout / 2 and hasattr(self.provisioner, "restart"):
                 self.provisioner.restart(app_id)
@@ -225,12 +300,135 @@ class ControlPlane:
         steps = [{"id": sid, "label": label, "state": "failed" if i == failed_at else "done" if i < at or status == "ready" else "active" if i == at else "pending"}
                  for i, (sid, label) in enumerate(STEPS)]
         return {"email": email, "account": account, "endpoint": row["endpoint"] if row else None, "status": status,
-                "error": row["error"] if row else None, "steps": steps}
+                "error": row["error"] if row else None, "notice": row["notice"] if row else None, "steps": steps}
 
     def cartridge(self, account: str) -> dict[str, Any]:
         row = self._row(account)
         doc = yaml.safe_load(row["cartridge"]) if row and row["cartridge"] else {}
-        return {**(doc if isinstance(doc, dict) else {}), "example": bool(row and row["example"])}
+        return {**(doc if isinstance(doc, dict) else {}), "example": bool(row and row["example"]),
+                "files": {"cartridge.yaml": row["cartridge"] or "", "handlers.py": row["handlers"] or ""} if row else {}}
+
+    # ---- the account's cartridge -----------------------------------------------------------------
+
+    def replace_cartridge(self, account: str, files: dict[str, str] | None = None, example: str | None = None) -> list[str]:
+        """Deploy another cartridge to the account's container, in the background. Its problems (static_check) are
+        returned; a cartridge that does not even parse is refused. If the new container does not start, the previous
+        cartridge goes back and `notice` says why. Leaving the example forgets its tenant `demo`."""
+        row = self._ready(account)
+        if example:
+            if example not in EXAMPLES:
+                raise ValueError(f"unknown example '{example}'")
+            base = Path(self.settings.examples_dir) / example
+            files = {n: (base / n).read_text(encoding="utf-8") for n in ("cartridge.yaml", "handlers.py")}
+        if not files:
+            raise ValueError("send cartridge.yaml and handlers.py, or pick an example")
+        check_cartridge(files)
+        problems = static_check(files)
+        if any(p.startswith(("handlers.py line", "cartridge.yaml:")) for p in problems):
+            raise ValueError("; ".join(problems))
+        old = {"cartridge.yaml": row["cartridge"] or "", "handlers.py": row["handlers"] or ""}
+        self._status(account, "starting")
+        self.control._exec("UPDATE hosted_accounts SET notice = NULL WHERE account = ?", (account,))
+        threading.Thread(target=self._redeploy, args=(account, files, example, old, row["example"]), daemon=True).start()
+        return problems
+
+    def _redeploy(self, account: str, files: dict[str, str], example: str | None, old: dict[str, str], old_example: str | None) -> None:
+        row = self._row(account)
+        try:
+            self.provisioner.update(row["app"], files=files)
+            self._wait_ready(row["app"], row["endpoint"], revision(files["cartridge.yaml"], files["handlers.py"]))
+        except Exception as exc:  # put the previous cartridge back
+            log.exception("new cartridge for %s did not start", account)
+            try:
+                if old["cartridge.yaml"]:
+                    self.provisioner.update(row["app"], files=old)
+                    self._wait_ready(row["app"], row["endpoint"], revision(old["cartridge.yaml"], old["handlers.py"]))
+                self.control._exec("UPDATE hosted_accounts SET notice = ? WHERE account = ?",
+                                   (f"Your new cartridge did not start ({exc}); the previous one is back.", account))
+                self._status(account, "ready")
+            except Exception as again:  # noqa: BLE001
+                self._status(account, "failed", f"the new cartridge did not start and the previous one did not come back: {again}"[:500])
+            return
+        self.control._exec("UPDATE hosted_accounts SET cartridge = ?, handlers = ?, example = ? WHERE account = ?",
+                           (files["cartridge.yaml"], files["handlers.py"], example, account))
+        try:
+            if old_example and example != old_example:
+                open_store(row["db"]).forget(f"{account}/demo")  # the example's data has no meaning under another cartridge
+            if example and example != old_example:
+                self._status(account, "loading")
+                self._load_example(account, row["endpoint"], row["secret"], example)
+            self._status(account, "ready")
+        except Exception as exc:  # noqa: BLE001
+            self._status(account, "ready")
+            self.control._exec("UPDATE hosted_accounts SET notice = ? WHERE account = ?", (f"The cartridge is deployed, but: {exc}", account))
+
+    def generate(self, account: str, events: list[dict[str, Any]], description: str = "") -> dict[str, Any]:
+        """A cartridge proposed by a model from a few real events (and a line about the product), checked with
+        static_check against those events; one more attempt with the problems when there are any. Never deployed here."""
+        self._ready(account)
+        if not events or len(events) > 20:
+            raise ValueError("paste between 1 and 20 example events")
+        if not self.settings.ofox_key:
+            raise LookupError("no model is configured here")
+        day = today()
+        used = sum(n for t, d, item, n in self.control.usage(day, day + "~") if t == f"{account}/__console__" and item == "cartridge_generations")
+        if used >= self.settings.generations_day:
+            raise OverflowError(f"today's {self.settings.generations_day} generations are used: come back tomorrow")
+        self.control.meter([(f"{account}/__console__", day, "cartridge_generations", 1)])
+        chat = agents.chat_api(self.http, "ofox", self.settings.ofox_key, self.settings.models[0])
+        base = Path(self.settings.examples_dir) / "fleet"
+        prompt = GENERATOR.format(example_yaml=(base / "cartridge.yaml").read_text(encoding="utf-8"),
+                                  example_handlers=(base / "handlers.py").read_text(encoding="utf-8"))
+        ask = f"The product: {description or '(not described)'}\n\nIts events:\n{json.dumps(events, indent=2)[:30000]}"
+        messages = [{"role": "system", "content": prompt}, {"role": "user", "content": ask}]
+        files, problems = {}, ["no answer"]
+        for attempt in (1, 2):
+            text = chat(messages, [])["content"]
+            files = _files_in(text)
+            problems = ["the answer did not hold both files"] if set(files) != {"cartridge.yaml", "handlers.py"} else static_check(files, events)
+            if not problems or attempt == 2:
+                break
+            messages += [{"role": "assistant", "content": text},
+                         {"role": "user", "content": "Fix these problems and answer with both files again:\n- " + "\n- ".join(problems)}]
+        return {"cartridge_yaml": files.get("cartridge.yaml", ""), "handlers_py": files.get("handlers.py", ""), "problems": problems,
+                "attempts": attempt, "allowance": {"used": used + 1, "limit": self.settings.generations_day}}
+
+    def cdc(self, account: str) -> dict[str, Any]:
+        row = self._ready(account)
+        status: Any = None
+        with contextlib.suppress(Exception):
+            status = self.http.get(f"{row['endpoint']}/health", timeout=5).json().get("cdc")
+        tables = sorted((yaml.safe_load(row["cdc_map"]) or {}).keys()) if row["cdc_map"] else []
+        return {"configured": bool(row["cdc_map"]), "map": row["cdc_map"] or "", "tables": tables, "status": status}
+
+    def set_cdc(self, account: str, dsn: str, map_yaml: str) -> dict[str, Any]:
+        """Make the account's container follow Postgres (keel serve --cdc). The DSN goes to the container's environment
+        only; the control plane keeps the map."""
+        row = self._ready(account)
+        if not dsn.startswith(("postgresql://", "postgres://")):
+            raise ValueError("a Postgres URL: postgresql://user:pass@host:5432/db")
+        try:
+            tables = yaml.safe_load(map_yaml)
+        except yaml.YAMLError as exc:
+            raise ValueError(f"the map is not valid YAML: {exc}") from exc
+        if not isinstance(tables, dict) or not tables:
+            raise ValueError("the map is `table: {kind, id, tenant, columns?}` per table")
+        events = (yaml.safe_load(row["cartridge"]) or {}).get("events") or {}
+        missing = sorted(f"{m.get('kind')}.{op}" for m in tables.values() if isinstance(m, dict) for op in ("created", "updated", "deleted")
+                         if f"{m.get('kind')}.{op}" not in events)
+        if missing:
+            raise ValueError(f"the cartridge does not declare {', '.join(missing)}; declare them (a handler may do nothing)")
+        for t, m in tables.items():
+            if not isinstance(m, dict) or not m.get("kind") or not m.get("id") or not m.get("tenant"):
+                raise ValueError(f"table '{t}': give it kind, id and a tenant column")
+        self.provisioner.update(row["app"], files={"cdc.yaml": map_yaml}, env={"KEEL_CDC_MAP": "/cartridge/cdc.yaml", "KEEL_PG_DSN": dsn})
+        self.control._exec("UPDATE hosted_accounts SET cdc_map = ? WHERE account = ?", (map_yaml, account))
+        return self.cdc(account)
+
+    def clear_cdc(self, account: str) -> None:
+        row = self._ready(account)
+        self.provisioner.update(row["app"], drop_env=("KEEL_CDC_MAP", "KEEL_PG_DSN"))
+        self.control._exec("UPDATE hosted_accounts SET cdc_map = NULL WHERE account = ?", (account,))
 
     # ---- sign-in -----------------------------------------------------------------------------
 
@@ -526,6 +724,46 @@ def build_app(plane: ControlPlane) -> Any:
     @app.get("/api/usage")
     def usage(request: Request, month: str | None = None) -> dict[str, Any]:
         return plane.usage(who(request)[1], month)
+
+    class CartridgeIn(BaseModel):
+        cartridge_yaml: str | None = None
+        handlers_py: str | None = None
+        example: str | None = None
+
+    class GenerateIn(BaseModel):
+        events: list[dict[str, Any]]
+        description: str = ""
+
+    class CdcIn(BaseModel):
+        dsn: str
+        map: str
+
+    @app.put("/api/cartridge")
+    def replace_cartridge(body: CartridgeIn, request: Request) -> dict[str, Any]:
+        files = {"cartridge.yaml": body.cartridge_yaml, "handlers.py": body.handlers_py or ""} if body.cartridge_yaml else None
+        return {"ok": True, "problems": plane.replace_cartridge(who(request)[1], files, body.example)}
+
+    @app.post("/api/cartridge/check")
+    def check(body: CartridgeIn) -> dict[str, Any]:
+        files = {"cartridge.yaml": body.cartridge_yaml or "", "handlers.py": body.handlers_py or ""}
+        return {"problems": static_check(files)}
+
+    @app.post("/api/cartridge/generate")
+    def generate(body: GenerateIn, request: Request) -> dict[str, Any]:
+        return plane.generate(who(request)[1], body.events, body.description)
+
+    @app.get("/api/cdc")
+    def cdc(request: Request) -> dict[str, Any]:
+        return plane.cdc(who(request)[1])
+
+    @app.put("/api/cdc")
+    def set_cdc(body: CdcIn, request: Request) -> dict[str, Any]:
+        return plane.set_cdc(who(request)[1], body.dsn, body.map)
+
+    @app.delete("/api/cdc")
+    def clear_cdc(request: Request) -> dict[str, bool]:
+        plane.clear_cdc(who(request)[1])
+        return {"ok": True}
 
     @app.get("/api/sdk/{language}")
     def sdk(language: str, request: Request) -> Any:

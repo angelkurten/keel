@@ -29,7 +29,7 @@ class FakeDatabases:
 
 class FakeProvisioner:
     def __init__(self, fail: bool = False) -> None:
-        self.created, self.restarted, self.fail = [], [], fail
+        self.created, self.restarted, self.updates, self.fail, self.keel = [], [], [], fail, None
 
     def create(self, account, files, env):
         if self.fail:
@@ -40,12 +40,19 @@ class FakeProvisioner:
     def restart(self, uuid):
         self.restarted.append(uuid)
 
+    def update(self, uuid, files=None, env=None, drop_env=()):
+        from keel.cartridge import revision
+
+        self.updates.append((uuid, sorted(files or {}), env, drop_env))
+        if files and "cartridge.yaml" in files and "boom" not in files["handlers.py"]:  # a cartridge whose import fails never starts
+            self.keel.revision = revision(files["cartridge.yaml"], files["handlers.py"])
+
 
 class FakeKeel:
     """The account's container and the model, as httpx sees them."""
 
     def __init__(self, healthy_after: int = 0) -> None:
-        self.calls, self.health_checks, self.healthy_after, self.events = [], 0, healthy_after, []
+        self.calls, self.health_checks, self.healthy_after, self.events, self.revision = [], 0, healthy_after, [], None
 
     def handler(self, request):
         import httpx
@@ -55,7 +62,7 @@ class FakeKeel:
         path = request.url.path
         if path == "/health":
             self.health_checks += 1
-            return httpx.Response(200 if self.health_checks > self.healthy_after else 503, json={"ok": True})
+            return httpx.Response(200 if self.health_checks > self.healthy_after else 503, json={"ok": True, "revision": self.revision, "cdc": {"ok": True}})
         if path == "/v1/events":
             self.events += body
             return httpx.Response(200, json={"processed": len(body)})
@@ -67,6 +74,11 @@ class FakeKeel:
             return httpx.Response(200, json={"language": path.rsplit("/", 1)[1], "filename": "keel-fleet.ts", "code": "// fleet", "sha256": "ab"})
         if path == "/v1/search":
             return httpx.Response(200, json=[{"key": "tire:T-9001", "tenant": request.headers["x-keel-tenant"]}])
+        if path == "/v1/chat/completions" and "You write Keel cartridges" in body["messages"][0]["content"]:
+            fixed = len(body["messages"]) > 2  # the second attempt, after the problems were sent back
+            yaml_text = (ROOT / "examples/clinics/cartridge.yaml").read_text()
+            handlers = (ROOT / "examples/clinics/handlers.py").read_text() if fixed else "from keel.handlers import HandlerRegistry\nregistry = HandlerRegistry()\n"
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": f"```yaml\n{yaml_text}```\n\n```python\n{handlers}```"}}]})
         if path == "/v1/chat/completions":
             if not any(m["role"] == "tool" for m in body["messages"]):
                 call = {"id": "c1", "type": "function", "function": {"name": "search", "arguments": json.dumps({"rule": "tire_critical"})}}
@@ -83,6 +95,7 @@ def plane(tmp_path, provisioner=None, keel=None, **settings):
     s = Settings(invite_codes={"pilot-1"}, examples_dir=str(ROOT / "examples"), ready_timeout=2, ofox_key="ofox-test", **settings)
     p = ControlPlane(SqliteStore(tmp_path / "control.db"), FakeDatabases(tmp_path), provisioner or FakeProvisioner(), s, http)
     p.keel = keel  # the fake's record of calls, for the tests
+    p.provisioner.keel = keel
     return p
 
 
@@ -207,6 +220,64 @@ def test_events_keys_usage_and_sdk_through_the_console(tmp_path):
     assert next(k for k in SqliteStore(tmp_path / "acme.db").api_keys() if k.id == made["id"]).revoked_at is not None  # the container's copy too
     assert client.delete("/api/keys/kk_nope").status_code == 409
     assert client.get("/api/sdk/typescript").json()["filename"] == "keel-fleet.ts"
+
+
+def test_replacing_the_cartridge_reverts_when_the_new_one_does_not_start(tmp_path):
+    p = plane(tmp_path)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    clinics = {n: (ROOT / "examples/clinics" / n).read_text() for n in ("cartridge.yaml", "handlers.py")}
+    assert client.post("/api/cartridge/check", json={"cartridge_yaml": clinics["cartridge.yaml"], "handlers_py": ""}).json()["problems"]  # no handlers
+    assert client.put("/api/cartridge", json={"cartridge_yaml": "name: x", "handlers_py": "def ("}).status_code == 400
+    r = client.put("/api/cartridge", json={"cartridge_yaml": clinics["cartridge.yaml"], "handlers_py": clinics["handlers.py"]})
+    assert r.status_code == 200 and r.json()["problems"] == []
+    me = wait(client)
+    assert me["status"] == "ready" and me["notice"] is None and client.get("/api/cartridge").json()["name"] == "clinics"
+    assert client.get("/api/cartridge").json()["example"] is False
+    # the example's tenant is forgotten when its cartridge goes
+    assert "acme/demo" in SqliteStore(tmp_path / "acme.db").forgotten_tenants()
+    broken = {**clinics, "handlers.py": clinics["handlers.py"] + "\nboom()\n"}
+    client.put("/api/cartridge", json={"cartridge_yaml": broken["cartridge.yaml"].replace("clinics", "clinics2", 1), "handlers_py": broken["handlers.py"]})
+    me = wait(client)
+    assert me["status"] == "ready" and "previous one is back" in me["notice"] and client.get("/api/cartridge").json()["name"] == "clinics"
+    client.put("/api/cartridge", json={"example": "fleet"})
+    wait(client)
+    assert client.get("/api/cartridge").json()["example"] is True
+
+
+def test_a_cartridge_generated_from_events_is_checked_against_them(tmp_path):
+    p = plane(tmp_path, generations_day=1)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    lines = [ln for ln in (ROOT / "examples/clinics/events.jsonl").read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+    events = [{k: v for k, v in json.loads(ln).items() if k != "tenant"} for ln in lines[:3]]
+    out = client.post("/api/cartridge/generate", json={"events": events, "description": "clinics"}).json()
+    assert out["attempts"] == 2 and out["problems"] == [] and "registry.on" in out["handlers_py"] and "name: clinics" in out["cartridge_yaml"]
+    assert client.post("/api/cartridge/generate", json={"events": events}).status_code == 429
+
+
+def test_cdc_is_set_on_the_account_container(tmp_path):
+    p = plane(tmp_path)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    assert client.get("/api/cdc").json()["configured"] is False
+    bad = client.put("/api/cdc", json={"dsn": "postgresql://u:p@db:5432/app", "map": "tires: {kind: wheel, id: serial, tenant: fleet_id}"})
+    assert bad.status_code == 400 and "wheel.created" in bad.json()["detail"]
+    good = client.put("/api/cdc", json={"dsn": "postgresql://u:p@db:5432/app", "map": "tires: {kind: tire, id: serial, tenant: fleet_id}"})
+    assert good.status_code == 400 and "tire.created" in good.json()["detail"]  # fleet has tire.depth_measured, not the CDC types
+    tires = "name: tires\nentities: {tire: {}}\nevents: {tire.created: {subject: tire}, tire.updated: {subject: tire}, tire.deleted: {subject: tire}}\n"
+    p.control._exec("UPDATE hosted_accounts SET cartridge = ? WHERE account = 'acme'", (tires,))  # as if deployed
+    ok = client.put("/api/cdc", json={"dsn": "postgresql://u:p@db:5432/app", "map": "tires: {kind: tire, id: serial, tenant: fleet_id}"})
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["tables"] == ["tires"] and ok.json()["status"] == {"ok": True}
+    _, files, env, _ = p.provisioner.updates[-1]
+    assert files == ["cdc.yaml"] and env == {"KEEL_CDC_MAP": "/cartridge/cdc.yaml", "KEEL_PG_DSN": "postgresql://u:p@db:5432/app"}
+    assert "postgresql" not in json.dumps(client.get("/api/cdc").json())  # the DSN stays in the container
+    client.delete("/api/cdc")
+    assert p.provisioner.updates[-1][3] == ("KEEL_CDC_MAP", "KEEL_PG_DSN") and client.get("/api/cdc").json()["configured"] is False
 
 
 def test_the_console_build_is_served_with_a_fallback(tmp_path):

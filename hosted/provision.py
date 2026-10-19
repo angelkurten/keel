@@ -105,3 +105,21 @@ class CoolifyProvisioner:
 
     def restart(self, uuid: str) -> None:
         self._call("POST", f"/applications/{uuid}/restart")
+
+    def update(self, uuid: str, files: dict[str, str] | None = None, env: dict[str, str] | None = None, drop_env: tuple[str, ...] = ()) -> None:
+        """Replace files under /cartridge (adding new ones), set or remove variables, and deploy again."""
+        if files:
+            have = {f["mount_path"]: f["uuid"] for f in self._call("GET", f"/applications/{uuid}/storages").get("file_storages", [])}
+            for name, content in files.items():
+                path = f"/cartridge/{name}"
+                if path in have:
+                    self._call("PATCH", f"/applications/{uuid}/storages", json={"uuid": have[path], "type": "file", "content": content})
+                else:
+                    self._call("POST", f"/applications/{uuid}/storages", json={"type": "file", "mount_path": path, "content": content})
+        if env:
+            self._call("PATCH", f"/applications/{uuid}/envs/bulk", json={"data": [{"key": k, "value": v, "is_literal": True} for k, v in env.items()]})
+        if drop_env:
+            for e in self._call("GET", f"/applications/{uuid}/envs") or []:
+                if e.get("key") in drop_env:
+                    self._call("DELETE", f"/applications/{uuid}/envs/{e['uuid']}")
+        self._call("POST", "/deploy", params={"uuid": uuid})
