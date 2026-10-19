@@ -31,6 +31,7 @@ Known limit: a customer's handlers can write to their own database, so they coul
 | `HOSTED_CONSOLE_DIR` | the console's build (`console/dist`; the image sets it) |
 | `HOSTED_SECURE_COOKIES` | `1` (default) marks the session cookie Secure; `0` for plain http on localhost |
 | `OFOX_API_KEY` | the playground's model gateway; without it, only customers' own keys work |
+| `HOSTED_EMBED_URL` | how account containers reach the embeddings proxy (`/embed/v1`); the control plane's internal address (`http://<app uuid>:8080/embed/v1` on Coolify) keeps it off the CDN, whose browser check refuses older Keel images; default: the public URL |
 | `HOSTED_MODELS`, `HOSTED_AGENT_MESSAGES_DAY` | the playground's models (comma-separated OfoxAI ids; the first also writes cartridges) and messages per account and day (50) |
 | `HOSTED_DEFAULT_RPS`, `HOSTED_DEFAULT_EVENTS_MONTH` | limits for a new account (10 and 100000) |
 

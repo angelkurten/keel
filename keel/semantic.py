@@ -294,7 +294,7 @@ class OpenAIEmbedder:
         prefix = self.prefix.get(role, "")
         for i in range(0, len(texts), self.batch):
             part = [prefix + t for t in texts[i : i + self.batch]]
-            headers = {"Content-Type": "application/json"}
+            headers = {"Content-Type": "application/json", "User-Agent": _user_agent()}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
             req = urllib.request.Request(f"{self.base_url}/embeddings", data=json.dumps({"model": self.model, "input": part}).encode(), headers=headers)
@@ -372,8 +372,15 @@ class OverlapReranker:
         return sorted(((k, len(q & set(tokens(d))) / max(1, len(q))) for k, d in docs), key=lambda x: (-x[1], x[0]))
 
 
+def _user_agent() -> str:
+    """Keel's own User-Agent: some proxies (Cloudflare's browser check) refuse urllib's default one."""
+    from keel import __version__
+
+    return f"keel/{__version__}"
+
+
 def _post_json(url: str, body: dict[str, Any], api_key: str | None, timeout: float) -> Any:
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "User-Agent": _user_agent()}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)

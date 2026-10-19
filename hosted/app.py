@@ -110,7 +110,8 @@ class Settings:
     session_days: int = 30
     ready_timeout: float = 300  # seconds for a new container to answer /health (restarted once halfway)
     generations_day: int = 10  # cartridges generated per account and day
-    public_url: str = "https://keel.angelkurten.com"  # what account containers call for embeddings
+    public_url: str = "https://keel.angelkurten.com"
+    embed_url: str | None = None  # how account containers reach the embeddings proxy; set it to the control plane's internal address to skip the CDN
     embedding_model: str = "openai/text-embedding-3-small"
     embedding_tokens_day: int = 2_000_000  # per account: an account's own code can call the proxy too
 
@@ -433,7 +434,7 @@ class ControlPlane:
         self.provisioner.volume(row["app"], f"keel-{account}-data", "/data")
         self.provisioner.update(row["app"], env={
             "KEEL_INDEX": "chroma:///data/vectors", "KEEL_INDEX_CURSOR_DIR": "/data", "KEEL_INDEX_EVERY": "600", "KEEL_EMBEDDER": "openai",
-            "KEEL_EMBEDDINGS_BASE_URL": f"{self.settings.public_url.rstrip('/')}/embed/v1", "KEEL_EMBEDDINGS_API_KEY": row["secret"],
+            "KEEL_EMBEDDINGS_BASE_URL": self.settings.embed_url or f"{self.settings.public_url.rstrip('/')}/embed/v1", "KEEL_EMBEDDINGS_API_KEY": row["secret"],
             "KEEL_EMBEDDINGS_MODEL": self.settings.embedding_model})
         self.control._exec("UPDATE hosted_accounts SET semantic = ? WHERE account = ?", ("on", account))
         return {"semantic": True}
@@ -898,7 +899,7 @@ def from_env() -> Any:
         rps=int(env.get("HOSTED_DEFAULT_RPS", "10")), events_month=int(env.get("HOSTED_DEFAULT_EVENTS_MONTH", "100000")),
         secure_cookies=env.get("HOSTED_SECURE_COOKIES", "1") == "1", static_dir=env.get("HOSTED_CONSOLE_DIR"),
         agent_messages_day=int(env.get("HOSTED_AGENT_MESSAGES_DAY", "50")), ofox_key=env.get("OFOX_API_KEY") or None,
-        public_url=env.get("HOSTED_PUBLIC_URL", "https://keel.angelkurten.com"),
+        public_url=env.get("HOSTED_PUBLIC_URL", "https://keel.angelkurten.com"), embed_url=env.get("HOSTED_EMBED_URL") or None,
     )
     if env.get("HOSTED_MODELS"):
         settings.models = tuple(m for m in env["HOSTED_MODELS"].split(",") if m)
