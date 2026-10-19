@@ -220,3 +220,4 @@ details.trace > summary { cursor: pointer; padding: 8px 10px; font-size: 13px; c
   .caps td:nth-of-type(1)::before { content: "With Keel"; display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
   .caps td:nth-of-type(2)::before { content: "Without Keel"; display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 }
+[hidden] { display: none !important; }
