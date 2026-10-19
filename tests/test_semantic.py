@@ -451,7 +451,7 @@ def test_global_memory_is_indexed_for_every_tenant_that_knows_the_subject(fleet)
 
 
 def test_custom_adapters_example_runs_and_honours_the_index_contract():
-    """docs/connect.md points at examples/custom_adapters.py; it must keep working."""
+    """docs/serve.md points at examples/custom_adapters.py; it must keep working."""
     import runpy
 
     mod = runpy.run_path("examples/custom_adapters.py", run_name="__main__")

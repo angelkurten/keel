@@ -150,7 +150,7 @@ uv run keel index cartridges/clinics --tenant clinic-centro --db clinic.db --ind
 uv run keel serve cartridges/clinics --tenant clinic-centro --db clinic.db --index "examples.custom_adapters:make_index?path=vectors.db"
 ```
 
-`--embedder hash` runs it offline for a try. The index here is the SQLite example adapter; `chroma:///path` is the bundled one, and your own vector database is an adapter you write ([Connect, semantic search](connect.md#semantic-search)). Run `keel index` from cron: it only re-indexes what changed.
+`--embedder hash` runs it offline for a try. The index here is the SQLite example adapter; `chroma:///path` is the bundled one, and your own vector database is an adapter you write ([Connect, semantic search](serve.md#semantic-search)). Run `keel index` from cron: it only re-indexes what changed.
 
 ## The test that it worked
 

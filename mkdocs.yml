@@ -30,10 +30,13 @@ theme:
 
 nav:
   - Home: index.md
+  - Architecture: architecture.md
   - Your first pilot in a day: pilot.md
   - Your first cartridge: first-cartridge.md
-  - Connect your events: connect.md
+  - Send your events: ingest.md
+  - Serve the tools: serve.md
   - SDKs: sdks.md
+  - Operate: operate.md
   - Specification: SPEC.md
   - Roadmap: roadmap.md
   - Contributing: contributing.md
@@ -45,6 +48,9 @@ nav:
       - Semantic search, research and evals: design/semantic-evals.md
       - Hosted Keel: design/hosted.md
       - The console: design/console.md
+
+not_in_nav: |
+  /connect.md
 
 markdown_extensions:
   - admonition

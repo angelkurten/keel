@@ -120,10 +120,10 @@ import httpx  # pip install "httpx[http2]"
 keel = Client("https://keel.example.com", "acme-logistics", secret=os.environ["KEEL_SECRET"], http_client=httpx.Client(http2=True, timeout=10))
 ```
 
-`keel serve --transport http --http2` speaks HTTP/2 end to end (h2 over TLS, or h2c; see [connect](connect.md#serve-the-tools-over-http)); it pays off mostly for many concurrent calls from one process.
+`keel serve --transport http --http2` speaks HTTP/2 end to end (h2 over TLS, or h2c; see [connect](serve.md#serve-the-tools-over-http)); it pays off mostly for many concurrent calls from one process.
 
-Reads follow the memory scopes: agent-scope memory comes back only to the agent that wrote it, so set `agent` to read your own, and task memory tied to a task id only to calls that pass that `task` ([details](connect.md#serve-the-tools-over-http)).
+Reads follow the memory scopes: agent-scope memory comes back only to the agent that wrote it, so set `agent` to read your own, and task memory tied to a task id only to calls that pass that `task` ([details](serve.md#serve-the-tools-over-http)).
 
 ## Server side
 
-The SDK talks to `keel serve --transport http` (see [connect](connect.md#serve-the-tools-over-http)): one process for many tenants, `X-Keel-Tenant` and `X-Keel-Agent` per request behind a shared secret. The server derives event ids (a content hash) when the product sends none, so retries are safe to reason about.
+The SDK talks to `keel serve --transport http` (see [connect](serve.md#serve-the-tools-over-http)): one process for many tenants, `X-Keel-Tenant` and `X-Keel-Agent` per request behind a shared secret. The server derives event ids (a content hash) when the product sends none, so retries are safe to reason about.

@@ -301,7 +301,7 @@ function CdcSelfHosted({ ctx }: { ctx: Ctx }) {
         <p className="muted small-text">
           On a self-hosted Keel, change data capture runs next to the server. Map each table to a kind in a small YAML file;
           each row change becomes <span className="mono">&lt;kind&gt;.created|updated|deleted</span>, which the cartridge must declare.
-          Needs Postgres 10+ with <span className="mono">wal_level = logical</span>. See docs/connect.md, "Postgres CDC".
+          Needs Postgres 10+ with <span className="mono">wal_level = logical</span>. See docs/ingest.md, "Postgres CDC".
         </p>
       </div>
       <Code title="In the server, as a thread" code={`KEEL_PG_DSN=postgresql://user:pass@host:5432/app \\\n  keel serve path/to/${name} --transport http --db keel.db --ui --cdc cdc.yaml`} />

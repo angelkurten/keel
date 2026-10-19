@@ -193,6 +193,7 @@ An adapter is any iterable of envelopes. It MUST NOT interpret payloads.
 | JSONL file | shipped | Development and tests. |
 | Postgres table + polling | shipped | `PostgresTableAdapter`: a `seq` cursor in a file, so restarts resume; it moves only after the Ingestor commits (`ack()`). At-least-once. |
 | Webhook (HTTP) | shipped | `build_app`: validates the envelope, ingests, returns the report; bearer token. |
+| HTTP API and typed SDKs | shipped | `POST /v1/events` on `keel serve --transport http`, called directly or through `events()` in the generated clients (§7.7); one envelope or a list, the ingest report back. |
 | Kafka | shipped | `KafkaAdapter` (`keel.adapters.bus`): offset committed after the Ingestor commits the batch (`ack()`). At-least-once; `dead_letter` for poison messages. |
 | SQS | shipped | `SqsAdapter` (`keel.adapters.bus`): message deleted after the Ingestor commits the batch (`ack()`). Same semantics. `keel consume --queue <url>` runs it, a batch per transaction (`--batch`, default 100), retried one message at a time when it fails; a failed message stays for the queue's dead-letter queue, and a store that stops answering ends the process (exit 2). |
 | Postgres CDC | shipped | `PostgresCdcAdapter`, `keel cdc`: logical replication with `pgoutput` read through SQL functions; each mapped row change is `<kind>.created|updated|deleted`, id `pgcdc:<commit lsn>:<n>`; the slot advances only after the store commits. |

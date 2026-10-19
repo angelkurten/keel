@@ -341,7 +341,8 @@ export class Client<S extends string = string> {
     return this.post("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined, depth });
   }
 
-  /** Ingest one envelope or a batch. At-least-once is yours: retry on network errors, the server dedupes nothing. */
+  /** Ingest one envelope or a batch. Retrying on a network error is safe: the server skips ids it already applied, and
+   * derives the id from the content when an envelope has none. */
   events(batch: Envelope | Envelope[]): Promise<IngestReport> {
     return this.post("/v1/events", batch);
   }

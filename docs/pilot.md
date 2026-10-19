@@ -25,11 +25,13 @@ keel validate cartridges/mine --events sample.jsonl
 
 ## 3. Send your events (1–2 h)
 
-Pick the path you already have; [Connect your events](connect.md) covers each one:
+Pick the path you already have; [Send your events](ingest.md) covers each one:
 
+- **Postgres CDC**: no code in your product. `keel cdc` follows your own tables through logical replication, each row change an event.
+- **The typed SDK**: your backend calls `keel.events([emit.<event>(...)])`, with payload types generated from your cartridge.
 - **A Postgres outbox table**: your product inserts envelopes into it, and Keel polls it in order with a cursor, so a restart resumes.
 - **Webhooks**: `POST /v1/events` with the envelope.
-- **Kafka or SQS**: `keel consume --queue <url> --db <graph>`, which acknowledges only after the graph has stored the batch.
+- **SQS**: `keel consume --queue <url> --db <graph>`, which acknowledges only after the graph has stored the batch. **Kafka**: `KafkaAdapter` from Python, with the same guarantee.
 - **A file**, to start: `keel ingest cartridges/mine events.jsonl --db keel.db`.
 
 Load your history first (`keel ingest` does a million events in under two minutes on MySQL), then leave the live stream running.

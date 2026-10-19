@@ -8,7 +8,7 @@
 
 Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 
-Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from your product go in; a bitemporal context graph per tenant comes out, whatever your unit is (an end-customer, a household, a team); every agent you build reads and writes it through the same five MCP tools.
+Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from your product go in; a bitemporal context graph per tenant comes out, whatever your unit is (an end-customer, a household, a team); every agent you build reads and writes it through the same five tools, over MCP, HTTP or a typed SDK.
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
@@ -25,31 +25,23 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 ## How Keel is different
 
 1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
-2. **Events in, not documents.** Keel ingests structured facts with time (Postgres tables, webhooks, Kafka, SQS). Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
+2. **Events in, not documents.** Keel ingests structured facts with time: your Postgres tables through CDC, an outbox, a typed SDK, webhooks, Kafka, SQS. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.
 
 ## Five tools, any agent
 
-```
-context(subject, as_of?, depth?, as_known_at?, task?, detail?, exclude?, only?)
-  -> what is true now, at as_of, or as known at a past moment; rules and their verdicts;
-     depth=1 adds the neighbors; detail="concise" for about a third of the tokens; only=[...] just those predicates
-history(subject?, since?, until?, predicate?, scope?, as_known_at?, task?, changed_since?, limit?)
-  -> what was true and when we learned it; without a subject, what changed since a watermark
-search(text?, kind?, rule?, limit?, after?, mode?, min_score?, related_to?, via?, detail?, depth?, per_kind?, exclude?, as_of?, where?)
-  -> text or semantic search, or every entity of a kind / where a rule fires, paged;
-     related_to (and via) keeps only one subject's neighbors; detail="concise" puts each result's facts in it;
-     per_kind=n the best of every kind: the context for a task in one call
-     where={name: value} by an attribute's or a fact's value; each result says what matched (matched, snippet);
-     kind may be a list of kinds
-annotate(subject, predicate, value, scope?, evidence?, by?, task?, key?, status?)
-  -> an agent (or a person) writes what it learned; key makes retries safe; status="proposed" waits for review
-related(subject, relation?, as_of?, depth?)
-  -> neighbors by relation type, up to three hops
-```
+| Tool | The question it answers |
+| --- | --- |
+| `context` | What do I know about this subject now, or at a past moment? Open facts, relations and rule verdicts. |
+| `history` | How did it change over time, and when did we learn it? |
+| `search` | Which subjects match? By text, kind, rule, attribute value or meaning. |
+| `related` | What is it connected to, up to three hops? |
+| `annotate` | Remember what an agent or a person concluded, with evidence and a scope. |
 
-`search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, Weaviate, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/connect.md#semantic-search), [example](examples/custom_adapters.py)).
+Every parameter is in the [specification](docs/SPEC.md#7-the-five-tools).
+
+`search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, Weaviate, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/serve.md#semantic-search), [example](examples/custom_adapters.py)).
 
 Expose them over MCP (`keel serve`) and point any agent framework at them. Declare `agents:` in the cartridge and `keel serve --agent <id>` binds a server to one of them: what it may read and write is enforced by the layer, not by the agent.
 
@@ -62,7 +54,7 @@ uv run keel ingest examples/fleet examples/fleet/events.jsonl
 uv run keel context examples/fleet examples/fleet/events.jsonl unit:MXK-4821
 ```
 
-Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes). Settings (database, secret, embeddings keys) go in a `.env`: copy [`.env.example`](.env.example) ([reference](docs/connect.md#configuration)).
+Then write your own cartridge: see [docs/first-cartridge.md](docs/first-cartridge.md) (20 minutes). Settings (database, secret, embeddings keys) go in a `.env`: copy [`.env.example`](.env.example) ([reference](docs/operate.md#configuration)).
 
 In your own product it is a library: `uv add keel-context` (or `pip install keel-context`); the import is `import keel`. From another language, generate a typed client from your cartridge: `keel sdk typescript|python|go|php examples/fleet -o <file>`, with a small runtime per language (see [docs/sdks.md](docs/sdks.md)).
 
@@ -85,45 +77,24 @@ With Claude Code, one command registers it and the agent sees exactly five tools
 claude mcp add keel -- uv run --directory $PWD keel serve examples/fleet --tenant acme-logistics --events examples/fleet/events.jsonl
 ```
 
-Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [connect](docs/connect.md#serve-the-tools-over-mcp). A backend, or many tenants from one process, use the same five as a JSON API: `keel serve --transport http` (`/v1/context`, `/v1/events`, ... with OpenAPI; tenant and agent per request).
+Codex CLI (OpenAI) works the same way from `~/.codex/config.toml`; the four read tools are annotated read-only, so it runs them without prompting. Both clients answered the same questions through the same five tools: see [serve the tools](docs/serve.md#serve-the-tools-over-mcp). A backend, or many tenants from one process, use the same five as a JSON API: `keel serve --transport http` (`/v1/context`, `/v1/events`, ... with OpenAPI; tenant and agent per request).
 
-Poll an outbox table in your Postgres (a cursor file makes restarts resume, not re-ingest):
+Send your product's events from wherever they already are ([how, for each](docs/ingest.md)):
 
-```python
-import psycopg
-from keel.adapters.postgres import PostgresTableAdapter
+- **Postgres CDC**, no code in your product: `keel cdc <cartridge> --dsn postgresql://... --map cdc.yaml --db keel.db --setup` follows your own tables; each row change is an event.
+- **The typed SDK**, from your backend: `keel sdk typescript <cartridge> -o src/keel.ts`, then `keel.events([emit.tireDepthMeasured({...})])` (also Python, Go, PHP).
+- **An outbox table**: `PostgresTableAdapter` polls it in order with a cursor, so restarts resume.
+- **A webhook**: `POST /v1/events` on `keel serve --transport http`, or `build_app(ingestor, token=...)`.
+- **SQS or Kafka**: `keel consume --queue <url>`, or `KafkaAdapter` from Python; at-least-once, acknowledged after each commit.
+- **A `.jsonl` file**, for backfills and tests: `keel ingest <cartridge> events.jsonl --db keel.db`.
 
-adapter = PostgresTableAdapter(lambda: psycopg.connect(DSN), table="keel_events", cursor_path=".keel/cursor")
-ingestor = Ingestor(cartridge, SqliteStore("keel.db"))  # durable; MemoryStore() for a throwaway graph
-ingestor.ingest(adapter.follow(interval=5))
-```
-
-Or consume a bus: `KafkaAdapter.connect(...)` and `SqsAdapter.connect(...)` in `keel.adapters.bus` (`--extra kafka`, `--extra sqs`), at-least-once, acknowledged only after the batch is committed. Or receive envelopes over HTTP (`uv sync --extra webhook`):
-
-```python
-from keel.adapters.webhook import build_app
-
-app = build_app(ingestor, token="shared-secret")  # POST /events, Authorization: Bearer <token>
-```
-
-The table shape and the envelope fields are in `keel/adapters/postgres.py` and `keel/envelope.py`. `keel export <tenant> --db keel.db` writes one tenant's whole audit trail as JSONL, closed facts and provenance included.
+`keel export <tenant> --db keel.db` writes one tenant's whole audit trail as JSONL, closed facts and provenance included.
 
 ## Architecture
 
-```
-  your app (Postgres)     webhooks   Kafka / SQS
-            \               |            /
-             v              v           v
-   +-------------------------------------------------+      +------------------+
-   |  event envelope: tenant, type, subject, time     |      |  cartridge       |
-   |  ingestor + handler registry                     | <--- |  ontology        |
-   |  bitemporal context graph, one subgraph/tenant   |      |  event catalog   |
-   |  memory scopes: global / tenant / task / agent   |      |  handlers        |
-   |  five MCP tools                                   |      |  semantic rules  |
-   +-------------------------------------------------+      |  memory policies |
-            |              |             |                   +------------------+
-         agent A        agent B       agent N (no pipeline)
-```
+![Keel architecture: sources, adapters, deterministic ingest, bitemporal store, cartridge, five tools, jobs, surfaces and agents](docs/architecture.svg)
+
+Every box, the options for each and when to pick which: [docs/architecture.md](docs/architecture.md).
 
 Design rules the core enforces:
 
@@ -141,7 +112,7 @@ examples/        fleet (reference), crm, finance and clinics: four domains, one 
                  each a cartridge, its events and its test; fleet also has a minimal agent and a multi-agent workflow
 sdk/             SDK runtimes: typescript, go, php (the Python client ships in keel)
 evals/           the semantic-search eval bench
-docs/            site sources (mkdocs.yml at the root): first-cartridge, connect, sdks, SPEC
+docs/            site sources (mkdocs.yml at the root): architecture, first-cartridge, ingest, serve, sdks, operate, SPEC
 tests/
 ```
 
