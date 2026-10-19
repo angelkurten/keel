@@ -11,3 +11,4 @@ site
 sdk
 tests
 examples/demo.tape
+**/node_modules

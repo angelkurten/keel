@@ -48,7 +48,7 @@ async def main() -> None:
     for m in result["messages"]:
         for call in getattr(m, "tool_calls", None) or []:
             print(f"→ {call['name']}({call['args']})")
-    print("\n" + result["messages"][-1].content)
+    print("\n" + result["messages"][-1].text)  # .text joins content blocks
 
 
 if __name__ == "__main__":

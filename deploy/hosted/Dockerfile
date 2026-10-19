@@ -1,13 +1,21 @@
-# Hosted Keel's control plane: sign-up, the usage panel, and a Keel container per account (hosted/README.md).
+# Hosted Keel's control plane: sign-up, the console and its API, and a Keel container per account (hosted/README.md).
 #   docker build -f deploy/hosted/Dockerfile -t keel-hosted .
+FROM node:22-slim AS console
+WORKDIR /console
+COPY console/package.json console/package-lock.json ./
+RUN npm ci
+COPY console/ ./
+RUN npm run build
+
 FROM python:3.12-slim
 COPY . /src
 RUN pip install --no-cache-dir "/src[http,mysql]" httpx python-multipart \
     && mkdir -p /app && cp -r /src/hosted /src/examples /app/ && chmod -R a+rX /app && rm -rf /src \
     && useradd --uid 10001 --create-home keel
+COPY --from=console /console/dist /app/console
 USER keel
 WORKDIR /app
-ENV PYTHONUNBUFFERED=1 HOSTED_EXAMPLES_DIR=/app/examples
+ENV PYTHONUNBUFFERED=1 HOSTED_EXAMPLES_DIR=/app/examples HOSTED_CONSOLE_DIR=/app/console
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4)"]
