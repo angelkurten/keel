@@ -210,6 +210,20 @@ def test_recent_events_check_and_sdk(tmp_path):
         assert doc["name"] == "fleet" and "tire" in doc["entities"] and "registry" not in json.dumps(doc)  # the YAML, never the handlers
 
 
+def test_tool_schemas_are_compact():
+    """No pydantic titles, and an optional parameter is its own type: fewer tokens on every call that lists tools."""
+    pytest.importorskip("mcp")
+    import asyncio
+
+    from keel.mcp_server import build_server, compact
+
+    listed = asyncio.run(build_server(lambda _r: None, name="keel").list_tools())
+    text = json.dumps([getattr(t, "input_schema", None) or t.inputSchema for t in listed])
+    assert '"title"' not in text and '{"type": "null"}' not in text
+    assert compact({"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "X"}) == {"type": "string"}
+    assert compact({"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "null"}], "default": None}) == {"anyOf": [{"type": "string"}, {"type": "integer"}]}
+
+
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from typer.testing import CliRunner
 

@@ -29,6 +29,24 @@ def _dt(s: str | None) -> datetime | None:
     return parse_iso(s) if s else None
 
 
+def compact(schema: Any) -> Any:
+    """A tool's JSON Schema without pydantic's noise: no `title` on every property, and an optional parameter as its
+    own type instead of `anyOf [T, null]` with `default: null` (leaving it out means null). Same meaning, about half
+    the tokens an agent pays on every call that lists the tools."""
+    if isinstance(schema, list):
+        return [compact(x) for x in schema]
+    if not isinstance(schema, dict):
+        return schema
+    out = {k: compact(v) for k, v in schema.items() if k != "title"}
+    options = out.get("anyOf")
+    if isinstance(options, list) and {"type": "null"} in options and "default" in out and out["default"] is None:
+        rest = [o for o in options if o != {"type": "null"}]
+        out.pop("anyOf")
+        out.pop("default")
+        out.update(rest[0] if len(rest) == 1 else {"anyOf": rest})
+    return out
+
+
 def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None):  # pragma: no cover - needs the optional mcp package
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
     many tenants: the tenant and agent come from the request's key and headers, keel/http.py)."""
@@ -133,4 +151,7 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
         """Neighbors of a subject, optionally by relation type (one or a list), now or at an ISO datetime. depth 2 or 3 walks further through those relations; each entry says its hops and the subject it was reached via."""
         return bound(ctx).related(subject, relation, _dt(as_of), depth)
 
+    manager = getattr(mcp, "_tool_manager", None)  # ponytail: the mcp package's own attribute; a public hook if it offers one
+    for t in manager.list_tools() if manager else []:
+        t.parameters = compact(t.parameters)
     return mcp
