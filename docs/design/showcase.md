@@ -1,6 +1,6 @@
 # Design note: the support showcase
 
-Status: proposed on 2026-10-19. A public page at https://demo.angelkurten.com where a support agent answers the same question twice, once with Keel and once without, over the same data. Decided the same day: a B2B SaaS with subscriptions as the domain; RAG over the same data as the baseline (then RAG plus the product's API, see Fairness); guided scenarios plus a free question; generated data with planted stories; an expected answer and an LLM judge per scenario; `openai/gpt-6-sol` through OfoxAI on both sides; the Keel side is an account of hosted Keel.
+Status: published on 2026-10-19 at https://demo.angelkurten.com (0.30.0). A public page at https://demo.angelkurten.com where a support agent answers the same question twice, once with Keel and once without, over the same data. Decided the same day: a B2B SaaS with subscriptions as the domain; RAG over the same data as the baseline (then RAG plus the product's API, see Fairness); guided scenarios plus a free question; generated data with planted stories; an expected answer and an LLM judge per scenario; `openai/gpt-6-sol` through OfoxAI on both sides; the Keel side is an account of hosted Keel.
 
 ## What it must show
 
