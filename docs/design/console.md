@@ -30,8 +30,9 @@ One SPA (React + Vite), served by the control plane in hosted and by `keel serve
 | Tab | What it does |
 |---|---|
 | Graph | Today's `/ui`: search, subject, related graph, facts, history; the tenant picked in the sidebar. A banner while it shows example data. |
-| Playground | The five tools as forms against the selected tenant, the JSON result, and the same call as curl and Python. |
+| Playground | Two modes. **Tools:** the five tools as forms against the selected tenant, the JSON result, and the same call as curl and Python. **Agent:** a name, a model, the cartridge's agent identity, a system prompt started from the cartridge and the five tools; chat with it against the tenant, every tool call shown; then export it as code. |
 | Connect | One tab per client (Claude Code, Cursor, VS Code, Claude Desktop, LangGraph, curl) with the endpoint, a key narrowed to the tenant and the tenant already in the snippet. It waits for the first tool call and says when it arrives. |
+| SDK | Pick TypeScript, Python, Go or PHP: the command that installs the runtime, the typed client generated from the deployed cartridge to download, and an example with the cartridge's own kinds and events. Says when the cartridge changed and the download is stale. |
 | Events | Webhook (endpoint, envelope, snippets, a live log of recent events with their errors); upload an `events.jsonl` (checked against the catalog, then ingested in batches); Postgres CDC (a URL and tables). |
 | Keys | List, create (shown once), revoke. Scope: account, tenant, agent, global. |
 | Usage | Events against the monthly limit, requests per second, tool calls per tenant and tool. |
@@ -48,6 +49,8 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 - **Upload.** `Cartridge.check_event` per line before anything is posted; the report lists what would be refused.
 - **CDC in hosted.** The control plane keeps the Postgres URL and tables; the provisioner adds `keel cdc` as a second process in the account's container.
 - **Cartridge generator.** The user pastes two or three real events; the control plane asks a model through OfoxAI (the gateway already used) for `cartridge.yaml` and `handlers.py`, checks the YAML with `check_cartridge`, shows both for review, and deploys them to the account's own container on request. Handlers run only there, as uploaded ones do. A limit of generations per account and day. An LLM here is fine: it writes the cartridge once, it is never in the ingest path (rule 10).
+- **The agent in the playground** is tried in the console and exported, never hosted: Keel stays out of the agent framework business. The control plane runs the loop: the model through OfoxAI (an allowance of messages per account and day) or the user's own Anthropic or OpenAI key, the five tools as function definitions, each call sent through the proxy. The starter prompt is a template filled from the cartridge (kinds, relations, rules, "call `context` before answering"); no LLM writes it. Agent configurations are kept per account in the control database. Export writes one runnable file per framework, connected to the account's `/mcp` with the key from an environment variable: Claude Agent SDK, LangGraph, OpenAI Agents SDK, Google ADK.
+- **SDKs.** `load_cartridge` imports `handlers.py`, so the control plane never generates them itself: the account's container, which already runs that code, serves `GET /v1/sdk/<language>` (the operator secret only) with `keel sdk`'s output, and the console compares its hash with the last download to say it is stale.
 - **Replacing the cartridge** redeploys the container with the new files and runs `keel forget demo`.
 - **Self-hosted.** The SPA's build ships inside the wheel (`keel/console/`, about 200 KB) and replaces `keel/ui.html`. Its calls carry the secret the operator types once, kept in the browser's session.
 
@@ -55,8 +58,8 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 
 | Phase | Items |
 |---|---|
-| 1. Entry | invitation link, magic link (Resend), proposed slug, account born with the example, waiting screen, SPA shell with Graph, Playground and Connect, the proxy, MCP for many tenants |
-| 2. Data | Events (webhook and live log, upload), Keys, Usage |
+| 1. Entry | invitation link, magic link (Resend), proposed slug, account born with the example, waiting screen, SPA shell with Graph, Playground (tools and agent, with export) and Connect, the proxy, MCP for many tenants |
+| 2. Data | Events (webhook and live log, upload), Keys, Usage, SDK |
 | 3. Own cartridge | replace by upload or example, the generator, CDC in hosted |
 | 4. Self-hosted | the SPA in the wheel, `keel/ui.html` removed |
 
@@ -69,6 +72,9 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 - Connect offers both a playground and per-client snippets.
 - Own data through webhook, file upload, Postgres CDC and a generated cartridge.
 - The generator uses OfoxAI.
+- The playground also configures an agent (prompt, model, the five tools), tried in the console and exported to Claude Agent SDK, LangGraph, OpenAI Agents SDK or Google ADK; never hosted.
+- The playground's model runs on OfoxAI with a daily allowance per account, or on the user's own key.
+- SDKs are a console tab: install command, download of the generated client, a typed example, a stale warning.
 - Dark, sober developer-tool look.
 
 ## Open
