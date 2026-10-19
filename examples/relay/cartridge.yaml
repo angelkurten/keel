@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=https://angelkurten.github.io/keel/cartridge.schema.json
+# Relay: a fictional workflow-automation SaaS, the domain of the support showcase (docs/design/showcase.md).
+# One tenant per customer company. events.jsonl is written by generate.py: seeded, so it is reproducible.
+
+name: relay
+version: 0.1.0
+
+entities:
+  account:
+    description: The customer company. Its plan, seats and region are facts over time.
+    ref: accounts.id
+  contact:
+    description: A person at the customer, with a role and a language.
+    ref: contacts.id
+  invoice:
+    description: A charge for a period; prorated when the plan changed mid-cycle.
+    ref: invoices.id
+  ticket:
+    description: A support ticket with a priority, a category and a status over time.
+    ref: tickets.id
+  incident:
+    description: A platform incident as it affected this customer, with its region and window.
+    ref: incidents.id
+  integration:
+    description: A connected app (Salesforce, Slack, HubSpot...) and its sync status.
+    ref: integrations.id
+
+relations:
+  has_contact:     { from: account, to: contact }
+  has_invoice:     { from: account, to: invoice }
+  has_ticket:      { from: account, to: ticket }
+  affected_by:     { from: account, to: incident }
+  uses:            { from: account, to: integration }
+
+events:
+  account.created:
+    subject: account
+    owner: core
+    payload: { name: string, region: string, plan: [starter, pro, enterprise], seats: int, csm: string | null }
+  contact.added:
+    subject: account
+    owner: core
+    payload: { id: string, name: string, role: string, email: string, language: string }
+  subscription.changed:
+    subject: account
+    owner: billing
+    payload: { plan: [starter, pro, enterprise], seats: int, previous_plan: string | null }
+  invoice.issued:
+    subject: account
+    owner: billing
+    payload: { id: string, amount: number, currency: string, period: string, prorated: bool, description: string }
+  invoice.paid:
+    subject: invoice
+    owner: billing
+    payload: { amount: number }
+  payment.failed:
+    subject: invoice
+    owner: billing
+    payload: { reason: string }
+  refund.issued:
+    subject: invoice
+    owner: billing
+    payload: { amount: number, reason: string }
+  ticket.opened:
+    subject: account
+    owner: support
+    payload: { id: string, title: string, priority: [low, normal, high], category: string }
+  ticket.status_changed:
+    subject: ticket
+    owner: support
+    payload: { status: [open, pending, resolved], note: string | null }
+  incident.affected:
+    subject: account
+    owner: platform
+    payload: { id: string, title: string, severity: [minor, major, critical], region: string }
+  incident.resolved:
+    subject: incident
+    owner: platform
+    payload: { summary: string }
+  integration.status_changed:
+    subject: account
+    owner: integrations
+    payload: { id: string, app: string, status: [connected, failing, disconnected], error: string | null }
+
+rules:
+  sla_breached:
+    applies_to: ticket
+    definition: "A ticket is past its SLA when it has been open longer than its account's plan allows: 4 h on Enterprise, 24 h on Pro, 72 h on Starter."
+    when:
+      any:
+        - all: [ { via: has_ticket, direction: in, any: { predicate: plan, eq: enterprise } }, { predicate: status, eq: open, open_for_days: { gt: 0.1667 } } ]
+        - all: [ { via: has_ticket, direction: in, any: { predicate: plan, eq: pro } }, { predicate: status, eq: open, open_for_days: { gt: 1 } } ]
+        - all: [ { via: has_ticket, direction: in, any: { predicate: plan, eq: starter } }, { predicate: status, eq: open, open_for_days: { gt: 3 } } ]
+  refund_eligible:
+    applies_to: invoice
+    definition: "An invoice can be refunded within 14 days of its payment, once."
+    when: [ { predicate: status, eq: paid, held_for_days: { lt: 14 } } ]
+  account_at_risk:
+    applies_to: account
+    definition: "An account is at risk when an invoice's payment failed and is still unpaid, and it has an open high-priority ticket."
+    when:
+      all:
+        - { via: has_invoice, direction: out, any: { predicate: status, eq: failed } }
+        - { via: has_ticket, direction: out, any: { all: [ { predicate: priority, eq: high }, { predicate: status, eq: open } ] } }
+  integration_failing:
+    applies_to: integration
+    definition: "An integration is failing when its last sync reported an error."
+    when: { predicate: status, eq: failing }
+
+memory:
+  ttl:
+    global: never
+    tenant: never
+    task: 14d
+    agent: 1d
+  requires_evidence: [global, tenant]
