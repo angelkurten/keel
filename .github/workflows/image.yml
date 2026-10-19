@@ -70,7 +70,7 @@ jobs:
           push: true
           build-args: |
             KEEL_VERSION=${{ env.V }}
-            KEEL_EXTRAS=http2,mysql
+            KEEL_EXTRAS=http2,mysql,postgres
           tags: ${{ env.IMAGE }}:${{ env.V }}-slim,${{ env.IMAGE }}:${{ env.MM }}-slim,${{ env.IMAGE }}:slim
           labels: |
             org.opencontainers.image.source=https://github.com/angelkurten/keel

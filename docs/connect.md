@@ -335,7 +335,7 @@ uv run keel usage --db keel.db --month 2027-01 --account acme
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.28.0`, `0.28`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.28.0`, `0.28`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`. Both variants include the Postgres driver, so `KEEL_CDC_MAP` and `KEEL_PG_DSN` make the container follow Postgres too.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
