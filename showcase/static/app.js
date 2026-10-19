@@ -367,8 +367,7 @@ async function main() {
     $("ask-customer").replaceChildren(...meta.customers.map((c) => h("option", { value: c.tenant }, `${c.name}${c.plan ? ` (${c.plan})` : ""}`)));
     renderAskLeft();
     renderSummary();
-    if (compare()) api("GET", "/api/build").then(renderBuild).catch(() => { $("build").hidden = true; });
-    else $("build").hidden = true;
+    if (compare()) api("GET", "/api/build").then((b) => { $("build").hidden = false; renderBuild(b); }).catch(() => {});
     const fromHash = decodeURIComponent(location.hash.slice(1));
     select(scenarios.some((s) => s.id === fromHash) ? fromHash : (scenarios[0] || {}).id);
   } catch (e) {

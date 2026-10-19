@@ -3,6 +3,7 @@
     uvicorn showcase.app:from_env --factory   (configuration: showcase/README.md)
 """
 
+import hashlib
 import json
 import os
 import secrets
@@ -156,7 +157,7 @@ class Showcase:
 
 def build_app(show: Showcase) -> Any:
     from fastapi import FastAPI, HTTPException, Request
-    from fastapi.responses import FileResponse
+    from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 
@@ -205,9 +206,13 @@ def build_app(show: Showcase) -> Any:
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
 
+    # assets named by their content, so Cloudflare's cache of the old ones never outlives a deploy
+    version = hashlib.sha256(b"".join((STATIC / f).read_bytes() for f in ("app.js", "styles.css"))).hexdigest()[:12]
+    html = (STATIC / "index.html").read_text(encoding="utf-8").replace('"app.js"', f'"app.js?v={version}"').replace('"styles.css"', f'"styles.css?v={version}"')
+
     @app.get("/")
-    def page() -> FileResponse:
-        return FileResponse(STATIC / "index.html")
+    def page() -> HTMLResponse:
+        return HTMLResponse(html)
 
     app.mount("/", StaticFiles(directory=STATIC), name="static")
     return app
