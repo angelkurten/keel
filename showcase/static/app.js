@@ -1,8 +1,11 @@
-// Keel showcase: the same support agent with Keel and without. Plain JS, no build step.
+// Keel showcase: a support agent on Keel (with SHOWCASE_SIDES=keel,rag, side by side with one without). Plain JS, no build step.
 // Model text is never parsed as HTML: answers are rendered as DOM nodes from a small markdown subset.
 "use strict";
 
-const state = { meta: null, scenarios: [], selected: null, running: new Set(), asking: false };
+const state = { meta: null, scenarios: [], selected: null, running: new Set(), asking: false, sides: ["keel"] };
+const TITLE = { keel: "With Keel", rag: "Without Keel (RAG + tools)" };
+const SHORT = { keel: "Keel", rag: "RAG+tools" };
+const compare = () => state.sides.length > 1;
 
 // --- tiny DOM helpers -------------------------------------------------------------------------------
 function h(tag, attrs, ...kids) {
@@ -137,22 +140,22 @@ function renderSummary() {
   const ms = (side) => median(runs.map((r) => r[side].ms || 0));
   const cost = (side) => runs.reduce((a, r) => a + (r[side].cost_usd || 0), 0);
   const toks = (side) => runs.reduce((a, r) => a + tokensOf(r[side]), 0);
-  const stat = (label, keel, rag, badge) => h("div", { class: "stat" },
+  const stat = (label, val, badge) => h("div", { class: "stat" },
     h("span", { class: "label" }, label),
-    h("div", { class: "vals" },
-      h("span", {}, h("span", { class: "who" }, "Keel"), h("span", { class: "v" }, keel)),
-      h("span", {}, h("span", { class: "who" }, "RAG+tools"), h("span", { class: "v" }, rag))),
-    badge || h("span", { class: "hint" }, " "));
-  const kc = correct("keel"), rc = correct("rag");
+    h("div", { class: "vals" }, state.sides.map((side) =>
+      h("span", {}, compare() ? h("span", { class: "who" }, SHORT[side]) : null, h("span", { class: "v" }, val(side))))),
+    badge || h("span", { class: "hint" }, "\u{a0}"));
+  const kc = correct("keel"), rc = compare() ? correct("rag") : 0;
   const dates = runs.map((r) => r.at).filter(Boolean).sort();
   const day = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const span = dates.length ? (day(dates[0]) === day(dates[dates.length - 1]) ? day(dates[0]) : `${day(dates[0])} – ${day(dates[dates.length - 1])}`) : "";
   box.append(
-    stat("Correct answers", `${kc}/${n}`, `${rc}/${n}`,
-      h("span", { class: kc >= rc ? "delta good" : "delta bad" }, kc === rc ? "same" : kc > rc ? `${kc - rc} more correct` : `${rc - kc} fewer correct`)),
-    stat("Median time", secs(ms("keel")), secs(ms("rag"))),
-    stat("Total cost", usd(cost("keel")), usd(cost("rag"))),
-    stat("Total tokens", num(toks("keel")), num(toks("rag"))),
+    stat("Correct answers", (side) => `${correct(side)}/${n}`, compare()
+      ? h("span", { class: kc >= rc ? "delta good" : "delta bad" }, kc === rc ? "same" : kc > rc ? `${kc - rc} more correct` : `${rc - kc} fewer correct`)
+      : null),
+    stat("Median time", (side) => secs(ms(side))),
+    stat("Total cost", (side) => usd(cost(side))),
+    stat("Total tokens", (side) => num(toks(side))),
     h("div", { class: "note" }, `Over the ${n} guided scenarios, cached runs of ${span}. Live runs below replace them in this page.`),
   );
 }
@@ -170,7 +173,7 @@ function renderList() {
     onclick: () => select(s.id),
   },
   h("span", { class: "t" }, s.title),
-  h("span", { class: "meta" }, h("span", { class: "tag" }, s.strength), h("span", { class: "marks" }, mark(s.result, "keel", "Keel"), mark(s.result, "rag", "RAG+tools"))))));
+  h("span", { class: "meta" }, h("span", { class: "tag" }, s.strength), h("span", { class: "marks" }, state.sides.map((side) => mark(s.result, side, SHORT[side])))))));
 }
 
 function select(id) {
@@ -233,11 +236,10 @@ function column(run, side, title, withVerdict) {
 function spinning() {
   const col = (side, title) => h("section", { class: `card col ${side}` }, h("h3", {}, title),
     h("div", { class: "spinbox" }, h("span", { class: "spin" }), "Running… this takes 10 to 60 seconds"));
-  return h("div", { class: "cols" }, col("keel", "With Keel"), col("rag", "Without Keel (RAG + tools)"));
+  return h("div", { class: compare() ? "cols" : "cols one" }, state.sides.map((side) => col(side, TITLE[side])));
 }
 function result(run, withVerdict) {
-  return [h("div", { class: "cols" },
-    column(run, "keel", "With Keel", withVerdict), column(run, "rag", "Without Keel (RAG + tools)", withVerdict))];
+  return [h("div", { class: compare() ? "cols" : "cols one" }, state.sides.map((side) => column(run, side, TITLE[side], withVerdict)))];
 }
 
 // --- selected scenario ----------------------------------------------------------------------------------------
@@ -257,7 +259,9 @@ function renderDetail() {
   }
   head.append(h("div", { class: "expected" }, h("span", { class: "lbl" }, "Expected"), s.expected));
   if (s.steps && s.steps.length) {
-    head.append(h("p", { class: "hint" }, "With Keel both agents read the same graph; without Keel each agent keeps its own notes, as two agents built separately do."));
+    head.append(h("p", { class: "hint" }, compare()
+      ? "With Keel both agents read the same graph; without Keel each agent keeps its own notes, as two agents built separately do."
+      : "Both agents read and write the same graph: what the first one learns, the second one finds."));
   }
   const when = s.result ? (s._live ? "live, just now" : `cached run of ${fmtDate(s.result.at)}`) : "not run yet";
   const runbar = h("div", { class: "runbar" },
@@ -296,7 +300,7 @@ function renderAskLeft() {
   const n = state.meta ? state.meta.limits.ask_left : 0;
   $("ask-left").textContent = `${n} question${n === 1 ? "" : "s"} left today`;
   $("ask-btn").disabled = state.asking || n <= 0;
-  $("ask-btn").textContent = state.asking ? "Asking…" : "Ask both";
+  $("ask-btn").textContent = state.asking ? "Asking…" : compare() ? "Ask both" : "Ask";
 }
 async function ask(e) {
   e.preventDefault();
@@ -358,11 +362,13 @@ async function main() {
     const [meta, scenarios] = await Promise.all([api("GET", "/api/meta"), api("GET", "/api/scenarios")]);
     state.meta = meta;
     state.scenarios = scenarios;
+    state.sides = meta.sides || ["keel"];
     $("model").textContent = meta.model;
     $("ask-customer").replaceChildren(...meta.customers.map((c) => h("option", { value: c.tenant }, `${c.name}${c.plan ? ` (${c.plan})` : ""}`)));
     renderAskLeft();
     renderSummary();
-    api("GET", "/api/build").then(renderBuild).catch(() => { $("build").hidden = true; });
+    if (compare()) api("GET", "/api/build").then(renderBuild).catch(() => { $("build").hidden = true; });
+    else $("build").hidden = true;
     const fromHash = decodeURIComponent(location.hash.slice(1));
     select(scenarios.some((s) => s.id === fromHash) ? fromHash : (scenarios[0] || {}).id);
   } catch (e) {

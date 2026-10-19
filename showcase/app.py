@@ -67,16 +67,16 @@ class Limits:
 
 
 class Showcase:
-    def __init__(self, agents: Agents, cache_path: Path, limits: Limits) -> None:
-        self.agents, self.cache_path, self.limits = agents, cache_path, limits
+    def __init__(self, agents: Agents, cache_path: Path, limits: Limits, sides: tuple[str, ...] = ("keel",)) -> None:
+        self.agents, self.cache_path, self.limits, self.sides = agents, cache_path, limits, sides
         self.names = {c["tenant"]: c["name"] for c in customers()}
         self.cache: dict[str, Any] = json.loads(cache_path.read_text()) if cache_path.exists() else {}
         self.lock = threading.Lock()
 
-    def _both(self, fn: Any) -> tuple[Any, Any]:
-        with ThreadPoolExecutor(2) as pool:  # the two sides run at the same time, so neither waits for the other
-            k, r = pool.submit(fn, "keel"), pool.submit(fn, "rag")
-            return k.result(), r.result()
+    def _sides(self, fn: Any) -> dict[str, Any]:
+        with ThreadPoolExecutor(len(self.sides)) as pool:  # the sides run at the same time, so neither waits for the other
+            futures = {side: pool.submit(fn, side) for side in self.sides}
+            return {side: f.result() for side, f in futures.items()}
 
     def ask(self, tenant: str, question: str) -> dict[str, Any]:
         if tenant not in self.names:
@@ -84,8 +84,8 @@ class Showcase:
         question = question.strip()[:500]
         if not question:
             raise ValueError("ask a question")
-        keel, rag = self._both(lambda side: self.agents.answer(side, Run(tenant, self.names[tenant]), [], question)[0])
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag}
+        out = self._sides(lambda side: self.agents.answer(side, Run(tenant, self.names[tenant]), [], question)[0])
+        return {"at": datetime.now(timezone.utc).isoformat(), **out}
 
     def run(self, sid: str) -> dict[str, Any]:
         sc = next((s for s in SCENARIOS if s["id"] == sid), None)
@@ -105,8 +105,7 @@ class Showcase:
                 result["verdict"] = self.agents.judge(sc["question"], sc["expected"], result["answer"])
             return result
 
-        keel, rag = self._both(side)
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag}
+        return {"at": datetime.now(timezone.utc).isoformat(), **self._sides(side)}
 
     def _memory(self, sc: dict[str, Any]) -> dict[str, Any]:
         """The steps in order, each side keeping its own memory: Keel in a task of its own for this run, RAG in its notes."""
@@ -125,13 +124,13 @@ class Showcase:
                 results.append(result)
             return results
 
-        keel_steps, rag_steps = self._both(side)
-        steps = [{"customer": s["customer"], "role": s.get("role", "support"), "question": s["question"], "keel": k, "rag": r}
-                 for s, k, r in zip(sc["steps"], keel_steps, rag_steps, strict=True)]
+        per_side = self._sides(side)
+        steps = [{"customer": s["customer"], "role": s.get("role", "support"), "question": s["question"], **{k: v[i] for k, v in per_side.items()}}
+                 for i, s in enumerate(sc["steps"])]
         transcript = lambda key: "\n\n".join(f"Step {i + 1} ({s['customer']}): {st[key]['answer']}" for i, (s, st) in enumerate(zip(sc["steps"], steps, strict=True)))
         question = " / ".join(s["question"] for s in sc["steps"])
         totals = {}
-        for key in ("keel", "rag"):
+        for key in self.sides:
             all_ = [st[key] for st in steps]
             totals[key] = {"answer": all_[-1]["answer"], "trace": [t for s in all_ for t in s["trace"]], "ms": sum(s["ms"] for s in all_),
                            "tokens": {"input": sum(s["tokens"]["input"] for s in all_), "output": sum(s["tokens"]["output"] for s in all_)},
@@ -140,7 +139,7 @@ class Showcase:
                 verdict = self.agents.judge(question, sc["expected"], transcript(key))
                 totals[key]["verdict"] = verdict
                 steps[-1][key]["verdict"] = verdict
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": totals["keel"], "rag": totals["rag"], "steps": steps}
+        return {"at": datetime.now(timezone.utc).isoformat(), **totals, "steps": steps}
 
     def scenarios(self) -> list[dict[str, Any]]:
         out = []
@@ -177,7 +176,7 @@ def build_app(show: Showcase) -> Any:
     @app.get("/api/meta")
     def meta(request: Request) -> dict[str, Any]:
         return {"today": TODAY.isoformat().replace("+00:00", "Z"), "model": show.agents.s.model, "judge_model": show.agents.s.judge_model,
-                "customers": customers(), "limits": {"ask_left": show.limits.left("ask", ip(request)), "live_left": show.limits.left("live")}}
+                "customers": customers(), "sides": list(show.sides), "limits": {"ask_left": show.limits.left("ask", ip(request)), "live_left": show.limits.left("live")}}
 
     report = build_report(Path(__file__).resolve().parent.parent)
 
@@ -225,4 +224,5 @@ def from_env() -> Any:
     index = Index.load_or_build(data / "index.json", http, s.base_url, s.key)
     agents = Agents(http, s, index, prices(http, s))
     limits = Limits(int(env.get("SHOWCASE_ASK_PER_IP", "5")), int(env.get("SHOWCASE_ASK_PER_DAY", "200")), int(env.get("SHOWCASE_LIVE_PER_DAY", "40")))
-    return build_app(Showcase(agents, data / "cache.json", limits))
+    sides = tuple(env.get("SHOWCASE_SIDES", "keel").split(","))  # "keel,rag" brings back the side by side with RAG + tools
+    return build_app(Showcase(agents, data / "cache.json", limits, sides))

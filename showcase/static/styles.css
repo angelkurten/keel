@@ -110,6 +110,7 @@ input, select { background: var(--ground); border: 1px solid var(--line-strong);
 .runbar .left { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 
 .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cols.one { grid-template-columns: minmax(0, 1fr); }
 .col { display: flex; flex-direction: column; gap: 12px; border-top: 3px solid var(--keel); }
 .col.rag { border-top-color: var(--rag); }
 .col h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
