@@ -72,6 +72,11 @@ const paths: Record<string, ReactNode> = {
   warn: (<><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" /></>),
   mail: (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>),
   send: (<><path d="M4 12l16-8-6 16-3-7z" /></>),
+  inbox: (<><path d="M4 13l2.5-8h11L20 13v6H4z" /><path d="M4 13h5l1 2h4l1-2h5" /></>),
+  code: (<><path d="M8 8l-4 4 4 4" /><path d="M16 8l4 4-4 4" /><path d="M13.5 5l-3 14" /></>),
+  key: (<><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9" /><path d="M17 6l3 3" /></>),
+  chart: (<><path d="M4 20h16" /><path d="M7 16v-5" /><path d="M12 16V7" /><path d="M17 16v-8" /></>),
+  upload: (<><path d="M12 16V5" /><path d="M7 10l5-5 5 5" /><path d="M5 20h14" /></>),
 };
 
 export function Icon({ name, size = 16, className }: { name: keyof typeof paths | string; size?: number; className?: string }) {
@@ -144,6 +149,20 @@ export function Tabs<T extends string>({ items, value, onChange, label }: {
   );
 }
 
+/** A new key, shown once. */
+export function KeyReveal({ value, title }: { value: string; title?: ReactNode }) {
+  return (
+    <div className="keybox">
+      {title && <div className="small-text"><b>{title}</b></div>}
+      <div className="row between wrap">
+        <code className="mono key">{value}</code>
+        <CopyButton text={value} />
+      </div>
+      <p className="warn small-text"><Icon name="warn" size={14} /> Shown once. Copy it now: Keel keeps only its hash.</p>
+    </div>
+  );
+}
+
 export const show = (v: unknown) => (v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v));
 export const day = (s?: string | null) => (s ? s.replace("T", " ").slice(0, 16) : "");
 
@@ -165,4 +184,17 @@ export function Markdown({ text }: { text: string }) {
       })}
     </div>
   );
+}
+/** The month usage is counted in (UTC), as YYYY-MM. */
+export const thisMonth = () => new Date().toISOString().slice(0, 7);
+/** "acme/demo" -> "demo" */
+export const bareTenant = (account: string, t: string) => (t.startsWith(account + "/") ? t.slice(account.length + 1) : t);
+/** "3 min ago" */
+export function ago(iso: string, now = Date.now()): string {
+  const s = Math.max(0, Math.round((now - new Date(iso).getTime()) / 1000));
+  if (Number.isNaN(s)) return iso;
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} d ago`;
 }

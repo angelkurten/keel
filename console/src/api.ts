@@ -38,10 +38,24 @@ export type Cartridge = {
   relations?: Record<string, { from: string; to: string }>;
   rules?: Record<string, { applies_to?: string; definition?: string }>;
   agents?: Record<string, unknown>;
-  events?: Record<string, unknown>;
+  events?: Record<string, EventSpec>;
   example: boolean;
   [k: string]: unknown;
 };
+export type EventSpec = { subject?: string; owner?: string; payload?: Record<string, unknown>; [k: string]: unknown };
+export type EventStatus = "applied" | "duplicate" | "unhandled" | "skipped" | "error";
+export type RecentEvent = { id: string; type: string; subject: string; occurred_at: string; received_at: string; source: string;
+  status: EventStatus; reason: string | null };
+export type EventProblem = { index: number; id: string | null; type: string | null; problems: string[] };
+/** Keel's /v1/events returns `unhandled` and `errors` as lists (count with `count()`); numbers are accepted too. */
+export type IngestReport = { processed: number; duplicates: number; unhandled: number | unknown[]; errors: number | unknown[];
+  forgotten: unknown[]; skipped: number; retained: unknown[] };
+export const count = (v: number | unknown[] | undefined) => (Array.isArray(v) ? v.length : v || 0);
+export type KeyRow = { id: string; tenant: string | null; agent: string | null; global: boolean; created_at: string; revoked_at: string | null };
+export type UsageRow = { month: string; tenant: string; events: number; calls: Record<string, number> };
+export type Usage = { account: string; endpoint: string; limits: { rps: number | null; events_month: number | null }; rows: UsageRow[] };
+export type SdkLanguage = "typescript" | "python" | "go" | "php";
+export type Sdk = { language: SdkLanguage; cartridge: string; filename: string; code: string; sha256: string };
 export type Key = { key: string; id: string; tenant: string; endpoint: string; mcp: string };
 export type Model = { id: string; label: string };
 export type Allowance = { used: number; limit: number };
@@ -73,7 +87,14 @@ export const api = {
   cartridge: () => req<Cartridge>("GET", "/api/cartridge"),
   tool: <T = unknown>(tool: Tool, body: Record<string, unknown>, tenant: string, agent?: string) =>
     req<T>("POST", `/api/v1/${tool}`, body, { "X-Keel-Tenant": tenant, ...(agent ? { "X-Keel-Agent": agent } : {}) }),
-  createKey: (body: { tenant?: string; agent?: string }) => req<Key>("POST", "/api/keys", body),
+  createKey: (body: { tenant?: string; agent?: string; global?: boolean }) => req<Key>("POST", "/api/keys", body),
+  keys: () => req<KeyRow[]>("GET", "/api/keys"),
+  revokeKey: (id: string) => req<{ ok: true }>("DELETE", `/api/keys/${encodeURIComponent(id)}`),
+  recentEvents: (tenant: string) => req<RecentEvent[]>("GET", "/api/events/recent", undefined, { "X-Keel-Tenant": tenant }),
+  checkEvents: (tenant: string, batch: unknown[]) => req<EventProblem[]>("POST", "/api/events/check", batch, { "X-Keel-Tenant": tenant }),
+  ingestEvents: (tenant: string, batch: unknown[]) => req<IngestReport>("POST", "/api/events", batch, { "X-Keel-Tenant": tenant }),
+  usage: (month?: string) => req<Usage>("GET", `/api/usage${month ? `?${q({ month })}` : ""}`),
+  sdk: (language: SdkLanguage) => req<Sdk>("GET", `/api/sdk/${language}`),
   models: () => req<Models>("GET", "/api/agent/models"),
   agents: () => req<{ name: string; config: AgentConfig }[]>("GET", "/api/agents"),
   saveAgent: (name: string, config: AgentConfig) => req<unknown>("PUT", `/api/agents/${encodeURIComponent(name)}`, { config }),

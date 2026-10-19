@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, ApiError, type Cartridge, type Me } from "./api";
-import { Icon, Link, navigate, store, usePath } from "./ui";
+import { bareTenant, Icon, Link, navigate, store, thisMonth, usePath } from "./ui";
 import { Landing } from "./screens/Landing";
 import { Starting } from "./screens/Starting";
 import { Graph } from "./screens/Graph";
 import { Playground } from "./screens/Playground";
 import { Connect } from "./screens/Connect";
+import { Events } from "./screens/Events";
+import { Sdk } from "./screens/Sdk";
+import { Keys } from "./screens/Keys";
+import { Usage } from "./screens/Usage";
 
 export function App() {
   const path = usePath();
@@ -14,12 +18,16 @@ export function App() {
 }
 
 /** What every console tab gets: the account, the cartridge and the tenant picked in the sidebar. */
-export type Ctx = { me: Me; cartridge: Cartridge | null; tenant: string; keyCreated: () => void };
+export type Ctx = { me: Me; cartridge: Cartridge | null; tenant: string; keyCreated: () => void; eventsSent: () => void };
 
 const TABS = [
   { id: "graph", label: "Graph", icon: "graph" },
   { id: "playground", label: "Playground", icon: "play" },
   { id: "connect", label: "Connect", icon: "plug" },
+  { id: "events", label: "Events", icon: "inbox" },
+  { id: "sdk", label: "SDK", icon: "code" },
+  { id: "keys", label: "Keys", icon: "key" },
+  { id: "usage", label: "Usage", icon: "chart" },
 ] as const;
 
 function Console({ path }: { path: string }) {
@@ -28,6 +36,8 @@ function Console({ path }: { path: string }) {
   const [cartLoaded, setCartLoaded] = useState(false); // tabs build their defaults from the cartridge on mount
   const [tenant, setTenant] = useState(() => store.get("local", "keel.tenant") || "demo");
   const [keyed, setKeyed] = useState(() => store.get("local", "keel.keyCreated") === "1");
+  const [ownEvents, setOwnEvents] = useState(false);
+  const [usageTick, setUsageTick] = useState(0);
   const [menu, setMenu] = useState(false);
   const [err, setErr] = useState("");
 
@@ -56,6 +66,14 @@ function Console({ path }: { path: string }) {
 
   useEffect(() => { setMenu(false); }, [path]);
 
+  // "Send your own events": any tenant but the example one has events this month.
+  useEffect(() => {
+    if (!ready || ownEvents || !me) return;
+    api.usage(thisMonth())
+      .then((u) => setOwnEvents(u.rows.some((r) => r.month === thisMonth() && r.events > 0 && bareTenant(me.account, r.tenant) !== "demo")))
+      .catch(() => { /* the checklist just stays open */ });
+  }, [ready, path, usageTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!me) return <div className="center muted">{err || "Loading…"}</div>;
   if (!ready) return <Starting me={me} />;
   if (!cartLoaded) return <div className="center muted">Loading…</div>;
@@ -65,12 +83,13 @@ function Console({ path }: { path: string }) {
   const ctx: Ctx = {
     me, cartridge, tenant: tenant.trim() || "demo",
     keyCreated: () => { setKeyed(true); store.set("local", "keel.keyCreated", "1"); },
+    eventsSent: () => setUsageTick((n) => n + 1),
   };
   const steps: [string, boolean, string | null][] = [
     ["Keel running", true, "/console/graph"],
     ["Example data", !!cartridge?.example, "/console/graph"],
     ["Connect an agent", keyed, "/console/connect"],
-    ["Send your own events", false, null],
+    ["Send your own events", ownEvents, "/console/events"],
     ["Your cartridge", false, null],
   ];
   const done = steps.filter((s) => s[1]).length;
@@ -124,6 +143,10 @@ function Console({ path }: { path: string }) {
         {tab === "graph" && <Graph ctx={ctx} />}
         {tab === "playground" && <Playground ctx={ctx} />}
         {tab === "connect" && <Connect ctx={ctx} />}
+        {tab === "events" && <Events ctx={ctx} />}
+        {tab === "sdk" && <Sdk ctx={ctx} />}
+        {tab === "keys" && <Keys ctx={ctx} />}
+        {tab === "usage" && <Usage ctx={ctx} />}
       </main>
     </div>
   );

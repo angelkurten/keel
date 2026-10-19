@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Ctx } from "../App";
 import { api, type Key } from "../api";
 import { CLIENTS, connectSnippet, cursorDeeplink, type Client } from "../codegen";
-import { Code, CopyButton, Icon, Tabs } from "../ui";
+import { Code, KeyReveal, Tabs } from "../ui";
 
 const PLACEHOLDER = "<your key>";
 
@@ -46,15 +46,7 @@ export function Connect({ ctx }: { ctx: Ctx }) {
           </button>
         </div>
         {err && <p className="err">{err}</p>}
-        {live && (
-          <div className="keybox">
-            <div className="row between wrap">
-              <code className="mono key">{live.key}</code>
-              <CopyButton text={live.key} />
-            </div>
-            <p className="warn small-text"><Icon name="warn" size={14} /> Shown once. Copy it now: Keel keeps only its hash.</p>
-          </div>
-        )}
+        {live && <KeyReveal value={live.key} />}
       </section>
 
       <section className="card stack-s">

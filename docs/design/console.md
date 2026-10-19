@@ -55,6 +55,8 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 
 ## Phases
 
+Phases 1 and 2 are on master (2026-10-18), unreleased: the console ships in one release once all four are done.
+
 | Phase | Items |
 |---|---|
 | 1. Entry | invitation link, email and password, proposed slug, account born with the example, waiting screen, SPA shell with Graph, Playground (tools and agent, with export) and Connect, the proxy, MCP for many tenants |
