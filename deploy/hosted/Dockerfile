@@ -5,6 +5,7 @@ WORKDIR /console
 COPY console/package.json console/package-lock.json ./
 RUN npm ci
 COPY console/ ./
+COPY docs/cartridge.schema.json /docs/cartridge.schema.json
 RUN npm run build
 
 FROM python:3.12-slim
