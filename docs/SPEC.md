@@ -392,7 +392,7 @@ A `Tools` instance is bound to one cartridge, one tenant and, when the cartridge
 
 `facts` holds accepted facts only. `proposals` (present when any) holds the open proposals; `conflicts` (present when any) maps each predicate that has more than one open value to those values and their authors, which happens for `multi` predicates (§5.1) written by several agents. `detail="concise"` returns the same answer for a prompt in about a third of the tokens: `attrs`, `facts` as `{predicate: value}` (a list of `{value, by}` for a multi-valued one), `relations` as `{relation, direction, subject}` (direction `both` for a symmetric relation, as everywhere else), `evaluation`, `as_of`, `watermark`, proposals and conflicts, and compact neighbours; rule definitions are left out (their names are in `evaluation`).
 
-What is true about a subject now, or at `as_of` (world time). With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
+What is true about a subject now, or at `as_of` (world time). Relations are listed up to 10 per relation and direction, the most recent ones; past that, `relations_more` gives each one's `relation`, `direction`, `shown` and `total`, and `related` or `search(related_to=...)` reads the rest, so an account with hundreds of tickets does not put all of them in every answer. With `depth=1` the answer also carries `neighbors`: for each open relation (up to 50, then `neighbors_truncated: true`), the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to.
 
 ```json
 {

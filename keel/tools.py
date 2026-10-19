@@ -120,6 +120,23 @@ def _direction(rel: str, src: str, subject: str, symmetric: set[str]) -> str:
     return "both" if rel in symmetric else ("out" if src == subject else "in")
 
 
+def _capped(rels: list[Any], subject: str, symmetric: set[str]) -> tuple[list[Any], list[dict[str, Any]]]:
+    """At most RELATION_CAP relations per (relation, direction), the most recent ones, and what was left out: an account
+    with hundreds of tickets would otherwise put all of them in every context. The rest is one `related` or
+    `search(related_to=...)` away."""
+    groups: dict[tuple[str, str], list[Any]] = {}
+    for r in rels:
+        groups.setdefault((r.rel, _direction(r.rel, r.src, subject, symmetric)), []).append(r)
+    keep: set[int] = set()
+    more = []
+    for (rel, direction), group in groups.items():
+        recent = sorted(group, key=lambda r: r.valid_from, reverse=True)[:RELATION_CAP]
+        keep |= {id(r) for r in recent}
+        if len(group) > RELATION_CAP:
+            more.append({"relation": rel, "direction": direction, "shown": RELATION_CAP, "total": len(group)})
+    return [r for r in rels if id(r) in keep], more
+
+
 def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str, Any]:
     """The same answer in about a third of the tokens: what an LLM needs to act, ids kept."""
     rel = lambda r, s: {"relation": r["rel"], "direction": _direction(r["rel"], r["src"], s, symmetric), "subject": r["dst"] if r["src"] == s else r["src"]}
@@ -132,7 +149,7 @@ def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str
         "as_of": ctx["as_of"],
         "watermark": ctx.get("watermark"),
     }
-    for k in ("as_known_at", "conflicts", "neighbors_truncated"):
+    for k in ("as_known_at", "conflicts", "neighbors_truncated", "relations_more"):
         if k in ctx:
             out[k] = ctx[k]
     if "proposals" in ctx:
@@ -167,6 +184,7 @@ def _kind(subject: str) -> str:
 
 
 NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
+RELATION_CAP = 10  # per relation and direction, `context` lists the most recent ones and counts the rest (relations_more)
 SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at once
 
 
@@ -407,7 +425,7 @@ class Tools:
         self, subject: str, graph: _Graph, now: datetime, as_known_at: datetime | None, depth: int, detail: str,
         shown: Callable[[list[Fact]], list[Fact]], entity: Entity | None, watermark: datetime | None,
     ) -> dict[str, Any]:
-        rels = self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject)
+        rels, more = _capped(self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject), subject, self.symmetric)
         out: dict[str, Any] = {
             "subject": subject,
             "entity": entity,
@@ -418,6 +436,8 @@ class Tools:
             "as_of": now,
             "watermark": watermark,
         }
+        if more:
+            out["relations_more"] = more
         if as_known_at is not None:
             out["as_known_at"] = as_known_at
         proposals = shown(graph.proposals(subject))

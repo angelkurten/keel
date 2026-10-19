@@ -74,3 +74,15 @@ def test_wayne_502s_fall_inside_the_eu_west_incident():
     t = tools("wayne")
     assert "incident:INC-7" in {r["subject"] for r in t.related("account:wayne", relation="affected_by")}
     assert facts(t.context("incident:INC-7", as_of=TODAY))["status"] == "resolved"
+
+
+def test_context_lists_the_most_recent_relations_and_counts_the_rest():
+    """Stark has dozens of tickets: context shows the 10 newest per relation and says how many there are."""
+    import json
+
+    ctx = tools("stark").context("account:stark", as_of=TODAY)
+    tickets = [r for r in ctx["relations"] if r["rel"] == "has_ticket"]
+    more = {m["relation"]: m for m in ctx["relations_more"]}
+    assert len(tickets) == 10 and more["has_ticket"]["total"] > 10 and more["has_ticket"]["direction"] == "out"
+    assert "ticket:T-3112" in {r["dst"] for r in tickets}  # the newest is kept
+    assert len(json.dumps(tools("stark").context("account:stark", as_of=TODAY, detail="concise"), default=str)) < 6000

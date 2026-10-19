@@ -166,6 +166,57 @@ def planted(log: Log) -> None:
            [(at(10, 2, 12, 5), "resolved", "Deliveries succeeded again after 11:40 UTC.")])
 
 
+LOOKALIKES = {  # resolved tickets that sound like a scenario's question, from earlier months: what retrieval confuses
+    "acme": [("Charged twice in June?", "billing", "The second June charge was a card retry after a failed attempt; refunded the duplicate the same day."),
+             ("Unexpected invoice for seats", "billing", "Prorated invoice for 5 seats added on May 18; explained to the customer."),
+             ("Invoice amount looks wrong", "billing", "Customer compared with the Starter price; Pro is $30 per seat.")],
+    "globex": [("Workflows not running", "workflows", "Caused by INC-5 on Aug 21; runs resumed after the rollback."),
+               ("Plan question before upgrading", "billing", "Explained Enterprise SLA and CSM; customer will decide later.")],
+    "initech": [("Salesforce sync failing", "integrations", "Token expired; reconnected the Salesforce app."),
+                ("HubSpot sync failing", "integrations", "HubSpot field mapping changed; remapped the fields.")],
+    "umbrella": [("Refund request for May", "billing", "Refunded May's invoice within 14 days of payment.")],
+    "stark": [("SSO login issues for some users", "access", "Two users were outside the Okta group; added them."),
+              ("Users locked out after SSO", "access", "Allowed password login for the owner, fixed the audience URI.")],
+    "hooli": [("Payment receipt missing", "billing", "Resent the receipt for INV-hooli-2026-07.")],
+    "wayne": [("502 errors on webhook runs", "workflows", "The customer's endpoint was down for maintenance; deliveries resent."),
+              ("Webhook deliveries delayed", "workflows", "Delivery retries were exhausted while their firewall blocked Relay; allowlisted.")],
+}
+TOPICS = [("Cannot invite a teammate", "access"), ("Workflow stuck in queue", "workflows"), ("Rate limit on the API", "api"), ("Question about my invoice", "billing"),
+          ("Sync not updating", "integrations"), ("How to export run history", "workflows"), ("Change billing email", "billing"), ("Add a new admin", "access"),
+          ("Webhook signature fails", "workflows"), ("Slack notifications missing", "integrations"), ("Timeout on long workflow", "workflows"), ("Reset 2FA for a user", "access")]
+NOTES = ["Answered with a link to the help center.", "Fixed on our side; customer confirmed.", "Customer resolved it after our steps.", "Duplicate of an earlier ticket; merged.",
+         "Explained the expected behaviour.", "Configuration issue on the customer's side; walked them through it."]
+
+
+def history_of(log: Log, t: str, since: datetime, rng: random.Random, n_tickets: int, first: int) -> None:
+    """Six months of ordinary activity for a story's customer: many resolved tickets (some that sound like its story),
+    more contacts. Everything is closed well before TODAY, so the stories' answers stay what they are."""
+    days = (TODAY - since).days - 10
+    for i, (title, cat, note) in enumerate(LOOKALIKES.get(t, [])):
+        opened = since + timedelta(days=30 + i * 35, hours=rng.randrange(0, 8))
+        ticket(log, t, f"T-{first + i}", title, rng.choice(("normal", "high")), cat, opened, [(opened + timedelta(hours=rng.randrange(3, 30)), "resolved", note)])
+    for i in range(n_tickets):
+        title, cat = rng.choice(TOPICS)
+        opened = since + timedelta(days=rng.randrange(3, days), hours=rng.randrange(0, 10))
+        changes = [(opened + timedelta(hours=rng.randrange(2, 40)), "resolved", rng.choice(NOTES))]
+        if rng.random() < 0.15:  # reopened once, resolved again
+            back = changes[0][0] + timedelta(days=rng.randrange(1, 4))
+            changes += [(back, "open", "Customer says it happens again."), (back + timedelta(hours=rng.randrange(2, 30)), "resolved", rng.choice(NOTES))]
+        ticket(log, t, f"T-{first + 10 + i}", title, rng.choice(("low", "normal", "normal", "high")), cat, opened, changes)
+    for i in range(rng.randrange(6, 14)):
+        contact(log, t, f"C-{t}-{10 + i}", rng.choice(("Ana", "Ben", "Chloe", "Diego", "Eva", "Femi", "Grace", "Hiro", "Iris", "Jon")) + " "
+                + rng.choice(("Ruiz", "Kim", "Okafor", "Silva", "Novak", "Haas", "Moreau")), rng.choice(("member", "admin", "finance", "engineer")),
+                since + timedelta(days=rng.randrange(1, days)))
+
+
+def histories(log: Log) -> None:
+    rng = random.Random(3)
+    starts = {"acme": at(4, 3), "globex": at(4, 8), "initech": at(5, 2), "umbrella": at(4, 20), "stark": at(4, 1, 12), "hooli": at(4, 15),
+              "hooli-labs": at(6, 1), "wayne": at(4, 22)}
+    for n, (t, since) in enumerate(starts.items()):
+        history_of(log, t, since, rng, rng.randrange(45, 80), first=5000 + n * 200)
+
+
 def fillers(log: Log) -> None:
     rng = random.Random(7)
     n_ticket = 4000
@@ -206,6 +257,7 @@ def fillers(log: Log) -> None:
 def main() -> None:
     log = Log()
     planted(log)
+    histories(log)
     fillers(log)
     n = log.write(Path(__file__).parent / "events.jsonl")
     print(f"{n} events, {len({e['tenant'] for e in log.events})} customers")
