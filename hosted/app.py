@@ -51,7 +51,7 @@ TABLES = (
 )
 # columns added after the first accounts existed (2026-10-18); ADD COLUMN fails harmlessly once they are there
 COLUMNS = ("password VARCHAR(200)", "status VARCHAR(16)", "error TEXT", "secret VARCHAR(100)", "cartridge TEXT", "example VARCHAR(32)",
-           "handlers TEXT", "cdc_map TEXT", "notice TEXT")
+           "handlers TEXT", "cdc_map TEXT", "notice TEXT", "semantic VARCHAR(8)")
 PUBLIC_MAIL = {"gmail", "googlemail", "outlook", "hotmail", "live", "yahoo", "icloud", "me", "proton", "protonmail", "aol", "gmx", "yandex"}
 STEPS = (("database", "Database and container created"), ("container", "Keel starting"), ("example", "Example data loaded"), ("ready", "Ready"))
 STATUS_STEP = {"creating": 0, "starting": 1, "loading": 2, "ready": 4}
@@ -110,6 +110,9 @@ class Settings:
     session_days: int = 30
     ready_timeout: float = 300  # seconds for a new container to answer /health (restarted once halfway)
     generations_day: int = 10  # cartridges generated per account and day
+    public_url: str = "https://keel.angelkurten.com"  # what account containers call for embeddings
+    embedding_model: str = "openai/text-embedding-3-small"
+    embedding_tokens_day: int = 2_000_000  # per account: an account's own code can call the proxy too
 
 
 def check_cartridge(files: dict[str, str]) -> str:
@@ -410,6 +413,41 @@ class ControlPlane:
                          {"role": "user", "content": "Fix these problems and answer with both files again:\n- " + "\n- ".join(problems)}]
         return {"cartridge_yaml": files.get("cartridge.yaml", ""), "handlers_py": files.get("handlers.py", ""), "problems": problems,
                 "attempts": attempt, "allowance": {"used": used + 1, "limit": self.settings.generations_day}}
+
+    # ---- semantic search ---------------------------------------------------------------------------
+
+    def enable_semantic(self, account: str) -> dict[str, Any]:
+        """search(mode="semantic") for the account: a volume for the index, the container's embedder pointed at this
+        control plane's proxy (the container's own secret is its key: the gateway's key never enters a container that runs
+        customer code), and the index brought up to date every 10 minutes inside the server (keel serve --index-every)."""
+        row = self._ready(account)
+        self.provisioner.volume(row["app"], f"keel-{account}-data", "/data")
+        self.provisioner.update(row["app"], env={
+            "KEEL_INDEX": "chroma:///data/vectors", "KEEL_INDEX_CURSOR_DIR": "/data", "KEEL_INDEX_EVERY": "600", "KEEL_EMBEDDER": "openai",
+            "KEEL_EMBEDDINGS_BASE_URL": f"{self.settings.public_url.rstrip('/')}/embed/v1", "KEEL_EMBEDDINGS_API_KEY": row["secret"],
+            "KEEL_EMBEDDINGS_MODEL": self.settings.embedding_model})
+        self.control._exec("UPDATE hosted_accounts SET semantic = ? WHERE account = ?", ("on", account))
+        return {"semantic": True}
+
+    def embed(self, secret: str, body: dict[str, Any]) -> dict[str, Any]:
+        """The embeddings proxy: an account's container, known by its secret, gets the gateway's embeddings under a
+        daily token cap; the model is fixed."""
+        row = self.control._one("SELECT account FROM hosted_accounts WHERE secret = ?", (secret,)) if secret else None
+        if row is None:
+            raise PermissionError("unknown container secret")
+        account, day = row["account"], today()
+        used = sum(n for t, d, item, n in self.control.usage(day, day + "~") if t == f"{account}/__console__" and item == "embedding_tokens")
+        if used >= self.settings.embedding_tokens_day:
+            raise OverflowError(f"account '{account}' used today's embeddings")
+        if not self.settings.ofox_key:
+            raise LookupError("no embeddings gateway configured")
+        r = self.http.post("https://api.ofox.ai/v1/embeddings", json={"model": self.settings.embedding_model, "input": body.get("input", [])},
+                           headers={"Authorization": f"Bearer {self.settings.ofox_key}"}, timeout=120)
+        if r.status_code >= 400:
+            raise RuntimeError(f"the gateway answered {r.status_code}")
+        out = r.json()
+        self.control.meter([(f"{account}/__console__", day, "embedding_tokens", int((out.get("usage") or {}).get("total_tokens") or 0))])
+        return out
 
     def cdc(self, account: str) -> dict[str, Any]:
         row = self._ready(account)
@@ -783,6 +821,15 @@ def build_app(plane: ControlPlane) -> Any:
         plane.clear_cdc(who(request)[1])
         return {"ok": True}
 
+    @app.put("/api/semantic")
+    def semantic(request: Request) -> dict[str, Any]:
+        return plane.enable_semantic(who(request)[1])
+
+    @app.post("/embed/v1/embeddings")
+    def embeddings(request: Request, body: dict[str, Any] = BODY) -> Any:
+        auth = request.headers.get("authorization", "")
+        return plane.embed(auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else "", body)
+
     @app.get("/api/sdk/{language}")
     def sdk(language: str, request: Request) -> Any:
         return answer(plane.sdk(who(request)[1], language))
@@ -817,7 +864,7 @@ def build_app(plane: ControlPlane) -> Any:
     @app.get("/{path:path}", include_in_schema=False)
     def console(path: str) -> Any:
         """The console's build; any other path is one of its routes, so it gets index.html."""
-        if path.startswith("api/"):
+        if path.startswith(("api/", "embed/")):
             raise HTTPException(404)
         if dist is None or not (dist / "index.html").is_file():
             return HTMLResponse("<!doctype html><title>Keel</title><p>The console is not built here (console/: npm run build).</p>")
@@ -842,6 +889,7 @@ def from_env() -> Any:
         rps=int(env.get("HOSTED_DEFAULT_RPS", "10")), events_month=int(env.get("HOSTED_DEFAULT_EVENTS_MONTH", "100000")),
         secure_cookies=env.get("HOSTED_SECURE_COOKIES", "1") == "1", static_dir=env.get("HOSTED_CONSOLE_DIR"),
         agent_messages_day=int(env.get("HOSTED_AGENT_MESSAGES_DAY", "50")), ofox_key=env.get("OFOX_API_KEY") or None,
+        public_url=env.get("HOSTED_PUBLIC_URL", "https://keel.angelkurten.com"),
     )
     if env.get("HOSTED_MODELS"):
         settings.models = tuple(m for m in env["HOSTED_MODELS"].split(",") if m)

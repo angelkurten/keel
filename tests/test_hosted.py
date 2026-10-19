@@ -40,6 +40,9 @@ class FakeProvisioner:
     def restart(self, uuid):
         self.restarted.append(uuid)
 
+    def volume(self, uuid, name, mount_path):
+        self.updates.append((uuid, ["volume:" + mount_path], None, ()))
+
     def update(self, uuid, files=None, env=None, drop_env=()):
         from keel.cartridge import revision
 
@@ -66,6 +69,8 @@ class FakeKeel:
         if path == "/v1/events":
             self.events += body
             return httpx.Response(200, json={"processed": len(body)})
+        if path == "/v1/embeddings":
+            return httpx.Response(200, json={"data": [{"index": 0, "embedding": [0.1]}], "usage": {"total_tokens": 7}})
         if path == "/v1/events/recent":
             return httpx.Response(200, json=[{"id": "e1", "status": "applied", "tenant_seen": request.headers["x-keel-tenant"]}])
         if path == "/v1/events/check":
@@ -278,6 +283,27 @@ def test_cdc_is_set_on_the_account_container(tmp_path):
     assert "postgresql" not in json.dumps(client.get("/api/cdc").json())  # the DSN stays in the container
     client.delete("/api/cdc")
     assert p.provisioner.updates[-1][3] == ("KEEL_CDC_MAP", "KEEL_PG_DSN") and client.get("/api/cdc").json()["configured"] is False
+
+
+def test_semantic_search_points_the_container_at_the_embeddings_proxy(tmp_path):
+    p = plane(tmp_path, embedding_tokens_day=10)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    assert client.put("/api/semantic").json() == {"semantic": True}
+    secret = p._row("acme")["secret"]
+    env = p.provisioner.updates[-1][2]
+    assert p.provisioner.updates[-2][1] == ["volume:/data"] and env["KEEL_INDEX_EVERY"] == "600"
+    assert env["KEEL_EMBEDDINGS_API_KEY"] == secret and env["KEEL_EMBEDDINGS_BASE_URL"].endswith("/embed/v1")
+    assert "ofox" not in str(env).lower()  # the gateway's key never enters a customer's container
+    anon = TestClient(build_app(p))
+    assert anon.post("/embed/v1/embeddings", json={"input": ["x"]}, headers={"Authorization": "Bearer nope"}).status_code == 403
+    ok = anon.post("/embed/v1/embeddings", json={"input": ["x"], "model": "openai/text-embedding-3-large"}, headers={"Authorization": f"Bearer {secret}"})
+    assert ok.status_code == 200 and ok.json()["data"][0]["embedding"] == [0.1]
+    sent = next(c for c in p.keel.calls if c[1].endswith("/v1/embeddings"))
+    assert sent[3]["model"] == "openai/text-embedding-3-small" and sent[2]["authorization"] == "Bearer ofox-test"  # the model is fixed
+    anon.post("/embed/v1/embeddings", json={"input": ["x"]}, headers={"Authorization": f"Bearer {secret}"})
+    assert anon.post("/embed/v1/embeddings", json={"input": ["x"]}, headers={"Authorization": f"Bearer {secret}"}).status_code == 429  # 14 > 10 tokens today
 
 
 def test_the_console_build_is_served_with_a_fallback(tmp_path):

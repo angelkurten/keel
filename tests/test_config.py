@@ -121,3 +121,27 @@ def test_forget_policy_uses_each_accounts_retention(tmp_path):
     out = CliRunner().invoke(app, ["forget", "--policy", "--db", shared, "--yes"])
     rows = [json.loads(x) for x in out.output.splitlines()]
     assert out.exit_code == 0 and sorted((r["account"], r["tenant"], r["facts"]) for r in rows) == [("acme", "acme/c1", 2), ("big", "big/c1", 2)]
+
+
+def test_serve_index_every_indexes_in_a_thread_of_the_server(tmp_path, monkeypatch):
+    """keel serve --index-every: the process that searches the index is the one that writes it."""
+    import time
+
+    from keel import Ingestor, Tools, load_cartridge
+    from keel.cli import _index_in_background
+    from keel.ingest import JsonlAdapter
+    from keel.semantic import HashEmbedder, MemoryIndex
+    from keel.store.sqlite import SqliteStore
+
+    monkeypatch.setenv("KEEL_INDEX_CURSOR_DIR", str(tmp_path))
+    c, store = load_cartridge("examples/fleet"), SqliteStore(tmp_path / "g.db")
+    Ingestor(c, store).ingest(JsonlAdapter("examples/fleet/events.jsonl"), strict=True)
+    vectors, emb, status = MemoryIndex(), HashEmbedder(), {}
+    _index_in_background(c, store, vectors, emb, "memory", 3600, status)
+    for _ in range(100):
+        if status.get("ok"):
+            break
+        time.sleep(0.05)
+    assert status["ok"] and status["tenants"] == 1 and (tmp_path / "index-acme-logistics.cursor").exists()
+    hits = Tools(c, store, "acme-logistics", embedder=emb, index=vectors).search("T-9001", mode="semantic")
+    assert hits and hits[0]["key"] == "tire:T-9001"

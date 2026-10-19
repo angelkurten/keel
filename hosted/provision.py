@@ -111,6 +111,12 @@ class CoolifyProvisioner:
         env = {e["key"]: e.get("value") or "" for e in self._call("GET", f"/applications/{uuid}/envs") or [] if not e.get("is_preview")}
         return files, env
 
+    def volume(self, uuid: str, name: str, mount_path: str) -> None:
+        """A persistent volume at mount_path, once."""
+        have = self._call("GET", f"/applications/{uuid}/storages").get("persistent_storages", [])
+        if not any(v.get("mount_path") == mount_path for v in have):
+            self._call("POST", f"/applications/{uuid}/storages", json={"type": "persistent", "name": name, "mount_path": mount_path})
+
     def restart(self, uuid: str) -> None:
         self._call("POST", f"/applications/{uuid}/restart")
 

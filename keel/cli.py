@@ -282,6 +282,31 @@ def _cdc_adapter(c: Any, dsn: str, map_file: Path, slot: str = "keel", publicati
     return adapter
 
 
+def _index_in_background(c: Any, store: Any, vectors: Any, emb: Any, spec: str, every: int, status: dict[str, Any]) -> None:
+    """`keel serve --index-every`: `keel index --all-tenants` in a thread of the server, so the process that searches the
+    index is the one that writes it. Cursors go where `keel index` puts them (KEEL_INDEX_CURSOR_DIR, else next to the index)."""
+    import threading
+    import time
+
+    from keel.envelope import utcnow
+
+    cursor_dir = os.environ.get("KEEL_INDEX_CURSOR_DIR")
+    place = lambda t: Path(cursor_dir) / f"index-{t}.cursor" if cursor_dir else _index_cursor(spec, t)
+
+    def run() -> None:
+        while True:
+            try:
+                tenants = list(_tenants(store, None, True))
+                for t in tenants:
+                    _index_one(c, store, vectors, emb, t, place(t), False, 4)
+                status.update(ok=True, error=None, tenants=len(tenants), last_run=utcnow().isoformat())
+            except Exception as exc:  # noqa: BLE001 - the server keeps serving; /health says why indexing stopped
+                status.update(ok=False, error=f"{type(exc).__name__}: {exc}"[:500], failed_at=utcnow().isoformat())
+            time.sleep(every)
+
+    threading.Thread(target=run, name="keel-index", daemon=True).start()
+
+
 def _follow_in_background(c: Any, store: Any, dsn: str, map_file: Path, account: str | None, status: dict[str, Any],
                           slot: str = "keel", publication: str = "keel", recent: Any = None) -> None:
     """`keel serve --cdc`: follow Postgres in a thread of the server, retrying after a failure with a growing pause.
@@ -732,6 +757,7 @@ def serve(
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="With --index: the embedder spec."),
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
     cdc: Path | None = typer.Option(None, "--cdc", envvar="KEEL_CDC_MAP", help="http only: also follow Postgres tables (the `keel cdc` map; KEEL_PG_DSN), in a thread of this server; /health shows its state."),
+    index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
@@ -781,6 +807,11 @@ def serve(
         if not dsn:
             raise typer.BadParameter("--cdc needs KEEL_PG_DSN, the Postgres to read", param_hint="--cdc")
         health["cdc"] = {"ok": None}
+    if index_every:
+        if not (index and db):
+            raise typer.BadParameter("--index-every needs --index and --db", param_hint="--index-every")
+        health["index"] = {"ok": None}
+        _index_in_background(c, store, semantic["index"], semantic["embedder"], index, index_every, health["index"])
     from keel.http import RecentEvents
 
     recent = RecentEvents()

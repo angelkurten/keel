@@ -170,7 +170,7 @@ uv run keel serve examples/fleet --transport http --db keel.db --index chroma://
 
 Any OpenAI-compatible endpoint works for embeddings (OpenAI, OfoxAI, Azure, Ollama, vLLM).
 
-`chroma:///path` opens the index inside the process. When `keel serve` and `keel index` run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with `Error finding id`. Run Chroma as a server and point both at it with `chroma://host:port`; keep `chroma:///path` for a single process or for tests.
+`chroma:///path` opens the index inside the process. When `keel serve` and `keel index` run as separate processes (a server and a cron), the server does not see what the other process writes and searches fail with `Error finding id`. Either run the indexing inside the server, `keel serve ... --index chroma:///path --index-every 600` (every tenant every 10 minutes, cursors in `KEEL_INDEX_CURSOR_DIR` or next to the index; `/health` shows `index` with its last run or error), or run Chroma as a server and point both at it with `chroma://host:port`.
 
 The Chroma adapter ranks the lexical leg itself: it pulls a kind's documents once, keeps their BM25 in memory and reuses it until the collection's count changes or 300 seconds pass (`ChromaIndex(bm25_ttl=...)`), so a re-index by another process shows in the lexical leg within that time (the dense leg sees it at once). Each document carries its subject as metadata, so `related_to` filters inside Chroma; a collection built before 0.21 lacks it and filters after retrieval, slower, until one `keel index --full`.
 
