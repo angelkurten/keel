@@ -29,7 +29,8 @@ are `<kind>:<id>` (kinds: account, contact, invoice, ticket, incident, integrati
 `context` returns a subject's current facts, its relations and the rules that apply with their evaluation \
 (sla_breached, refund_eligible, account_at_risk, integration_failing): trust that evaluation. `history` gives a fact's \
 values over time; `search` finds subjects (by text, kind or rule); `related` walks relations; `annotate` records \
-what you learn, with evidence; notes recorded earlier come back in `context` of the subject they are about."""
+what you learn, with evidence; notes recorded earlier come back in `context` of the subject they are about. Ask for \
+detail="brief" unless you need more; `context` takes a list of subjects to read several in one call."""
 RAG_DATA = """Customer data: Relay's own API for this customer (get_account, list_subscription_changes, list_invoices, \
 list_tickets, get_ticket with its activity, list_incidents, list_integrations, list_contacts), and search_records, which \
 finds this customer's records (billing, support, platform and integration events) by meaning, each with its date and \
