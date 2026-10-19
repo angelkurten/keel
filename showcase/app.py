@@ -19,6 +19,21 @@ from showcase.rag import Index
 from showcase.scenarios import SCENARIOS
 
 STATIC = Path(__file__).resolve().parent / "static"
+REPO = "https://github.com/angelkurten/keel/blob/master/"
+BUILD = {  # what each side needed before its agent could answer anything; counted from the files themselves
+    "keel": [("examples/relay/cartridge.yaml", "The domain: kinds, relations, the event catalog and the rules (SLA, refunds, at risk)"),
+             ("examples/relay/handlers.py", "One small function per event type: payload to graph")],
+    "rag": [("showcase/product.py", "An API over Relay's records for the agent: eight tools, and the records' current state rebuilt from the events"),
+            ("showcase/data.py", "An event-to-text pipeline: one sentence per event, for the vector index"),
+            ("showcase/rag.py", "The vector index: embedding, storage and filtered similarity search")],
+}
+
+
+def build_report(root: Path) -> dict[str, Any]:
+    """Lines of code per file (blank lines and comments left out), for the page's "what it took to build"."""
+    def lines(path: Path) -> int:
+        return sum(1 for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip() and not ln.strip().startswith("#"))
+    return {side: [{"path": path, "url": REPO + path, "what": what, "lines": lines(root / path)} for path, what in files] for side, files in BUILD.items()}
 
 
 class Limits:
@@ -98,12 +113,12 @@ class Showcase:
         task = f"showcase-{secrets.token_hex(4)}"
 
         def side(name: str) -> list[dict[str, Any]]:
-            runs: dict[str, Run] = {}  # per customer: notes and task memory never cross customers
+            runs: dict[tuple[str, str], Run] = {}  # per customer and agent: without Keel, each agent keeps its own notes
             history: list[dict[str, Any]] = []
             results = []
             for step in sc["steps"]:
-                t = step["customer"]
-                run = runs.setdefault(t, Run(t, self.names[t], task=task))
+                t, role = step["customer"], step.get("role", "support")
+                run = runs.setdefault((t, role), Run(t, self.names[t], task=task, role=role))
                 if step.get("new_conversation"):
                     history = []
                 result, history = self.agents.answer(name, run, history, step["question"], memory=True)
@@ -111,7 +126,7 @@ class Showcase:
             return results
 
         keel_steps, rag_steps = self._both(side)
-        steps = [{"customer": s["customer"], "question": s["question"], "keel": k, "rag": r}
+        steps = [{"customer": s["customer"], "role": s.get("role", "support"), "question": s["question"], "keel": k, "rag": r}
                  for s, k, r in zip(sc["steps"], keel_steps, rag_steps, strict=True)]
         transcript = lambda key: "\n\n".join(f"Step {i + 1} ({s['customer']}): {st[key]['answer']}" for i, (s, st) in enumerate(zip(sc["steps"], steps, strict=True)))
         question = " / ".join(s["question"] for s in sc["steps"])
@@ -133,7 +148,7 @@ class Showcase:
             item = {k: v for k, v in s.items() if k != "steps"}
             item["customer_name"] = self.names[s["customer"]]
             if s.get("steps"):
-                item["steps"] = [{"customer": st["customer"], "customer_name": self.names[st["customer"]], "question": st["question"]} for st in s["steps"]]
+                item["steps"] = [{"customer": st["customer"], "customer_name": self.names[st["customer"]], "role": st.get("role", "support"), "question": st["question"]} for st in s["steps"]]
                 item["question"] = s["steps"][0]["question"]
             item["result"] = self.cache.get(s["id"])
             out.append(item)
@@ -163,6 +178,12 @@ def build_app(show: Showcase) -> Any:
     def meta(request: Request) -> dict[str, Any]:
         return {"today": TODAY.isoformat().replace("+00:00", "Z"), "model": show.agents.s.model, "judge_model": show.agents.s.judge_model,
                 "customers": customers(), "limits": {"ask_left": show.limits.left("ask", ip(request)), "live_left": show.limits.left("live")}}
+
+    report = build_report(Path(__file__).resolve().parent.parent)
+
+    @app.get("/api/build")
+    def build() -> dict[str, Any]:
+        return report
 
     @app.get("/api/scenarios")
     def scenarios() -> list[dict[str, Any]]:

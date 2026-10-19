@@ -15,8 +15,11 @@ from showcase.data import TODAY, Chunk
 from showcase.rag import Index, embed
 
 RESULT_CHARS = 12_000
-BASE = """You are a support agent for Relay, a workflow-automation SaaS (plans Starter, Pro, Enterprise). You are helping a \
-support rep with the customer {name}. Today is {today}.
+ROLES = {
+    "support": "a support agent for Relay, a workflow-automation SaaS (plans Starter, Pro, Enterprise). You are helping a support rep",
+    "billing": "the billing agent for Relay, a workflow-automation SaaS (plans Starter, Pro, Enterprise): you prepare and send invoices. You are helping the billing team",
+}
+BASE = """You are {role} with the customer {name}. Today is {today}.
 
 Answer the rep's question briefly and precisely: cite ids (invoices, tickets, incidents) and dates, and say what to do \
 next when it matters. Use your tools before answering; never invent facts; if the data does not say, say so. Product \
@@ -107,11 +110,12 @@ def chat(http: Any, s: Settings, meter: Meter, model: str, messages: list[dict[s
 
 @dataclass
 class Run:
-    """What one side needs for one conversation: the customer, and the notes or task its memory lives in."""
+    """What one side needs for one conversation: the customer, the agent's role, and where its memory lives."""
     tenant: str
     name: str
-    task: str | None = None  # Keel: task-scoped memory for the memory pair, so each run starts clean
-    notes: list[tuple[Chunk, list[float]]] = field(default_factory=list)  # RAG: notes saved in this run
+    task: str | None = None  # Keel: memory scoped to this showcase run, shared by its agents, gone afterwards
+    notes: list[tuple[Chunk, list[float]]] = field(default_factory=list)  # without Keel: this agent's own notes
+    role: str = "support"
 
 
 class Agents:
@@ -134,6 +138,9 @@ class Agents:
             args["as_of"] = TODAY.isoformat()  # today is fixed, so the rules are evaluated on the scenario's day
         if run.task and tool in ("context", "history", "annotate") and not args.get("task"):
             args["task"] = run.task
+        if run.task and tool == "annotate":  # a public page: what a visitor's run records stays in that run
+            args["scope"], args["task"] = "task", run.task
+            args.setdefault("by", f"{run.role}-agent")
         headers = {"X-Keel-Tenant": run.tenant, **({"Authorization": f"Bearer {self.s.keel_key}"} if self.s.keel_key else {})}
         r = self.http.post(f"{self.s.keel_url}/v1/{tool}", json=args, headers=headers, timeout=60)
         if r.status_code >= 400:
@@ -161,7 +168,7 @@ class Agents:
         the conversation to continue from."""
         meter = Meter(self.prices)
         data = KEEL_DATA.format(tenant=run.tenant) if side == "keel" else RAG_DATA
-        system = BASE.format(name=run.name, today=f"{TODAY:%Y-%m-%d %H:%M} UTC", data=data)
+        system = BASE.format(role=ROLES[run.role], name=run.name, today=f"{TODAY:%Y-%m-%d %H:%M} UTC", data=data)
         if side == "keel":
             tools = [t for t in keel_tools() if memory or t["function"]["name"] != "annotate"] + [HELP_TOOL]
             call = lambda name, args: self.keel(run, name, args)

@@ -34,12 +34,15 @@ SCENARIOS = [
      "expected": "Create a SAML 2.0 app in Okta with the ACS URL https://app.relay.example/sso/saml/acs and audience "
                  "https://app.relay.example/sso/saml/metadata, email as Name ID, upload Okta's metadata in Settings > Security > SSO, "
                  "test, and only then require SSO. A login loop usually means the ACS URL or audience does not match."},
-    {"id": "memory", "title": "Remembering, per customer", "strength": "memory", "customer": "acme",
+    {"id": "memory", "title": "Two agents, one memory", "strength": "memory", "customer": "acme",
      "steps": [
-         {"customer": "acme", "question": "Lucía Gómez, Acme's finance contact, told us she wants her invoices in Spanish from now on. Please record that.", "new_conversation": False},
-         {"customer": "acme", "question": "Acme's next invoice goes out on November 1. Anything to keep in mind when sending it?", "new_conversation": True},
-         {"customer": "globex", "question": "Globex's next invoice goes out on November 1. Anything to keep in mind when sending it?", "new_conversation": True},
+         {"customer": "acme", "role": "support", "new_conversation": False,
+          "question": "Lucía Gómez, who receives Acme's invoices, just told me she wants them in Spanish from now on. Please record it so billing knows."},
+         {"customer": "acme", "role": "billing", "new_conversation": True,
+          "question": "I'm preparing Acme's invoice for November 1. Who should receive it, and in which language?"},
+         {"customer": "globex", "role": "billing", "new_conversation": True,
+          "question": "I'm preparing Globex's invoice for November 1. Who should receive it, and in which language?"},
      ],
-     "expected": "Step 2: send Acme's invoice in Spanish to Lucía Gómez (her preference was recorded). Step 3: nothing about Spanish for "
-                 "Globex: Acme's preference must not carry over to another customer."},
+     "expected": "Step 2 (billing agent): send Acme's invoice to Lucía Gómez (finance) in Spanish, as the support agent recorded. "
+                 "Step 3: Globex's invoice in English to its billing contact; nothing about Spanish carries over from Acme."},
 ]

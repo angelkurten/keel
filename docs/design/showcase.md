@@ -62,7 +62,9 @@ Each has a question, the expected answer the page shows, and the strength it exe
 | 7 | Is Wayne's 502 error related to an incident? | Yes: INC-7 in eu-west affected them Oct 2 09:10–11:40 | context + time |
 | 8 | How do I set up SSO with Okta? | From the help center; both should answer | honesty |
 
-A **memory pair**, run in order: the first question tells the agent that Acme's finance contact prefers invoices in Spanish and asks it to record it; the second, in a new conversation, asks how to send Acme its next invoice. Then the same second question for Globex must not mention Spanish. Keel writes with `annotate` (tenant scope, with evidence); RAG with `save_note`.
+**Two agents, one memory** (replaces the first memory pair, 2026-10-19): a support agent records that Lucía Gómez, who receives Acme's invoices, wants them in Spanish; a billing agent, in a new conversation, prepares Acme's November invoice (who receives it, in which language); then Globex's, where nothing about Spanish must appear. With Keel both agents read the same graph: the support agent's `annotate` (scoped to the run, so a public page never keeps it) comes back in the billing agent's `context`. Without Keel each agent keeps its own notes, as two agents built separately do; sharing them is infrastructure the baseline would have to add.
+
+**What it took to build**: a section with each side's files and their real line counts (blank lines and comments left out), and what each brings: Keel's cartridge declares rules that are evaluated, keeps every fact's history, shares memory between agents with scope and evidence, and enforces tenant isolation in the tools; the baseline's API, event-to-text pipeline and index give current state, the activity the API happens to log, per-agent notes, and isolation by a filter in code. The line counts are close; the difference is what the lines buy.
 
 ## The page
 
