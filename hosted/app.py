@@ -334,8 +334,11 @@ class ControlPlane:
     def replace_cartridge(self, account: str, files: dict[str, str] | None = None, example: str | None = None) -> list[str]:
         """Deploy another cartridge to the account's container, in the background. Its problems (static_check) are
         returned; a cartridge that does not even parse is refused. If the new container does not start, the previous
-        cartridge goes back and `notice` says why. Leaving the example forgets its tenant `demo`."""
-        row = self._ready(account)
+        cartridge goes back and `notice` says why. Leaving the example forgets its tenant `demo`. An account whose last
+        change failed may deploy again: that is the way out."""
+        row = self._row(account)
+        if row is None or not row["endpoint"] or not row["secret"] or (row["status"] or "ready") not in ("ready", "failed"):
+            raise LookupError("your Keel is not ready yet")
         if example:
             if example not in EXAMPLES:
                 raise ValueError(f"unknown example '{example}'")

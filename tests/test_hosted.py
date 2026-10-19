@@ -358,3 +358,23 @@ def test_coolify_provisioner_calls(tmp_path):
     assert create["docker_registry_image_tag"] == "0.27.1" and create["domains"] == "https://acme.keel.example" and create["instant_deploy"] is False
     assert calls[1][3] == {"type": "file", "mount_path": "/cartridge/cartridge.yaml", "content": "name: x"}
     assert calls[-1][2] == {"uuid": "app-1"}
+
+
+def test_coolify_update_replaces_mounted_files():
+    """Coolify's PATCH changes its own copy of a file mount but not the host's file: update deletes and recreates it."""
+    import httpx
+
+    from hosted.provision import CoolifyProvisioner
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append((request.method, request.url.path))
+        if request.url.path.endswith("/storages") and request.method == "GET":
+            return httpx.Response(200, json={"file_storages": [{"uuid": "s1", "mount_path": "/cartridge/cartridge.yaml"}], "persistent_storages": []})
+        return httpx.Response(200, json={})
+
+    http = httpx.Client(base_url="https://coolify.test/api/v1", transport=httpx.MockTransport(handler))
+    CoolifyProvisioner("https://coolify.test", "t", "p", "s", "keel.example", "0.30.0", http=http).update("app-1", files={"cartridge.yaml": "name: x", "handlers.py": ""})
+    assert calls == [("GET", "/api/v1/applications/app-1/storages"), ("DELETE", "/api/v1/applications/app-1/storages/s1"),
+                     ("POST", "/api/v1/applications/app-1/storages"), ("POST", "/api/v1/applications/app-1/storages"), ("POST", "/api/v1/deploy")]

@@ -126,10 +126,9 @@ class CoolifyProvisioner:
             have = {f["mount_path"]: f["uuid"] for f in self._call("GET", f"/applications/{uuid}/storages").get("file_storages", [])}
             for name, content in files.items():
                 path = f"/cartridge/{name}"
-                if path in have:
-                    self._call("PATCH", f"/applications/{uuid}/storages", json={"uuid": have[path], "type": "file", "content": content})
-                else:
-                    self._call("POST", f"/applications/{uuid}/storages", json={"type": "file", "mount_path": path, "content": content})
+                if path in have:  # a PATCH changes Coolify's copy but not the file mounted on the host: replace it
+                    self._call("DELETE", f"/applications/{uuid}/storages/{have[path]}")
+                self._call("POST", f"/applications/{uuid}/storages", json={"type": "file", "mount_path": path, "content": content})
         if env:
             self._call("PATCH", f"/applications/{uuid}/envs/bulk", json={"data": [{"key": k, "value": v, "is_literal": True} for k, v in env.items()]})
         if drop_env:
