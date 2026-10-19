@@ -163,6 +163,12 @@ def static_check(files: dict[str, str], events: list[dict[str, Any]] | None = No
     return problems
 
 
+def revisions(files: dict[str, str]) -> set[str]:
+    """The revision a container will report for these files: Coolify drops a file mount's trailing newline, so both forms."""
+    return {revision(files["cartridge.yaml"], files["handlers.py"]),
+            revision(files["cartridge.yaml"].rstrip("\n"), files["handlers.py"].rstrip("\n"))}
+
+
 def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -283,14 +289,14 @@ class ControlPlane:
             log.exception("provisioning %s failed", account)
             self._status(account, "failed", str(exc)[:500])
 
-    def _wait_ready(self, app_id: str, endpoint: str, rev: str | None = None) -> None:
+    def _wait_ready(self, app_id: str, endpoint: str, rev: set[str] | None = None) -> None:
         """Poll /health; a container that has not answered halfway through is restarted once (a first start
         can end unhealthy, and Coolify keeps no logs of a stopped container)."""
         start, restarted = time.monotonic(), False
         while (spent := time.monotonic() - start) < self.settings.ready_timeout:
             with contextlib.suppress(Exception):  # not up yet
                 r = self.http.get(f"{endpoint}/health", timeout=5)
-                if r.status_code == 200 and (rev is None or r.json().get("revision") == rev):  # the old container may still answer
+                if r.status_code == 200 and (rev is None or r.json().get("revision") in rev):  # the old container may still answer
                     return
             if not restarted and spent > self.settings.ready_timeout / 2 and hasattr(self.provisioner, "restart"):
                 self.provisioner.restart(app_id)
@@ -360,13 +366,13 @@ class ControlPlane:
         row = self._row(account)
         try:
             self.provisioner.update(row["app"], files=files)
-            self._wait_ready(row["app"], row["endpoint"], revision(files["cartridge.yaml"], files["handlers.py"]))
+            self._wait_ready(row["app"], row["endpoint"], revisions(files))
         except Exception as exc:  # put the previous cartridge back
             log.exception("new cartridge for %s did not start", account)
             try:
                 if old["cartridge.yaml"]:
                     self.provisioner.update(row["app"], files=old)
-                    self._wait_ready(row["app"], row["endpoint"], revision(old["cartridge.yaml"], old["handlers.py"]))
+                    self._wait_ready(row["app"], row["endpoint"], revisions(old))
                 self.control._exec("UPDATE hosted_accounts SET notice = ? WHERE account = ?",
                                    (f"Your new cartridge did not start ({exc}); the previous one is back.", account))
                 self._status(account, "ready")
