@@ -137,6 +137,21 @@ def _capped(rels: list[Any], subject: str, symmetric: set[str]) -> tuple[list[An
     return [r for r in rels if id(r) in keep], more
 
 
+def _grouped(rels: list[dict[str, Any]]) -> dict[str, list[str]]:
+    """Relations as {relation: [subjects]}, an incoming one written `<-relation`: the same edges in a third of the tokens."""
+    out: dict[str, list[str]] = {}
+    for r in rels:
+        out.setdefault(r["relation"] if r["direction"] != "in" else f"<-{r['relation']}", []).append(r["subject"])
+    return out
+
+
+def _brief(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str, Any]:
+    """`detail="brief"`, for an LLM agent: concise, with relations as {relation: [subjects]} (incoming as `<-relation`)."""
+    out = _concise(ctx, symmetric)
+    out["relations"] = _grouped(out["relations"])
+    return out
+
+
 def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str, Any]:
     """The same answer in about a third of the tokens: what an LLM needs to act, ids kept."""
     rel = lambda r, s: {"relation": r["rel"], "direction": _direction(r["rel"], r["src"], s, symmetric), "subject": r["dst"] if r["src"] == s else r["src"]}
@@ -402,8 +417,8 @@ class Tools:
         subjects, their facts and relations are read in a few statements, not one per subject."""
         if self.meter:
             self.meter(self.tenant, "context")
-        if detail not in ("full", "concise"):
-            raise ValueError("detail is 'full' or 'concise'")
+        if detail not in ("full", "concise", "brief"):
+            raise ValueError("detail is 'full', 'concise' or 'brief'")
         if only is not None and (not isinstance(only, list) or not only or not all(isinstance(p, str) for p in only)):
             raise ValueError("only is a non-empty list of predicates")
         subjects = subject if isinstance(subject, list) else [subject]
@@ -465,6 +480,8 @@ class Tools:
             out["neighbors"] = neighbors
             if len(rels) > NEIGHBOR_CAP:
                 out["neighbors_truncated"] = True
+        if detail == "brief":
+            return _brief(_ser(out), self.symmetric)
         return _concise(_ser(out), self.symmetric) if detail == "concise" else _ser(out)
 
     def history(
@@ -574,8 +591,8 @@ class Tools:
         min_score: float | None, related_to: str | None, via: str | None, detail: str, depth: int, per_kind: int | None,
         exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph,
     ) -> list[Any]:
-        if detail not in ("key", "entity", "concise", "full"):
-            raise ValueError("search detail is 'key', 'entity', 'concise' or 'full'")
+        if detail not in ("key", "entity", "concise", "brief", "full"):
+            raise ValueError("search detail is 'key', 'entity', 'concise', 'brief' or 'full'")
         if depth not in (0, 1):
             raise ValueError("search depth is 0 or 1")
         if detail == "key" and depth:
@@ -678,6 +695,10 @@ class Tools:
                     h["neighbors"].append(n)
                 if len(rels) > NEIGHBOR_CAP:
                     h["neighbors_truncated"] = True
+        if detail == "brief":  # for an LLM: the key says the kind and id; the tenant and the row ref are known
+            for h in entities:
+                for k in ("tenant", "kind", "id", "ref", "similarity"):
+                    h.pop(k, None)
         return hits
 
     def _search(

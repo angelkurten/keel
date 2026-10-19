@@ -526,6 +526,19 @@ def test_proposals_wait_for_a_decision(store):
     assert statuses == [("rotate", "proposed", True), ("no", "rejected", True)]
 
 
+def test_brief_detail_is_the_cheapest_for_an_agent(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    concise, brief = t.context("unit:MXK-4821", detail="concise"), t.context("unit:MXK-4821", detail="brief")
+    assert brief["facts"] == concise["facts"] and brief["evaluation"] == concise["evaluation"]
+    assert "tire:T-9001" in brief["relations"]["<-mounted_on"]  # grouped: {relation: [subjects]}, incoming as <-relation
+    assert len(json.dumps(brief, default=str)) < len(json.dumps(concise, default=str))
+    hit = t.search("T-9001", detail="brief")[0]
+    assert hit["key"] == "tire:T-9001" and "facts" in hit and not {"tenant", "kind", "id", "ref"} & set(hit)
+    assert {"tenant", "kind", "id", "ref"} <= set(t.search("T-9001", detail="concise")[0])  # concise keeps its shape
+
+
 def test_concise_detail_and_history_limit(store):
     c = load_cartridge(FLEET)
     Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
