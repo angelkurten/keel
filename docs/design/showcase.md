@@ -11,7 +11,7 @@ Keel's claim is that agents inside a product need context with time, rules and s
 3. **Rules**: SLA breached, refund eligible, account at risk are defined once and evaluated, never improvised by the model.
 4. **Scope**: one customer's data never answers for another, and memory written for one stays with it.
 
-And it must show what it costs: time and money per answer, side by side and as a percentage, because a context layer that answers better but slower or dearer is a trade-off a buyer has to see.
+And it must show what it costs: time and money per answer, side by side, because a context layer that answers better but slower or dearer is a trade-off a buyer has to see.
 
 And it must be fair, or it convinces no one.
 
@@ -69,8 +69,7 @@ A **memory pair**, run in order: the first question tells the agent that Acme's 
 - Header: one line on what is compared and the fairness rules, linked to this note.
 - Scenario list on the left; on the right, the question, the expected answer, and two columns (with Keel / without Keel), each with the answer, the judge's verdict (correct, partial, wrong, with its reason), the tool calls (expandable), tokens, latency and cost.
 - Guided scenarios show a cached run (date shown) with a "run it live again" button. A free question box runs both sides live, without a judge.
-- **Relative comparison** on every answer, Keel against the baseline: time, cost, tokens and tool calls as a percentage ("48% faster · 35% cheaper · 62% fewer tokens · 3 fewer calls"), computed as `(baseline − keel) / baseline`. When Keel is slower or costlier it says so in the same place ("18% slower"), coloured as such. A summary band above the scenarios gives the totals over the guided runs (median latency, total cost, correct answers per side), and the free question shows the same badges for its live run.
-- What is measured: wall time of the whole answer (every model and tool call, end to end), cost from the tokens each model call reports at the gateway's prices, input plus output tokens, and tool calls. Latency is noisy between runs, so cached runs keep each side's time from the same run, and the band shows medians.
+- **Metrics** on every answer, side by side: time, cost, tokens and tool calls, as numbers. Wall time covers the whole answer (every model and tool call, end to end), cost comes from the tokens each model call reports at the gateway's prices. The summary band gives the correct answers per side, the median time and the total cost and tokens over the guided runs. No relative percentages (decided 2026-10-19): the absolute numbers are shown and the reader compares.
 - A footer with links: the cartridge, the generator, the data, the code of both agents, hosted Keel sign-up.
 
 ## Architecture

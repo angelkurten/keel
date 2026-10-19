@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from showcase.agents import Agents, Run, Settings, compare, prices
+from showcase.agents import Agents, Run, Settings, prices
 from showcase.data import TODAY, customers
 from showcase.rag import Index
 from showcase.scenarios import SCENARIOS
@@ -70,7 +70,7 @@ class Showcase:
         if not question:
             raise ValueError("ask a question")
         keel, rag = self._both(lambda side: self.agents.answer(side, Run(tenant, self.names[tenant]), [], question)[0])
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag, "compare": compare(keel, rag)}
+        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag}
 
     def run(self, sid: str) -> dict[str, Any]:
         sc = next((s for s in SCENARIOS if s["id"] == sid), None)
@@ -91,7 +91,7 @@ class Showcase:
             return result
 
         keel, rag = self._both(side)
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag, "compare": compare(keel, rag)}
+        return {"at": datetime.now(timezone.utc).isoformat(), "keel": keel, "rag": rag}
 
     def _memory(self, sc: dict[str, Any]) -> dict[str, Any]:
         """The steps in order, each side keeping its own memory: Keel in a task of its own for this run, RAG in its notes."""
@@ -111,7 +111,7 @@ class Showcase:
             return results
 
         keel_steps, rag_steps = self._both(side)
-        steps = [{"customer": s["customer"], "question": s["question"], "keel": k, "rag": r, "compare": compare(k, r)}
+        steps = [{"customer": s["customer"], "question": s["question"], "keel": k, "rag": r}
                  for s, k, r in zip(sc["steps"], keel_steps, rag_steps, strict=True)]
         transcript = lambda key: "\n\n".join(f"Step {i + 1} ({s['customer']}): {st[key]['answer']}" for i, (s, st) in enumerate(zip(sc["steps"], steps, strict=True)))
         question = " / ".join(s["question"] for s in sc["steps"])
@@ -125,8 +125,7 @@ class Showcase:
                 verdict = self.agents.judge(question, sc["expected"], transcript(key))
                 totals[key]["verdict"] = verdict
                 steps[-1][key]["verdict"] = verdict
-        return {"at": datetime.now(timezone.utc).isoformat(), "keel": totals["keel"], "rag": totals["rag"],
-                "compare": compare(totals["keel"], totals["rag"]), "steps": steps}
+        return {"at": datetime.now(timezone.utc).isoformat(), "keel": totals["keel"], "rag": totals["rag"], "steps": steps}
 
     def scenarios(self) -> list[dict[str, Any]]:
         out = []

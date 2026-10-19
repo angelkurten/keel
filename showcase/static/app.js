@@ -92,31 +92,6 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 const usd = (n) => `$${(n || 0).toFixed(4)}`;
 const tokensOf = (s) => (s && s.tokens ? (s.tokens.input || 0) + (s.tokens.output || 0) : 0);
 const num = (n) => Number(n || 0).toLocaleString("en-US");
-const pctOf = (rag, keel) => (rag ? ((rag - keel) / rag) * 100 : 0);
-const median = (xs) => {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
-
-/** One relative badge, Keel against the baseline, honest in both directions. */
-function deltaBadge(pct, better, worse, same) {
-  const r = Math.round(Math.abs(pct));
-  if (Math.abs(pct) < 1) return h("span", { class: "delta" }, same);
-  return pct > 0 ? h("span", { class: "delta good" }, `${r}% ${better}`) : h("span", { class: "delta bad" }, `${r}% ${worse}`);
-}
-function deltas(compare) {
-  if (!compare) return null;
-  const d = compare.calls_diff || 0;
-  return h("div", { class: "deltas", "aria-label": "Keel compared with the RAG agent" },
-    h("span", { class: "lbl" }, "Keel vs RAG"),
-    deltaBadge(compare.time_pct, "faster", "slower", "same time"),
-    deltaBadge(compare.cost_pct, "cheaper", "costlier", "same cost"),
-    deltaBadge(compare.tokens_pct, "fewer tokens", "more tokens", "same tokens"),
-    d === 0 ? h("span", { class: "delta" }, "same calls")
-      : d > 0 ? h("span", { class: "delta good" }, `${d} fewer call${d === 1 ? "" : "s"}`)
-      : h("span", { class: "delta bad" }, `${-d} more call${d === -1 ? "" : "s"}`));
-}
 
 // --- API --------------------------------------------------------------------------------------------------
 async function api(method, path, body) {
@@ -145,6 +120,12 @@ function verdictOf(run, side) {
   return run[side] ? run[side].verdict : null;
 }
 
+const median = (xs) => {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
 // --- summary band -----------------------------------------------------------------------------------------
 function renderSummary() {
   const box = $("summary");
@@ -169,9 +150,9 @@ function renderSummary() {
   box.append(
     stat("Correct answers", `${kc}/${n}`, `${rc}/${n}`,
       h("span", { class: kc >= rc ? "delta good" : "delta bad" }, kc === rc ? "same" : kc > rc ? `${kc - rc} more correct` : `${rc - kc} fewer correct`)),
-    stat("Median time", secs(ms("keel")), secs(ms("rag")), deltaBadge(pctOf(ms("rag"), ms("keel")), "faster", "slower", "same time")),
-    stat("Total cost", usd(cost("keel")), usd(cost("rag")), deltaBadge(pctOf(cost("rag"), cost("keel")), "cheaper", "costlier", "same cost")),
-    stat("Total tokens", num(toks("keel")), num(toks("rag")), deltaBadge(pctOf(toks("rag"), toks("keel")), "fewer tokens", "more tokens", "same tokens")),
+    stat("Median time", secs(ms("keel")), secs(ms("rag"))),
+    stat("Total cost", usd(cost("keel")), usd(cost("rag"))),
+    stat("Total tokens", num(toks("keel")), num(toks("rag"))),
     h("div", { class: "note" }, `Over the ${n} guided scenarios, cached runs of ${span}. Live runs below replace them in this page.`),
   );
 }
@@ -250,7 +231,7 @@ function spinning() {
   return h("div", { class: "cols" }, col("keel", "With Keel"), col("rag", "Without Keel (RAG)"));
 }
 function result(run, withVerdict) {
-  return [deltas(run.compare), h("div", { class: "cols" },
+  return [h("div", { class: "cols" },
     column(run, "keel", "With Keel", withVerdict), column(run, "rag", "Without Keel (RAG)", withVerdict))];
 }
 

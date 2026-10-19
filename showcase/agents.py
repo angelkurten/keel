@@ -18,7 +18,8 @@ support rep with the customer {name}. Today is {today}.
 
 Answer the rep's question briefly and precisely: cite ids (invoices, tickets, incidents) and dates, and say what to do \
 next when it matters. Use your tools before answering; never invent facts; if the data does not say, say so. Product \
-policies (refunds, SLA, proration, setup guides) are in the help center: search_help.
+policies (refunds, SLA, proration, setup guides) are in the help center: search_help. Earlier conversations may have \
+recorded notes about this customer: look for them whenever they could change the answer.
 
 {data}"""
 KEEL_DATA = """Customer data: Keel, a context graph of this customer built from Relay's events, through five tools. Subjects \
@@ -26,7 +27,7 @@ are `<kind>:<id>` (kinds: account, contact, invoice, ticket, incident, integrati
 `context` returns a subject's current facts, its relations and the rules that apply with their evaluation \
 (sla_breached, refund_eligible, account_at_risk, integration_failing): trust that evaluation. `history` gives a fact's \
 values over time; `search` finds subjects (by text, kind or rule); `related` walks relations; `annotate` records \
-what you learn, with evidence."""
+what you learn, with evidence; notes recorded earlier come back in `context` of the subject they are about."""
 RAG_DATA = """Customer data: search_records finds this customer's records (billing, support, platform and integration \
 events), each with its date and time. Search as often as you need. save_note stores a note about the customer for \
 later conversations."""
@@ -208,10 +209,3 @@ class Agents:
             pass
         return {"grade": "partial", "reason": "the judge's answer could not be read"}
 
-
-def compare(keel: dict[str, Any], rag: dict[str, Any]) -> dict[str, float]:
-    """Keel against the baseline: (rag − keel) / rag × 100, so positive means Keel is faster, cheaper, leaner."""
-    def pct(a: float, b: float) -> float:
-        return round((b - a) / b * 100, 1) if b else 0.0
-    return {"time_pct": pct(keel["ms"], rag["ms"]), "cost_pct": pct(keel["cost_usd"], rag["cost_usd"]),
-            "tokens_pct": pct(sum(keel["tokens"].values()), sum(rag["tokens"].values())), "calls_diff": rag["calls"] - keel["calls"]}
