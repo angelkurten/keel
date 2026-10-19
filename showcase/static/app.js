@@ -205,6 +205,11 @@ function verdictBox(v) {
   if (!v) return null;
   return h("div", { class: `verdict ${v.grade}` }, h("b", {}, icon(GRADE_ICON[v.grade] || "none"), v.grade), h("span", {}, v.reason));
 }
+const ROLE = { support: "Support agent", billing: "Billing agent" };
+/** "Acme Corp" plus the agent's role tag, when the step has one. */
+function stepWho(st) {
+  return h("span", { class: "stepwho" }, h("span", {}, st.customer_name || st.customer), st.role ? h("span", { class: `tag role ${st.role}` }, ROLE[st.role] || st.role) : null);
+}
 /** A column: for a memory pair, each step's answer in order; metrics are the run's totals. */
 function column(run, side, title, withVerdict) {
   const s = run[side] || {};
@@ -214,7 +219,7 @@ function column(run, side, title, withVerdict) {
     run.steps.forEach((st, i) => {
       const ss = st[side] || {};
       col.append(h("div", { class: "stepans" },
-        h("div", { class: "q" }, `Step ${i + 1} · ${st.customer_name || st.customer}: ${st.question}`),
+        h("div", { class: "q" }, h("span", { class: "stepn" }, `Step ${i + 1}`), stepWho(st), h("span", { class: "qt" }, st.question)),
         ss.error ? h("div", { class: "err" }, ss.error) : markdown(ss.answer),
         traceList(ss.trace)));
     });
@@ -244,12 +249,16 @@ function renderDetail() {
   const left = state.meta ? state.meta.limits.live_left : 0;
   const head = h("div", { class: "qhead" });
   if (s.steps && s.steps.length) {
-    head.append(h("span", { class: "who" }, "A memory pair, run in order, each step in a new conversation"),
-      h("ol", { class: "steps" }, s.steps.map((st) => h("li", {}, h("span", { class: "who" }, st.customer_name || st.customer), st.question))));
+    head.append(h("p", { class: "question" }, "Two agents, one memory"),
+      h("span", { class: "who" }, "Run in order, each step in a new conversation"),
+      h("ol", { class: "steps" }, s.steps.map((st) => h("li", {}, h("span", { class: "who" }, stepWho(st)), st.question))));
   } else {
     head.append(h("span", { class: "who" }, `Customer: ${s.customer_name || s.customer}`), h("p", { class: "question" }, s.question));
   }
   head.append(h("div", { class: "expected" }, h("span", { class: "lbl" }, "Expected"), s.expected));
+  if (s.steps && s.steps.length) {
+    head.append(h("p", { class: "hint" }, "With Keel both agents read the same graph; without Keel each agent keeps its own notes, as two agents built separately do."));
+  }
   const when = s.result ? (s._live ? "live, just now" : `cached run of ${fmtDate(s.result.at)}`) : "not run yet";
   const runbar = h("div", { class: "runbar" },
     h("div", { class: "left" }, h("span", { class: "tag" }, s.strength), h("span", { class: "hint" }, when)),
@@ -310,6 +319,38 @@ async function ask(e) {
   }
 }
 
+// --- what it took to build ---------------------------------------------------------------------------------
+const CAPS = [
+  ["Business rules (SLA, refunds, at risk)", ["ok", "Declared once, evaluated by Keel"], ["no", "The agent applies the help center's policy from the prompt"]],
+  ["History of every fact", ["ok", "Every value over time, as of any instant"], ["part", "Only what the API logs (ticket activity, plan changes)"]],
+  ["Memory shared between agents", ["ok", "Scoped, with evidence"], ["no", "Each agent keeps its own notes"]],
+  ["Customer isolation", ["ok", "Enforced in the tools"], ["part", "A filter in the code"]],
+  ["A new agent", ["ok", "Reads the same graph, nothing to build"], ["part", "Reuses the API; its memory and rules are its own to build"]],
+];
+const CAP_LABEL = { ok: "yes", part: "partial", no: "no" };
+function buildCard(title, side, files) {
+  const total = (files || []).reduce((a, f) => a + (f.lines || 0), 0);
+  return h("section", { class: `card col ${side}` },
+    h("h3", {}, title, h("span", { class: "mono lines" }, `${num(total)} lines`)),
+    h("ul", { class: "files" }, (files || []).map((f) => h("li", {},
+      h("div", { class: "fhead" },
+        f.url ? h("a", { href: f.url, class: "mono", rel: "noopener" }, f.path) : h("span", { class: "mono" }, f.path),
+        h("span", { class: "mono hint" }, `${num(f.lines)} lines`)),
+      f.what ? h("p", { class: "hint" }, f.what) : null))));
+}
+function capCell([kind, text]) {
+  return h("td", {}, h("span", { class: "cap" }, icon(kind), h("span", { class: "sr-only" }, `${CAP_LABEL[kind]}: `), text));
+}
+function renderBuild(b) {
+  const box = $("build-body");
+  box.replaceChildren(
+    h("div", { class: "cols" }, buildCard("With Keel", "keel", b.keel), buildCard("Without Keel (RAG + tools)", "rag", b.rag)),
+    h("div", { class: "card table-card" }, h("table", { class: "caps" },
+      h("thead", {}, h("tr", {}, h("th", {}, h("span", { class: "sr-only" }, "Capability")), h("th", {}, "With Keel"), h("th", {}, "Without Keel (RAG + tools)"))),
+      h("tbody", {}, CAPS.map(([what, keel, rag]) => h("tr", {}, h("th", { scope: "row" }, what), capCell(keel), capCell(rag)))))),
+    h("p", { class: "honest" }, "The line counts are close. The difference is what the lines buy."));
+}
+
 // --- start ------------------------------------------------------------------------------------------------------
 async function main() {
   $("ask-form").addEventListener("submit", ask);
@@ -321,6 +362,7 @@ async function main() {
     $("ask-customer").replaceChildren(...meta.customers.map((c) => h("option", { value: c.tenant }, `${c.name}${c.plan ? ` (${c.plan})` : ""}`)));
     renderAskLeft();
     renderSummary();
+    api("GET", "/api/build").then(renderBuild).catch(() => { $("build").hidden = true; });
     const fromHash = decodeURIComponent(location.hash.slice(1));
     select(scenarios.some((s) => s.id === fromHash) ? fromHash : (scenarios[0] || {}).id);
   } catch (e) {

@@ -181,3 +181,41 @@ details.trace > summary { cursor: pointer; padding: 8px 10px; font-size: 13px; c
   .field { flex-basis: 100%; }
 }
 .stat .delta { align-self: flex-start; }
+
+/* memory pair roles */
+.stepwho { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tag.role { font-family: var(--sans); font-size: 11px; }
+.tag.role.support { color: var(--keel); border-color: color-mix(in srgb, var(--keel) 45%, transparent); }
+.tag.role.billing { color: var(--rag); border-color: color-mix(in srgb, var(--rag) 45%, transparent); }
+.stepans .q { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.stepans .q .qt { flex-basis: 100%; color: var(--text); font-size: 13px; }
+.stepn { font-weight: 600; }
+
+/* what it took to build */
+.build { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
+.build h2 { font-size: 22px; letter-spacing: -0.015em; }
+#build-body { display: flex; flex-direction: column; gap: 16px; }
+.col h3 .lines { font-size: 13px; color: var(--muted); font-weight: 500; }
+.files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.files li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.files li:first-child { border-top: 0; padding-top: 0; }
+.fhead { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; min-width: 0; }
+.fhead a, .fhead > span:first-child { overflow-wrap: anywhere; }
+.fhead .hint { white-space: nowrap; }
+.table-card { padding: 0; overflow-x: auto; }
+.caps { width: 100%; border-collapse: collapse; font-size: 14px; }
+.caps th, .caps td { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+.caps thead th { border-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+.caps tbody th { font-weight: 500; width: 28%; }
+.cap { display: inline-flex; gap: 8px; align-items: flex-start; }
+.cap .ic { margin-top: 3px; }
+.honest { font-size: 15px; color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  .caps thead { display: none; }
+  .caps tr { display: grid; grid-template-columns: 1fr; border-top: 1px solid var(--line); padding: 8px 0; }
+  .caps th, .caps td { border-top: 0; padding: 4px 14px; width: auto; }
+  .caps tbody th { font-weight: 600; width: auto; }
+  .caps td:nth-of-type(1)::before { content: "With Keel"; display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .caps td:nth-of-type(2)::before { content: "Without Keel"; display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+}
