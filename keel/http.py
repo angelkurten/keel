@@ -419,8 +419,8 @@ def build_http_app(
         from fastapi.responses import FileResponse, HTMLResponse
 
         dist = (Path(__file__).parent / "console").resolve()  # the console's build, shipped in the wheel (console/: npm run build:wheel)
-        index = dist / "index.html"
-        page = index.read_text(encoding="utf-8").replace('<base href="/">', '<base href="/ui/">') if index.exists() else None
+        home = dist / "index.html"  # not `index`: that name is the semantic index the tools are built with
+        page = home.read_text(encoding="utf-8").replace('<base href="/">', '<base href="/ui/">') if home.exists() else None
 
         @app.get("/ui", include_in_schema=False)
         @app.get("/ui/{path:path}", include_in_schema=False)

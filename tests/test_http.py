@@ -279,6 +279,19 @@ def test_every_transport_takes_every_parameter_of_the_five_tools():
         assert listed[n] == own[n], n
 
 
+def test_ui_keeps_the_semantic_index():
+    """--ui once rebound `index` to the console's index.html, so semantic search got a path instead of the index."""
+    from keel.semantic import HashEmbedder, MemoryIndex, index_tenant
+
+    c, store = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    vectors, emb = MemoryIndex(), HashEmbedder()
+    index_tenant(store, TENANT, emb, vectors)
+    client = _client(c, store, ui=True, index=vectors, embedder=emb)
+    r = client.post("/v1/search", json={"text": "T-9001", "mode": "semantic"}, headers={**AUTH, "X-Keel-Tenant": TENANT})
+    assert r.status_code == 200 and r.json()[0]["key"] == "tire:T-9001"
+
+
 def test_ui_is_opt_in_open_and_carries_no_data():
     c = load_cartridge(FLEET)
     assert _client(c, MemoryStore()).get("/ui").status_code == 404  # off unless asked
