@@ -56,6 +56,7 @@ class IngestReport:
     forgotten: list[tuple[str, dict[str, int]]] = field(default_factory=list)  # (tenant, what forget deleted), for an audit log
     skipped: int = 0  # events for a tenant already forgotten: never applied, so a late redelivery cannot revive it
     retained: list[tuple[str, str, dict[str, int]]] = field(default_factory=list)  # (tenant, cutoff, what forget_before deleted)
+    not_applied: dict[int, str] = field(default_factory=dict)  # position in this call's input -> duplicate, skipped, unhandled, or the error
 
 
 BATCH = 5000  # events per commit for a bulk load (a file, a replay): fewer prefetch statements per event
@@ -107,6 +108,7 @@ class Ingestor:
         if ack:
             source.manual_ack = True
         report = IngestReport()
+        seq = -1  # the position of the event in this call's input, for not_applied
         tx = getattr(self.store, "transaction", None)
         bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
         forgotten = getattr(self.store, "forgotten", None)
@@ -119,8 +121,10 @@ class Ingestor:
             self._gone |= {t for t in {ev.tenant for ev in chunk} - self._gone if forgotten and forgotten(t)}
             with scope:
                 for ev in chunk:
+                    seq += 1
                     if ev.tenant in self._gone:
                         report.skipped += 1
+                        report.not_applied[seq] = "skipped: the tenant was forgotten"
                         continue
                     if ev.type in self.forgets:
                         report.forgotten.append((ev.tenant, self.store.forget(ev.tenant)))
@@ -130,6 +134,7 @@ class Ingestor:
                         continue
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
+                        report.not_applied[seq] = "duplicate"
                         continue
                     applied[ev.tenant] += 1
                     if ev.type in self.retains:
@@ -144,10 +149,12 @@ class Ingestor:
                         report.processed += 1
                     except UnhandledEvent:
                         report.unhandled.append(ev.type)
+                        report.not_applied[seq] = f"unhandled: no handler for '{ev.type}'"
                         if strict:
                             raise
                     except Exception as exc:
                         report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
+                        report.not_applied[seq] = f"error: {type(exc).__name__}: {exc}"
                         if strict:
                             raise
             if meter and applied:  # after the commit: a crash in between undercounts, never bills twice

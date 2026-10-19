@@ -261,6 +261,9 @@ KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --http2 
 | Call | Body (`?` optional, default in parentheses) | Returns |
 | --- | --- | --- |
 | `POST /v1/events` | one envelope or a list | the ingest report: `processed`, `duplicates`, `unhandled`, `errors`, `forgotten`, `skipped` |
+| `GET /v1/events/recent` | | the tenant's last 200 events received by this server, newest first, each with `status` (`applied`, `duplicate`, `unhandled`, `skipped`, `error`) and the `reason`; kept in memory, so a restart empties it |
+| `POST /v1/events/check` | a list of envelopes | what the catalog would refuse in each (`index`, `problems`), the same checks as `keel validate --events`; nothing is ingested |
+| `GET /v1/sdk/{language}` | | the typed client for this cartridge, as `keel sdk` generates it: `filename`, `code`, `sha256` |
 | `POST /v1/context` | `{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("full" or "concise")}` | what `context` returns |
 | `POST /v1/history` | `{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"?}` | facts |
 | `POST /v1/search` | `{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?}` | entities and facts |

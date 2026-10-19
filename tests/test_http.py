@@ -180,6 +180,28 @@ def test_mcp_over_http_for_many_tenants():
         server.should_exit = True
 
 
+def test_recent_events_check_and_sdk(tmp_path):
+    from keel.keys import create_key
+
+    store = MemoryStore()
+    full, _ = create_key(store, "acme")
+    with _client(load_cartridge(FLEET), store) as client:
+        h = {"Authorization": f"Bearer {full}", "X-Keel-Tenant": "c1"}
+        good = {"id": "e1", "tenant": "c1", "type": "unit.registered", "subject": "unit:U1", "occurred_at": "2026-10-01T00:00:00Z",
+                "source": "t", "payload": {"id": "U1", "plate": "P", "model": "M"}}
+        odd = {**good, "id": "e2", "type": "unit.retired", "subject": "unit:U1"}
+        assert client.post("/v1/events", json=[good, good, odd], headers=h).status_code == 200
+        log = client.get("/v1/events/recent", headers=h).json()
+        assert [(e["id"], e["status"]) for e in log] == [("e2", "unhandled"), ("e1", "duplicate"), ("e1", "applied")]
+        assert "unit.retired" in log[0]["reason"]
+        assert client.get("/v1/events/recent", headers={**h, "X-Keel-Tenant": "c2"}).json() == []
+        checked = client.post("/v1/events/check", json=[good, odd, {"id": "x"}], headers=h).json()
+        assert [c["index"] for c in checked] == [1, 2] and "unknown event type" in checked[0]["problems"][0]
+        sdk = client.get("/v1/sdk/typescript", headers=h).json()
+        assert sdk["filename"] == "keel-fleet.ts" and "unit.registered" in sdk["code"] and len(sdk["sha256"]) == 64
+        assert client.get("/v1/sdk/cobol", headers=h).status_code == 400
+
+
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from typer.testing import CliRunner
 

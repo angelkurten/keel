@@ -5,6 +5,9 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     keel serve examples/fleet --transport http --db keel.db --tenant acme   # /mcp bound to acme
 
     POST /v1/events    one envelope or a list        -> ingest report
+    GET  /v1/events/recent                           -> the tenant's last 200 events received here, with their outcome
+    POST /v1/events/check  a list of envelopes (JSON) -> what the catalog would refuse in each, nothing ingested
+    GET  /v1/sdk/{language}                          -> the typed client generated from this cartridge (keel sdk)
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?, only?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
     POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
@@ -29,16 +32,18 @@ operator's credential and reaches every tenant unprefixed.
 
 # no `from __future__ import annotations` here: FastAPI resolves the request models defined inside
 # build_http_app from real annotations, not strings.
+import hashlib
 import hmac
 import threading
 import time
+from collections import deque
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
 from keel.accounts import Quotas
 from keel.cartridge import Cartridge
-from keel.envelope import Event, parse_iso
+from keel.envelope import Event, parse_iso, utcnow
 from keel.ingest import Ingestor
 from keel.keys import check_tenant, has_keys, resolve
 from keel.semantic import Unavailable
@@ -288,6 +293,55 @@ def build_http_app(
     def health() -> dict[str, Any]:
         return {"ok": True, "cartridge": cartridge.name, "mcp": mcp_app is not None}
 
+    recent: dict[str, deque[dict[str, Any]]] = {}  # tenant -> its last events received here; memory only, gone on restart
+
+    def remember(batch: list[Event], report: Any) -> None:
+        at = utcnow().isoformat()
+        for i, e in enumerate(batch):
+            why = report.not_applied.get(i)
+            status = "applied" if why is None else why.split(":")[0]
+            recent.setdefault(e.tenant, deque(maxlen=200)).appendleft(
+                {"id": e.id, "type": e.type, "subject": e.subject, "occurred_at": e.occurred_at.isoformat(), "received_at": at,
+                 "source": e.source, "status": status, "reason": why if why and why != status else None})
+
+    def tenant_of(request: Request) -> str:
+        key = key_of(request)
+        if key is not None:
+            return scoped(key, request.headers.get("x-keel-tenant"))
+        t = request.headers.get("x-keel-tenant") or tenant
+        if not t:
+            raise HTTPException(400, "X-Keel-Tenant header required")
+        return t
+
+    @app.get("/v1/events/recent")
+    def events_recent(request: Request) -> list[dict[str, Any]]:
+        return list(recent.get(tenant_of(request), ()))
+
+    @app.post("/v1/events/check")
+    def events_check(body: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        from pydantic import ValidationError
+
+        out = []
+        for i, raw in enumerate(body):
+            try:
+                problems = cartridge.check_event(Event.model_validate(raw))
+            except ValidationError as exc:
+                problems = [f"{'.'.join(str(x) for x in err['loc'])}: {err['msg']}" for err in exc.errors()]
+            if problems:
+                out.append({"index": i, "id": raw.get("id"), "type": raw.get("type"), "problems": problems})
+        return out
+
+    @app.get("/v1/sdk/{language}")
+    def sdk(language: str) -> dict[str, Any]:
+        from keel.sdk import TEMPLATES, generate
+
+        if language not in TEMPLATES:
+            raise HTTPException(400, f"no SDK for '{language}': {', '.join(TEMPLATES)}")
+        code = generate(language, cartridge)
+        name = cartridge.name
+        filename = {"typescript": f"keel-{name}.ts", "python": f"keel_{name}.py", "go": f"keel_{name}.go", "php": f"{name.title()}.php"}[language]  # as docs/sdks.md names them
+        return {"language": language, "cartridge": name, "filename": filename, "code": code, "sha256": hashlib.sha256(code.encode()).hexdigest()}
+
     @app.post("/v1/events")
     def events(body: list[Event] | Event, request: Request) -> dict[str, Any]:
         batch = body if isinstance(body, list) else [body]
@@ -300,6 +354,7 @@ def build_http_app(
             if (wait := quotas.events(key.account, len(batch))) is not None:
                 raise HTTPException(429, f"account '{key.account}' has used its events for this month", headers={"Retry-After": str(int(wait))})
         report = graph_for(key)[1].ingest(batch, batch=len(batch))
+        remember(batch, report)
         return {"processed": report.processed, "duplicates": report.duplicates, "unhandled": report.unhandled, "errors": report.errors,
                 "forgotten": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, **n} for t, n in report.forgotten], "skipped": report.skipped,
                 "retained": [{"tenant": t.removeprefix(f"{key.account}/") if key else t, "before": b, **n} for t, b, n in report.retained]}
