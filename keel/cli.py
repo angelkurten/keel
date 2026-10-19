@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,6 +18,14 @@ from keel.ingest import BATCH, Ingestor, IngestReport, JsonlAdapter
 from keel.tools import Tools
 
 app = typer.Typer(help="Keel: a context layer for the AI agents in a product.", no_args_is_help=True)
+
+
+def _version(value: bool) -> None:
+    if value:
+        from keel import __version__
+
+        typer.echo(f"keel {__version__}")
+        raise typer.Exit()
 
 
 def load_env_file(path: Path) -> list[str]:
@@ -46,6 +55,7 @@ def load_env_file(path: Path) -> list[str]:
 @app.callback()
 def _config(
     env_file: Path = typer.Option(Path(".env"), "--env-file", envvar="KEEL_ENV_FILE", help="Configuration as KEY=VALUE lines (KEEL_SECRET, KEEL_DB, KEEL_EMBEDDINGS_*...). Variables already set win."),
+    version: bool = typer.Option(False, "--version", callback=_version, is_eager=True, help="Print the version and exit."),
 ) -> None:
     """Keel: a context layer for the AI agents in a product."""
     if env_file.is_file():
@@ -121,9 +131,30 @@ def account_created(event, store):
 '''
 
 
+EXAMPLE_FILES = ("cartridge.yaml", "handlers.py", "events.jsonl")
+
+
+def _example(name: str) -> Path:
+    """An example cartridge: inside the wheel (keel/examples), or the repo's examples/ when run from a checkout."""
+    for root in (Path(__file__).parent / "examples", Path(__file__).parent.parent / "examples"):
+        if (root / name / "cartridge.yaml").is_file():
+            return root / name
+    raise typer.BadParameter(f"no example '{name}': try fleet, crm, clinics or finance")
+
+
 @app.command()
-def init(path: Path = typer.Argument(..., help="Folder for the new cartridge, e.g. cartridges/clinics")):
-    """Scaffold a new cartridge."""
+def init(
+    path: Path = typer.Argument(..., help="Folder for the new cartridge, e.g. cartridges/clinics"),
+    example: str | None = typer.Option(None, help="Copy an example instead (fleet, crm, clinics, finance), with its events.jsonl to try."),
+):
+    """Scaffold a new cartridge, or copy an example with events to try."""
+    if example:
+        src = _example(example)
+        path.mkdir(parents=True, exist_ok=False)
+        for name in EXAMPLE_FILES:
+            shutil.copyfile(src / name, path / name)
+        typer.echo(f"copied the {example} example to {path}/; try: keel ingest {path} {path}/events.jsonl")
+        return
     path.mkdir(parents=True, exist_ok=False)
     (path / "cartridge.yaml").write_text(CARTRIDGE_TEMPLATE.format(name=path.name), encoding="utf-8")
     (path / "handlers.py").write_text(HANDLERS_TEMPLATE.format(name=path.name), encoding="utf-8")

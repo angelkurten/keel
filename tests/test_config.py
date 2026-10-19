@@ -145,3 +145,15 @@ def test_serve_index_every_indexes_in_a_thread_of_the_server(tmp_path, monkeypat
     assert status["ok"] and status["tenants"] == 1 and (tmp_path / "index-acme-logistics.cursor").exists()
     hits = Tools(c, store, "acme-logistics", embedder=emb, index=vectors).search("T-9001", mode="semantic")
     assert hits and hits[0]["key"] == "tire:T-9001"
+
+
+def test_version_and_init_example(tmp_path):
+    from keel import __version__
+
+    assert CliRunner().invoke(app, ["--version"]).output.strip() == f"keel {__version__}"
+    dest = tmp_path / "fleet"
+    assert CliRunner().invoke(app, ["init", str(dest), "--example", "fleet"]).exit_code == 0
+    assert sorted(p.name for p in dest.iterdir()) == ["cartridge.yaml", "events.jsonl", "handlers.py"]
+    res = CliRunner().invoke(app, ["ingest", str(dest), str(dest / "events.jsonl")])
+    assert res.exit_code == 0, res.output
+    assert CliRunner().invoke(app, ["init", str(tmp_path / "x"), "--example", "nope"]).exit_code != 0

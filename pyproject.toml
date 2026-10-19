@@ -51,6 +51,12 @@ artifacts = ["keel/console/**"]  # the console's build (gitignored), in the sdis
 [tool.hatch.build.targets.wheel]
 packages = ["keel"]
 
+[tool.hatch.build.targets.wheel.force-include]  # for `keel init --example`, so a pip install has data to try
+"examples/fleet" = "keel/examples/fleet"
+"examples/crm" = "keel/examples/crm"
+"examples/clinics" = "keel/examples/clinics"
+"examples/finance" = "keel/examples/finance"
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"

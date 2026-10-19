@@ -6,11 +6,19 @@
 
 <!-- mcp-name: io.github.angelkurten/keel -->
 
-Docs: [angelkurten.github.io/keel](https://angelkurten.github.io/keel/) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
+**[Live demo](https://demo.angelkurten.com)** · [Docs](https://angelkurten.github.io/keel/) · [Hosted console (beta)](https://keel.angelkurten.com) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 
 Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from your product go in; a bitemporal context graph per tenant comes out, whatever your unit is (an end-customer, a household, a team); every agent you build reads and writes it through the same five tools, over MCP, HTTP or a typed SDK.
 
 You describe your vertical once, in a *cartridge* (ontology, event catalog, semantic rules, memory policies). Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
+
+Try it in a minute, with an example cartridge and its events:
+
+```bash
+pip install keel-context
+keel init fleet --example fleet          # also crm, clinics, finance
+keel context fleet fleet/events.jsonl unit:MXK-4821
+```
 
 > Status: 0.30.1, alpha. Container: `ghcr.io/angelkurten/keel`. The five tools over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
 
