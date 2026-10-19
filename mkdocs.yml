@@ -48,6 +48,7 @@ nav:
       - Semantic search, research and evals: design/semantic-evals.md
       - Hosted Keel: design/hosted.md
       - The console: design/console.md
+      - The support showcase: design/showcase.md
 
 not_in_nav: |
   /connect.md
