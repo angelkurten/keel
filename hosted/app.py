@@ -197,6 +197,19 @@ class ControlPlane:
             with contextlib.suppress(Exception):  # already there
                 control._exec(f"ALTER TABLE hosted_accounts ADD COLUMN {col}")
 
+    def heal(self) -> None:
+        """Complete accounts created before the console (no secret kept): their container's secret and cartridge are
+        read back from the provisioner. Best effort, at start-up."""
+        for row in self.control._rows("SELECT account, app FROM hosted_accounts WHERE app IS NOT NULL AND (secret IS NULL OR secret = '')"):
+            try:
+                files, env = self.provisioner.current(row["app"])
+                if env.get("KEEL_SECRET"):
+                    self.control._exec("UPDATE hosted_accounts SET secret = ?, cartridge = ?, handlers = ?, status = ? WHERE account = ?",
+                                       (env["KEEL_SECRET"], files.get("cartridge.yaml", ""), files.get("handlers.py", ""), "ready", row["account"]))
+                    log.warning("completed account %s from its container", row["account"])
+            except Exception:
+                log.exception("could not complete account %s", row["account"])
+
     # ---- accounts --------------------------------------------------------------------------
 
     def _row(self, account: str) -> Any:
@@ -839,4 +852,5 @@ def from_env() -> Any:
                            env["HOSTED_BASE_DOMAIN"], env.get("KEEL_IMAGE_TAG", "latest")),
         settings, http,
     )
+    plane.heal()
     return build_app(plane)

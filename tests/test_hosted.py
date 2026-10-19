@@ -292,6 +292,15 @@ def test_the_console_build_is_served_with_a_fallback(tmp_path):
     assert client.get("/api/nope").status_code == 404
 
 
+def test_accounts_from_before_the_console_are_completed_from_their_container(tmp_path):
+    p = plane(tmp_path)
+    p.provisioner.current = lambda app: ({"cartridge.yaml": "name: fleet", "handlers.py": "x"}, {"KEEL_SECRET": "s3", "KEEL_DB": "d"})
+    p.control._exec("INSERT INTO hosted_accounts (account, email, app, endpoint, db, created_at) VALUES ('old', 'o@x.co', 'app-old', 'https://old', 'd', 'now')")
+    p.heal()
+    row = p._row("old")
+    assert (row["secret"], row["cartridge"], row["status"]) == ("s3", "name: fleet", "ready")
+
+
 def test_check_cartridge():
     assert check_cartridge({"cartridge.yaml": "name: x\nentities: {a: {}}\nevents: {a.b: {subject: a}}", "handlers.py": ""}) == "x"
     for bad in ({"cartridge.yaml": "name: x"}, {"cartridge.yaml": ": :", "handlers.py": ""}, {"cartridge.yaml": "name: x", "handlers.py": ""}):

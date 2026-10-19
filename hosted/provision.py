@@ -103,6 +103,14 @@ class CoolifyProvisioner:
         self._call("POST", "/deploy", params={"uuid": uuid})
         return uuid, endpoint
 
+    def current(self, uuid: str) -> tuple[dict[str, str], dict[str, str]]:
+        """(files under /cartridge, production variables) of an account's container: what an account created before
+        the console kept only in Coolify."""
+        storages = self._call("GET", f"/applications/{uuid}/storages").get("file_storages", [])
+        files = {f["mount_path"].removeprefix("/cartridge/"): f.get("content") or "" for f in storages if f["mount_path"].startswith("/cartridge/")}
+        env = {e["key"]: e.get("value") or "" for e in self._call("GET", f"/applications/{uuid}/envs") or [] if not e.get("is_preview")}
+        return files, env
+
     def restart(self, uuid: str) -> None:
         self._call("POST", f"/applications/{uuid}/restart")
 
