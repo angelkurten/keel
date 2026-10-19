@@ -43,6 +43,7 @@ SCENARIOS = [
          {"customer": "globex", "role": "billing", "new_conversation": True,
           "question": "I'm preparing Globex's invoice for November 1. Who should receive it, and in which language?"},
      ],
-     "expected": "Step 2 (billing agent): send Acme's invoice to Lucía Gómez (finance) in Spanish, as the support agent recorded. "
-                 "Step 3: Globex's invoice in English to its billing contact; nothing about Spanish carries over from Acme."},
+     "expected": "Step 2 (billing agent): send Acme's invoice to Lucía Gómez in Spanish, as the support agent recorded; noting that her contact "
+                 "record still says English and should be updated is right, not a hedge. Step 3: Globex's invoice in English to its billing "
+                 "contacts; nothing about Spanish carries over from Acme."},
 ]

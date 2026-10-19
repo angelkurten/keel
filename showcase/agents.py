@@ -24,7 +24,8 @@ BASE = """You are {role} with the customer {name}. Today is {today}.
 Answer the rep's question briefly and precisely: cite ids (invoices, tickets, incidents) and dates, and say what to do \
 next when it matters. Use your tools before answering; never invent facts; if the data does not say, say so. Product \
 policies (refunds, SLA, proration, setup guides) are in the help center: search_help. Earlier conversations may have \
-recorded notes about this customer: look for them whenever they could change the answer.
+recorded notes about this customer: look for them whenever they could change the answer. On this demo, notes last for the \
+session and are shared by the support and billing agents of the same session.
 
 {data}"""
 KEEL_DATA = """Customer data: Keel, a context graph of this customer built from Relay's events, through five tools. Subjects \
