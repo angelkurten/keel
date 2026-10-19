@@ -29,11 +29,11 @@ import yaml
 
 from hosted import agent as agents
 from hosted.provision import Databases, Provisioner
-from keel.accounts import set_account
+from keel.accounts import Quotas, set_account
 from keel.envelope import parse_iso, utcnow
-from keel.keys import check_account, check_tenant, create_key
+from keel.keys import check_account, check_tenant, create_key, revoke_key
 from keel.store import open_store
-from keel.usage import today
+from keel.usage import report, today
 
 log = logging.getLogger("keel.hosted")
 EXAMPLES = ("fleet", "crm", "clinics", "finance")
@@ -266,27 +266,72 @@ class ControlPlane:
             raise LookupError("your Keel is not ready yet")
         return row
 
-    def call(self, account: str, tool: str, tenant: str, agent: str | None, body: dict[str, Any]) -> tuple[int, Any]:
-        """One tool call on the account's container, with its secret and the tenant under the account."""
-        if tool not in TOOLS:
-            raise LookupError(f"unknown tool '{tool}'")
+    def _keel(self, account: str, method: str, path: str, tenant: str | None = None, agent: str | None = None, body: Any = None) -> tuple[int, Any]:
+        """A request to the account's container, with its secret and the tenant under the account."""
         row = self._ready(account)
-        headers = {"Authorization": f"Bearer {row['secret']}", "X-Keel-Tenant": f"{account}/{check_tenant(tenant)}"}
+        headers = {"Authorization": f"Bearer {row['secret']}"}
+        if tenant is not None:
+            headers["X-Keel-Tenant"] = f"{account}/{check_tenant(tenant)}"
         if agent:
             headers["X-Keel-Agent"] = agent
-        r = self.http.post(f"{row['endpoint']}/v1/{tool}", json=body, headers=headers, timeout=60)
+        r = self.http.request(method, f"{row['endpoint']}{path}", json=body, headers=headers, timeout=60)
         try:
             return r.status_code, r.json()
         except ValueError:
             return r.status_code, {"detail": r.text[:300]}
 
-    def new_key(self, account: str, tenant: str | None = None, agent: str | None = None) -> dict[str, Any]:
+    def call(self, account: str, tool: str, tenant: str, agent: str | None, body: dict[str, Any]) -> tuple[int, Any]:
+        if tool not in TOOLS:
+            raise LookupError(f"unknown tool '{tool}'")
+        return self._keel(account, "POST", f"/v1/{tool}", tenant, agent, body)
+
+    def recent(self, account: str, tenant: str) -> tuple[int, Any]:
+        return self._keel(account, "GET", "/v1/events/recent", tenant)
+
+    def check_events(self, account: str, tenant: str, envelopes: list[dict[str, Any]]) -> tuple[int, Any]:
+        return self._keel(account, "POST", "/v1/events/check", tenant, body=[{**e, "tenant": f"{account}/{tenant}"} for e in envelopes])
+
+    def ingest(self, account: str, tenant: str, envelopes: list[dict[str, Any]]) -> tuple[int, Any]:
+        """Envelopes uploaded in the console, all into the chosen tenant. The secret skips the container's quota,
+        so the monthly event limit is checked here, against the account's own counters."""
+        if len(envelopes) > 500:
+            raise ValueError("at most 500 envelopes per request")
+        row = self._ready(account)
+        check_tenant(tenant)
+        if (wait := Quotas(open_store(row["db"])).events(account, len(envelopes))) is not None:
+            raise OverflowError(f"account '{account}' has used its events for this month (resets in {int(wait // 3600)} h)")
+        status, out = self._keel(account, "POST", "/v1/events", tenant, body=[{**e, "tenant": f"{account}/{tenant}"} for e in envelopes])
+        if isinstance(out, dict):
+            for item in out.get("forgotten", []) + out.get("retained", []):
+                item["tenant"] = str(item.get("tenant", "")).removeprefix(f"{account}/")
+        return status, out
+
+    def sdk(self, account: str, language: str) -> tuple[int, Any]:
+        return self._keel(account, "GET", f"/v1/sdk/{language}")
+
+    def new_key(self, account: str, tenant: str | None = None, agent: str | None = None, glob: bool = False) -> dict[str, Any]:
         row = self._ready(account)
         if tenant:
             check_tenant(tenant)
-        full, key = create_key(self.control, account, tenant=tenant or None, agent=agent or None)  # the master copy
+        full, key = create_key(self.control, account, tenant=tenant or None, agent=agent or None, glob=glob)  # the master copy
         open_store(row["db"]).put_key(key)  # the copy the account's container checks
-        return {"key": full, "id": key.id, "tenant": tenant, "agent": agent, "endpoint": row["endpoint"], "mcp": f"{row['endpoint']}/mcp"}
+        return {"key": full, "id": key.id, "tenant": tenant, "agent": agent, "global": glob, "endpoint": row["endpoint"], "mcp": f"{row['endpoint']}/mcp"}
+
+    def keys(self, account: str) -> list[dict[str, Any]]:
+        return [{"id": k.id, "tenant": k.tenant, "agent": k.agent, "global": k.glob, "created_at": k.created_at.isoformat() if k.created_at else None,
+                 "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None} for k in self.control.api_keys(account)]
+
+    def revoke(self, account: str, key_id: str) -> None:
+        if key_id not in {k.id for k in self.control.api_keys(account)}:
+            raise LookupError(f"no key '{key_id}' in this account")
+        revoke_key(self.control, key_id)
+        revoke_key(open_store(self._ready(account)["db"]), key_id)  # the copy the container checks
+
+    def usage(self, account: str, month: str | None = None) -> dict[str, Any]:
+        row = self._ready(account)
+        limits = self.control.account(account)
+        return {"account": account, "endpoint": row["endpoint"], "rows": report(open_store(row["db"]), month, account),
+                "limits": {"rps": limits.rps if limits else None, "events_month": limits.events_month if limits else None}}
 
     # ---- the playground's agent --------------------------------------------------------------
 
@@ -348,7 +393,7 @@ COOKIE = "keel_session"
 def build_app(plane: ControlPlane) -> Any:
     from fastapi import Body, FastAPI, HTTPException, Request
     from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-    from pydantic import BaseModel
+    from pydantic import BaseModel, Field
 
     BODY = Body(...)  # any JSON object, passed through
     app = FastAPI(title="keel-hosted", docs_url=None, redoc_url=None, openapi_url=None)
@@ -394,6 +439,7 @@ def build_app(plane: ControlPlane) -> Any:
     class KeyIn(BaseModel):
         tenant: str | None = None
         agent: str | None = None
+        glob: bool = Field(False, alias="global")
 
     class ChatIn(BaseModel):
         model: str
@@ -444,12 +490,46 @@ def build_app(plane: ControlPlane) -> Any:
     @app.post("/api/v1/{tool}")
     def tool(tool: str, request: Request, body: dict[str, Any] = BODY) -> Any:
         _, account = who(request)
-        status, out = plane.call(account, tool, request.headers.get("x-keel-tenant") or "demo", request.headers.get("x-keel-agent"), body)
-        return JSONResponse(out, status_code=status)
+        return answer(plane.call(account, tool, tenant_of(request), request.headers.get("x-keel-agent"), body))
+
+    def tenant_of(request: Request) -> str:
+        return request.headers.get("x-keel-tenant") or "demo"
+
+    def answer(result: tuple[int, Any]) -> JSONResponse:
+        return JSONResponse(result[1], status_code=result[0])
 
     @app.post("/api/keys")
-    def keys(body: KeyIn, request: Request) -> dict[str, Any]:
-        return plane.new_key(who(request)[1], body.tenant, body.agent)
+    def new_key(body: KeyIn, request: Request) -> dict[str, Any]:
+        return plane.new_key(who(request)[1], body.tenant, body.agent, body.glob)
+
+    @app.get("/api/keys")
+    def keys(request: Request) -> list[dict[str, Any]]:
+        return plane.keys(who(request)[1])
+
+    @app.delete("/api/keys/{key_id}")
+    def revoke(key_id: str, request: Request) -> dict[str, bool]:
+        plane.revoke(who(request)[1], key_id)
+        return {"ok": True}
+
+    @app.get("/api/events/recent")
+    def recent(request: Request) -> Any:
+        return answer(plane.recent(who(request)[1], tenant_of(request)))
+
+    @app.post("/api/events/check")
+    def check_events(request: Request, body: list[dict[str, Any]] = BODY) -> Any:
+        return answer(plane.check_events(who(request)[1], tenant_of(request), body))
+
+    @app.post("/api/events")
+    def ingest(request: Request, body: list[dict[str, Any]] = BODY) -> Any:
+        return answer(plane.ingest(who(request)[1], tenant_of(request), body))
+
+    @app.get("/api/usage")
+    def usage(request: Request, month: str | None = None) -> dict[str, Any]:
+        return plane.usage(who(request)[1], month)
+
+    @app.get("/api/sdk/{language}")
+    def sdk(language: str, request: Request) -> Any:
+        return answer(plane.sdk(who(request)[1], language))
 
     @app.get("/api/agent/models")
     def models(request: Request) -> dict[str, Any]:

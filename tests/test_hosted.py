@@ -59,6 +59,12 @@ class FakeKeel:
         if path == "/v1/events":
             self.events += body
             return httpx.Response(200, json={"processed": len(body)})
+        if path == "/v1/events/recent":
+            return httpx.Response(200, json=[{"id": "e1", "status": "applied", "tenant_seen": request.headers["x-keel-tenant"]}])
+        if path == "/v1/events/check":
+            return httpx.Response(200, json=[{"index": 0, "problems": [f"tenant {body[0]['tenant']}"]}])
+        if path.startswith("/v1/sdk/"):
+            return httpx.Response(200, json={"language": path.rsplit("/", 1)[1], "filename": "keel-fleet.ts", "code": "// fleet", "sha256": "ab"})
         if path == "/v1/search":
             return httpx.Response(200, json=[{"key": "tire:T-9001", "tenant": request.headers["x-keel-tenant"]}])
         if path == "/v1/chat/completions":
@@ -171,6 +177,36 @@ def test_the_playground_agent_calls_tools_within_a_daily_allowance(tmp_path):
     assert client.get("/api/agents").json() == [{"name": "Fleet assistant", "config": body}]
     client.delete("/api/agents/Fleet assistant")
     assert client.get("/api/agents").json() == []
+
+
+def test_events_keys_usage_and_sdk_through_the_console(tmp_path):
+    p = plane(tmp_path, events_month=13)
+    client = TestClient(build_app(p))
+    client.post("/api/signup", json={"email": "a@acme.com", "account": "acme", "password": PW, "invite": "pilot-1"})
+    wait(client)
+    h = {"X-Keel-Tenant": "c1"}
+    assert client.get("/api/events/recent", headers=h).json()[0]["tenant_seen"] == "acme/c1"
+    assert client.post("/api/events/check", json=[{"tenant": "other", "type": "x"}], headers=h).json()[0]["problems"] == ["tenant acme/c1"]
+    sent = p.keel.events[:]
+    one = {"id": "u1", "tenant": "elsewhere", "type": "unit.registered", "subject": "unit:U1", "occurred_at": "2026-10-01T00:00:00Z",
+           "source": "upload", "payload": {}}
+    assert client.post("/api/events", json=[one], headers=h).status_code == 200
+    assert p.keel.events[len(sent):] == [{**one, "tenant": "acme/c1"}]  # every envelope lands in the chosen tenant
+    assert client.post("/api/events", json=[one] * 501, headers=h).status_code == 400
+    from keel.usage import today
+    SqliteStore(tmp_path / "acme.db").meter([("acme/c1", today(), "events", 13)])  # the month is used up
+    assert client.post("/api/events", json=[one], headers=h).status_code == 429
+    usage = client.get("/api/usage").json()
+    assert usage["limits"]["events_month"] == 13 and [(r["tenant"], r["events"]) for r in usage["rows"]] == [("acme/c1", 13)]
+    made = client.post("/api/keys", json={"tenant": "c1", "global": False}).json()
+    glob = client.post("/api/keys", json={"global": True}).json()
+    listed = {k["id"]: k for k in client.get("/api/keys").json()}
+    assert listed[made["id"]]["tenant"] == "c1" and listed[glob["id"]]["global"] is True and listed[made["id"]]["revoked_at"] is None
+    assert client.delete(f"/api/keys/{made['id']}").status_code == 200
+    assert {k["id"]: k for k in client.get("/api/keys").json()}[made["id"]]["revoked_at"] is not None
+    assert next(k for k in SqliteStore(tmp_path / "acme.db").api_keys() if k.id == made["id"]).revoked_at is not None  # the container's copy too
+    assert client.delete("/api/keys/kk_nope").status_code == 409
+    assert client.get("/api/sdk/typescript").json()["filename"] == "keel-fleet.ts"
 
 
 def test_the_console_build_is_served_with_a_fallback(tmp_path):
