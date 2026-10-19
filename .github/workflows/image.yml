@@ -3,6 +3,7 @@ name: image
 # Publishes ghcr.io/angelkurten/keel when a v* tag is pushed (after release.yml puts it on PyPI),
 # or for an existing release by hand: Actions > image > Run workflow, version 0.18.0.
 # Tags: X.Y.Z, X.Y, latest; the -slim variant has no Chroma client (no semantic search on Chroma).
+# Then publishes server.json to the official MCP registry (job mcp-registry).
 on:
   push:
     tags: ["v*"]
@@ -76,3 +77,23 @@ jobs:
             org.opencontainers.image.source=https://github.com/angelkurten/keel
             org.opencontainers.image.version=${{ env.V }}
             org.opencontainers.image.licenses=Apache-2.0
+
+  # The official MCP registry (registry.modelcontextprotocol.io): server.json names this image, so it goes
+  # after the push. GitHub's OIDC token proves the io.github.angelkurten namespace; no secret, no login.
+  mcp-registry:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: server.json must be this release
+        run: |
+          V="${{ inputs.version }}"
+          [ -n "$V" ] || V="${GITHUB_REF_NAME#v}"
+          test "$(jq -r .version server.json)" = "$V" || { echo "server.json is $(jq -r .version server.json), not $V: bump it"; exit 1; }
+      - name: mcp-publisher
+        run: curl -fsSL https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz | tar xz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
