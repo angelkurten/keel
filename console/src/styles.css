@@ -352,3 +352,10 @@ td.actions { text-align: right; white-space: nowrap; }
 .cdc-status.bad { border-color: var(--danger); }
 @media (max-width: 1100px) { .examples { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 860px) { .files2, .examples { grid-template-columns: minmax(0, 1fr); } .editor { min-height: 260px; } }
+
+/* code editor (Monaco) */
+.monaco-box { position: relative; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--ground); min-height: 160px; }
+.monaco-host { position: absolute; inset: 0; }
+.monaco-fallback { position: absolute; inset: 0; margin: 0; padding: 10px 14px; overflow: auto; font: 13px/20px var(--mono); color: var(--muted); white-space: pre-wrap; }
+.code .monaco-box { border: 0; border-radius: 0; }
+.files2 .field > span { font-weight: 500; }

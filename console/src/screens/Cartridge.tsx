@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CodeEditor } from "../CodeEditor";
+import { placeProblems } from "../problems";
 import type { Ctx } from "../App";
 import { api, ApiError, type CartridgeFiles, type Example } from "../api";
 import { CopyButton, Icon, store, Tabs } from "../ui";
@@ -60,7 +62,7 @@ export function CartridgeTab({ ctx }: { ctx: Ctx }) {
           <Tabs label="File" items={["cartridge.yaml", "handlers.py"] as const} value={view} onChange={setView} />
           <CopyButton text={shown} />
         </div>
-        <pre className="viewer">{shown || "(empty)"}</pre>
+        <CodeEditor key={view} path="view" value={shown} readOnly language={view === "cartridge.yaml" ? "yaml" : "python"} height="min(420px, 50vh)" />
       </div>
 
       <div className="stack-s">
@@ -69,7 +71,8 @@ export function CartridgeTab({ ctx }: { ctx: Ctx }) {
           items={[{ id: "generate", name: "Generate from your events" }, { id: "edit", name: "Edit or upload" }, { id: "example", name: "Start from an example" }]} />
       </div>
       {mode === "generate" && <Generate ctx={ctx} deploy={deploy} />}
-      {mode === "edit" && <Editor ctx={ctx} initial={{ cartridge_yaml: files.yaml, handlers_py: files.py }} deploy={deploy} upload />}
+      {mode === "edit" && <Editor ctx={ctx} initial={{ cartridge_yaml: files.yaml, handlers_py: files.py }} deploy={deploy} upload
+        problems={warnings.length ? warnings : null} path="edit" />}
       {mode === "example" && <Examples ctx={ctx} deploy={deploy} />}
     </div>
   );
@@ -114,8 +117,8 @@ function Problems({ problems, okText }: { problems: string[] | null; okText: str
 }
 
 // --- edit / upload --------------------------------------------------------------------------------
-function Editor({ ctx, initial, deploy, upload, problems: given, okText = "No problems found." }: {
-  ctx: Ctx; initial: CartridgeFiles; deploy: Deploy; upload?: boolean; problems?: string[] | null; okText?: string;
+function Editor({ ctx, initial, deploy, upload, problems: given, okText = "No problems found.", path }: {
+  ctx: Ctx; initial: CartridgeFiles; deploy: Deploy; upload?: boolean; problems?: string[] | null; okText?: string; path: string;
 }) {
   const [yaml, setYaml] = useState(initial.cartridge_yaml);
   const [py, setPy] = useState(initial.handlers_py);
@@ -124,13 +127,29 @@ function Editor({ ctx, initial, deploy, upload, problems: given, okText = "No pr
   const [err, setErr] = useState("");
   const [drag, setDrag] = useState(false);
   const body = { cartridge_yaml: yaml, handlers_py: py };
+  const run = useRef(0);
+  const edited = useRef(false);
 
   async function check() {
+    const mine = ++run.current;
     setChecking(true); setErr("");
-    try { setProblems((await api.checkCartridge(body)).problems); }
-    catch (e) { setErr((e as Error).message); setProblems(null); }
-    finally { setChecking(false); }
+    try { const r = await api.checkCartridge({ cartridge_yaml: yaml, handlers_py: py }); if (mine === run.current) setProblems(r.problems); }
+    catch (e) { if (mine === run.current) { setErr((e as Error).message); setProblems(null); } }
+    finally { if (mine === run.current) setChecking(false); }
   }
+  const checkRef = useRef(check);
+  checkRef.current = check;
+
+  // Live check: 800 ms after the last edit.
+  useEffect(() => {
+    if (!edited.current || !yaml.trim()) return;
+    const t = window.setTimeout(() => checkRef.current(), 800);
+    return () => clearTimeout(t);
+  }, [yaml, py]);
+  const edit = (set: (v: string) => void) => (v: string) => { edited.current = true; set(v); };
+
+  // Problems become markers on the line they name; the rest go on line 1 and stay listed below.
+  const placed = useMemo(() => placeProblems(problems || [], yaml, py), [problems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load(list: FileList | File[] | null) {
     for (const f of Array.from(list || [])) {
@@ -138,6 +157,7 @@ function Editor({ ctx, initial, deploy, upload, problems: given, okText = "No pr
       if (name.endsWith(".py")) setPy(text);
       else if (name.endsWith(".yaml") || name.endsWith(".yml")) setYaml(text);
     }
+    edited.current = true;
     setProblems(null);
   }
 
@@ -155,14 +175,17 @@ function Editor({ ctx, initial, deploy, upload, problems: given, okText = "No pr
         </div>
       )}
       <div className="files2">
-        <label className="field">cartridge.yaml
-          <textarea className="mono editor" spellCheck={false} value={yaml} onChange={(e) => { setYaml(e.target.value); }} />
-        </label>
-        <label className="field">handlers.py
-          <textarea className="mono editor" spellCheck={false} value={py} onChange={(e) => { setPy(e.target.value); }} />
-        </label>
+        <div className="field"><span>cartridge.yaml</span>
+          <CodeEditor path={path} language="yaml" value={yaml} onChange={edit(setYaml)} markers={placed.yaml} onSave={check} />
+        </div>
+        <div className="field"><span>handlers.py</span>
+          <CodeEditor path={path} language="python" value={py} onChange={edit(setPy)} markers={placed.py} onSave={check} />
+        </div>
       </div>
-      <Problems problems={problems} okText={okText} />
+      {problems && problems.length > 0 && placed.unmatched.length < problems.length && (
+        <p className="hint">{problems.length - placed.unmatched.length} problem{problems.length - placed.unmatched.length === 1 ? "" : "s"} marked in the editors. Cmd/Ctrl+S checks again.</p>
+      )}
+      <Problems problems={problems && problems.length ? placed.unmatched.length ? placed.unmatched : null : problems} okText={okText} />
       {err && <p className="err">{err}</p>}
       <div className="row wrap">
         <button type="button" className="btn" onClick={check} disabled={checking || !yaml.trim()}>
@@ -247,7 +270,7 @@ function Generate({ ctx, deploy }: { ctx: Ctx; deploy: Deploy }) {
       {result && (
         <>
           <p className="hint">Proposed in {result.attempts} attempt{result.attempts === 1 ? "" : "s"}. Review and edit both files before deploying.</p>
-          <Editor key={result.gen} ctx={ctx} initial={result.files} deploy={deploy} problems={result.problems}
+          <Editor key={result.gen} path={`gen${result.gen}`} ctx={ctx} initial={result.files} deploy={deploy} problems={result.problems}
             okText="Checked against your events: no problems" />
         </>
       )}

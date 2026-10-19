@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "build:wheel": "tsc --noEmit && vite build --outDir ../keel/console --emptyOutDir",
+    "build:wheel": "tsc --noEmit && vite build --mode wheel --outDir ../keel/console --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {
+    "monaco-editor": "^0.52.2",
+    "monaco-yaml": "^5.5.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
