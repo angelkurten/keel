@@ -1,5 +1,6 @@
 """The two support agents. Same model, same prompt but for one paragraph, same help center; they differ only in how
-they read the customer's data: Keel's five tools, or similarity search over the same events as text (RAG).
+they read the customer's data: Keel's five tools, or the product's own API plus similarity search over the same events
+as text (RAG + tools), the strongest agent without Keel we could build.
 Every model call is metered (tokens, cost at the gateway's prices) and every side is timed end to end."""
 
 import asyncio
@@ -9,6 +10,7 @@ from dataclasses import dataclass, field
 from functools import cache
 from typing import Any
 
+from showcase import product
 from showcase.data import TODAY, Chunk
 from showcase.rag import Index, embed
 
@@ -28,9 +30,10 @@ are `<kind>:<id>` (kinds: account, contact, invoice, ticket, incident, integrati
 (sla_breached, refund_eligible, account_at_risk, integration_failing): trust that evaluation. `history` gives a fact's \
 values over time; `search` finds subjects (by text, kind or rule); `related` walks relations; `annotate` records \
 what you learn, with evidence; notes recorded earlier come back in `context` of the subject they are about."""
-RAG_DATA = """Customer data: search_records finds this customer's records (billing, support, platform and integration \
-events), each with its date and time. Search as often as you need. save_note stores a note about the customer for \
-later conversations."""
+RAG_DATA = """Customer data: Relay's own API for this customer (get_account, list_subscription_changes, list_invoices, \
+list_tickets, get_ticket with its activity, list_incidents, list_integrations, list_contacts), and search_records, which \
+finds this customer's records (billing, support, platform and integration events) by meaning, each with its date and \
+time. Use them as often as you need. save_note stores a note about the customer for later conversations."""
 
 HELP_TOOL = {"type": "function", "function": {"name": "search_help", "description": "Search Relay's help center (policies and how-to guides).",
              "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}}
@@ -111,8 +114,9 @@ class Run:
 
 
 class Agents:
-    def __init__(self, http: Any, s: Settings, index: Index, price: dict[str, tuple[float, float]]) -> None:
+    def __init__(self, http: Any, s: Settings, index: Index, price: dict[str, tuple[float, float]], api: product.Product | None = None) -> None:
         self.http, self.s, self.index, self.prices = http, s, index, price
+        self.api = api or product.Product()
 
     # ---- tools ----
 
@@ -141,6 +145,8 @@ class Agents:
         if tool == "search_records":
             k = max(1, min(int(args.get("k") or 8), 20))
             return [c.text for c in self.index.search(self._embed(str(args.get("query", ""))), run.tenant, k=k, extra=run.notes)]
+        if tool in {t["function"]["name"] for t in product.TOOLS}:
+            return self.api.call(run.tenant, tool, args)
         if tool == "save_note":
             text = f"[note saved {TODAY:%Y-%m-%d}] {args.get('text', '')}"
             run.notes.append((Chunk(text, run.tenant, "note"), self._embed(text)))
@@ -159,7 +165,7 @@ class Agents:
             tools = [t for t in keel_tools() if memory or t["function"]["name"] != "annotate"] + [HELP_TOOL]
             call = lambda name, args: self.keel(run, name, args)
         else:
-            tools = [t for t in RAG_TOOLS if memory or t["function"]["name"] != "save_note"]
+            tools = [*product.TOOLS, *(t for t in RAG_TOOLS if memory or t["function"]["name"] != "save_note")]
             call = lambda name, args: self.rag(run, name, args)
         allowed = {t["function"]["name"] for t in tools}
         messages = [{"role": "system", "content": system}, *history, {"role": "user", "content": question}]

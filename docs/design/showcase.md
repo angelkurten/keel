@@ -1,6 +1,6 @@
 # Design note: the support showcase
 
-Status: proposed on 2026-10-19. A public page at https://demo.angelkurten.com where a support agent answers the same question twice, once with Keel and once without, over the same data. Decided the same day: a B2B SaaS with subscriptions as the domain; RAG over the same data as the baseline; guided scenarios plus a free question; generated data with planted stories; an expected answer and an LLM judge per scenario; `openai/gpt-6-sol` through OfoxAI on both sides; the Keel side is an account of hosted Keel.
+Status: proposed on 2026-10-19. A public page at https://demo.angelkurten.com where a support agent answers the same question twice, once with Keel and once without, over the same data. Decided the same day: a B2B SaaS with subscriptions as the domain; RAG over the same data as the baseline (then RAG plus the product's API, see Fairness); guided scenarios plus a free question; generated data with planted stories; an expected answer and an LLM judge per scenario; `openai/gpt-6-sol` through OfoxAI on both sides; the Keel side is an account of hosted Keel.
 
 ## What it must show
 
@@ -19,7 +19,7 @@ And it must be fair, or it convinces no one.
 
 - **Same model, same base prompt, same help center.** Both agents run `openai/gpt-6-sol` with the same system prompt except the paragraph that describes their customer-data tools, and both get the same `search_help` tool over the product's help articles. Keel is not a document store; the help center is not what is compared.
 - **Same source data.** One generator writes the SaaS's events. The Keel side ingests them into a hosted account (one tenant per customer company). The RAG side renders the same events, tickets and invoices as text chunks (one per record, with dates and the customer's name) and embeds them.
-- **Each side gets its best ordinary setup.** RAG: top-k similarity search with metadata filters by customer when the question names one, chunk text that includes dates, and a `save_note` tool that adds a note to its index (its equivalent of `annotate`). Keel: the five tools, the cartridge's rules, nothing hand-tuned per scenario.
+- **Each side gets its best ordinary setup.** Without Keel (decided 2026-10-19, after the first runs): the product's own API as tools (`get_account`, `list_subscription_changes`, `list_invoices`, `list_tickets`, `get_ticket` with its activity, `list_incidents`, `list_integrations`, `list_contacts`), the records' current state rebuilt from the same events, plus top-k similarity search over the events as text, filtered by customer, and a `save_note` tool (its equivalent of `annotate`): the strongest agent without Keel we could build. Business rules are not computed for it; it applies the help center's policies itself, as an agent on a product's API does. Keel: the five tools with semantic search on (the same embeddings), the cartridge's rules, nothing hand-tuned per scenario.
 - **One scenario RAG should win or tie**: a how-to question answered from the help center. It shows both work where they should.
 - **Everything is visible**: each side's tool calls with arguments and results, tokens, latency and cost per answer.
 

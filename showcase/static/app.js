@@ -141,7 +141,7 @@ function renderSummary() {
     h("span", { class: "label" }, label),
     h("div", { class: "vals" },
       h("span", {}, h("span", { class: "who" }, "Keel"), h("span", { class: "v" }, keel)),
-      h("span", {}, h("span", { class: "who" }, "RAG"), h("span", { class: "v" }, rag))),
+      h("span", {}, h("span", { class: "who" }, "RAG+tools"), h("span", { class: "v" }, rag))),
     badge || h("span", { class: "hint" }, " "));
   const kc = correct("keel"), rc = correct("rag");
   const dates = runs.map((r) => r.at).filter(Boolean).sort();
@@ -170,7 +170,7 @@ function renderList() {
     onclick: () => select(s.id),
   },
   h("span", { class: "t" }, s.title),
-  h("span", { class: "meta" }, h("span", { class: "tag" }, s.strength), h("span", { class: "marks" }, mark(s.result, "keel", "Keel"), mark(s.result, "rag", "RAG"))))));
+  h("span", { class: "meta" }, h("span", { class: "tag" }, s.strength), h("span", { class: "marks" }, mark(s.result, "keel", "Keel"), mark(s.result, "rag", "RAG+tools"))))));
 }
 
 function select(id) {
@@ -228,11 +228,11 @@ function column(run, side, title, withVerdict) {
 function spinning() {
   const col = (side, title) => h("section", { class: `card col ${side}` }, h("h3", {}, title),
     h("div", { class: "spinbox" }, h("span", { class: "spin" }), "Running… this takes 10 to 60 seconds"));
-  return h("div", { class: "cols" }, col("keel", "With Keel"), col("rag", "Without Keel (RAG)"));
+  return h("div", { class: "cols" }, col("keel", "With Keel"), col("rag", "Without Keel (RAG + tools)"));
 }
 function result(run, withVerdict) {
   return [h("div", { class: "cols" },
-    column(run, "keel", "With Keel", withVerdict), column(run, "rag", "Without Keel (RAG)", withVerdict))];
+    column(run, "keel", "With Keel", withVerdict), column(run, "rag", "Without Keel (RAG + tools)", withVerdict))];
 }
 
 // --- selected scenario ----------------------------------------------------------------------------------------
