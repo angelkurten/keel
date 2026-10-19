@@ -496,15 +496,18 @@ def gone(event, store):
         import time
 
         from keel.cli import _follow_in_background
+        from keel.http import RecentEvents
 
         status: dict = {}
+        recent = RecentEvents()
         c.execute("INSERT INTO tires VALUES ('T-3', 'acme', 3.0, '')")
-        _follow_in_background(load_cartridge(cart), SqliteStore(db), PG, tmp_path / "cdc.yaml", "hosted", status, slot=slot, publication=slot)
+        _follow_in_background(load_cartridge(cart), SqliteStore(db), PG, tmp_path / "cdc.yaml", "hosted", status, slot=slot, publication=slot, recent=recent)
         for _ in range(100):
             if status.get("events"):
                 break
             time.sleep(0.1)
         assert status["ok"] and status["events"] == 1 and SqliteStore(db).entity("hosted/acme", "tire:T-3") is not None
+        assert [(e["subject"], e["status"]) for e in recent.of("hosted/acme")] == [("tire:T-3", "applied")]  # the live log shows CDC too
     finally:
         c.execute(f"SELECT pg_drop_replication_slot('{slot}') WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = '{slot}')")
         c.execute(f"DROP PUBLICATION IF EXISTS {slot}")

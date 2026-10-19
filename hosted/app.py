@@ -55,6 +55,7 @@ COLUMNS = ("password VARCHAR(200)", "status VARCHAR(16)", "error TEXT", "secret 
 PUBLIC_MAIL = {"gmail", "googlemail", "outlook", "hotmail", "live", "yahoo", "icloud", "me", "proton", "protonmail", "aol", "gmx", "yandex"}
 STEPS = (("database", "Database and container created"), ("container", "Keel starting"), ("example", "Example data loaded"), ("ready", "Ready"))
 STATUS_STEP = {"creating": 0, "starting": 1, "loading": 2, "ready": 4}
+UPDATE_STEPS = (("cartridge", "New cartridge sent"), ("container", "Keel restarting with it"), ("ready", "Ready"))  # status "updating"
 GENERATOR = """You write Keel cartridges. Keel turns a product's domain events into a bitemporal context graph per tenant
 that AI agents read through five tools. A cartridge is two files:
 
@@ -292,6 +293,10 @@ class ControlPlane:
     def me(self, email: str, account: str) -> dict[str, Any]:
         row = self._row(account)
         status = (row["status"] if row else None) or "ready"  # accounts from before the console were ready
+        if status == "updating":
+            return {"email": email, "account": account, "endpoint": row["endpoint"], "status": status, "error": None, "notice": None,
+                    "steps": [{"id": sid, "label": label, "state": "done" if i == 0 else "active" if i == 1 else "pending"}
+                              for i, (sid, label) in enumerate(UPDATE_STEPS)]}
         at = STATUS_STEP.get(status, 0)
         failed_at = at if status == "failed" else None
         if status == "failed":
@@ -327,7 +332,7 @@ class ControlPlane:
         if any(p.startswith(("handlers.py line", "cartridge.yaml:")) for p in problems):
             raise ValueError("; ".join(problems))
         old = {"cartridge.yaml": row["cartridge"] or "", "handlers.py": row["handlers"] or ""}
-        self._status(account, "starting")
+        self._status(account, "updating")
         self.control._exec("UPDATE hosted_accounts SET notice = NULL WHERE account = ?", (account,))
         threading.Thread(target=self._redeploy, args=(account, files, example, old, row["example"]), daemon=True).start()
         return problems

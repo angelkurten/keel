@@ -55,6 +55,26 @@ from keel.usage import Meter
 OPEN_PATHS = {"/health", "/openapi.json", "/docs", "/redoc", "/ui"}  # /ui (and its files) hold no data; its calls carry the secret
 
 
+class RecentEvents:
+    """Each tenant's last 200 events received by this server, with what became of them (GET /v1/events/recent).
+    Memory only, gone on restart. Shared by /v1/events and serve --cdc."""
+
+    def __init__(self) -> None:
+        self.by_tenant: dict[str, deque[dict[str, Any]]] = {}
+
+    def add(self, batch: list[Event], report: Any) -> None:
+        at = utcnow().isoformat()
+        for i, e in enumerate(batch):
+            why = report.not_applied.get(i)
+            status = "applied" if why is None else why.split(":")[0]
+            self.by_tenant.setdefault(e.tenant, deque(maxlen=200)).appendleft(
+                {"id": e.id, "type": e.type, "subject": e.subject, "occurred_at": e.occurred_at.isoformat(), "received_at": at,
+                 "source": e.source, "status": status, "reason": why if why and why != status else None})
+
+    def of(self, tenant: str) -> list[dict[str, Any]]:
+        return list(self.by_tenant.get(tenant, ()))
+
+
 class _Auth:
     """ASGI middleware for every path but the open ones: the shared secret (the operator), or an API key
     (one account), whose record goes to the endpoints in `scope["state"]["key"]`. With neither a secret
@@ -118,6 +138,7 @@ def build_http_app(
     ui: bool = False,
     account: str | None = None,
     health_extra: dict[str, Any] | None = None,
+    recent: "RecentEvents | None" = None,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the
@@ -300,16 +321,8 @@ def build_http_app(
     def health() -> dict[str, Any]:
         return {"ok": True, "cartridge": cartridge.name, "revision": rev, "mcp": mcp_app is not None, **(health_extra or {})}  # e.g. serve --cdc's state
 
-    recent: dict[str, deque[dict[str, Any]]] = {}  # tenant -> its last events received here; memory only, gone on restart
-
-    def remember(batch: list[Event], report: Any) -> None:
-        at = utcnow().isoformat()
-        for i, e in enumerate(batch):
-            why = report.not_applied.get(i)
-            status = "applied" if why is None else why.split(":")[0]
-            recent.setdefault(e.tenant, deque(maxlen=200)).appendleft(
-                {"id": e.id, "type": e.type, "subject": e.subject, "occurred_at": e.occurred_at.isoformat(), "received_at": at,
-                 "source": e.source, "status": status, "reason": why if why and why != status else None})
+    recent = recent if recent is not None else RecentEvents()
+    remember = recent.add
 
     def tenant_of(request: Request) -> str:
         key = key_of(request)
@@ -322,7 +335,7 @@ def build_http_app(
 
     @app.get("/v1/events/recent")
     def events_recent(request: Request) -> list[dict[str, Any]]:
-        return list(recent.get(tenant_of(request), ()))
+        return recent.of(tenant_of(request))
 
     @app.post("/v1/events/check")
     def events_check(body: list[dict[str, Any]]) -> list[dict[str, Any]]:

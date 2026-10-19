@@ -258,7 +258,7 @@ def cdc(
     if setup:
         adapter.setup()
     follow(adapter, ing, account, once, interval,
-           lambda r: typer.echo(f"processed={r.processed} duplicates={r.duplicates} unhandled={len(r.unhandled)} skipped={r.skipped}"))
+           lambda r, _events: typer.echo(f"processed={r.processed} duplicates={r.duplicates} unhandled={len(r.unhandled)} skipped={r.skipped}"))
 
 
 def _cdc_adapter(c: Any, dsn: str, map_file: Path, slot: str = "keel", publication: str = "keel", tenant: str | None = None) -> Any:
@@ -282,7 +282,7 @@ def _cdc_adapter(c: Any, dsn: str, map_file: Path, slot: str = "keel", publicati
 
 
 def _follow_in_background(c: Any, store: Any, dsn: str, map_file: Path, account: str | None, status: dict[str, Any],
-                          slot: str = "keel", publication: str = "keel") -> None:
+                          slot: str = "keel", publication: str = "keel", recent: Any = None) -> None:
     """`keel serve --cdc`: follow Postgres in a thread of the server, retrying after a failure with a growing pause.
     What it did last goes in `status`, which /health shows."""
     import threading
@@ -291,7 +291,9 @@ def _follow_in_background(c: Any, store: Any, dsn: str, map_file: Path, account:
     from keel.adapters.pgcdc import follow
     from keel.envelope import utcnow
 
-    def counted(r: Any) -> None:
+    def counted(r: Any, events: list[Any]) -> None:
+        if recent is not None:  # the console's live log shows what CDC brought too
+            recent.add(events, r)
         status.update(events=status.get("events", 0) + r.processed, last_read=utcnow().isoformat(), error=None, ok=True)
 
     def run() -> None:
@@ -778,8 +780,13 @@ def serve(
         if not dsn:
             raise typer.BadParameter("--cdc needs KEEL_PG_DSN, the Postgres to read", param_hint="--cdc")
         health["cdc"] = {"ok": None}
-        _follow_in_background(c, store, dsn, cdc, account, health["cdc"])
-    api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, health_extra=health, **semantic)
+    from keel.http import RecentEvents
+
+    recent = RecentEvents()
+    if cdc:
+        _follow_in_background(c, store, dsn, cdc, account, health["cdc"], recent=recent)
+    api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, health_extra=health,
+                         recent=recent, **semantic)
     if not http2:
         uvicorn.run(api, host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
         return
