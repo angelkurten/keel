@@ -200,6 +200,12 @@ def test_recent_events_check_and_sdk(tmp_path):
         sdk = client.get("/v1/sdk/typescript", headers=h).json()
         assert sdk["filename"] == "keel-fleet.ts" and "unit.registered" in sdk["code"] and len(sdk["sha256"]) == 64
         assert client.get("/v1/sdk/cobol", headers=h).status_code == 400
+        from pathlib import Path
+
+        from keel.cartridge import revision
+
+        files = [(Path(FLEET) / n).read_text(encoding="utf-8") for n in ("cartridge.yaml", "handlers.py")]
+        assert client.get("/health").json()["revision"] == revision(*files)  # which cartridge runs, for a control plane
 
 
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):

@@ -290,9 +290,14 @@ def build_http_app(
     def dt(s: str | None):
         return parse_iso(s) if s else None
 
+    from keel.cartridge import revision
+
+    files = [cartridge.path / n if cartridge.path else None for n in ("cartridge.yaml", "handlers.py")]
+    rev = revision(*(f.read_text(encoding="utf-8") if f and f.exists() else "" for f in files))
+
     @app.get("/health")
     def health() -> dict[str, Any]:
-        return {"ok": True, "cartridge": cartridge.name, "mcp": mcp_app is not None, **(health_extra or {})}  # e.g. serve --cdc's state
+        return {"ok": True, "cartridge": cartridge.name, "revision": rev, "mcp": mcp_app is not None, **(health_extra or {})}  # e.g. serve --cdc's state
 
     recent: dict[str, deque[dict[str, Any]]] = {}  # tenant -> its last events received here; memory only, gone on restart
 

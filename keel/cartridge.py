@@ -206,6 +206,13 @@ def _load_registry(path: Path) -> HandlerRegistry:
     return reg
 
 
+def revision(yaml_text: str, handlers_text: str = "") -> str:
+    """A short hash of a cartridge's two files: which cartridge a server runs (/health), comparable without loading it."""
+    import hashlib
+
+    return hashlib.sha256(yaml_text.encode() + b"\0" + handlers_text.encode()).hexdigest()[:12]
+
+
 def load_cartridge(path: str | Path, handlers: bool = True) -> Cartridge:
     """`handlers=False` reads the YAML only and never imports handlers.py: for checking a cartridge whose code
     must not run in this process (a hosted control plane)."""
