@@ -1,6 +1,6 @@
 # Design note: the Keel console
 
-Status: proposed and built on 2026-10-18, all four phases on master, unreleased (it ships in one release). Replaces the hosted sign-up form and usage page (`hosted/app.py`) and the read-only browser at `/ui` (`keel/ui.html`) with one console. Mockup: https://claude.ai/artifact/KbwgvjBcMGJxiWMAcNyVqF.
+Status: proposed and built on 2026-10-18, shipped in 0.29.0. Replaces the hosted sign-up form and usage page (`hosted/app.py`) and the read-only browser at `/ui` (`keel/ui.html`) with one console. Mockup: https://claude.ai/artifact/KbwgvjBcMGJxiWMAcNyVqF.
 
 ## Problem
 
@@ -55,7 +55,7 @@ Look: a sober developer tool (Linear, Vercel, Supabase), dark first, monospace f
 
 ## Phases
 
-All four are on master (2026-10-18), unreleased: the console ships in one release.
+All four shipped together in 0.29.0.
 
 | Phase | Items |
 |---|---|
