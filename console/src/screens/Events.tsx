@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Ctx } from "../App";
 import { api, ApiError, count, type EventProblem, type RecentEvent } from "../api";
 import { exampleEnvelope, WEBHOOK_LANGS, webhookSnippet, type WebhookLang } from "../codegen";
-import { ago, Code, Icon, Tabs } from "../ui";
+import { ago, Code, Icon, Link, Tabs } from "../ui";
+import { Cdc } from "./Cdc";
 
-type Mode = "webhook" | "upload";
+type Mode = "webhook" | "upload" | "cdc";
 const CHUNK = 500;
 
 /** Lets a dotted type or a `kind:id` subject wrap after its dots and colons, not mid-word. */
@@ -12,9 +13,8 @@ const soft = (s: string) => s.split(/(?<=[.:_-])/).flatMap((part, i) => (i ? [<w
 
 export function Events({ ctx }: { ctx: Ctx }) {
   const [mode, setMode] = useState<Mode>("webhook");
-  const tabs: { id: string; name: string; soon?: boolean }[] = [
-    { id: "webhook", name: "Webhook" }, { id: "upload", name: "Upload events.jsonl" },
-    { id: "cdc", name: "Postgres CDC", soon: true }, { id: "generate", name: "Generate cartridge", soon: true },
+  const tabs: { id: Mode; name: string }[] = [
+    { id: "webhook", name: "Webhook" }, { id: "upload", name: "Upload events.jsonl" }, { id: "cdc", name: "Postgres CDC" },
   ];
   return (
     <div className="stack">
@@ -24,14 +24,15 @@ export function Events({ ctx }: { ctx: Ctx }) {
       </div>
       <div role="tablist" aria-label="Source" className="tabs">
         {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={t.id === mode} disabled={t.soon}
-            className={t.id === mode ? "on" : ""} onClick={() => !t.soon && setMode(t.id as Mode)}>
-            {t.name}{t.soon && <span className="soon inline-soon">coming soon</span>}
+          <button key={t.id} type="button" role="tab" aria-selected={t.id === mode}
+            className={t.id === mode ? "on" : ""} onClick={() => setMode(t.id)}>
+            {t.name}
           </button>
         ))}
+        <Link to="/console/cartridge" className="tab-link">Generate cartridge <Icon name="arrow" size={12} /></Link>
       </div>
       <div className="events-layout">
-        <section className="stack">{mode === "webhook" ? <Webhook ctx={ctx} /> : <Upload ctx={ctx} />}</section>
+        <section className="stack">{mode === "webhook" ? <Webhook ctx={ctx} /> : mode === "upload" ? <Upload ctx={ctx} /> : <Cdc ctx={ctx} />}</section>
         <Live tenant={ctx.tenant} />
       </div>
     </div>

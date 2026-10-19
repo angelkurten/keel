@@ -64,14 +64,14 @@ function ToolsMode({ ctx }: { ctx: Ctx }) {
   const [lang, setLang] = useState<"curl" | "Python">("curl");
   const v = values[tool];
   const body = buildBody(tool, v);
-  const target = { endpoint: ctx.me.endpoint, tenant: ctx.tenant };
+  const target = { endpoint: ctx.me.endpoint, tenant: ctx.tenant, agent: ctx.agent };
 
   async function run(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     const t0 = performance.now();
     try {
-      const r = await api.tool(tool, body, ctx.tenant);
+      const r = await api.tool(tool, body, ctx.tenant, ctx.agent);
       setOut({ status: "200", ms: Math.round(performance.now() - t0), json: JSON.stringify(r, null, 2), err: false });
     } catch (err) {
       setOut({ status: err instanceof ApiError ? String(err.status) : "error", ms: Math.round(performance.now() - t0), json: (err as Error).message, err: true });
@@ -131,7 +131,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
     try { const s = store.get("session", "keel.ownKey"); return s ? (JSON.parse(s) as OwnKey) : null; } catch { return null; }
   });
   const [ownOpen, setOwnOpen] = useState(!!own);
-  const [identity, setIdentity] = useState(agents[0] || "");
+  const [identity, setIdentity] = useState(ctx.agent || agents[0] || "");
   const [system, setSystem] = useState(starter);
   const [tools, setTools] = useState<string[]>([...TOOLS]);
   const [saved, setSaved] = useState<{ name: string; config: AgentConfig }[]>([]);
@@ -154,7 +154,7 @@ function AgentMode({ ctx }: { ctx: Ctx }) {
 
   const config = (): AgentConfig => ({ name, model, system, tools, tenant: ctx.tenant, ...(identity ? { agent: identity } : {}) });
   function load(c: AgentConfig) {
-    setName(c.name); setModel(c.model); setSystem(c.system); setTools(c.tools); setIdentity(c.agent || agents[0] || "");
+    setName(c.name); setModel(c.model); setSystem(c.system); setTools(c.tools); setIdentity(c.agent || ctx.agent || agents[0] || "");
     setHistory([]); setTurns([]);
   }
   async function save() {

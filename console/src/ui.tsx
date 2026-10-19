@@ -72,6 +72,8 @@ const paths: Record<string, ReactNode> = {
   warn: (<><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17v.5" /></>),
   mail: (<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></>),
   send: (<><path d="M4 12l16-8-6 16-3-7z" /></>),
+  box: (<><path d="M4 7.5L12 3l8 4.5v9L12 21l-8-4.5z" /><path d="M4 7.5L12 12l8-4.5" /><path d="M12 12v9" /></>),
+  db: (<><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3" /></>),
   inbox: (<><path d="M4 13l2.5-8h11L20 13v6H4z" /><path d="M4 13h5l1 2h4l1-2h5" /></>),
   code: (<><path d="M8 8l-4 4 4 4" /><path d="M16 8l4 4-4 4" /><path d="M13.5 5l-3 14" /></>),
   key: (<><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9" /><path d="M17 6l3 3" /></>),

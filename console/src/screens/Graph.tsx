@@ -22,12 +22,12 @@ export function Graph({ ctx }: { ctx: Ctx }) {
   const graphHost = useRef<HTMLDivElement>(null);
   const graph = useRef<ReturnType<typeof createGraph> | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const live = useRef({ tenant, asOf });
-  live.current = { tenant, asOf };
+  const live = useRef({ tenant, asOf, agent: ctx.agent });
+  live.current = { tenant, asOf, agent: ctx.agent };
 
   const iso = (v: string) => (v ? new Date(v).toISOString() : null);
   const call = <T,>(tool: "context" | "history" | "search" | "related", body: Record<string, unknown>) =>
-    api.tool<T>(tool, body, live.current.tenant);
+    api.tool<T>(tool, body, live.current.tenant, live.current.agent);
 
   async function open(s: string, fromGraph = false) {
     setSubject(s); setHist(null); setCerr("");
@@ -55,7 +55,7 @@ export function Graph({ ctx }: { ctx: Ctx }) {
     setSerr("");
     call<Hit[]>("search", { text: "", limit: 50, as_of: iso(asOf) }).then(setHits).catch((err) => { setHits(null); setSerr((err as Error).message); });
     if (subject) open(subject);
-  }, [tenant, asOf]); // eslint-disable-line
+  }, [tenant, asOf, ctx.agent]); // eslint-disable-line
 
   // "/" focuses search.
   useEffect(() => {

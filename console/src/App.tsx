@@ -10,6 +10,7 @@ import { Events } from "./screens/Events";
 import { Sdk } from "./screens/Sdk";
 import { Keys } from "./screens/Keys";
 import { Usage } from "./screens/Usage";
+import { CartridgeTab } from "./screens/Cartridge";
 
 export function App() {
   const path = usePath();
@@ -18,13 +19,21 @@ export function App() {
 }
 
 /** What every console tab gets: the account, the cartridge and the tenant picked in the sidebar. */
-export type Ctx = { me: Me; cartridge: Cartridge | null; tenant: string; keyCreated: () => void; eventsSent: () => void };
+export type Ctx = {
+  me: Me; cartridge: Cartridge | null; tenant: string;
+  /** The cartridge agent picked in the sidebar (sent as X-Keel-Agent); undefined when the cartridge declares none. */
+  agent?: string;
+  keyCreated: () => void; eventsSent: () => void;
+  /** Start polling /api/me again (a cartridge deploy restarts the account) and refetch the cartridge once ready. */
+  refresh: () => void;
+};
 
 const TABS = [
   { id: "graph", label: "Graph", icon: "graph" },
   { id: "playground", label: "Playground", icon: "play" },
   { id: "connect", label: "Connect", icon: "plug" },
   { id: "events", label: "Events", icon: "inbox" },
+  { id: "cartridge", label: "Cartridge", icon: "box" },
   { id: "sdk", label: "SDK", icon: "code" },
   { id: "keys", label: "Keys", icon: "key" },
   { id: "usage", label: "Usage", icon: "chart" },
@@ -38,6 +47,9 @@ function Console({ path }: { path: string }) {
   const [keyed, setKeyed] = useState(() => store.get("local", "keel.keyCreated") === "1");
   const [ownEvents, setOwnEvents] = useState(false);
   const [usageTick, setUsageTick] = useState(0);
+  const [agentPick, setAgentPick] = useState(() => store.get("local", "keel.agent") || "");
+  const [dismissed, setDismissed] = useState(() => store.get("local", "keel.noticeDismissed") || "");
+  const [pollGen, setPollGen] = useState(0);
   const [menu, setMenu] = useState(false);
   const [err, setErr] = useState("");
 
@@ -57,12 +69,12 @@ function Console({ path }: { path: string }) {
     };
     poll();
     return () => { stop = true; clearTimeout(timer); };
-  }, []);
+  }, [pollGen]);
 
   const ready = me?.status === "ready";
   useEffect(() => {
     if (ready) api.cartridge().then(setCartridge).catch((e) => setErr((e as Error).message)).finally(() => setCartLoaded(true));
-  }, [ready]);
+  }, [ready, pollGen]);
 
   useEffect(() => { setMenu(false); }, [path]);
 
@@ -78,10 +90,14 @@ function Console({ path }: { path: string }) {
   if (!ready) return <Starting me={me} />;
   if (!cartLoaded) return <div className="center muted">Loading…</div>;
 
+  const agents = Object.keys(cartridge?.agents || {});
+  const agent = agents.length ? (agents.includes(agentPick) ? agentPick : agents[0]) : undefined;
+  const notice = me.notice && me.notice !== dismissed ? me.notice : null;
   const tab = path.split("/")[2] || "graph";
   if (!TABS.some((t) => t.id === tab)) { navigate("/console/graph", true); return null; }
   const ctx: Ctx = {
-    me, cartridge, tenant: tenant.trim() || "demo",
+    me, cartridge, tenant: tenant.trim() || "demo", agent,
+    refresh: () => setPollGen((n) => n + 1),
     keyCreated: () => { setKeyed(true); store.set("local", "keel.keyCreated", "1"); },
     eventsSent: () => setUsageTick((n) => n + 1),
   };
@@ -90,7 +106,7 @@ function Console({ path }: { path: string }) {
     ["Example data", !!cartridge?.example, "/console/graph"],
     ["Connect an agent", keyed, "/console/connect"],
     ["Send your own events", ownEvents, "/console/events"],
-    ["Your cartridge", false, null],
+    ["Your cartridge", !!cartridge && !cartridge.example, "/console/cartridge"],
   ];
   const done = steps.filter((s) => s[1]).length;
 
@@ -111,6 +127,13 @@ function Console({ path }: { path: string }) {
                 onChange={(e) => { setTenant(e.target.value); store.set("local", "keel.tenant", e.target.value); }}
                 onBlur={() => { if (!tenant.trim()) setTenant("demo"); }} />
             </label>
+            {agents.length > 0 && (
+              <label className="field small">Agent
+                <select className="mono" value={agent} onChange={(e) => { setAgentPick(e.target.value); store.set("local", "keel.agent", e.target.value); }}>
+                  {agents.map((a) => <option key={a}>{a}</option>)}
+                </select>
+              </label>
+            )}
           </div>
           <div className="nav">
             {TABS.map((t) => (
@@ -139,11 +162,20 @@ function Console({ path }: { path: string }) {
         </div>
       </nav>
       <main className="main">
+        {notice && (
+          <div className="banner warn-banner notice" role="status">
+            <span className="row"><Icon name="warn" size={14} /> {notice}</span>
+            <button type="button" className="btn ghost sm" aria-label="Dismiss" onClick={() => { setDismissed(notice); store.set("local", "keel.noticeDismissed", notice); }}>
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        )}
         {err && <p className="err">{err}</p>}
         {tab === "graph" && <Graph ctx={ctx} />}
         {tab === "playground" && <Playground ctx={ctx} />}
         {tab === "connect" && <Connect ctx={ctx} />}
         {tab === "events" && <Events ctx={ctx} />}
+        {tab === "cartridge" && <CartridgeTab ctx={ctx} />}
         {tab === "sdk" && <Sdk ctx={ctx} />}
         {tab === "keys" && <Keys ctx={ctx} />}
         {tab === "usage" && <Usage ctx={ctx} />}

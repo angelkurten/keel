@@ -29,6 +29,7 @@ export type Me = {
   endpoint: string;
   status: "creating" | "starting" | "loading" | "ready" | "failed";
   error: string | null;
+  notice?: string | null;
   steps: { id: string; label: string; state: StepState }[];
 };
 export type Cartridge = {
@@ -40,6 +41,7 @@ export type Cartridge = {
   agents?: Record<string, unknown>;
   events?: Record<string, EventSpec>;
   example: boolean;
+  files?: { "cartridge.yaml"?: string; "handlers.py"?: string };
   [k: string]: unknown;
 };
 export type EventSpec = { subject?: string; owner?: string; payload?: Record<string, unknown>; [k: string]: unknown };
@@ -51,6 +53,11 @@ export type EventProblem = { index: number; id: string | null; type: string | nu
 export type IngestReport = { processed: number; duplicates: number; unhandled: number | unknown[]; errors: number | unknown[];
   forgotten: unknown[]; skipped: number; retained: unknown[] };
 export const count = (v: number | unknown[] | undefined) => (Array.isArray(v) ? v.length : v || 0);
+export type CartridgeFiles = { cartridge_yaml: string; handlers_py: string };
+export type Example = "fleet" | "crm" | "clinics" | "finance";
+export type Generated = CartridgeFiles & { problems: string[]; attempts: number; allowance: Allowance };
+export type CdcStatus = { ok: boolean | null; events?: number; last_read?: string; error?: string; failed_at?: string; tables?: string[] };
+export type Cdc = { configured: boolean; map: string; tables: string[]; status: CdcStatus | null };
 export type KeyRow = { id: string; tenant: string | null; agent: string | null; global: boolean; created_at: string; revoked_at: string | null };
 export type UsageRow = { month: string; tenant: string; events: number; calls: Record<string, number> };
 export type Usage = { account: string; endpoint: string; limits: { rps: number | null; events_month: number | null }; rows: UsageRow[] };
@@ -94,6 +101,12 @@ export const api = {
   checkEvents: (tenant: string, batch: unknown[]) => req<EventProblem[]>("POST", "/api/events/check", batch, { "X-Keel-Tenant": tenant }),
   ingestEvents: (tenant: string, batch: unknown[]) => req<IngestReport>("POST", "/api/events", batch, { "X-Keel-Tenant": tenant }),
   usage: (month?: string) => req<Usage>("GET", `/api/usage${month ? `?${q({ month })}` : ""}`),
+  deployCartridge: (body: CartridgeFiles | { example: Example }) => req<{ ok: true; problems: string[] }>("PUT", "/api/cartridge", body),
+  checkCartridge: (body: CartridgeFiles) => req<{ problems: string[] }>("POST", "/api/cartridge/check", body),
+  generateCartridge: (body: { events: unknown[]; description: string }) => req<Generated>("POST", "/api/cartridge/generate", body),
+  cdc: () => req<Cdc>("GET", "/api/cdc"),
+  setCdc: (body: { dsn: string; map: string }) => req<Cdc>("PUT", "/api/cdc", body),
+  stopCdc: () => req<{ ok: true }>("DELETE", "/api/cdc"),
   sdk: (language: SdkLanguage) => req<Sdk>("GET", `/api/sdk/${language}`),
   models: () => req<Models>("GET", "/api/agent/models"),
   agents: () => req<{ name: string; config: AgentConfig }[]>("GET", "/api/agents"),
