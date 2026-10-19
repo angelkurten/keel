@@ -3,7 +3,7 @@
   "name": "io.github.angelkurten/keel",
   "title": "Keel",
   "description": "Per-tenant bitemporal context graph built from domain events, shared by agents via five tools.",
-  "version": "0.29.1",
+  "version": "0.30.0",
   "websiteUrl": "https://angelkurten.github.io/keel/",
   "repository": {
     "url": "https://github.com/angelkurten/keel",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "keel-context",
-      "version": "0.29.1",
+      "version": "0.30.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -57,7 +57,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/angelkurten/keel:0.29.1",
+      "identifier": "ghcr.io/angelkurten/keel:0.30.0",
       "transport": {
         "type": "stdio"
       },

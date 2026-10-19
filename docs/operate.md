@@ -38,23 +38,23 @@ The Python API reads nothing from `.env`: a program that embeds Keel passes its 
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.29.1`, `0.29`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`. Both variants include the Postgres driver, so `KEEL_CDC_MAP` and `KEEL_PG_DSN` make the container follow Postgres too.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.30.0`, `0.30`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`. Both variants include the Postgres driver, so `KEEL_CDC_MAP` and `KEEL_PG_DSN` make the container follow Postgres too.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.29.1
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.30.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment ([Configuration](#configuration)); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.29.1 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.29.1` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.30.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.30.0` and `COPY cartridges/mine /cartridge`.
 
 Single sign-on for your team in front of `/ui`, with Caddy and oauth2-proxy and no code in Keel: [`deploy/sso`](https://github.com/angelkurten/keel/tree/master/deploy/sso).
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.29.1` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.30.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Consolidate episodic memory
 
