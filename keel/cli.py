@@ -81,7 +81,8 @@ def _tools(c, store, tenant: str, agent: str | None, **semantic: Any) -> Tools:
     except PermissionError as exc:
         raise typer.BadParameter(str(exc), param_hint="--agent") from exc
 
-CARTRIDGE_TEMPLATE = """name: {name}
+CARTRIDGE_TEMPLATE = """# yaml-language-server: $schema=https://angelkurten.github.io/keel/cartridge.schema.json
+name: {name}
 
 entities:
   account:

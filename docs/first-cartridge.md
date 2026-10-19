@@ -16,6 +16,16 @@ Build yours in `cartridges/clinics`, the folder for your own cartridges. The fin
 uv run keel init cartridges/clinics
 ```
 
+### Completion and validation in your editor
+
+The cartridge format has a JSON Schema at [`cartridge.schema.json`](cartridge.schema.json). Put this line at the top of `cartridge.yaml`:
+
+```yaml
+# yaml-language-server: $schema=https://angelkurten.github.io/keel/cartridge.schema.json
+```
+
+VS Code with the Red Hat YAML extension (and any editor that speaks the YAML language server) then completes keys, shows what each one means, and flags the shapes `keel validate` rejects: an event without `subject`, `forgets: always`, an unknown rule operator, a payload hint typo. It checks shape only; `keel validate` still checks names against each other and that every event has a handler.
+
 ## 2. Declare the ontology (5 min)
 
 List the kinds of things your product is about and how they relate. Use your product's own names.
