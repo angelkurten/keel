@@ -138,6 +138,8 @@ uv run keel cdc cartridges/mine --dsn postgresql://user:pass@host:5432/app --map
 
 `--setup` creates the publication and the replication slot (`keel` by default) and sets `REPLICA IDENTITY FULL` on tables with a tenant column, since by default a delete carries only the primary key. The slot moves only after Keel has stored what it read, so a crash reads it again and dedupe skips what was already stored (event ids are `pgcdc:<commit lsn>:<n>`). `--once` reads what is there and stops; without it, `keel cdc` follows. A slot nobody reads keeps WAL on the database server's disk: drop it with `SELECT pg_drop_replication_slot('keel')` when you stop for good.
 
+`keel serve --transport http --cdc cdc.yaml` (with `KEEL_PG_DSN` set) follows the same tables in a thread of the server instead of a second process: it creates what is missing, retries after a failure with a growing pause, and `/health` shows `cdc` with `ok`, `events`, `last_read` and the last `error`. `--account` (or `KEEL_ACCOUNT`, as a hosted container has) puts every tenant under that account, `account/<tenant>`, for both commands.
+
 ## A webhook
 
 Keel receives envelopes over HTTP, validates them and ingests them in the request.

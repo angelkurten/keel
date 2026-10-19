@@ -244,11 +244,26 @@ def cdc(
     setup: bool = typer.Option(False, "--setup", help="Create the publication and slot if missing, and set REPLICA IDENTITY FULL on tables with a tenant column."),
     once: bool = typer.Option(False, "--once", help="Read what the slot holds now and stop, instead of following."),
     interval: float = typer.Option(2.0, "--interval", help="Seconds between reads when nothing is new."),
+    account: str | None = typer.Option(None, "--account", envvar="KEEL_ACCOUNT", help="Put every tenant under this account (hosted: account/<tenant>)."),
 ):
     """Follow row changes in Postgres tables (logical replication, pgoutput) as events: <kind>.created|updated|deleted.
     The slot moves only after the graph has stored a read, so a failure reads it again. Prints one line per read."""
-    import time
+    from keel.adapters.pgcdc import follow
 
+    c, _, ing, _ = _run(cartridge, None, db=db)
+    try:
+        adapter = _cdc_adapter(c, dsn, map_file, slot, publication, tenant)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--map") from exc
+    if setup:
+        adapter.setup()
+    follow(adapter, ing, account, once, interval,
+           lambda r: typer.echo(f"processed={r.processed} duplicates={r.duplicates} unhandled={len(r.unhandled)} skipped={r.skipped}"))
+
+
+def _cdc_adapter(c: Any, dsn: str, map_file: Path, slot: str = "keel", publication: str = "keel", tenant: str | None = None) -> Any:
+    """The Postgres CDC adapter for a cartridge, refusing a map whose event types the cartridge does not declare:
+    a read stops at the first change it cannot handle, so say so before reading."""
     import yaml
 
     try:
@@ -259,24 +274,41 @@ def cdc(
 
     adapter = PostgresCdcAdapter(lambda: psycopg.connect(dsn), yaml.safe_load(map_file.read_text(encoding="utf-8")),
                                  slot=slot, publication=publication, tenant=tenant)
-    c, _, ing, _ = _run(cartridge, None, db=db)
     missing = sorted(f"{m.kind}.{op}" for m in adapter.tables.values() for op in ("created", "updated", "deleted")
                      if f"{m.kind}.{op}" not in c.events)
-    if missing:  # a read stops at the first change it cannot handle, so say so before reading
-        raise typer.BadParameter(f"the cartridge does not declare {', '.join(missing)}; declare them (a handler may do nothing)", param_hint="--map")
-    if setup:
-        adapter.setup()
-    adapter.manual_ack = True
-    while True:
-        events = list(adapter)
-        if events:
-            r = ing.ingest(events, strict=True, batch=len(events))
-            typer.echo(f"processed={r.processed} duplicates={r.duplicates} unhandled={len(r.unhandled)} skipped={r.skipped}")
-        adapter.ack()  # also past transactions on tables that are not mapped, so the server releases their WAL
-        if once:
-            return
-        if not events:
-            time.sleep(interval)
+    if missing:
+        raise ValueError(f"the cartridge does not declare {', '.join(missing)}; declare them (a handler may do nothing)")
+    return adapter
+
+
+def _follow_in_background(c: Any, store: Any, dsn: str, map_file: Path, account: str | None, status: dict[str, Any],
+                          slot: str = "keel", publication: str = "keel") -> None:
+    """`keel serve --cdc`: follow Postgres in a thread of the server, retrying after a failure with a growing pause.
+    What it did last goes in `status`, which /health shows."""
+    import threading
+    import time
+
+    from keel.adapters.pgcdc import follow
+    from keel.envelope import utcnow
+
+    def counted(r: Any) -> None:
+        status.update(events=status.get("events", 0) + r.processed, last_read=utcnow().isoformat(), error=None, ok=True)
+
+    def run() -> None:
+        pause = 2.0
+        while True:
+            try:
+                adapter = _cdc_adapter(c, dsn, map_file, slot, publication)
+                adapter.setup()  # creates what is missing only
+                status.update(ok=True, error=None, tables=sorted(adapter.tables))
+                pause = 2.0
+                follow(adapter, Ingestor(c, store), account, report=counted)
+            except Exception as exc:  # noqa: BLE001 - the server keeps serving; /health says why CDC stopped
+                status.update(ok=False, error=f"{type(exc).__name__}: {exc}"[:500], failed_at=utcnow().isoformat())
+                time.sleep(pause)
+                pause = min(pause * 2, 300)
+
+    threading.Thread(target=run, name="keel-cdc", daemon=True).start()
 
 
 @app.command()
@@ -696,6 +728,7 @@ def serve(
     index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Enable search(mode=semantic): the vector index spec, as in `keel index`."),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="With --index: the embedder spec."),
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
+    cdc: Path | None = typer.Option(None, "--cdc", envvar="KEEL_CDC_MAP", help="http only: also follow Postgres tables (the `keel cdc` map; KEEL_PG_DSN), in a thread of this server; /health shows its state."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
@@ -739,7 +772,14 @@ def serve(
         typer.echo(f"warning: {secret_env} is unset, the API is open on {host}", err=True)
     if tenant:
         _tools(c, store, tenant, agent)  # fail now, not on the first request, if the agent is not declared
-    api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, **semantic)
+    health: dict[str, Any] = {}
+    if cdc:
+        dsn = os.environ.get("KEEL_PG_DSN")
+        if not dsn:
+            raise typer.BadParameter("--cdc needs KEEL_PG_DSN, the Postgres to read", param_hint="--cdc")
+        health["cdc"] = {"ok": None}
+        _follow_in_background(c, store, dsn, cdc, account, health["cdc"])
+    api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, health_extra=health, **semantic)
     if not http2:
         uvicorn.run(api, host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
         return

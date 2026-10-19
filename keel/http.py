@@ -116,6 +116,7 @@ def build_http_app(
     reranker: Any = None,
     ui: bool = False,
     account: str | None = None,
+    health_extra: dict[str, Any] | None = None,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the
@@ -291,7 +292,7 @@ def build_http_app(
 
     @app.get("/health")
     def health() -> dict[str, Any]:
-        return {"ok": True, "cartridge": cartridge.name, "mcp": mcp_app is not None}
+        return {"ok": True, "cartridge": cartridge.name, "mcp": mcp_app is not None, **(health_extra or {})}  # e.g. serve --cdc's state
 
     recent: dict[str, deque[dict[str, Any]]] = {}  # tenant -> its last events received here; memory only, gone on restart
 

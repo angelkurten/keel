@@ -206,7 +206,9 @@ def _load_registry(path: Path) -> HandlerRegistry:
     return reg
 
 
-def load_cartridge(path: str | Path) -> Cartridge:
+def load_cartridge(path: str | Path, handlers: bool = True) -> Cartridge:
+    """`handlers=False` reads the YAML only and never imports handlers.py: for checking a cartridge whose code
+    must not run in this process (a hosted control plane)."""
     path = Path(path)
     raw = yaml.safe_load((path / "cartridge.yaml").read_text(encoding="utf-8")) or {}
     return Cartridge(
@@ -218,7 +220,7 @@ def load_cartridge(path: str | Path) -> Cartridge:
         events=raw.get("events") or {},
         rules=raw.get("rules") or {},
         policy=_policy_from(raw.get("memory")),
-        registry=_load_registry(path),
+        registry=_load_registry(path) if handlers else HandlerRegistry(),
         agents=parse_agents(raw.get("agents")),
         calendar=Calendar.parse(raw.get("calendar")),
         predicates=raw.get("predicates") or {},

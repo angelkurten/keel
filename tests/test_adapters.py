@@ -489,6 +489,22 @@ def gone(event, store):
         bad = tmp_path / "bad.yaml"
         bad.write_text("tires: {kind: wheel, id: serial, tenant: fleet_id}\n", encoding="utf-8")
         assert CliRunner().invoke(app, ["cdc", str(cart), "--dsn", PG, "--map", str(bad), "--db", db, "--once"]).exit_code != 0  # undeclared types
+        c.execute("INSERT INTO tires VALUES ('T-2', 'acme', 4.0, '')")
+        assert CliRunner().invoke(app, [*args, "--account", "hosted"]).exit_code == 0  # a hosted container puts tenants under its account
+        assert SqliteStore(db).entity("hosted/acme", "tire:T-2") is not None and SqliteStore(db).entity("acme", "tire:T-2") is None
+        # keel serve --cdc follows the same tables in a thread, under its account, and says how it goes in /health
+        import time
+
+        from keel.cli import _follow_in_background
+
+        status: dict = {}
+        c.execute("INSERT INTO tires VALUES ('T-3', 'acme', 3.0, '')")
+        _follow_in_background(load_cartridge(cart), SqliteStore(db), PG, tmp_path / "cdc.yaml", "hosted", status, slot=slot, publication=slot)
+        for _ in range(100):
+            if status.get("events"):
+                break
+            time.sleep(0.1)
+        assert status["ok"] and status["events"] == 1 and SqliteStore(db).entity("hosted/acme", "tire:T-3") is not None
     finally:
         c.execute(f"SELECT pg_drop_replication_slot('{slot}') WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = '{slot}')")
         c.execute(f"DROP PUBLICATION IF EXISTS {slot}")

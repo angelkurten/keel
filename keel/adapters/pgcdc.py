@@ -234,3 +234,26 @@ class PostgresCdcAdapter:
                     self.ack()
                 continue
             yield event
+
+
+def follow(adapter: PostgresCdcAdapter, ingestor: Any, account: str | None = None, once: bool = False, interval: float = 2.0,
+           report: Callable[[Any], None] | None = None) -> None:
+    """Read what the slot holds, ingest it, move the slot, and again: forever, or once. With `account` (a hosted
+    container), every tenant is put under it, as the HTTP layer does for keys. The slot moves only after the
+    graph has stored a read, so a failure reads it again."""
+    import time
+
+    adapter.manual_ack = True
+    while True:
+        events = list(adapter)
+        if events:
+            if account:
+                events = [e.model_copy(update={"tenant": f"{account}/{e.tenant}"}) for e in events]
+            r = ingestor.ingest(events, strict=True, batch=len(events))
+            if report:
+                report(r)
+        adapter.ack()  # also past transactions on tables that are not mapped, so the server releases their WAL
+        if once:
+            return
+        if not events:
+            time.sleep(interval)
