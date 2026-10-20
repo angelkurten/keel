@@ -123,3 +123,7 @@ The whole log through Graphiti would be ~134 hours and ~46 USD. Both ingest the 
 **Agents confirmed (2026-10-20): `openai/gpt-6-luna` and `anthropic/claude-haiku-5.5`**, no judge (exact match). Luna answered again through OfoxAI the same evening; it is also the extractor for Graphiti and Mem0. Luna smoke run (Hyperledger, six questions): every answer parseable; on Keel 1.8 tool calls and 5.6k input tokens per question.
 
 **Pilot finding (2026-10-20):** the blocked-rule question defined "blocked while an issue that blocks it is not done" and left out that the issue itself must not be done, which the rule and the gold require. Haiku on Keel answered MXS-1270 (closed at the time, its blocker open) by the definition as written, and said in its reply that Keel's rule evaluated false and why. The wording now states both conditions; the ten blocked questions keep their ids and gold, and their pilot runs are redone.
+
+**Pilot findings to act on before the full run (2026-10-20):**
+- The API baseline's changelog lacked each issue's initial values (Jira's history shows them), so the API agent answered unknown to as_of questions whose answer was the initial status. Fixed (`4d782cd`); the API runs were redone.
+- Keel rejects times written as in the questions ("2016-09-14 07:38 UTC"): 3 of Haiku's 172 Keel calls failed on it, each costing a turn before the agent sent ISO 8601. Decided with Angel: accept that form in the core after the pilot and before the full run, rerun Keel there, and say so in the paper.
