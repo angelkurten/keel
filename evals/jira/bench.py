@@ -398,11 +398,18 @@ def main() -> None:
 
     def run(job: tuple[dict[str, Any], str, str, int]) -> None:
         q, s, m, r = job
-        try:
-            res = ask(gw, data, s, m, q, rags, apis) | {"rep": r}
-        except Exception as exc:  # noqa: BLE001 - one failed run is logged and retried on the next invocation
-            print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {exc}")
-            return
+        from evals.jira.memories import backoff, transient
+
+        for wait in backoff():  # a gateway outage (429, or its upstream account down for a while) waits it out
+            try:
+                res = ask(gw, data, s, m, q, rags, apis) | {"rep": r}
+                break
+            except Exception as exc:  # noqa: BLE001 - one failed run is logged and retried on the next invocation
+                if wait and transient(exc):
+                    time.sleep(wait)
+                    continue
+                print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {exc}")
+                return
         with lock, a.out.open("a") as fh:
             fh.write(json.dumps(res, ensure_ascii=False, default=str) + "\n")
 

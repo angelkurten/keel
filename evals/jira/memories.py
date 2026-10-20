@@ -187,14 +187,19 @@ def mem0_search(data: Path, tenant: str, model: str, query: str, k: int) -> list
 
 
 def backoff() -> list[float]:
-    """Waits between attempts at one event when the gateway limits requests per minute; the last raises."""
-    return [5, 10, 20, 40, 60, 60, 60, 60, 0]
+    """Waits between attempts at one event, ~35 minutes in all; the last raises."""
+    return [5, 10, 20, 40] + [60] * 34 + [0]
 
 
 def limited(exc: Exception, wait: float) -> bool:
-    """Retry this exception? Only a rate limit (429), and not after the last wait. A retried event may have
+    """Retry this exception? A rate limit (429), or the gateway's upstream account outage (a 401 that says
+    'deactivated', which came and went on 2026-10-20), and not after the last wait. A retried event may have
     written part of its extraction before failing; Graphiti and Mem0 deduplicate what the retry writes again."""
-    return wait > 0 and ("429" in str(exc) or type(exc).__name__ == "RateLimitError")
+    return wait > 0 and (transient(exc) or type(exc).__name__ == "RateLimitError")
+
+
+def transient(exc: Exception) -> bool:
+    return "429" in str(exc) or "has been deactivated" in str(exc)
 
 
 
