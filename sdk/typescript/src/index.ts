@@ -30,7 +30,7 @@ export type Entity = {
   matched?: string;
   /** the part of that value that matched (of a list, the element) */
   snippet?: string;
-  /** search with detail "concise" ({predicate: value}) or "full" (facts) */
+  /** search with detail "concise" or "brief" ({predicate: value}) or "full" (facts) */
   facts?: Record<string, unknown> | Fact[];
   /** search with depth: 1 */
   neighbors?: SearchNeighbor[];
@@ -72,8 +72,12 @@ export type RelationRow = {
   recorded_at: string | null;
   source: string | null;
 };
+/** What `context` cut: per (relation, direction), how many are shown of how many. */
+export type CapNote = { relation: string; direction: "in" | "out" | "both"; shown: number; total: number };
 export type Context = {
   subject: string;
+  /** false when the subject is well formed but nothing is known about it: then only subject, as_of and watermark come back */
+  found?: false;
   entity: Entity | null;
   facts: Fact[];
   relations: RelationRow[];
@@ -88,15 +92,21 @@ export type Context = {
   proposals?: Fact[];
   /** Predicates with more than one open value (multi-valued predicates written by several authors). */
   conflicts?: Record<string, Array<{ value: unknown; source: string | null; recorded_at: string | null }>>;
+  /** Relations left out of `relations` (the most recent are kept); the rest is one `related` away. */
+  relations_more?: CapNote[];
   /** Present with `depth: 1`: each neighbour's entity, open facts and evaluation (capped; see neighbors_truncated). */
   neighbors?: Neighbor[];
   neighbors_truncated?: boolean;
+  /** With `depth: 1`: neighbours left out per relation (they are still in `relations`). */
+  neighbors_more?: CapNote[];
 };
 /** `contextConcise`: the same answer in about a third of the tokens, for a prompt. */
 export type ConciseContext = {
   subject: string;
   attrs: Record<string, unknown>;
   facts: Record<string, unknown>;
+  /** when each value became true: {predicate: valid_from} */
+  since: Record<string, string>;
   relations: Array<{ relation: string; direction: "in" | "out"; subject: string }>;
   evaluation: Record<string, boolean | null>;
   as_of: string;
@@ -106,7 +116,13 @@ export type ConciseContext = {
   conflicts?: Context["conflicts"];
   neighbors?: Array<{ relation: string; direction: string; subject: string; facts: Record<string, unknown>; evaluation: Record<string, boolean | null> }>;
   neighbors_truncated?: boolean;
+  neighbors_more?: CapNote[];
+  relations_more?: CapNote[];
+  /** false when nothing is known about the subject (then only subject, as_of and watermark come back) */
+  found?: false;
 };
+/** `contextBrief`: `ConciseContext` with relations as {relation: [subjects]}, an incoming one written `<-relation`. */
+export type BriefContext = Omit<ConciseContext, "relations"> & { relations: Record<string, string[]> };
 export type Related = {
   relation: string;
   direction: "in" | "out" | "both";
@@ -121,14 +137,16 @@ export type SearchOptions<S extends string = string> = {
   /** one kind, or several: the listing covers them all, a semantic ranking only them, perKind the best of each */
   kind?: string | string[];
   rule?: string;
+  /** omitted: the whole listing (sent as 0, no cap); a semantic ranking still returns its first 10 */
   limit?: number;
   after?: string;
   mode?: "text" | "semantic";
   minScore?: number;
   relatedTo?: S;
   via?: string;
-  /** "concise": each result carries its current facts as {predicate: value}; "full": as facts (searchKeys for keys only) */
-  detail?: "entity" | "concise" | "full";
+  /** "concise": each result carries its current facts as {predicate: value}; "brief": the same, leaner; "full": as facts,
+   * and fact hits as whole facts (lean otherwise). searchKeys for keys only. */
+  detail?: "entity" | "concise" | "brief" | "full";
   /** 1: each result carries its neighbours */
   depth?: 0 | 1;
   /** the best n of every kind instead of one ranking: with relatedTo and mode "semantic", the context for a task */
@@ -180,6 +198,14 @@ export class KeelError extends Error {
 }
 
 const iso = (d: Date | string): string => (d instanceof Date ? d.toISOString() : d);
+
+/** A list as its type declares it: without the `{more}` (what a cap cut) or `{note}` entries the server may put first. */
+const items = <T>(list: T[]): T[] => {
+  const marker = (x: unknown) => typeof x === "object" && x !== null && !Array.isArray(x) && Object.keys(x).length === 1 && ("more" in x || "note" in x);
+  let i = 0;
+  while (i < list.length && marker(list[i])) i++;
+  return i ? list.slice(i) : list;
+};
 
 export type EnvelopeArgs = {
   type: string;
@@ -257,7 +283,12 @@ export class Client<S extends string = string> {
     return this.post("/v1/context", this.contextBody(subjects, asOf, depth, opts, "concise"));
   }
 
-  private contextBody(subject: S | S[], asOf: Date | string | undefined, depth: number, opts: ContextOptions, detail: string) {
+  /** `contextConcise` with relations as {relation: [subjects]}: the cheapest answer, what the HTTP API gives an agent by default. */
+  contextBrief(subject: S, asOf?: Date | string, depth = 0, opts: ContextOptions = {}): Promise<BriefContext> {
+    return this.post("/v1/context", this.contextBody(subject, asOf, depth, opts, "brief"));
+  }
+
+  private contextBody(subject: S | S[], asOf: Date | string | undefined, depth: number, opts: ContextOptions, detail: "full" | "concise" | "brief") {
     return {
       subject,
       as_of: asOf ? iso(asOf) : undefined,
@@ -270,7 +301,8 @@ export class Client<S extends string = string> {
     };
   }
 
-  /** Facts over time, oldest first, closed ones included. `subject: null` with `changedSince` lists the tenant's changes. */
+  /** Facts over time, oldest first, closed ones included. `subject: null` with `changedSince` lists the tenant's changes.
+   * Every fact unless `limit` (then the most recent n); `detail: "concise"` returns lean facts instead of `Fact`s. */
   history(
     subject: S | null,
     f: {
@@ -282,9 +314,10 @@ export class Client<S extends string = string> {
       task?: string;
       changedSince?: Date | string;
       limit?: number;
+      detail?: "full" | "concise";
     } = {},
   ): Promise<Fact[]> {
-    return this.post("/v1/history", {
+    return this.post<Fact[]>("/v1/history", {
       subject,
       since: f.since ? iso(f.since) : undefined,
       until: f.until ? iso(f.until) : undefined,
@@ -293,33 +326,34 @@ export class Client<S extends string = string> {
       as_known_at: f.asKnownAt ? iso(f.asKnownAt) : undefined,
       task: f.task,
       changed_since: f.changedSince ? iso(f.changedSince) : undefined,
-      limit: f.limit,
-    });
+      limit: f.limit ?? 0,
+      detail: f.detail ?? "full",
+    }).then(items);
   }
 
   /** Text search; with `kind` or `rule`, the entities of a kind or where a rule fires now, paged by `limit`/`after`.
    * `detail: "concise"` puts each result's facts in it, `depth: 1` its neighbours, `perKind` the best of every kind. */
   search(text = "", opts: SearchOptions<S> = {}): Promise<Array<Entity | Fact>> {
-    return this.post("/v1/search", this.searchBody(text, opts));
+    return this.post<Array<Entity | Fact>>("/v1/search", this.searchBody(text, opts)).then(items);
   }
 
   /** `search` that returns only the keys (`detail: "key"`), each once: the cheapest listing, e.g. every table of a model. */
   searchKeys(text = "", opts: Omit<SearchOptions<S>, "detail" | "depth"> = {}): Promise<S[]> {
-    return this.post("/v1/search", { ...this.searchBody(text, opts), detail: "key" });
+    return this.post<S[]>("/v1/search", { ...this.searchBody(text, opts), detail: "key" }).then(items);
   }
 
   /** `search` for many texts in one call: one result list per text, in order. */
   searches(texts: string[], opts: SearchOptions<S> = {}): Promise<Array<Array<Entity | Fact>>> {
-    return this.post("/v1/search", this.searchBody(texts, opts));
+    return this.post<Array<Array<Entity | Fact>>>("/v1/search", this.searchBody(texts, opts)).then((lists) => lists.map(items));
   }
 
   private searchBody(text: string | string[], opts: SearchOptions<S>) {
     const { minScore, relatedTo, perKind, asOf, ...rest } = opts;
-    return { text, ...rest, min_score: minScore, related_to: relatedTo, per_kind: perKind, as_of: asOf ? iso(asOf) : undefined };
+    return { text, ...rest, limit: rest.limit ?? 0, min_score: minScore, related_to: relatedTo, per_kind: perKind, as_of: asOf ? iso(asOf) : undefined };
   }
 
   /** Write earned memory. The server enforces the scope policy and the agent registry. `task` ties it to a job;
-   * `key` makes a retried write return the first one. */
+   * `key` makes a retried write return the first one. Returns the whole fact; `detail: "ack"` only a short receipt. */
   annotate(a: {
     subject: S;
     predicate: string;
@@ -331,14 +365,15 @@ export class Client<S extends string = string> {
     key?: string;
     /** "proposed" waits for a decision; "rejected" settles a proposal. */
     status?: "proposed" | "rejected";
+    detail?: "full" | "ack";
   }): Promise<Fact> {
-    return this.post("/v1/annotate", a);
+    return this.post("/v1/annotate", { ...a, detail: a.detail ?? "full" });
   }
 
   /** Neighbours by relation type (one or a list), now or at `asOf`. `depth` 2 or 3 walks further through those
-   * relations; each entry then carries `hops` and `via`. */
-  related(subject: S, relation?: string | string[], asOf?: Date | string, depth = 1): Promise<Related[]> {
-    return this.post("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined, depth });
+   * relations; each entry then carries `hops` and `via`. Every neighbour unless `limit` (then the nearest, most recent n). */
+  related(subject: S, relation?: string | string[], asOf?: Date | string, depth = 1, limit?: number): Promise<Related[]> {
+    return this.post<Related[]>("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined, depth, limit: limit ?? 0 }).then(items);
   }
 
   /** Ingest one envelope or a batch. Retrying on a network error is safe: the server skips ids it already applied, and

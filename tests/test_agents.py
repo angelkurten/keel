@@ -101,7 +101,7 @@ def test_mcp_server_is_bound_to_one_agent(tmp_path):
             await session.initialize()
             assert len((await session.list_tools()).tools) == 5
             res = await session.call_tool("context", {"subject": "unit:MXK-4821"})
-            assert {r["rel"] for r in json.loads(res.content[0].text)["relations"]} == {"mounted_on", "has_inspection"}
+            assert set(json.loads(res.content[0].text)["relations"]) == {"<-mounted_on", "has_inspection"}  # brief: grouped by relation
             res = await session.call_tool("context", {"subject": "ticket:TK-3608"})
             is_error = getattr(res, "is_error", None) or getattr(res, "isError", None)  # mcp 2.x / 1.x
             assert is_error and "may not read kind 'ticket'" in res.content[0].text

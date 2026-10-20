@@ -73,6 +73,7 @@ type RelationRow struct {
 
 type Context struct {
 	Subject            string                    `json:"subject"`
+	Found              *bool                     `json:"found,omitempty"` // false: nothing is known about the subject (only Subject, AsOf, Watermark set)
 	Entity             *Entity                   `json:"entity"`
 	Facts              []Fact                    `json:"facts"`
 	Relations          []RelationRow             `json:"relations"`
@@ -85,6 +86,16 @@ type Context struct {
 	Conflicts          map[string][]any          `json:"conflicts,omitempty"`
 	Neighbors          []Neighbor                `json:"neighbors,omitempty"` // with ContextDepth(..., 1)
 	NeighborsTruncated bool                      `json:"neighbors_truncated,omitempty"`
+	RelationsMore      []CapNote                 `json:"relations_more,omitempty"` // relations left out of Relations (the most recent kept)
+	NeighborsMore      []CapNote                 `json:"neighbors_more,omitempty"` // neighbours left out per relation (still in Relations)
+}
+
+// CapNote says what a cap cut: per relation and direction, how many are shown of how many.
+type CapNote struct {
+	Relation  string `json:"relation"`
+	Direction string `json:"direction"`
+	Shown     int    `json:"shown"`
+	Total     int    `json:"total"`
 }
 
 // Neighbor is one linked subject with its open facts and rule evaluation (ContextDepth).
@@ -193,6 +204,33 @@ func (c *Client) post(ctx context.Context, path string, body any, out any) error
 	return json.Unmarshal(data, out)
 }
 
+// postList decodes a list as its type declares it: without the {"more"} (what a cap cut) or {"note"} entries the
+// server may put first.
+func postList[T any](c *Client, ctx context.Context, path string, body any) ([]T, error) {
+	var raw []json.RawMessage
+	if err := c.post(ctx, path, body, &raw); err != nil {
+		return nil, err
+	}
+	return items[T](raw)
+}
+
+func items[T any](raw []json.RawMessage) ([]T, error) {
+	for len(raw) > 0 {
+		var m map[string]json.RawMessage
+		if json.Unmarshal(raw[0], &m) != nil || len(m) != 1 || (m["more"] == nil && m["note"] == nil) {
+			break
+		}
+		raw = raw[1:]
+	}
+	out := make([]T, len(raw))
+	for i, r := range raw {
+		if err := json.Unmarshal(r, &out[i]); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
 func iso(t *time.Time) *string {
 	if t == nil {
 		return nil
@@ -221,7 +259,7 @@ type ContextOptions struct {
 }
 
 func (o ContextOptions) body(subject any, detail string) map[string]any {
-	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt), "detail": detail}
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "depth": o.Depth, "as_known_at": iso(o.AsKnownAt), "detail": detail} // "full", "concise" or "brief"
 	if o.Task != "" {
 		body["task"] = o.Task
 	}
@@ -256,18 +294,29 @@ func (c *Client) ContextConcise(ctx context.Context, subject string, o ContextOp
 	return out, err
 }
 
+// ContextBrief is ContextConcise with relations as {relation: [subjects]} (an incoming one as "<-relation"): the
+// cheapest answer, what the HTTP API gives an agent by default.
+func (c *Client) ContextBrief(ctx context.Context, subject string, o ContextOptions) (map[string]any, error) {
+	var out map[string]any
+	err := c.post(ctx, "/v1/context", o.body(subject, "brief"), &out)
+	return out, err
+}
+
 type HistoryFilter struct {
 	Since, Until            *time.Time
 	Predicate               string
 	Scope                   string
 	AsKnownAt, ChangedSince *time.Time // ChangedSince with an empty subject: the tenant's changes since a watermark
 	Task                    string
-	Limit                   int // the most recent n
+	Limit                   int    // the most recent n; 0 = every fact
+	Detail                  string // "full" (default) or "concise": lean facts, without tenant, subject, recorded_at, closed_at and nulls
 }
 
 func (c *Client) History(ctx context.Context, subject string, f HistoryFilter) ([]Fact, error) {
-	var out []Fact
-	body := map[string]any{"since": iso(f.Since), "until": iso(f.Until), "as_known_at": iso(f.AsKnownAt), "changed_since": iso(f.ChangedSince)}
+	if f.Detail == "" {
+		f.Detail = "full"
+	}
+	body := map[string]any{"since": iso(f.Since), "until": iso(f.Until), "as_known_at": iso(f.AsKnownAt), "changed_since": iso(f.ChangedSince), "limit": f.Limit, "detail": f.Detail}
 	if subject != "" {
 		body["subject"] = subject
 	}
@@ -280,11 +329,7 @@ func (c *Client) History(ctx context.Context, subject string, f HistoryFilter) (
 	if f.Task != "" {
 		body["task"] = f.Task
 	}
-	if f.Limit > 0 {
-		body["limit"] = f.Limit
-	}
-	err := c.post(ctx, "/v1/history", body, &out)
-	return out, err
+	return postList[Fact](c, ctx, "/v1/history", body)
 }
 
 func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, error) {
@@ -294,12 +339,12 @@ func (c *Client) Search(ctx context.Context, text string) ([]map[string]any, err
 // SearchOptions: with Kind or Rule it lists entities of a kind, or where a rule fires now, paged by Limit/After.
 type SearchOptions struct {
 	Text, Kind, Rule, After string
-	Kinds                   []string // several kinds at once, instead of Kind: listed together, ranked only among them, PerKind of each
-	Limit                   int
+	Kinds                   []string       // several kinds at once, instead of Kind: listed together, ranked only among them, PerKind of each
+	Limit                   int            // 0: the whole listing (no cap); a semantic ranking still returns its first 10
 	Mode                    string         // "semantic": ranked by meaning, each result with a "score"
 	MinScore                float64        // semantic: drop results whose cosine is below this; 0 = no floor
 	RelatedTo, Via          string         // only RelatedTo's neighbours (through Via when set)
-	Detail                  string         // "concise" (SearchKeys for "key"): each result carries its current facts as {predicate: value}; "full": as facts
+	Detail                  string         // "concise" or "brief" (SearchKeys for "key"): each result carries its current facts as {predicate: value}; "full": as facts, and fact hits whole (lean otherwise)
 	Depth                   int            // 1: each result carries its neighbours
 	PerKind                 int            // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
 	Exclude                 []string       // predicates left out of what is returned
@@ -308,13 +353,13 @@ type SearchOptions struct {
 }
 
 func (o SearchOptions) body(text any) map[string]any {
-	body := map[string]any{"text": text}
+	body := map[string]any{"text": text, "limit": o.Limit}
 	for k, v := range map[string]string{"kind": o.Kind, "rule": o.Rule, "after": o.After, "mode": o.Mode, "related_to": o.RelatedTo, "via": o.Via, "detail": o.Detail} {
 		if v != "" {
 			body[k] = v
 		}
 	}
-	for k, v := range map[string]int{"limit": o.Limit, "depth": o.Depth, "per_kind": o.PerKind} {
+	for k, v := range map[string]int{"depth": o.Depth, "per_kind": o.PerKind} {
 		if v > 0 {
 			body[k] = v
 		}
@@ -338,25 +383,30 @@ func (o SearchOptions) body(text any) map[string]any {
 }
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
-	var out []map[string]any
-	err := c.post(ctx, "/v1/search", o.body(o.Text), &out)
-	return out, err
+	return postList[map[string]any](c, ctx, "/v1/search", o.body(o.Text))
 }
 
 // SearchKeys is SearchWith returning only the keys (detail "key"), each once: the cheapest listing.
 // o.Detail and o.Depth are ignored.
 func (c *Client) SearchKeys(ctx context.Context, o SearchOptions) ([]string, error) {
 	o.Detail, o.Depth = "key", 0
-	var out []string
-	err := c.post(ctx, "/v1/search", o.body(o.Text), &out)
-	return out, err
+	return postList[string](c, ctx, "/v1/search", o.body(o.Text))
 }
 
 // Searches runs one search per text in one call (o.Text is ignored); one result list per text, in order.
 func (c *Client) Searches(ctx context.Context, texts []string, o SearchOptions) ([][]map[string]any, error) {
-	var out [][]map[string]any
-	err := c.post(ctx, "/v1/search", o.body(texts), &out)
-	return out, err
+	var raw [][]json.RawMessage
+	if err := c.post(ctx, "/v1/search", o.body(texts), &raw); err != nil {
+		return nil, err
+	}
+	out := make([][]map[string]any, len(raw))
+	for i, list := range raw {
+		var err error
+		if out[i], err = items[map[string]any](list); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 type Annotation struct {
@@ -369,9 +419,13 @@ type Annotation struct {
 	Task      string `json:"task,omitempty"`
 	Key       string `json:"key,omitempty"`    // a retried write with the same key returns the first fact
 	Status    string `json:"status,omitempty"` // "proposed" or "rejected"; empty = accepted
+	Detail    string `json:"detail,omitempty"` // "full" (default): the whole fact; "ack": a short receipt
 }
 
 func (c *Client) Annotate(ctx context.Context, a Annotation) (Fact, error) {
+	if a.Detail == "" {
+		a.Detail = "full"
+	}
 	var out Fact
 	err := c.post(ctx, "/v1/annotate", a, &out)
 	return out, err
@@ -390,17 +444,18 @@ func (c *Client) RelatedAt(ctx context.Context, subject, relation string, asOf *
 	return c.RelatedWith(ctx, subject, o)
 }
 
-// RelatedOptions: Relations filters by type (any of them); Depth 2 or 3 walks further through them.
+// RelatedOptions: Relations filters by type (any of them); Depth 2 or 3 walks further through them; Limit keeps the
+// nearest, most recent n (0 = every neighbour).
 type RelatedOptions struct {
 	Relations []string
 	AsOf      *time.Time
 	Depth     int
+	Limit     int
 }
 
 // RelatedWith walks up to Depth hops; with Depth above 1 every entry carries Hops and Via.
 func (c *Client) RelatedWith(ctx context.Context, subject string, o RelatedOptions) ([]Related, error) {
-	var out []Related
-	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf)}
+	body := map[string]any{"subject": subject, "as_of": iso(o.AsOf), "limit": o.Limit}
 	if len(o.Relations) == 1 {
 		body["relation"] = o.Relations[0]
 	} else if len(o.Relations) > 1 {
@@ -409,8 +464,7 @@ func (c *Client) RelatedWith(ctx context.Context, subject string, o RelatedOptio
 	if o.Depth > 1 {
 		body["depth"] = o.Depth
 	}
-	err := c.post(ctx, "/v1/related", body, &out)
-	return out, err
+	return postList[Related](c, ctx, "/v1/related", body)
 }
 
 // Events ingests a batch. At-least-once is yours: retry on network errors.

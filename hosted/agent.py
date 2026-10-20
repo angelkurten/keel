@@ -82,7 +82,9 @@ def run(chat: Chat, call_tool: Callable[[str, dict[str, Any]], Any], system: str
             except Exception as exc:  # noqa: BLE001 - the model reads the error and may retry
                 args = args if "args" in locals() and isinstance(args, dict) else {}
                 result, ok = {"error": str(exc)}, False
-            text = json.dumps(result, default=str)[:RESULT_CHARS]
+            text = json.dumps(result, default=str, ensure_ascii=False, separators=(",", ":"))  # compact, as over MCP
+            if len(text) > RESULT_CHARS:  # still valid JSON, and the model learns why and what to ask instead
+                text = json.dumps({"truncated": f"{len(text)} characters; ask for less (detail, limit, relation, a narrower query)", "head": text[:RESULT_CHARS]}, ensure_ascii=False)
             new.append({"role": "tool", "tool_call_id": call["id"], "content": text})
             trace.append({"tool": name, "arguments": args, "ok": ok, "result": text[:2000]})
     else:

@@ -28,4 +28,6 @@ ctx.evaluation.tire_critical; // true: the rule lives in the cartridge, the verd
 
 Besides `baseUrl`, `tenant`, `secret` and `agent`, `client()` takes `traceparent` (sent as the W3C header on every call; Keel stores it with every write) and `fetch`, your own fetch implementation. There is no built-in timeout: pass a `fetch` that sets an `AbortSignal` if you need one. A non-2xx answer throws `KeelError` with `status` and `detail`.
 
+The client returns the shapes its types declare, whatever the HTTP API's agent-oriented defaults: `context`, `history` and `annotate` ask for `detail: "full"` (`contextConcise`/`contextBrief`, `history({ detail: "concise" })` and `annotate({ detail: "ack" })` ask for less), and `history`, `search` and `related` return every entry unless you pass `limit` (`related(subject, relation, asOf, depth, limit)`). A subject nothing is known about comes back as `{ subject, found: false, as_of, watermark }`.
+
 The generated file is the only thing that knows your cartridge; regenerate it when the cartridge changes (`--check` in CI tells you when). Docs: https://angelkurten.github.io/keel/

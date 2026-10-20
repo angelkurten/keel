@@ -136,8 +136,10 @@ def test_incremental_indexing_follows_the_watermark(fleet, index):
 
 def test_semantic_search_needs_configuration_and_text():
     c, s = load_cartridge(FLEET), MemoryStore()
-    with pytest.raises(ValueError, match="not configured"):
-        Tools(c, s, TENANT).search("x", mode="semantic")
+    assert Tools(c, s, TENANT).search("x", mode="semantic") == []
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS))
+    note, *hits = Tools(c, s, TENANT).search("crack damage on the truck", mode="semantic")  # no embedder: by words, and it says so
+    assert "not configured" in note["note"] and hits[0]["key"] == "inspection:INS-4821-10"
     with pytest.raises(ValueError, match="needs text"):
         Tools(c, s, TENANT, embedder=HashEmbedder(), index=MemoryIndex()).search("", mode="semantic")
     with pytest.raises(ValueError):

@@ -101,19 +101,21 @@ def test_mcp_server_exposes_exactly_the_five_tools():
             assert names == {"context", "history", "search", "annotate", "related"}
             read_only = {t.name for t in tools if (t.annotations or None) and t.annotations.model_dump(by_alias=True).get("readOnlyHint")}
             assert read_only == names - {"annotate"}  # clients that gate on annotations run reads unprompted
-            res = await session.call_tool("context", {"subject": "unit:MXK-4821"})
+            res = await session.call_tool("context", {"subject": "unit:MXK-4821", "detail": "full"})
             ctx = json.loads(res.content[0].text)
             assert ctx["subject"] == "unit:MXK-4821" and ctx["relations"] and "fuel_anomaly" in ctx["rules"]
-            res = await session.call_tool("history", {"subject": "tire:T-9001", "since": "2026-10-01T00:00:00+00:00"})
-            facts = [json.loads(c.text) for c in res.content]  # a list return is one content item per element
+            res = await session.call_tool("history", {"subject": "tire:T-9001", "since": "2026-10-01T00:00:00+00:00", "detail": "full"})
+            assert len(res.content) == 1 and " " not in res.content[0].text[:40]  # one block of compact JSON, not one per item
+            facts = json.loads(res.content[0].text)
             assert facts and all(f["subject"] == "tire:T-9001" for f in facts)
+            assert res.structured_content == {"result": facts}  # the same data for programmatic clients
             tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
-            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "replace"}, meta={"traceparent": tp})
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "replace", "detail": "full"}, meta={"traceparent": tp})
             assert json.loads(res.content[0].text)["trace"] == tp  # MCP carries W3C trace context in _meta
             value = {"priority": "high", "reasons": ["tire_critical"], "depth_mm": 2.6}
-            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "triage", "value": value})
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "triage", "value": value, "detail": "full"})
             assert json.loads(res.content[0].text)["value"] == value  # any JSON, as over HTTP and in Python
-            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "depth_seen", "value": 2.6})
+            res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "depth_seen", "value": 2.6, "detail": "full"})
             assert json.loads(res.content[0].text)["value"] == 2.6
 
     anyio.run(run)
@@ -511,3 +513,16 @@ def gone(event, store):
     finally:
         c.execute(f"SELECT pg_drop_replication_slot('{slot}') WHERE EXISTS (SELECT 1 FROM pg_replication_slots WHERE slot_name = '{slot}')")
         c.execute(f"DROP PUBLICATION IF EXISTS {slot}")
+
+
+def test_mcp_text_render_is_lines_with_the_json_beside_it():
+    pytest.importorskip("mcp")
+    from keel.mcp_server import as_text
+
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(FLEET_EVENTS))
+    t = Tools(c, s, TENANT)
+    text = as_text(t.context("unit:MXK-4821", depth=1, detail="brief"))
+    assert "rule unit_grounded: true" in text and "neighbor <-mounted_on tire:T-9001: depth_mm=2.6; tire_critical=true" in text
+    lines = as_text(t.history("tire:T-9001", detail="concise")).splitlines()
+    assert lines[-1].startswith("2026-10-03T08:00:00+00:00 -> now  depth_mm = 2.6  [tires.measurements;")

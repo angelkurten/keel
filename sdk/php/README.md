@@ -21,4 +21,6 @@ The generated `Keel::client()` takes base URL, tenant, secret and agent. For a t
 $keel = new \Keel\Sdk\Client('http://keel.internal:8000', 'acme-logistics', getenv('KEEL_SECRET'), timeout: 10, traceparent: $traceparent);
 ```
 
+`context()`, `history()` and `annotate()` ask for detail `'full'` (`$detail` takes `'concise'` or `'brief'` for context, `['detail' => 'concise']` for history, `detail: 'ack'` for annotate), and `history()`, `search()` and `related()` return every entry unless you pass a limit (`['limit' => n]`, or `related()`'s `$limit`). A subject nothing is known about comes back as `['subject' => ..., 'found' => false, 'as_of' => ..., 'watermark' => ...]`.
+
 A refusal from the server is a `Keel\Sdk\KeelError` with `$status` and `$detail`. Payload classes are readonly value objects with `toArray()`; enums in the cartridge become PHP enums.

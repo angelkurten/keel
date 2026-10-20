@@ -1,0 +1,169 @@
+{
+ "definitions": {
+  "tokens": 1592,
+  "tokens_without_output_schema": 1333
+ },
+ "probes": {
+  "fleet.context": {
+   "tokens": 1245,
+   "structured_tokens": 1089,
+   "chars": 3512,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\n  \"subject\": \"unit:MXK-4821\",\n  \"entity\": {\n    \"tenant\": \"acme-logistics\",\n    \"kind\": \"unit\",\n    \"id\": \"MXK-4821\",\n    \"ref\": \"fleet.vehicles#MXK-4821\",\n    \"key\": \"unit:MXK-4821\",\n    \"attrs\": {\n      \"plate\": \"MXK-4821\",\n      \"model\": \"Freightliner Cascadia\"\n    }\n  },\n  \"facts\": [\n    {\n   "
+  },
+  "fleet.context.depth1": {
+   "tokens": 3398,
+   "structured_tokens": 2927,
+   "chars": 10851,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\n  \"subject\": \"unit:MXK-4821\",\n  \"entity\": {\n    \"tenant\": \"acme-logistics\",\n    \"kind\": \"unit\",\n    \"id\": \"MXK-4821\",\n    \"ref\": \"fleet.vehicles#MXK-4821\",\n    \"key\": \"unit:MXK-4821\",\n    \"attrs\": {\n      \"plate\": \"MXK-4821\",\n      \"model\": \"Freightliner Cascadia\"\n    }\n  },\n  \"facts\": [\n    {\n   "
+  },
+  "fleet.history.tire": {
+   "tokens": 424,
+   "structured_tokens": 388,
+   "chars": 1038,
+   "blocks": 2,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"acme-logistics\",\n  \"subject\": \"tire:T-9001\",\n  \"predicate\": \"depth_mm\",\n  \"value\": 5.2,\n  \"valid_from\": \"2026-09-10T08:00:00+00:00\",\n  \"valid_to\": \"2026-10-03T08:00:00+00:00\",\n  \"recorded_at\": \"2026-10-20T18:07:59.330841+00:00\",\n  \"source\": \"tires.measurements\",\n  \"scope\": \"tenant\",\n "
+  },
+  "fleet.related": {
+   "tokens": 308,
+   "structured_tokens": 276,
+   "chars": 753,
+   "blocks": 6,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"relation\": \"assigned_to\",\n  \"direction\": \"in\",\n  \"subject\": \"driver:D-118\",\n  \"since\": \"2026-09-01T09:05:00+00:00\"\n}\n{\n  \"relation\": \"covers_unit\",\n  \"direction\": \"in\",\n  \"subject\": \"document:POL-7731\",\n  \"since\": \"2026-09-01T10:00:00+00:00\"\n}\n{\n  \"relation\": \"mounted_on\",\n  \"direction\": \"in\",\n"
+  },
+  "fleet.search.kind": {
+   "tokens": 63,
+   "structured_tokens": 55,
+   "chars": 146,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"acme-logistics\",\n  \"kind\": \"tire\",\n  \"id\": \"T-9001\",\n  \"ref\": null,\n  \"key\": \"tire:T-9001\",\n  \"attrs\": {\n    \"position\": \"P3\"\n  }\n}"
+  },
+  "fleet.annotate": {
+   "tokens": 224,
+   "structured_tokens": 204,
+   "chars": 548,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"acme-logistics\",\n  \"subject\": \"tire:T-9001\",\n  \"predicate\": \"assessment\",\n  \"value\": \"critical: 2.6 mm < 3 mm\",\n  \"valid_from\": \"2026-10-20T18:07:59.419561+00:00\",\n  \"valid_to\": null,\n  \"recorded_at\": \"2026-10-20T18:07:59.419585+00:00\",\n  \"source\": \"annotate:agent:eval\",\n  \"scope\": \"t"
+  },
+  "relay.context.acme": {
+   "tokens": 4244,
+   "structured_tokens": 3712,
+   "chars": 12045,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\n  \"subject\": \"account:acme\",\n  \"entity\": {\n    \"tenant\": \"acme\",\n    \"kind\": \"account\",\n    \"id\": \"acme\",\n    \"ref\": \"relay.core#acme\",\n    \"key\": \"account:acme\",\n    \"attrs\": {\n      \"name\": \"Acme Corp\"\n    }\n  },\n  \"facts\": [\n    {\n      \"tenant\": \"acme\",\n      \"subject\": \"account:acme\",\n      \""
+  },
+  "relay.context.wayne.depth1": {
+   "tokens": 15669,
+   "structured_tokens": 13433,
+   "chars": 53187,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\n  \"subject\": \"account:wayne\",\n  \"entity\": {\n    \"tenant\": \"wayne\",\n    \"kind\": \"account\",\n    \"id\": \"wayne\",\n    \"ref\": \"relay.core#wayne\",\n    \"key\": \"account:wayne\",\n    \"attrs\": {\n      \"name\": \"Wayne Enterprises\"\n    }\n  },\n  \"facts\": [\n    {\n      \"tenant\": \"wayne\",\n      \"subject\": \"account:"
+  },
+  "relay.search.sla": {
+   "tokens": 78,
+   "structured_tokens": 69,
+   "chars": 208,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"stark\",\n  \"kind\": \"ticket\",\n  \"id\": \"T-3112\",\n  \"ref\": \"relay.support#T-3112\",\n  \"key\": \"ticket:T-3112\",\n  \"attrs\": {\n    \"title\": \"SSO login loop for all users\",\n    \"category\": \"access\"\n  }\n}"
+  },
+  "relay.search.text": {
+   "tokens": 862,
+   "structured_tokens": 762,
+   "chars": 2406,
+   "blocks": 6,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"initech\",\n  \"kind\": \"integration\",\n  \"id\": \"I-initech-sf\",\n  \"ref\": \"relay.integrations#I-initech-sf\",\n  \"key\": \"integration:I-initech-sf\",\n  \"attrs\": {\n    \"app\": \"Salesforce\"\n  },\n  \"matched\": \"app\",\n  \"snippet\": \"Salesforce\"\n}\n{\n  \"tenant\": \"initech\",\n  \"kind\": \"ticket\",\n  \"id\": \"T"
+  },
+  "relay.search.kind": {
+   "tokens": 6050,
+   "structured_tokens": 5093,
+   "chars": 16390,
+   "blocks": 80,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"stark\",\n  \"kind\": \"ticket\",\n  \"id\": \"T-3105\",\n  \"ref\": \"relay.support#T-3105\",\n  \"key\": \"ticket:T-3105\",\n  \"attrs\": {\n    \"title\": \"Add 20 seats\",\n    \"category\": \"billing\"\n  }\n}\n{\n  \"tenant\": \"stark\",\n  \"kind\": \"ticket\",\n  \"id\": \"T-3112\",\n  \"ref\": \"relay.support#T-3112\",\n  \"key\": \"ti"
+  },
+  "relay.history.ticket": {
+   "tokens": 1604,
+   "structured_tokens": 1448,
+   "chars": 4170,
+   "blocks": 8,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"initech\",\n  \"subject\": \"ticket:T-2201\",\n  \"predicate\": \"status\",\n  \"value\": \"open\",\n  \"valid_from\": \"2026-09-28T09:00:00+00:00\",\n  \"valid_to\": \"2026-10-02T11:30:00+00:00\",\n  \"recorded_at\": \"2026-10-20T18:07:59.443624+00:00\",\n  \"source\": \"relay.support\",\n  \"scope\": \"tenant\",\n  \"correct"
+  },
+  "relay.history.plan": {
+   "tokens": 381,
+   "structured_tokens": 345,
+   "chars": 976,
+   "blocks": 2,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"tenant\": \"globex\",\n  \"subject\": \"account:globex\",\n  \"predicate\": \"plan\",\n  \"value\": \"pro\",\n  \"valid_from\": \"2026-04-08T09:00:00+00:00\",\n  \"valid_to\": \"2026-10-10T15:00:00+00:00\",\n  \"recorded_at\": \"2026-10-20T18:07:59.425012+00:00\",\n  \"source\": \"relay.core\",\n  \"scope\": \"tenant\",\n  \"corrected_by\""
+  },
+  "relay.related.stark": {
+   "tokens": 4997,
+   "structured_tokens": 4407,
+   "chars": 12338,
+   "blocks": 99,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"relation\": \"has_invoice\",\n  \"direction\": \"out\",\n  \"subject\": \"invoice:INV-stark-2026-04\",\n  \"since\": \"2026-04-01T06:00:00+00:00\"\n}\n{\n  \"relation\": \"has_contact\",\n  \"direction\": \"out\",\n  \"subject\": \"contact:C-stark-1\",\n  \"since\": \"2026-04-01T13:00:00+00:00\"\n}\n{\n  \"relation\": \"has_ticket\",\n  \"dir"
+  },
+  "relay.related.wayne.depth2": {
+   "tokens": 5671,
+   "structured_tokens": 5003,
+   "chars": 13764,
+   "blocks": 84,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\n  \"relation\": \"has_contact\",\n  \"direction\": \"out\",\n  \"subject\": \"contact:C-wayne-1\",\n  \"since\": \"2026-04-22T10:00:00+00:00\",\n  \"hops\": 1,\n  \"via\": \"account:wayne\"\n}\n{\n  \"relation\": \"has_contact\",\n  \"direction\": \"out\",\n  \"subject\": \"contact:C-wayne-12\",\n  \"since\": \"2026-04-29T09:00:00+00:00\",\n  \"ho"
+  },
+  "relay.unknown.kind": {
+   "tokens": 0,
+   "structured_tokens": 5,
+   "chars": 0,
+   "blocks": 0,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": ""
+  }
+ },
+ "tokenizer": "o200k_base"
+}

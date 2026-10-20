@@ -1,0 +1,3009 @@
+{
+ "models": [
+  "anthropic/claude-sonnet-5.5",
+  "deepseek/deepseek-v4.1-flash"
+ ],
+ "judge": "anthropic/claude-sonnet-5.5",
+ "reps": 3,
+ "runs": [
+  {
+   "id": "overcharge",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says these are two separate charges rather than a duplicate, and it identifies the regular $1,200 Pro invoice and the prorated $506.67 upgrade invoice INV-acme-2026-09-U for Sep 12–30 after the Pro to Enterprise change on Sep 12. Its added speculation about a missing proration credit does not contradict the expected explanation.",
+   "answer": "Acme's data shows two separate September charges, not a duplicate of the same charge. I can't tell from the data whether the second one is correct.\n\n- **`invoice:INV-acme-2026-09`**: the regular monthly invoice for \"Pro plan, 40 seats, September 2026\". It is for $1,200.00 and was billed 2026-09-01. It was marked paid at 07:00 that day.\n- **`invoice:INV-acme-2026-09-U`**: an upgrade invoice for \"Upgrade Pro to Enterprise, 40 seats, Sep 12-30 prorated\". It is for $506.67 and was billed 2026-09-12 at 14:05. It was marked paid on 2026-09-13.\n\nThe trigger was the plan change on `account:acme`. It moved from Pro to Enterprise on 2026-09-12 at 14:00, with seats unchanged at 40 (evidence relay-01789). That change generated the prorated invoice.\n\n**Possible overcharge:** The full-month Pro invoice was not reduced. Acme paid $1,200 for all of September on Pro and then $506.67 for Enterprise from Sep 12 to 30. There is no credit for the unused Pro days in the data. That overlap is probably what looks like a double charge. Billing should check whether a proration credit was due.\n\n**Refunds:** Neither invoice is refundable now (`refund_eligible` is false for both). The 14-day window from payment has passed. It ended around Sep 15 for the monthly invoice and Sep 27 for the upgrade invoice. Any correction would need to be a manual credit or an exception.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Acme",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:acme",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 332,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:acme",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 454,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-acme-2026-09",
+       "invoice:INV-acme-2026-09-U"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1120,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:acme",
+      "since": "2026-09-01"
+     },
+     "tokens": 294,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2244,
+   "turns": 4,
+   "tokens": {
+    "input": 16525,
+    "output": 1098
+   },
+   "cost_usd": 0.04403,
+   "ms": 19227
+  },
+  {
+   "id": "overcharge",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer identifies two distinct invoices (regular $1,200 Pro and prorated $506.67 upgrade INV-acme-2026-09-U for Sep 12–30) triggered by the Sep 12 Pro-to-Enterprise upgrade, concluding it is not a duplicate; the extra hedge about possible overlap doesn't contradict the expected facts.",
+   "answer": "Acme's two September charges look like two different invoices, not a duplicate payment. The data doesn't show whether the 506.67 is the full Enterprise price for Sep 12–30 or only the difference from Pro.\n\n| Invoice | Amount | What it is | Status |\n|---|---|---|---|\n| `INV-acme-2026-09` | 1,200.00 | Regular monthly invoice: \"Pro plan, 40 seats, September 2026\", issued 2026-09-01 | Paid from 2026-09-01 07:00 |\n| `INV-acme-2026-09-U` | 506.67 | Prorated upgrade charge: \"Upgrade Pro to Enterprise, 40 seats, Sep 12-30\", issued 2026-09-12 14:05 | Paid from 2026-09-13 07:00 |\n\n- **Trigger:** On 2026-09-12 14:00 the account's plan changed from Pro to Enterprise (evidence `relay-01789`). Seats stayed at 40. That change generated the second, prorated invoice.\n- **Possible overlap:** The Pro invoice covered all of September, and the upgrade invoice covers Sep 12–30. If the 506.67 is the full Enterprise price for those days, Acme was billed for that period at both plans. If it is only the difference, the charges are correct. The data doesn't say which, so billing should check how the proration was calculated.\n- **Refunds:** Neither invoice is refundable under the 14-day rule (`refund_eligible` is false for both). The windows closed around 2026-09-15 and 2026-09-27. Any credit would need a manual decision.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Acme",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:acme",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1906,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:acme",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 454,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-acme-2026-09",
+       "invoice:INV-acme-2026-09-U"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1120,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:acme",
+      "since": "2026-09-01",
+      "until": "2026-10-01"
+     },
+     "tokens": 294,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 3818,
+   "turns": 4,
+   "tokens": {
+    "input": 21091,
+    "output": 1123
+   },
+   "cost_usd": 0.053412,
+   "ms": 19763
+  },
+  {
+   "id": "overcharge",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer states it was not a double charge, identifies the regular $1,200 Pro invoice and the separate prorated $506.67 upgrade invoice INV-acme-2026-09-U for Sep 12–30 triggered by the Pro-to-Enterprise change on Sep 12, matching the expected answer; the extra caveats are additional detail.",
+   "answer": "Acme wasn't charged twice for the same thing. September has two separate paid invoices, and the second is a prorated plan-upgrade charge.\n\n- **`invoice:INV-acme-2026-09`:** This is the regular September Pro plan charge for 40 seats. The amount is 1,200.00. It was issued 2026-09-01 and marked paid at 07:00 that day.\n- **`invoice:INV-acme-2026-09-U`:** This is an upgrade from Pro to Enterprise, 40 seats, prorated for Sep 12–30. The amount is 506.67. It was issued 2026-09-12 14:05 and marked paid on 2026-09-13.\n- **Plan change:** The account moved from Pro to Enterprise on 2026-09-12 14:00 (`relay-01789`). That is what triggered the second invoice.\n\nThe data doesn't show a duplicate charge or a failed payment. The Pro invoice still bills the full month at Pro pricing, and the upgrade invoice covers the Enterprise charge for the rest of the month. Whether that overlap is right is a question for billing. I can't tell from the data whether the 1,200 should have been credited against the upgrade.\n\nNeither invoice is refundable under the 14-day rule (`refund_eligible` is false for both). They were paid about 32 to 44 days ago.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Acme",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:acme",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 332,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:acme",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 454,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-acme-2026-09",
+       "invoice:INV-acme-2026-09-U"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1120,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:acme",
+      "since": "2026-09-01",
+      "until": "2026-09-30"
+     },
+     "tokens": 294,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2244,
+   "turns": 4,
+   "tokens": {
+    "input": 16551,
+    "output": 956
+   },
+   "cost_usd": 0.042662,
+   "ms": 17235
+  },
+  {
+   "id": "plan-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer states Globex was on the Pro plan on October 3 and notes the upgrade to Enterprise happened on October 10, matching the expected answer.",
+   "answer": "Globex was on the **Pro** plan when it reported the outage on October 3, 2026.\n\n- Ticket T-2101 (\"Workflows not running\") was opened on 2026-10-03 at 10:00 UTC. Its note says the cause was the INC-6 workflow engine outage.\n- The account's plan history shows Pro from 2026-04-08 to 2026-10-10 15:00 UTC (relay-00031).\n- Globex moved to Enterprise on 2026-10-10 at 15:00 UTC (relay-02136), which is after the report. That is its current plan.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Globex",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "outage",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 126,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:globex",
+      "predicate": "plan"
+     },
+     "tokens": 105,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2101",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 783,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1058,
+   "turns": 3,
+   "tokens": {
+    "input": 10849,
+    "output": 448
+   },
+   "cost_usd": 0.026178,
+   "ms": 11009
+  },
+  {
+   "id": "plan-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says Globex was on Pro on October 3 and upgraded to Enterprise on October 10, which matches the expected answer; the extra ticket and evidence details are consistent.",
+   "answer": "Globex was on the **Pro** plan when they reported the outage on October 3, 2026.\n\n- Ticket T-2101 (\"Workflows not running\", high priority) was opened on 2026-10-03 at 10:00 UTC. Its note says the cause was the INC-6 workflow engine outage.\n- The Pro plan (evidence relay-00031) ran from 2026-04-08 to 2026-10-10 15:00 UTC. That covers October 3.\n- Globex moved to Enterprise on 2026-10-10 at 15:00 UTC (evidence relay-02136), a week after the report. It is on Enterprise now.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Globex",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "outage",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 126,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:globex",
+      "predicate": "plan"
+     },
+     "tokens": 105,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2101",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 783,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1058,
+   "turns": 3,
+   "tokens": {
+    "input": 10849,
+    "output": 466
+   },
+   "cost_usd": 0.026358,
+   "ms": 9017
+  },
+  {
+   "id": "plan-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer states Globex was on the Pro plan on October 3 and notes the upgrade to Enterprise came on October 10, matching the expected answer.",
+   "answer": "Globex was on the **Pro** plan when they reported the outage on October 3, 2026.\n\n- Ticket T-2101, \"Workflows not running\", was opened on 2026-10-03 at 10:00 UTC with high priority. Its note says the cause was the INC-6 workflow engine outage.\n- The plan history for account:globex shows Pro from 2026-04-08 to 2026-10-10 15:00 UTC (relay-00031). It then changed to Enterprise (relay-02136), which is the current plan.\n\nThe Enterprise change came a week after the report.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Globex",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "outage",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 126,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:globex",
+      "predicate": "plan"
+     },
+     "tokens": 105,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2101",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 783,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1058,
+   "turns": 3,
+   "tokens": {
+    "input": 10849,
+    "output": 442
+   },
+   "cost_usd": 0.026118,
+   "ms": 7895
+  },
+  {
+   "id": "reopened",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says the problem is not open, with T-2201 resolved Oct 14 after the Oct 6 REQUEST_LIMIT_EXCEEDED recurrence and the integration connected since Oct 14, which matches the expected facts; the earlier Oct 2 resolution is also covered by the Sep 28 to Oct 2 failure and re-authentication.",
+   "answer": "No. The Salesforce sync problem is resolved as of 2026-10-15.\n\n- **Integration:** `integration:I-initech-sf` has had status \"connected\" since 2026-10-14 16:00 UTC (relay-02142), and the `integration_failing` rule is false. It had been failing from 2026-10-06 09:00 with `REQUEST_LIMIT_EXCEEDED`. That error is still recorded as the last error, but the status is no longer failing.\n- **Ticket:** `ticket:T-2201` (\"Salesforce sync failing\", high priority) was marked resolved on 2026-10-14 16:30 UTC. The note says: \"Lowered the sync batch size under Salesforce's API limit; sync healthy since 16:00 UTC.\"\n\nThe problem has recurred before:\n- It first failed from 2026-09-28 to 2026-10-02 with `INVALID_SESSION_ID`. The connector was re-authenticated.\n- It was fine for a few days, then failed again from 2026-10-06 until the batch-size fix on 2026-10-14.\n\nThe fix is only about a day old. The data doesn't show whether it has held since.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 374,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Initech",
+      "kind": "account",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 38,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "integration:I-initech-sf",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 498,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2201",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 785,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "integration:I-initech-sf"
+     },
+     "tokens": 407,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2102,
+   "turns": 3,
+   "tokens": {
+    "input": 13023,
+    "output": 789
+   },
+   "cost_usd": 0.033936,
+   "ms": 13399
+  },
+  {
+   "id": "reopened",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer concludes No, the problem is resolved: T-2201 is resolved, the integration has been connected since 2026-10-14, and the leftover REQUEST_LIMIT_EXCEEDED error is dated Oct 6 and old. It omits the explicit resolve/reopen/resolve timeline, but the key facts and conclusion match.",
+   "answer": "No. Initech's Salesforce sync problem looks resolved, and the data shows no open Salesforce ticket.\n\n- **Integration:** `integration:I-initech-sf` has had status `connected` since 2026-10-14 16:00 UTC. The `integration_failing` rule evaluates to false.\n- **Ticket:** `ticket:T-2201` (\"Salesforce sync failing\", high priority) is resolved. Its note says the sync batch size was lowered under Salesforce's API limit, and the sync has been healthy since 16:00 UTC. That matches the date the integration went back to `connected`.\n- **Older ticket:** `ticket:T-5400` (same title) is also resolved. Its note says the token expired and the Salesforce app was reconnected. I didn't confirm which account it belongs to.\n- **Leftover error:** The integration still shows `last_error: REQUEST_LIMIT_EXCEEDED`, dated 2026-10-06. That is the old error, which the data hasn't cleared, so it isn't a current failure.\n\nOne limit: Initech has 57 tickets and I only saw 10 of them through the account. I can't rule out another open Salesforce ticket among the rest, but a search on \"Salesforce\" found only T-2201 and T-5400.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce",
+      "kind": [
+       "integration",
+       "incident",
+       "ticket"
+      ],
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 172,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Initech",
+      "kind": "account",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 38,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "integration:I-initech-sf",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 498,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:initech",
+      "depth": 1,
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1657,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2365,
+   "turns": 3,
+   "tokens": {
+    "input": 13566,
+    "output": 846
+   },
+   "cost_usd": 0.035592,
+   "ms": 12849
+  },
+  {
+   "id": "reopened",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says the problem is not open: the integration has been connected since Oct 14 and T-2201 was resolved on Oct 14. It also covers the earlier failure and fix around Oct 2 and the REQUEST_LIMIT_EXCEEDED recurrence from Oct 6, matching the expected timeline.",
+   "answer": "No. Initech's Salesforce sync problem looks resolved.\n\n- **Integration `integration:I-initech-sf`:** Its status has been `connected` since 2026-10-14 16:00 UTC (relay-02142). The `integration_failing` rule evaluates to false.\n- **Ticket `ticket:T-2201`:** It was marked `resolved` on 2026-10-14 16:30 UTC (relay-02143). The note says the sync batch size was lowered under Salesforce's API limit, and the sync has been healthy since 16:00 UTC.\n\n**History:** The sync failed twice before this.\n- **First failure:** From 2026-09-28 to 2026-10-02 it failed with `INVALID_SESSION_ID`. The connector was re-authenticated.\n- **Second failure:** From 2026-10-06 to 2026-10-14 it failed with `REQUEST_LIMIT_EXCEEDED`. This is the one that was fixed on 2026-10-14.\n\n**Caveat:** The `last_error` fact still shows `REQUEST_LIMIT_EXCEEDED` because it was never cleared. It is a leftover from the earlier failure, not a sign of a current one.\n\nThe data has about one day of healthy history since the fix, so it's worth watching for a recurrence.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 374,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Initech",
+      "kind": "account",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 38,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "integration:I-initech-sf",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 498,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2201",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 785,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "integration:I-initech-sf"
+     },
+     "tokens": 407,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2102,
+   "turns": 3,
+   "tokens": {
+    "input": 13023,
+    "output": 836
+   },
+   "cost_usd": 0.034406,
+   "ms": 18614
+  },
+  {
+   "id": "refund",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says no, identifies the last charge as INV-umbrella-2026-A for 3,240 paid on Sep 20, and explains the 14-day refund window has passed (25 days ago), matching the expected answer.",
+   "answer": "No, we can't refund it under the standard policy.\n\n- Umbrella's latest charge is **invoice:INV-umbrella-2026-A**. It's the annual Pro plan, 10 seats, Sep 2026 to Aug 2027, for 3,240.00.\n- It was paid on 2026-09-20 08:00 UTC. That was 25 days ago.\n- The `refund_eligible` rule allows a refund only within 14 days of payment, and that window closed around 2026-10-04. Keel evaluates the rule as **false**.\n- The earlier invoices, INV-umbrella-2026-07 and INV-umbrella-2026-08, are also not eligible.\n\nAnything beyond the standard policy would need a manual exception from someone authorized. The data doesn't show whether one exists or has been approved.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "umbrella",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:umbrella",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 212,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-umbrella-2026-A",
+       "invoice:INV-umbrella-2026-08",
+       "invoice:INV-umbrella-2026-07"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1690,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1947,
+   "turns": 4,
+   "tokens": {
+    "input": 15129,
+    "output": 596
+   },
+   "cost_usd": 0.036218,
+   "ms": 10792
+  },
+  {
+   "id": "refund",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says no, identifies INV-umbrella-2026-A ($3,240) paid Sep 20, and cites the 14-day refund window as expired (about 25 days), matching the expected answer.",
+   "answer": "**No, the last charge can't be refunded.**\n\n- The last charge is invoice `INV-umbrella-2026-A`. It is the annual Pro plan, 10 seats, for 3,240.00. It was issued on 2026-09-18 and its status became **paid** on 2026-09-20 08:00 UTC.\n- The `refund_eligible` rule evaluates to **false**. Refunds are allowed only within 14 days of payment. As of today, 2026-10-15, it has been about 25 days. The window closed around 2026-10-04.\n- The earlier invoices (`INV-umbrella-2026-07` and `INV-umbrella-2026-08`, 300 each) are also not eligible.\n\nIf you want to refund it anyway, that would be an exception to the policy. The data doesn't show who can approve that.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "umbrella",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:umbrella",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 212,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-umbrella-2026-A",
+       "invoice:INV-umbrella-2026-08",
+       "invoice:INV-umbrella-2026-07"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1690,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1947,
+   "turns": 4,
+   "tokens": {
+    "input": 15129,
+    "output": 651
+   },
+   "cost_usd": 0.036768,
+   "ms": 11963
+  },
+  {
+   "id": "refund",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer concludes the refund isn't possible under the 14-day rule, identifies INV-umbrella-2026-A for 3,240 paid Sep 20, and notes the window has closed; the extra detail about exceptions is consistent.",
+   "answer": "Not under the standard rule. The refund window closed on 2026-10-04.\n\n- **Last charge:** `invoice:INV-umbrella-2026-A` is the annual Pro plan (Sep 2026 – Aug 2027, 10 seats, 10% off) for 3,240.00. It was issued on 2026-09-18 and its status became **paid** on 2026-09-20 08:00 UTC.\n- **Refund rule:** an invoice can be refunded within 14 days of payment, once. Payment was 25 days ago, so the window ended around 2026-10-04. Keel evaluates `refund_eligible = false` for this invoice.\n\nApproving the refund would be an exception to policy. The data doesn't show whether anyone has the authority to grant one. I also didn't see any earlier refund on this invoice.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "umbrella",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:umbrella",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 212,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-umbrella-2026-A",
+       "invoice:INV-umbrella-2026-08",
+       "invoice:INV-umbrella-2026-07"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1690,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1947,
+   "turns": 4,
+   "tokens": {
+    "input": 15129,
+    "output": 644
+   },
+   "cost_usd": 0.036698,
+   "ms": 11412
+  },
+  {
+   "id": "sla",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "partial",
+   "reason": "The answer correctly identifies T-3112 as breached (open since Oct 14 05:00 UTC, ~31 hours, high priority), but it doesn't confirm the Enterprise 4-hour SLA, hedges on the plan, and omits the escalation to the support lead and CSM Dana Ortiz.",
+   "answer": "Yes. Stark Industries (`account:stark`) has one ticket past its SLA: **ticket:T-3112**, \"SSO login loop for all users\".\n\n- The `sla_breached` rule evaluates true for it.\n- It is high priority and still open. It has been open since 2026-10-14 05:00 UTC, which is about 31 hours as of now.\n- I didn't look up Stark's plan. At 31 hours the ticket is past the SLA on Enterprise (4 h) or Pro (24 h), but it wouldn't be on Starter (72 h). The rule result says it is breached.\n\nT-3112 was the only ticket returned when I searched for tickets where the rule fires. I didn't check each of Stark's other 80 tickets individually.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "stark",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "rule": "sla_breached",
+      "kind": "ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 53,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:stark",
+      "relation": "has_ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1865,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-3112",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 142,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2105,
+   "turns": 3,
+   "tokens": {
+    "input": 12193,
+    "output": 639
+   },
+   "cost_usd": 0.030776,
+   "ms": 15145
+  },
+  {
+   "id": "sla",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "partial",
+   "reason": "It correctly identifies T-3112 as breached (high priority, open since Oct 14 05:00 UTC, ~31 hours), but it omits the 4-hour Enterprise SLA and the escalation to the support lead and CSM Dana Ortiz, and it states it did not look up the plan tier.",
+   "answer": "Yes. Stark Industries (`account:stark`) has one ticket past its SLA: **ticket:T-3112**, \"SSO login loop for all users\".\n\n- It is high priority and still open. It has been open since 2026-10-14 05:00 UTC, which is about 31 hours as of now.\n- The `sla_breached` rule evaluates true for it.\n- No other ticket matched the `sla_breached` rule. I didn't check the other 79 Stark tickets one by one. I also didn't look up Stark's plan tier, so I can't say which SLA limit applies.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "stark",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "rule": "sla_breached",
+      "kind": "ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 53,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:stark",
+      "relation": "has_ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1865,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-3112",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 142,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2105,
+   "turns": 3,
+   "tokens": {
+    "input": 12193,
+    "output": 570
+   },
+   "cost_usd": 0.030086,
+   "ms": 9598
+  },
+  {
+   "id": "sla",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer confirms Stark has a ticket past SLA (T-3112, SSO login loop, high priority, open since Oct 14 05:00 UTC, ~31 hours vs the 4-hour Enterprise SLA), matching the expected facts; it omits the escalation recommendation, but the core conclusion is the same.",
+   "answer": "Yes. Stark Industries (`account:stark`) has one ticket past its SLA: **ticket:T-3112**, \"SSO login loop for all users\".\n\n- **Status:** It is open with high priority, and it has been open since 2026-10-14 05:00 UTC. That is about 31 hours as of now.\n- **Plan:** Stark is on the Enterprise plan, which allows 4 hours. The `sla_breached` rule evaluates to true.\n\nA search for tickets where `sla_breached` fires returned only T-3112, so none of Stark's other tickets are past SLA. I didn't check the other 79 tickets one by one.\n\nStark is not currently flagged `account_at_risk`.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Stark",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "rule": "sla_breached",
+      "kind": "ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 53,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-3112",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 193,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:stark",
+      "relation": "has_ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1865,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2156,
+   "turns": 3,
+   "tokens": {
+    "input": 12310,
+    "output": 599
+   },
+   "cost_usd": 0.03061,
+   "ms": 11240
+  },
+  {
+   "id": "lookalike",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer lists both invoices (INV-hooli-2026-10 and INV-hooli-2026-09) with $900 amounts, Pro 30 seats, and Oct 2 / Sep 2 payment dates, matching the expected answer; extra refund details are harmless, and the omission of a Hooli Labs mention is not a contradiction.",
+   "answer": "Hooli's last two payments, both for the Pro plan (30 seats):\n\n| Invoice | Amount | Status | Paid since | Refund eligible |\n|---|---|---|---|---|\n| `INV-hooli-2026-10` (October 2026) | 900.0 | paid | 2026-10-02 07:00 UTC | Yes |\n| `INV-hooli-2026-09` (September 2026) | 900.0 | paid | 2026-09-02 07:00 UTC | No |\n\nThe October invoice is still inside its 14-day refund window. Neither invoice is prorated.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Hooli",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 43,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:hooli",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 249,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-hooli-2026-05",
+       "invoice:INV-hooli-2026-06",
+       "invoice:INV-hooli-2026-07",
+       "invoice:INV-hooli-2026-08",
+       "invoice:INV-hooli-2026-09",
+       "invoice:INV-hooli-2026-10"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 951,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1243,
+   "turns": 4,
+   "tokens": {
+    "input": 14035,
+    "output": 483
+   },
+   "cost_usd": 0.0329,
+   "ms": 11383
+  },
+  {
+   "id": "lookalike",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer lists both invoices (INV-hooli-2026-10 and INV-hooli-2026-09) with $900 amounts, Pro plan with 30 seats, and paid dates of Oct 2 and Sep 2, matching the expected answer; the extra refund-eligibility detail doesn't contradict it, and nothing from Hooli Labs is included.",
+   "answer": "Hooli's last two payments, both on the Pro plan (30 seats):\n\n| Invoice | Amount | Status | Paid since | Refund eligible |\n|---|---|---|---|---|\n| `INV-hooli-2026-10` (Oct 2026) | 900.00 | paid | 2026-10-02 07:00 UTC | **Yes** |\n| `INV-hooli-2026-09` (Sep 2026) | 900.00 | paid | 2026-09-02 07:00 UTC | No |\n\nThe October invoice is still inside its 14-day refund window. The September one is outside it.\n\nThe data records the time each status became \"paid\", not a separate payment timestamp. I used that as the payment date.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Hooli",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 43,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:hooli",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 249,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-hooli-2026-05",
+       "invoice:INV-hooli-2026-06",
+       "invoice:INV-hooli-2026-07",
+       "invoice:INV-hooli-2026-08",
+       "invoice:INV-hooli-2026-09",
+       "invoice:INV-hooli-2026-10"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 951,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1243,
+   "turns": 4,
+   "tokens": {
+    "input": 14035,
+    "output": 519
+   },
+   "cost_usd": 0.03326,
+   "ms": 13733
+  },
+  {
+   "id": "lookalike",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer lists both invoices (INV-hooli-2026-10 and INV-hooli-2026-09) at 900 each, Pro plan with 30 seats, paid on Oct 2 and Sep 2, matching the expected facts; the extra refund-eligibility detail doesn't contradict anything, though it doesn't explicitly mention Hooli Labs being excluded.",
+   "answer": "Hooli's last two payments, both for the Pro plan (30 seats):\n\n| Invoice | Amount | Status | Paid since | Refund eligible |\n|---|---|---|---|---|\n| `INV-hooli-2026-10` (Oct 2026) | 900.00 | paid | 2026-10-02 07:00 UTC | **Yes** (within 14 days of payment, as of 2026-10-15) |\n| `INV-hooli-2026-09` (Sep 2026) | 900.00 | paid | 2026-09-02 07:00 UTC | No |\n\nThe data shows when each invoice's status became \"paid\". I'm treating that as the payment date. It doesn't say whether either invoice has already been refunded.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Hooli",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 43,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:hooli",
+      "relation": "has_invoice",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 249,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-hooli-2026-05",
+       "invoice:INV-hooli-2026-06",
+       "invoice:INV-hooli-2026-07",
+       "invoice:INV-hooli-2026-08",
+       "invoice:INV-hooli-2026-09",
+       "invoice:INV-hooli-2026-10"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 951,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1243,
+   "turns": 4,
+   "tokens": {
+    "input": 14035,
+    "output": 527
+   },
+   "cost_usd": 0.03334,
+   "ms": 12840
+  },
+  {
+   "id": "incident",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer confirms the link to INC-7 (eu-west, Wayne's region, 09:10–11:40 UTC) and ticket T-2301 opened at 09:30 and resolved after deliveries recovered, matching the expected facts; the extra caveats and mention of T-6400 do not contradict them.",
+   "answer": "Yes, it looks related to incident INC-7 (Webhook delivery degraded).\n\n- **Incident:** INC-7 is a major incident in eu-west, which is Wayne's region. Its summary says a load balancer misconfiguration returned 502 on webhook deliveries. It was ongoing from 2026-10-02 09:10 UTC and resolved at 11:40 UTC. `account:wayne` is linked to it through `affected_by`, starting 2026-10-02 09:10.\n- **Ticket:** T-2301, \"502 errors on webhook runs\", is on Wayne's account, opened 2026-10-02 09:30 UTC. It has high priority and is now resolved. Its last note says \"Deliveries succeeded again after 11:40 UTC\", which matches the incident's resolution time.\n\nI did not check ticket T-2301's other details. The data has no explicit link between T-2301 and INC-7. The match rests on the account link, the timing and the matching 502 symptom.\n\nA similar ticket, T-6400, has the same title but a different cause: the customer's endpoint was down for maintenance. It does not appear in the part of Wayne's ticket list I could see, so I can't confirm it belongs to this account.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook 502 errors",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 433,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "wayne",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 944,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook",
+      "kind": "incident",
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 61,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:wayne",
+      "relation": [
+       "affected_by",
+       "has_ticket"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1869,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "incident:INC-7",
+      "detail": "full"
+     },
+     "tokens": 551,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 3858,
+   "turns": 3,
+   "tokens": {
+    "input": 17768,
+    "output": 957
+   },
+   "cost_usd": 0.045106,
+   "ms": 15559
+  },
+  {
+   "id": "incident",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says yes, tying Wayne's Oct 2 ticket T-2301 (opened 09:30) to INC-7 (eu-west webhook degradation, 09:10–11:40 UTC) with recovery after 11:40, matching the expected facts; the hedging ('most likely') is backed by evidence and the extra detail is accurate.",
+   "answer": "Yes. The October 2 ticket is most likely tied to incident INC-7.\n\n- **Ticket:** T-2301, \"502 errors on webhook runs\", was opened 2026-10-02 09:30 UTC with high priority. It was resolved at 12:05 UTC with the note \"Deliveries succeeded again after 11:40 UTC.\"\n- **Incident:** INC-7, \"Webhook delivery degraded\" (eu-west, severity major), started 2026-10-02 09:10 UTC. It was resolved at 11:40 UTC. The summary says a load balancer misconfiguration returned 502 on webhook deliveries.\n- **Link:** The wayne account has an `affected_by` relation to INC-7 from 2026-10-02 09:10. The ticket was opened 20 minutes after the incident began, and deliveries recovered at the moment the incident was resolved (11:40).\n\nThe data has no direct link between T-2301 and INC-7. The match rests on timing, symptom and account.\n\nT-6400 has the same title, but it dates from May 2026 (normal priority, resolved 2026-05-23). Its note says the customer's endpoint was down for maintenance, so it has nothing to do with INC-7.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook 502 errors",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 432,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Wayne",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1359,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook incident",
+      "kind": "incident",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "ticket:T-2301",
+       "ticket:T-6400",
+       "incident:INC-7"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 2121,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "account:wayne",
+      "relation": "affected_by",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 39,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 3952,
+   "turns": 3,
+   "tokens": {
+    "input": 18518,
+    "output": 757
+   },
+   "cost_usd": 0.044606,
+   "ms": 12463
+  },
+  {
+   "id": "incident",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer confirms the link to INC-7 (webhook delivery degraded, eu-west, 09:10–11:40 UTC), and T-2301 opened at 09:30 and resolved after deliveries recovered, matching the expected facts with extra correct detail.",
+   "answer": "Yes. The October 2 ticket, **T-2301** \"502 errors on webhook runs\", is related to incident **INC-7**, \"Webhook delivery degraded\".\n\n- **INC-7:** It is a major incident in eu-west, opened 2026-10-02 09:10 UTC. The summary says \"A load balancer misconfiguration returned 502 on webhook deliveries.\" It was resolved at 11:40 UTC. The Wayne account (`account:wayne`) is linked to it as affected, from 09:10 on Oct 2.\n- **T-2301:** It was opened at 09:30 UTC with high priority, 20 minutes after the incident began. It was resolved at 12:05 UTC with the note \"Deliveries succeeded again after 11:40 UTC.\" That matches the incident's resolution time. Its SLA is not breached.\n- **Basis for the link:** The data doesn't link the ticket to the incident directly. I inferred it from the matching symptom (502 on webhook deliveries), the timing, and the account's affected_by link to INC-7.\n\n**T-6400** has the same title, but it is a different case. It was opened in May 2026 with normal priority. Its note says the customer's endpoint was down for maintenance, so it is not related to INC-7.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook 502 errors",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 432,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Wayne",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1359,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook",
+      "kind": "incident",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 58,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "ticket:T-2301",
+       "ticket:T-6400",
+       "incident:INC-7"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 2121,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "incident:INC-7",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 37,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 4007,
+   "turns": 3,
+   "tokens": {
+    "input": 18698,
+    "output": 745
+   },
+   "cost_usd": 0.044846,
+   "ms": 12132
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer says No, grounded because tire T-9001 is at 2.6 mm, below the 3 mm threshold, and it also mentions the major crack in INS-4821-10 and the approved ticket TK-3608 at WS-02; it omits the P3 position and the Oct 3 date, which are minor.",
+   "answer": "**No. MXK-4821 can't be dispatched today, because the `unit_grounded` rule is true for it.**\n\n- **Tire:** tire:T-9001 is mounted on the unit and has a tread depth of 2.6 mm. That is below the 3 mm limit, so `tire_critical` is true, and one critical tire is enough to ground the unit.\n- **Workshop:** the unit is linked to workshop:WS-02. The data doesn't say whether the tire repair is scheduled there.\n- **Open ticket:** ticket:TK-3608 is approved and marked urgent. It isn't stale. The data doesn't say what the ticket covers.\n- **Inspection:** inspection:INS-4821-10 recorded two damages. D1 is a minor dent and D2 is a major crack (photo at s3://acme/ins/4821-10/d2.jpg). The data doesn't say whether the crack has been repaired.\n- **Insurance document:** document:POL-7731 covers the unit and expires on 2026-10-20, which is 5 days away. It is flagged `document_critical`. It is still valid today, but it needs renewing soon.\n\nFuel isn't a concern. The last load (310 L on 2026-09-15) did not trigger `fuel_anomaly`. The unit is assigned to driver:D-118.\n\nTo clear the unit, replace the tire, which will lift the grounding. Check the major crack before dispatch, and renew POL-7731.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 514,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 514,
+   "turns": 2,
+   "tokens": {
+    "input": 6696,
+    "output": 579
+   },
+   "cost_usd": 0.019182,
+   "ms": 9646
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "Says No, grounded due to tire T-9001 at 2.6 mm (below 3 mm), and mentions the major crack in INS-4821-10, approved TK-3608 and WS-02; only the position P3 and Oct 3 date are omitted.",
+   "answer": "**No. Unit MXK-4821 should not be dispatched today.** The `unit_grounded` rule is true for it.\n\n- **Tire:** `tire:T-9001` is mounted on the unit and has a tread depth of 2.6 mm. The limit is 3 mm, so the tire is critical, and that grounds the unit.\n- **Workshop:** The unit is linked to `workshop:WS-02`. The data doesn't say whether it is physically there now.\n- **Ticket:** `ticket:TK-3608` is approved and marked urgent. It is not stale. I didn't check what the ticket covers.\n- **Inspection:** `inspection:INS-4821-10` found 2 damages. D1 is a minor dent. D2 is a major crack, and the data doesn't say whether it has been repaired.\n- **Document:** `document:POL-7731` expires on 2026-10-20, which is 5 days away. The `document_critical` rule is true, so it needs renewing soon. It hasn't expired yet.\n\nTo clear the unit, replace the tire, and check on the major crack. Then renew the document.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 473,
+   "turns": 2,
+   "tokens": {
+    "input": 6595,
+    "output": 438
+   },
+   "cost_usd": 0.01757,
+   "ms": 12763
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "partial",
+   "reason": "unreadable verdict",
+   "answer": "**No. MXK-4821 can't be dispatched today, because the `unit_grounded` rule is true.**\n\n- **Tire:** `tire:T-9001` is mounted on the unit with a tread depth of 2.6 mm. That is below the 3 mm limit, so `tire_critical` is true, and one critical tire is enough to ground the unit.\n- **Workshop:** The unit is linked to `workshop:WS-02`, and `ticket:TK-3608` is open. Its status is \"approved\", its urgency is \"urgent\", and it isn't stale. The data doesn't say what the ticket is for or when the work will finish.\n- **Inspection:** `inspection:INS-4821-10` recorded two damages. D1 is a minor dent and D2 is a major crack. I found no rule that blocks dispatch for these, but the major crack should be reviewed.\n- **Document:** `document:POL-7731` covers the unit and expires on 2026-10-20, which is 5 days away. `document_critical` is true. This doesn't block dispatch today, but it needs renewing soon.\n- **Fuel:** I found no fuel anomaly on the last load (310 L on 2026-09-15). The unit's evaluation doesn't flag one.\n\nThe tire has to be replaced, and the unit re-evaluated, before it can go out. `driver:D-118` is assigned to the unit.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 514,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 514,
+   "turns": 2,
+   "tokens": {
+    "input": 6696,
+    "output": 550
+   },
+   "cost_usd": 0.018892,
+   "ms": 9394
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on September 20 and says the tire has been critical since October 3 after a 2.6 mm measurement (below 3 mm), matching the expected answer; the extra detail does not contradict it.",
+   "answer": "- **Tread depth on 2026-09-20:** 5.2 mm. That measurement is valid from 2026-09-10 08:00 UTC to 2026-10-03 08:00 UTC. On that date the tire was not critical, because 5.2 mm is above the 3 mm threshold.\n- **Critical since:** 2026-10-03 08:00 UTC. A new measurement of 2.6 mm took effect then, and it is still current. That is below 3 mm, so `tire_critical` is true as of today (2026-10-15).\n\nT-9001 is mounted on unit:MXK-4821 at position P3. Under the `unit_grounded` rule, that makes the unit grounded.\n\nBoth measurements show a recording timestamp of 2026-10-20, which is later than today's date. The validity dates above are the measurement dates, so I used those.",
+   "calls": [
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full"
+     },
+     "tokens": 330,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20T23:59:59Z"
+     },
+     "tokens": 116,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 116,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 562,
+   "turns": 2,
+   "tokens": {
+    "input": 6828,
+    "output": 593
+   },
+   "cost_usd": 0.019586,
+   "ms": 8367
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on September 20 (measured Sep 10) and says the tire has been critical since October 3 with a 2.6 mm reading, below the 3 mm threshold, matching the expected answer; the extra detail about timestamps does not contradict it.",
+   "answer": "On September 20, 2026, tire T-9001 (position P3, mounted on unit MXK-4821) had a tread depth of **5.2 mm**. That reading is valid from 2026-09-10 08:00 to 2026-10-03 08:00. At 5.2 mm the tire was not critical, because the threshold is below 3 mm.\n\nIt has been critical **since 2026-10-03 08:00 UTC**. That is when a new measurement of **2.6 mm** took effect, and it is still the current value.\n\nOne oddity: the stored \"recorded at\" timestamps are dated 2026-10-20, which is after today (2026-10-15). I'm reporting the measurement validity dates as the data gives them.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20T23:59:59Z",
+      "detail": "full"
+     },
+     "tokens": 427,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001"
+     },
+     "tokens": 140,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 567,
+   "turns": 2,
+   "tokens": {
+    "input": 6759,
+    "output": 454
+   },
+   "cost_usd": 0.018058,
+   "ms": 8752
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on September 20 (measured Sep 10) and says the tire has been critical since Oct 3 with a 2.6 mm reading below the 3 mm threshold, matching the expected answer; the extra details do not contradict it.",
+   "answer": "On September 20, 2026, tire T-9001 had a tread depth of **5.2 mm**. That reading was valid from 2026-09-10 08:00 UTC to 2026-10-03 08:00 UTC. It was above the 3 mm threshold, so the tire was not critical then.\n\nThe tire has been critical **since 2026-10-03 08:00 UTC**. A new measurement of **2.6 mm** took effect at that time, which is below 3 mm. It is still critical today (2026-10-15). The tire is mounted on unit MXK-4821, position P3.\n\nThe records for both readings show a recorded-at time of 2026-10-20, which is later than today's date. I used the valid-from dates, which are the ones that say when each reading applied.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20T23:59:59Z",
+      "detail": "full"
+     },
+     "tokens": 427,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full"
+     },
+     "tokens": 330,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 116,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 873,
+   "turns": 2,
+   "tokens": {
+    "input": 7278,
+    "output": 474
+   },
+   "cost_usd": 0.019296,
+   "ms": 10107
+  },
+  {
+   "id": "fleet-docs",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer identifies POL-7731 on MXK-4821 expiring 2026-10-20 as critical, and says driver D-118's license LIC-D118 (2027-03-15) is not critical, matching the expected answer. The added '5 days from today' is consistent with the 'within 15 days' threshold.",
+   "answer": "Yes, one document is about to expire.\n\n- **Unit MXK-4821:** `document:POL-7731` expires on 2026-10-20, which is 5 days from today. The `document_critical` rule fires on it.\n- **Driver D-118:** this is the driver assigned to the unit. `document:LIC-D118` expires on 2027-03-15, so it is not critical.\n\nThese are the only documents linked to the unit and its driver.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "MXK-4821",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 67,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "driver:D-118",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 190,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 730,
+   "turns": 3,
+   "tokens": {
+    "input": 11102,
+    "output": 337
+   },
+   "cost_usd": 0.025574,
+   "ms": 11527
+  },
+  {
+   "id": "fleet-docs",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer identifies POL-7731 for MXK-4821 expiring 2026-10-20 as critical, and LIC-D118 for driver D-118 expiring 2027-03-15 as not critical, matching the expected facts and conclusion; the '5 days' figure is within the 15-day window.",
+   "answer": "Yes, one document is about to expire. It's the unit's insurance policy.\n\n- **`document:POL-7731`** covers unit MXK-4821 and expires on **2026-10-20**, which is 5 days from today. The `document_critical` rule fires on it.\n- **`document:LIC-D118`** is the driver license for D-118, the driver assigned to MXK-4821. It expires on 2027-03-15, so it is not critical.\n\nThese are the only two documents linked to the unit or its driver.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "driver:D-118",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 77,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:POL-7731",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 119,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:LIC-D118",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 115,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 784,
+   "turns": 4,
+   "tokens": {
+    "input": 15124,
+    "output": 391
+   },
+   "cost_usd": 0.034158,
+   "ms": 12430
+  },
+  {
+   "id": "fleet-docs",
+   "model": "anthropic/claude-sonnet-5.5",
+   "grade": "correct",
+   "reason": "The answer identifies POL-7731 expiring 2026-10-20 within the 15-day critical window and LIC-D118 expiring 2027-03-15 as not critical, matching the expected answer.",
+   "answer": "Yes, one document is about to expire.\n\n- **document:POL-7731** is the insurance policy for unit MXK-4821. It expires on **2026-10-20**, which is 5 days from today (2026-10-15). The rule `document_critical` fires on it because it is inside the 15-day window.\n- **document:LIC-D118** is the driver license of driver:D-118, who is assigned to MXK-4821. It expires on 2027-03-15, so it is not critical.\n\nNo other documents are linked to the unit or its driver.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "MXK-4821",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 67,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "driver:D-118",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 77,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:POL-7731",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 396,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:LIC-D118",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 115,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1128,
+   "turns": 4,
+   "tokens": {
+    "input": 16565,
+    "output": 468
+   },
+   "cost_usd": 0.03781,
+   "ms": 12186
+  },
+  {
+   "id": "overcharge",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "overcharge",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "overcharge",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer says it is not a duplicate charge, and explains that the $1,200 Pro invoice plus the prorated $506.67 invoice INV-acme-2026-09-U came from the Sep 12 upgrade from Pro to Enterprise covering Sep 12–30, which matches the expected answer.",
+   "answer": "**Not a duplicate charge — it's the mid-cycle upgrade.**\n\nTwo invoices billed in September, both paid:\n\n| Invoice | Amount | What | Billed/paid |\n|---|---|---|---|\n| `invoice:INV-acme-2026-09` | $1,200.00 | Pro plan, 40 seats, September 2026 | 2026-09-01 (paid 09-01) |\n| `invoice:INV-acme-2026-09-U` | $506.67 | Upgrade Pro → Enterprise, 40 seats, Sep 12–30, **prorated** | 2026-09-12 (paid 09-13) |\n\nThe second is explained by the plan change: `account:acme` moved from `pro` to `enterprise` on **2026-09-12T14:00 UTC**, so the $506.67 is the prorated from Sep 12 to Sep 30, not a second September subscription charge. October then bills at the new rate: `invoice:INV-acme-2026-10`, $2,000, paid 2026-10-01.\n\nSeptember total: $1,706.67 = $1,200 (full month Pro) + $506.67 (prorated upgrade).\n\nAlso relevant: the customer's question is already an open ticket — `ticket:T-2001` (\"Charged twice in September?\", priority normal, status **pending** since 2026-09-20, last note \"Asked which invoices they mean; waiting for the customer\"), so the ball is in Acme's court.\n\nNote on remedy: neither invoice is `refund_eligible` now — the rule allows a refund only within 14 days of payment, and payments were 2026-09-01 and 2026-09-13 (both >14 days before today, 2026-10-15). Acme's account is not flagged `account_at_risk`.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:acme",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1605,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "invoice",
+      "text": "acme",
+      "limit": 20,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 651,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-acme-2026-09",
+       "invoice:INV-acme-2026-09-U",
+       "invoice:INV-acme-2026-10"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1673,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:acme",
+      "predicate": "plan"
+     },
+     "tokens": 105,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2001",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 776,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 4810,
+   "turns": 3,
+   "tokens": {
+    "input": 14200,
+    "output": 1088
+   },
+   "cost_usd": 0.005566,
+   "ms": 12361
+  },
+  {
+   "id": "plan-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "plan-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "plan-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer states Pro on October 3 and that the upgrade to Enterprise happened on October 10, which matches the expected answer.",
+   "answer": "**Pro.**\n\nGlobex's plan was `pro` from 2026‑04‑08 until 2026‑10‑10T15:00 UTC, when it changed to `enterprise` (history on `account:globex`, source relay.billing). The outage report is ticket `T-2101` (\"Workflows not running\", caused by the INC‑6 engine outage), opened 2026‑10‑03T10:00 UTC and resolved 13:00 UTC — i.e. while the account was still on the Pro plan.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Globex",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 44,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "outage October 3",
+      "kind": "ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "ticket",
+      "text": "outage",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 78,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:globex",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1680,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "account:globex",
+      "predicate": "plan",
+      "detail": "full"
+     },
+     "tokens": 287,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-2101",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 783,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2873,
+   "turns": 4,
+   "tokens": {
+    "input": 13939,
+    "output": 678
+   },
+   "cost_usd": 0.004995,
+   "ms": 11714
+  },
+  {
+   "id": "reopened",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer says the problem is no longer open, with T-2201 resolved on Oct 14 and the integration connected since then, and it notes the Oct 6 REQUEST_LIMIT_EXCEEDED error; it omits the Oct 2 resolution and the reopen, but the key facts and conclusion match.",
+   "answer": "No — it's resolved.\n\n- **Ticket T-2201** (\"Salesforce sync failing\", high priority): status **resolved** since **2026-10-14 16:30 UTC**; note: \"Lowered the sync batch size under Salesforce's API limit; sync healthy since 16:00 UTC.\"\n- **Integration I-initech-sf** (Salesforce): status **connected** since 2026-10-14 16:00 UTC, so `integration_failing` is **false**.\n- An earlier related ticket, T-5400, was resolved back on 2026-06-02.\n\nCaveat: the integration still carries `last_error = REQUEST_LIMIT_EXCEEDED` dated 2026-10-06, but the failing rule keys on status, which is now connected — so by the rules given, it is not failing.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce sync",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 123,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "integration",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 48,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "ticket:T-5400",
+       "ticket:T-2201",
+       "integration:I-initech-sf"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 2056,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2227,
+   "turns": 3,
+   "tokens": {
+    "input": 8824,
+    "output": 492
+   },
+   "cost_usd": 0.003238,
+   "ms": 11124
+  },
+  {
+   "id": "reopened",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer says No, the issue is resolved: T-2201 was resolved on Oct 14 and the integration has been connected since then, with the Oct 6 request-limit failure noted as the earlier failing window; it omits the Oct 2 first resolution but that detail is minor.",
+   "answer": "**No — it's resolved.** As of 2026-10-15 12:00 UTC:\n\n- Integration `integration:I-initech-sf` (Salesforce): status `connected` since **2026-10-14T16:00Z**; the `integration_failing` rule evaluates **false**.\n- Ticket `ticket:T-2201` \"Salesforce sync failing\" (high priority): **resolved 2026-10-14T16:30Z**, note \"Lowered the sync batch size under Salesforce's API limit; sync healthy since 16:00 UTC.\"\n- Earlier related ticket `ticket:T-5400` \"Salesforce sync failing\" was resolved 2026-06-02 (\"Token expired; reconnected the Salesforce app.\"); not open either.\n\nCaveat: the integration still carries a stale `last_error = REQUEST_LIMIT_EXCEEDED` from 2026-10-06T09:00Z (it was set during the failing window 2026-10-06 → 2026-10-14T16:00 and never cleared), so the field alone looks alarming, but the current status says connected and no rule fires.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Initech",
+      "kind": [
+       "account",
+       "integration",
+       "ticket"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 94,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce sync",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 123,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "integration:I-initech-sf",
+       "ticket:T-5400",
+       "ticket:T-2201",
+       "account:initech"
+      ],
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1152,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "integration:I-initech-sf",
+      "since": "2026-10-01",
+      "detail": "concise"
+     },
+     "tokens": 345,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1714,
+   "turns": 4,
+   "tokens": {
+    "input": 12230,
+    "output": 1051
+   },
+   "cost_usd": 0.00493,
+   "ms": 15081
+  },
+  {
+   "id": "reopened",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "It correctly says the problem is not open: T-2201 was resolved Oct 14 and the integration is connected, with the Oct 6 REQUEST_LIMIT_EXCEEDED error noted, though it omits the Oct 2 resolution and reopen sequence.",
+   "answer": "No — it's closed.\n\n- **ticket:T-2201** \"Salesforce sync failing\" (high priority, account:initech) was **resolved 2026-10-14 16:30 UTC**; note: \"Lowered the sync batch size under Salesforce's API limit; sync healthy since 16:00 UTC.\"\n- The integration **integration:I-initech-sf** (app Salesforce) is **connected**, and the rule `integration_failing` evaluates **false** now, so its last sync is no longer reporting an error (last error REQUEST_LIMIT_EXCEEDED dates from 2026-10-06).\n- Older ticket **ticket:T-5400** (same title) was resolved 2026-06-02.\n\nSo the sync problem is not open anymore.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Salesforce sync",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 123,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "integration",
+      "text": "salesforce",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 58,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "integration:I-initech-sf",
+       "ticket:T-5400",
+       "ticket:T-2201"
+      ],
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 518,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 699,
+   "turns": 3,
+   "tokens": {
+    "input": 7239,
+    "output": 456
+   },
+   "cost_usd": 0.002719,
+   "ms": 9781
+  },
+  {
+   "id": "refund",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "refund",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "refund",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "sla",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "sla",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "sla",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer identifies T-3112 as the single SLA-breached Stark ticket, with the correct description, priority, open time (Oct 14 05:00 UTC, ~31 h) and 4-hour Enterprise SLA; it omits the escalation recommendation, which is a minor extra detail.",
+   "answer": "Yes — one: **ticket:T-3112** (\"SSO login loop for all users\", high priority, still open).\n\n- Opened **2026-10-14 05:00 UTC**, so ~31 h open as of now.\n- Stark's plan is **enterprise**, whose SLA allows 4 h, so the rule `sla_breached` fires (`true`).\n- All other Stark tickets currently checked are resolved and not past SLA.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Stark",
+      "kind": "account",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 45,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "rule": "sla_breached",
+      "kind": "ticket",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 53,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "account:stark",
+      "depth": 1,
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1774,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:T-3112",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 640,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 2512,
+   "turns": 3,
+   "tokens": {
+    "input": 9245,
+    "output": 444
+   },
+   "cost_usd": 0.003306,
+   "ms": 8017
+  },
+  {
+   "id": "lookalike",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "lookalike",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer lists both invoices (INV-hooli-2026-10 paid Oct 2 and INV-hooli-2026-09 paid Sep 2), each $900 on Pro with 30 seats, matching the expected facts; the refund-eligibility detail is extra and not contradictory, and no Hooli Labs payments are included.",
+   "answer": "**Hooli's two most recent payments** (both Pro plan, 30 seats, $900 each):\n\n| Invoice | Period | Amount | Paid |\n|---|---|---|---|\n| invoice:INV-hooli-2026-10 | 2026-10 (October 2026) | $900 | 2026-10-02 |\n| invoice:INV-hooli-2026-09 | 2026-09 (September 2026) | $900 | 2026-09-02 |\n\nBoth are marked paid; INV-hooli-2026-10 is still within its 14-day refund window (refund_eligible = true), INV-hooli-2026-09 is not.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "Hooli",
+      "per_kind": 5,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 836,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "invoice",
+      "limit": 50,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 464,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "invoice:INV-hooli-2026-10",
+       "invoice:INV-hooli-2026-09",
+       "invoice:INV-hooli-2026-08"
+      ],
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 501,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1801,
+   "turns": 3,
+   "tokens": {
+    "input": 9796,
+    "output": 715
+   },
+   "cost_usd": 0.003797,
+   "ms": 10506
+  },
+  {
+   "id": "lookalike",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "incident",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer confirms the link to INC-7 (webhook delivery degraded, eu-west, 09:10–11:40 UTC), ticket T-2301 opened at 09:30 and resolved after recovery, matching the expected facts; the extra details about T-6400 and the caveat do not contradict them.",
+   "answer": "**Yes — it lines up with incident INC-7.**\n\n- **Ticket T-2301** (\"502 errors on webhook runs\", category workflows, account `wayne`): opened **2026-10-02 09:30 UTC**, priority **high**, resolved **12:05 UTC**, last note \"Deliveries succeeded again after 11:40 UTC.\"\n- **Incident INC-7** \"Webhook delivery degraded\" (region eu-west, severity **major**): started **2026-10-02 09:10 UTC**, **resolved 11:40 UTC**, summary: \"A load balancer misconfiguration returned 502 on webhook deliveries.\" `account:wayne` is recorded as **affected_by** INC-7.\n\nSo the 502s Wayne reported on Oct 2 occurred within INC-7's window and were resolved when the incident was resolved. (An older ticket T-6400 has the same title but is from 2026-05-22/23 and was caused by the customer's own endpoint being down — unrelated.)\n\nCaveat: INC-7's status/summary facts were recorded on 2026-10-20; at the time of the report (Oct 2) only its start and severity were known.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "502 errors webhook",
+      "kind": [
+       "ticket",
+       "incident"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "webhook runs 502",
+      "kind": "incident",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "text": "Wayne",
+      "kind": "contact",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 847,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "incident",
+      "limit": 50,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 47,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "incident:INC-7",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 581,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "ticket",
+      "text": "502",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 125,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "ticket:T-2301",
+       "ticket:T-6400"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1541,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 3143,
+   "turns": 5,
+   "tokens": {
+    "input": 17345,
+    "output": 948
+   },
+   "cost_usd": 0.006341,
+   "ms": 12397
+  },
+  {
+   "id": "incident",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "error",
+   "reason": "The read operation timed out",
+   "calls": [],
+   "tool_errors": 0,
+   "result_tokens": 0,
+   "turns": 0,
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "cost_usd": 0.0,
+   "ms": 0
+  },
+  {
+   "id": "incident",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer confirms the report is tied to INC-7 (webhook delivery degraded, eu-west, linked to Wayne's account) and cites ticket T-2301 opened 09:30 on Oct 2 and resolved after deliveries recovered at 11:40 UTC. It does not state the 09:10 start time, but this omission is minor and the conclusion matches.",
+   "answer": "Yes — it lines up with an incident.\n\n- **ticket:T-2301** \"502 errors on webhook runs\" (category workflows), priority **high**, raised **2026-10-02 09:30 UTC**, resolved **12:05 UTC** with the note \"Deliveries succeeded again after 11:40 UTC.\"\n- **incident:INC-7** \"Webhook delivery degraded\" (region eu-west), severity **major**, resolved **2026-10-02 11:40 UTC**: \"A load balancer misconfiguration returned 502 on webhook deliveries.\" It is linked to **account:wayne** via `affected_by`.\n\nSame day, same symptom (502s on webhook deliveries), and the ticket's recovery time matches the incident's resolution time, so the report is attributable to INC-7.\n\nCaution: there is also **ticket:T-6400**, an older ticket with the identical title, but it dates from 2026-05-23 and its cause was the customer's own endpoint being down — not related.",
+   "calls": [
+    {
+     "tool": "search",
+     "args": {
+      "text": "502 errors webhook runs",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 432,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "incident",
+      "limit": 50,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 47,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "ticket:T-2301",
+       "ticket:T-6400",
+       "incident:INC-7"
+      ],
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 539,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "ticket:T-2301",
+      "detail": "full"
+     },
+     "tokens": 549,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1567,
+   "turns": 4,
+   "tokens": {
+    "input": 12036,
+    "output": 744
+   },
+   "cost_usd": 0.004504,
+   "ms": 11313
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "partial",
+   "reason": "The answer correctly says No, grounded for tire T-9001 (P3) at 2.6 mm since Oct 3 (below 3 mm), and cites ticket TK-3608 approved at WS-02, but it never mentions the Oct 10 inspection INS-4821-10 that found a major crack.",
+   "answer": "**No — MXK-4821 cannot be dispatched today.**\n\nReasons (as of 2026-10-15):\n\n1. **Grounded:** `unit_grounded` fires — tire `T-9001` (position P3) has tread depth **2.6 mm** (since 2026-10-03), below the 3 mm threshold, so `tire_critical` is true. A critical tire grounds the unit.\n2. **Open urgent repair:** it is in workshop `WS-02` with ticket `TK-3608` (corrective, urgency *urgent*, status *approved* since 2026-10-12) — repairs not yet closed.\n3. **Insurance about to expire:** document `POL-7731` (insurance policy) expires **2026-10-20**, i.e. within 5 days, so `document_critical` is true — it is critical but not yet expired, so that alone wouldn't block today, but it must be renewed before dispatch/expiry.\n\nNot blocking: driver `D-118`'s licence `LIC-D118` expires 2027-03-15 (fine).",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "subject": "MXK-4821",
+      "limit": 50,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1203,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "[\"driver:D-118\",\"workshop:WS-02\",\"ticket:TK-3608\",\"tire:T-9001\",\"document:POL-7731\"]",
+      "depth": 1,
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 995,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 1203,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 3874,
+   "turns": 3,
+   "tokens": {
+    "input": 12461,
+    "output": 781
+   },
+   "cost_usd": 0.004675,
+   "ms": 12840
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer says No and cites the grounded status from tire T-9001 at P3 measuring 2.6 mm (below the 3 mm threshold), the major crack found in INS-4821-10, and approved ticket TK-3608 at WS-02; it omits the \"since Oct 3\" date, which is minor, and the extra policy detail does not contradict the expected answer.",
+   "answer": "**No — unit:MXK-4821 should not be dispatched today (2026-10-15).**\n\nReasons, per the evaluation at 2026-10-15T12:00Z:\n\n1. **Grounded — critical tire.** tire:T-9001 is mounted on MXK-4821 (position P3) with tread depth **2.6 mm** (below the 3 mm threshold), so `tire_critical` = true and `unit_grounded` = true. This alone blocks dispatch.\n2. **Open urgent corrective work.** ticket:TK-3608 (category corrective, urgency *urgent*, status *approved* since 2026-10-12) was raised from inspection:INS-4821-10 (2 damages, incl. a major crack), and the unit is currently `in_workshop` workshop:WS-02. (The ticket is not stale — `ticket_stale` = false.)\n3. **Not blocking, but worth noting:** document:POL-7731 (insurance policy covering the unit) expires **2026-10-20**, i.e. within 15 days → `document_critical` = true; it is not yet expired, but the unit would be uninsured for dispatch after that date.\n\nRecommendation: replace tire T-9001, complete the approved workshop repair, and renew the policy before dispatching.\n\nNote: the data does not state an explicit \"dispatchable/available\" flag — the conclusion follows from the grounding rule and the open ticket/workshop state.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 514,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "rule": "unit_grounded",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 62,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "tire:T-9001",
+       "workshop:WS-02",
+       "ticket:TK-3608",
+       "document:POL-7731"
+      ],
+      "detail": "brief",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 470,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1046,
+   "turns": 3,
+   "tokens": {
+    "input": 8223,
+    "output": 814
+   },
+   "cost_usd": 0.003444,
+   "ms": 12004
+  },
+  {
+   "id": "fleet-dispatch",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer says No and gives the grounding reason (T-9001 at P3, 2.6 mm since Oct 3, below 3 mm), the INS-4821-10 inspection with a major crack, and TK-3608 approved at WS-02, so it matches the expected facts and adds only extra correct detail.",
+   "answer": "**No — MXK-4821 can't be dispatched today (2026-10-15).**\n\n- **Grounded**: `unit_grounded = true` — tire **T-9001** (position P3) has tread depth **2.6 mm**, below the 3 mm threshold (`tire_critical = true`, measured 2026-10-03). A unit with any critical tire is grounded, so it shouldn't go out.\n- **In the workshop**: the unit has been `in_workshop` **workshop:WS-02** since **2026-10-12T14:00Z**.\n- **Open urgent repair**: ticket **TK-3608** (corrective, urgency *urgent*, status *approved* since 2026-10-12), raised from inspection **INS-4821-10** (pre-trip, 2026-10-10) which recorded 2 damages — D1 minor dent, D2 major crack. Not stale, so it's an active job.\n- **Compliance flag**: insurance policy **document:POL-7731** covering the unit expires **2026-10-20** — critical (within 15 days), though not yet expired.\n\nSupporting detail: driver **D-118** is assigned to the unit and their license **LIC-D118** is valid to 2027-03-15, so the driver isn't the blocker. The unit's last fuel load (310 L, 2026-09-15) raises no `fuel_anomaly` flag in the evaluation. The blocker is the critical tire plus the active workshop/urgent-ticket state.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "only": [
+       "unit_grounded",
+       "fuel_anomaly",
+       "in_workshop"
+      ],
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 751,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 125,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "workshop:WS-02",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 93,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 70,
+     "error": true
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:POL-7731",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 128,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "driver:D-118",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 107,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "ticket:TK-3608",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 166,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "document:LIC-D118",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 124,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "inspection:INS-4821-10",
+      "detail": "concise",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 248,
+     "error": false
+    }
+   ],
+   "tool_errors": 1,
+   "result_tokens": 2285,
+   "turns": 4,
+   "tokens": {
+    "input": 14989,
+    "output": 1279
+   },
+   "cost_usd": 0.006032,
+   "ms": 14649
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on Sep 20 (valid from Sep 10) and says the tire has been critical since Oct 3 with a 2.6 mm measurement, below the 3 mm threshold, which matches the expected answer.",
+   "answer": "**Tire T-9001** (position P3, mounted on unit MXK-4821):\n\n- **On 2026-09-20: 5.2 mm tread depth** — that value was valid from 2026-09-10 to 2026-10-03 (evidence `32a333d483131ce7e6dbc25d3ff119d8`), so it was *not* critical then.\n- **Critical since 2026-10-03T08:00:00Z**: a new measurement of **2.6 mm** took effect that day (evidence `83d6a60418b897b074beddd298846aca`), below the 3 mm `tire_critical` threshold — so it is still critical today (2026-10-15).\n\nNote: 2.6 mm is also below 3 mm, so unit MXK-4821 is grounded by this tire under `unit_grounded`.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 391,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "predicate": "tread_depth",
+      "detail": "full"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full"
+     },
+     "tokens": 330,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20T12:00:00+00:00",
+      "detail": "full"
+     },
+     "tokens": 427,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1149,
+   "turns": 3,
+   "tokens": {
+    "input": 8203,
+    "output": 576
+   },
+   "cost_usd": 0.003152,
+   "ms": 8142
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on September 20 (valid from Sep 10) and states it became critical on October 3 with a 2.6 mm measurement, below the 3 mm threshold, matching the expected answer.",
+   "answer": "**Tire T-9001** (position P3, mounted on unit MXK-4821 since 2026-09-10):\n\n- **2026-09-20:** tread depth was **5.2 mm** (fact valid 2026-09-10 → 2026-10-03), so it was **not** critical then (threshold is < 3 mm).\n- **Critical since 2026-10-03 08:00 UTC**, when a new measurement of **2.6 mm** took effect — below the 3 mm threshold, so `tire_critical` fires.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 391,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "predicate": "tread_depth",
+      "detail": "concise"
+     },
+     "tokens": 1,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "detail": "concise",
+      "predicate": "depth_mm",
+      "subject": "tire:T-9001"
+     },
+     "tokens": 140,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20T12:00:00+00:00",
+      "detail": "full"
+     },
+     "tokens": 427,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 959,
+   "turns": 4,
+   "tokens": {
+    "input": 10887,
+    "output": 590
+   },
+   "cost_usd": 0.003974,
+   "ms": 8386
+  },
+  {
+   "id": "fleet-tire-then",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer gives 5.2 mm on September 20 (measurement valid from Sep 10) and says the tire has been critical since October 3 at 2.6 mm, below the 3 mm threshold, which matches the expected answer.",
+   "answer": "**Tire:T-9001** (mounted on unit:MXK-4821, position P3):\n\n- **On 2026-09-20:** tread depth was **5.2 mm** — not critical (that measurement was valid from 2026-09-10T08:00Z until 2026-10-03T08:00Z).\n- **Critical since 2026-10-03** (08:00 UTC): depth dropped to **2.6 mm**, below the 3 mm threshold, so tire_critical fires from that measurement onward.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "tire:T-9001",
+      "as_of": "2026-09-20",
+      "detail": "full"
+     },
+     "tokens": 427,
+     "error": false
+    },
+    {
+     "tool": "history",
+     "args": {
+      "subject": "tire:T-9001",
+      "detail": "full"
+     },
+     "tokens": 330,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 757,
+   "turns": 2,
+   "tokens": {
+    "input": 5037,
+    "output": 365
+   },
+   "cost_usd": 0.001949,
+   "ms": 5875
+  },
+  {
+   "id": "fleet-docs",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer identifies POL-7731 for MXK-4821 expiring 2026-10-20 as critical (within 15 days) and LIC-D118 for driver D-118 expiring 2027-03-15 as fine, matching the expected answer; the \"5 days\" detail and tire side note don't contradict it.",
+   "answer": "Yes — one document: **document:POL-7731** (covers unit MXK-4821) expires **2026-10-20**, i.e. in 5 days, so it is flagged `document_critical: true` (critical = expires within 15 days).\n\nThe driver's document is fine: **document:LIC-D118** (covers driver:D-118, assigned to MXK-4821) expires **2027-03-15**, so `document_critical: false`.\n\n(Side note, not a document: tire:T-9001 on the unit is at 2.6 mm tread, so `tire_critical` and `unit_grounded` are both true.)",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "depth": 1,
+      "subject": "driver:D-118",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 190,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "driver:D-118",
+      "relation": "covers_driver",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 39,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 702,
+   "turns": 3,
+   "tokens": {
+    "input": 7692,
+    "output": 420
+   },
+   "cost_usd": 0.002812,
+   "ms": 7114
+  },
+  {
+   "id": "fleet-docs",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "The answer identifies POL-7731 expiring 2026-10-20 as critical and LIC-D118 expiring 2027-03-15 as not a concern, which matches the expected facts; the '5 days out' detail is consistent with 'within 15 days'.",
+   "answer": "Yes — one document.\n\n- **document:POL-7731** (insurance policy, covers unit:MXK-4821) expires **2026-10-20**, i.e. 5 days out → `document_critical: true`.\n- **document:LIC-D118** (driver:D-118's licence) expires **2027-03-15** → `document_critical: false`, not expiring soon.\n\nNote: the unit is also `unit_grounded` because tire:T-9001 has tread 2.6 mm (`tire_critical`), and it's in workshop:WS-02 — separate from the document issue.",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": "driver:D-118",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 190,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "driver:D-118",
+      "relation": "covers_driver",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 39,
+     "error": false
+    },
+    {
+     "tool": "search",
+     "args": {
+      "kind": "document",
+      "rule": "document_critical",
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 41,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 743,
+   "turns": 3,
+   "tokens": {
+    "input": 7787,
+    "output": 559
+   },
+   "cost_usd": 0.003007,
+   "ms": 8743
+  },
+  {
+   "id": "fleet-docs",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "grade": "correct",
+   "reason": "It identifies POL-7731 expiring 2026-10-20 as critical and LIC-D118 expiring 2027-03-15 as not critical, matching the expected facts; the '5 days' figure is consistent with 'within 15 days'.",
+   "answer": "Yes — one document:\n\n- **document:POL-7731** (insurance policy, covers unit:MXK-4821): expires **2026-10-20**, i.e. in 5 days → `document_critical` = true. ⚠️\n- **document:LIC-D118** (driver's license, covers driver:D-118): expires **2027-03-15** → not critical.\n\n(Unrelated to documents, but worth noting: unit:MXK-4821 is currently `unit_grounded` because tire:T-9001 has 2.6 mm tread, and it is `in_workshop` WS-02.)",
+   "calls": [
+    {
+     "tool": "context",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 1,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 473,
+     "error": false
+    },
+    {
+     "tool": "related",
+     "args": {
+      "subject": "unit:MXK-4821",
+      "depth": 2,
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 365,
+     "error": false
+    },
+    {
+     "tool": "context",
+     "args": {
+      "subject": [
+       "document:POL-7731",
+       "document:LIC-D118"
+      ],
+      "as_of": "2026-10-15T12:00:00+00:00"
+     },
+     "tokens": 235,
+     "error": false
+    }
+   ],
+   "tool_errors": 0,
+   "result_tokens": 1073,
+   "turns": 3,
+   "tokens": {
+    "input": 8534,
+    "output": 424
+   },
+   "cost_usd": 0.003069,
+   "ms": 8457
+  }
+ ],
+ "summary": {
+  "anthropic/claude-sonnet-5.5": {
+   "runs": 30,
+   "failed": 0,
+   "accuracy": 0.95,
+   "correct": 27,
+   "calls": 3.63,
+   "turns": 3.17,
+   "tool_errors": 0,
+   "result_tokens": 1732,
+   "input_tokens": 12971,
+   "output_tokens": 632,
+   "cost_usd": 0.968
+  },
+  "deepseek/deepseek-v4.1-flash": {
+   "runs": 18,
+   "failed": 12,
+   "accuracy": 0.972,
+   "correct": 17,
+   "calls": 4.22,
+   "turns": 3.33,
+   "tool_errors": 1,
+   "result_tokens": 1885,
+   "input_tokens": 10482,
+   "output_tokens": 690,
+   "cost_usd": 0.0715
+  }
+ },
+ "tokenizer": "o200k_base"
+}

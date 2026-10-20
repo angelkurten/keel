@@ -48,6 +48,7 @@ class Cartridge:
     predicates: dict[str, dict[str, Any]] = field(default_factory=dict)  # write policy per predicate: {multi: true}
     semantic: dict[str, Any] = field(default_factory=dict)  # what keel index renders: kinds, predicates|exclude, attrs, relations
     consolidate: dict[str, Any] = field(default_factory=dict)  # episodic memory -> durable facts (keel.consolidate)
+    context: dict[str, int] = field(default_factory=dict)  # how much `context` carries: {relations: n, neighbors: n} per relation
     version: str | None = None
 
     @property
@@ -106,6 +107,11 @@ class Cartridge:
         else:
             for k in sorted(set(split) - set(self.entities)):
                 problems.append(f"semantic: split kind '{k}' is not a declared entity kind")
+        for key, n in sorted(self.context.items()):
+            if key not in ("relations", "neighbors"):
+                problems.append(f"context: unknown key '{key}' (neighbors, relations)")
+            elif not isinstance(n, int) or isinstance(n, bool) or n < 1:
+                problems.append(f"context: {key} is a whole number of at least 1")
         from keel.consolidate import problems as consolidate_problems
 
         problems += consolidate_problems(self)
@@ -140,6 +146,7 @@ class Cartridge:
             "predicates": self.predicates,
             "semantic": self.semantic,
             "consolidate": self.consolidate,
+            "context": self.context,
             "agents": {
                 a.id: {
                     **asdict(a),
@@ -233,4 +240,5 @@ def load_cartridge(path: str | Path, handlers: bool = True) -> Cartridge:
         predicates=raw.get("predicates") or {},
         semantic=raw.get("semantic") or {},
         consolidate=raw.get("consolidate") or {},
+        context=raw.get("context") or {},
     )

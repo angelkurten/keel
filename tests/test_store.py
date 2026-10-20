@@ -550,9 +550,101 @@ def test_concise_detail_and_history_limit(store):
     tire = next(n for n in short["neighbors"] if n["subject"] == "tire:T-9001")
     assert tire["facts"] == {"depth_mm": 2.6} and tire["evaluation"] == {"tire_critical": True}
     assert len(json.dumps(short)) * 2.5 < len(json.dumps(full))  # well under half the size
-    assert [f["value"] for f in t.history("tire:T-9001", predicate="depth_mm", limit=1)] == [2.6]  # the most recent
+    more, last = t.history("tire:T-9001", predicate="depth_mm", limit=1)  # the most recent, led by what was cut
+    assert last["value"] == 2.6 and more["more"]["shown"] == 1 and more["more"]["total"] == 2
+    assert len(t.history("tire:T-9001", predicate="depth_mm", limit=None)) == 2 == len(t.history("tire:T-9001", predicate="depth_mm", limit=0))
     with pytest.raises(ValueError):
         t.context("unit:MXK-4821", detail="verbose")
+
+
+def test_lean_facts_keep_world_time_and_provenance(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    full, lean = t.history("tire:T-9001", predicate="depth_mm"), t.history("tire:T-9001", predicate="depth_mm", detail="concise")
+    assert [(f["value"], f["valid_from"], f["valid_to"], f["source"], f["evidence"]) for f in full] == [
+        (f["value"], f["valid_from"], f.get("valid_to"), f["source"], f["evidence"]) for f in lean]
+    assert not {"tenant", "subject", "recorded_at", "closed_at", "scope"} & set().union(*lean)
+    assert all(None not in f.values() for f in lean)
+    assert "subject" in t.history(changed_since="2000-01-01T00:00:00+00:00", detail="concise")[0]  # tenant-wide: says whose
+    brief = t.context("tire:T-9001", detail="brief")
+    assert brief["since"]["depth_mm"] == full[-1]["valid_from"]  # "since when" without a history call
+    ack = t.annotate("tire:T-9001", "assessment", "replace", detail="ack")
+    assert set(ack) <= {"subject", "predicate", "scope", "valid_from", "valid_to", "expires_at", "task", "status"} and ack["predicate"] == "assessment"
+    hit = next(h for h in t.search("replace", detail="brief") if "predicate" in h)
+    assert hit["subject"] == "tire:T-9001" and "tenant" not in hit
+    with pytest.raises(ValueError):
+        t.history("tire:T-9001", detail="brief")
+
+
+def test_long_lists_are_cut_and_say_how_to_get_the_rest():
+    c, s = load_cartridge("examples/relay"), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter("examples/relay/events.jsonl"))
+    t = Tools(c, s, "stark")
+    every = t.related("account:stark", limit=None)
+    first, *shown = t.related("account:stark")
+    assert first["more"]["total"] == len(every) > len(shown) == first["more"]["shown"] == 50
+    assert sum(first["more"]["by_relation"].values()) == len(every) and "search(related_to=" in first["more"]["next"]
+    assert {e["subject"] for e in shown} <= {e["subject"] for e in every} and "ticket:T-3112" in {e["subject"] for e in shown}  # the newest kept
+    assert t.related("account:stark") == t.related("account:stark")  # one order, whatever the store's
+    lead, *tickets = t.search(kind="ticket")
+    assert lead["more"] == {"shown": 50, "total": 80, "next": f"page with after='{tickets[-1]['key']}'"}
+    rest = t.search(kind="ticket", after=tickets[-1]["key"])
+    assert len(rest) == 30 and "more" not in rest[0]
+    assert "more" not in t.search(kind="ticket", limit=5)[0]  # asked for a size: no marker
+
+
+def test_depth_one_reads_a_few_neighbours_per_relation():
+    c, s = load_cartridge("examples/relay"), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter("examples/relay/events.jsonl"))
+    ctx = Tools(c, s, "wayne").context("account:wayne", depth=1, detail="brief")
+    per = {}
+    for n in ctx["neighbors"]:
+        per[(n["relation"], n["direction"])] = per.get((n["relation"], n["direction"]), 0) + 1
+    assert max(per.values()) == 5 and ctx["neighbors_more"]  # the rest are counted, and in `relations`
+    c.context = {"neighbors": 2, "relations": 3}
+    ctx = Tools(c, s, "wayne").context("account:wayne", depth=1, detail="brief")
+    assert all(len([n for n in ctx["neighbors"] if n["relation"] == r]) <= 2 for r in per) and max(map(len, ctx["relations"].values())) == 3
+    c.context = {"neighbours": 2, "relations": 0}
+    assert {"context: unknown key 'neighbours' (neighbors, relations)", "context: relations is a whole number of at least 1"} <= set(c.validate())
+
+
+def test_the_same_question_answers_in_the_same_bytes(store):
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    ask = lambda: json.dumps([t.context("unit:MXK-4821", depth=1), t.context("unit:MXK-4821", detail="brief"), t.related("unit:MXK-4821")], default=str)
+    first = ask()
+    assert ask() == first or ask() == ask()  # a second boundary may fall between two calls, never two in a row
+    assert ".0" not in t.context("unit:MXK-4821")["as_of"][19:]  # to the second
+    t.annotate("unit:MXK-4821", "note", "seen")
+    assert any(f["predicate"] == "note" for f in t.context("unit:MXK-4821")["facts"])  # written this second, still read
+
+
+def test_a_wrong_name_is_an_error_that_says_what_exists():
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS))
+    t = Tools(c, s, TENANT)
+    with pytest.raises(ValueError, match="did you mean 'tire'"):
+        t.search(kind="tires")
+    with pytest.raises(ValueError, match="did you mean 'unit:MXK-4821'"):
+        t.context("MXK-4821")
+    with pytest.raises(ValueError, match="unknown kind 'truck'"):
+        t.history("truck:1")
+    with pytest.raises(ValueError, match="unknown relation 'mounted'; did you mean 'mounted_on'"):
+        t.related("unit:MXK-4821", "mounted")
+    with pytest.raises(ValueError, match="unknown rule 'tire_crit'; did you mean 'tire_critical'"):
+        t.search(rule="tire_crit")
+    with pytest.raises(ValueError, match="The scopes are: global, tenant, task, agent"):
+        t.annotate("unit:MXK-4821", "note", "x", scope="team")
+    with pytest.raises(ValueError, match="e.g. 2026-10-03"):
+        t.history("unit:MXK-4821", since="yesterday")
+    nope = t.context("unit:NOPE", detail="full")  # well formed, nothing known (yet): no rule definitions to read
+    assert nope["found"] is False and set(nope) == {"subject", "found", "as_of", "watermark"}
+    note, *hits = t.search("approved workshop ticket")  # no value holds the phrase: ranked by its words, and it says so
+    assert "by its words" in note["note"] and hits[0]["key"] == "ticket:TK-3608"
+    assert len(t.search("approved workshop ticket", limit=1)) == 2  # the note, and one result
+    assert t.search("approved workshop ticket", where={"status": "closed"}) == []
 
 
 def test_writes_carry_the_callers_trace(store):
@@ -1293,3 +1385,16 @@ def test_accounts_and_retention_cutoffs(store):
     assert cutoff_for("3y", now) == datetime(2023, 3, 28, 12, tzinfo=timezone.utc)
     assert cutoff_for("18m", now) == datetime(2024, 9, 28, 12, tzinfo=timezone.utc)
     assert cutoff_for("90d", now) == datetime(2025, 12, 31, 12, tzinfo=timezone.utc)
+
+
+def test_a_pinned_clock_puts_reads_and_notes_on_that_day():
+    from keel import running_from
+
+    c, s = load_cartridge(FLEET), MemoryStore()
+    Ingestor(c, s).ingest(JsonlAdapter(EVENTS))
+    day = datetime(2026, 9, 20, 12, tzinfo=timezone.utc)
+    t = Tools(c, s, TENANT, clock=running_from(day))
+    assert t.context("tire:T-9001")["evaluation"] == {"tire_critical": False}  # 5.2 mm on Sep 20
+    note = t.annotate("tire:T-9001", "note", "check again", detail="full")
+    assert note["valid_from"].startswith("2026-09-20")
+    assert t.context("tire:T-9001", as_of=day.replace(hour=13), detail="brief")["facts"]["note"] == "check again"  # visible that day

@@ -127,12 +127,12 @@ class Client:
     def history(
         self, subject: str | None = None, since: datetime | str | None = None, until: datetime | str | None = None,
         predicate: str | None = None, scope: str | None = None, as_known_at: datetime | str | None = None,
-        task: str | None = None, changed_since: datetime | str | None = None, limit: int | None = None,
+        task: str | None = None, changed_since: datetime | str | None = None, limit: int | None = 50, detail: str = "full",
     ) -> list[dict[str, Any]]:
-        """Facts over time. Without a subject, `changed_since` (a watermark) lists the tenant's changes."""
+        """Facts over time. Without a subject, `changed_since` (a watermark) lists the tenant's changes. `detail="concise"`: lean facts."""
         return self._post("/v1/history", {
             "subject": subject, "since": _iso(since), "until": _iso(until), "predicate": predicate, "scope": scope,
-            "as_known_at": _iso(as_known_at), "task": task, "changed_since": _iso(changed_since), "limit": limit,
+            "as_known_at": _iso(as_known_at), "task": task, "changed_since": _iso(changed_since), "limit": limit, "detail": detail,
         })
 
     def search(
@@ -152,14 +152,14 @@ class Client:
 
     def annotate(
         self, subject: str, predicate: str, value: Any, scope: str = "task", evidence: str | None = None,
-        by: str | None = None, task: str | None = None, key: str | None = None, status: str | None = None,
+        by: str | None = None, task: str | None = None, key: str | None = None, status: str | None = None, detail: str = "full",
     ) -> dict[str, Any]:
-        """Write memory. `task` ties it to a job; `key` makes a retried write return the first one."""
-        return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by, "task": task, "key": key, "status": status})
+        """Write memory. `task` ties it to a job; `key` makes a retried write return the first one; `detail="ack"`: a short receipt."""
+        return self._post("/v1/annotate", {"subject": subject, "predicate": predicate, "value": value, "scope": scope, "evidence": evidence, "by": by, "task": task, "key": key, "status": status, "detail": detail})
 
-    def related(self, subject: str, relation: str | list[str] | None = None, as_of: datetime | str | None = None, depth: int = 1) -> list[dict[str, Any]]:
-        """Neighbours, optionally by relation (one or a list); `depth` 2 or 3 walks further, with `hops` and `via`."""
-        return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of), "depth": depth})
+    def related(self, subject: str, relation: str | list[str] | None = None, as_of: datetime | str | None = None, depth: int = 1, limit: int | None = 50) -> list[dict[str, Any]]:
+        """Neighbours, optionally by relation (one or a list); `depth` 2 or 3 walks further, with `hops` and `via`; at most `limit`."""
+        return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of), "depth": depth, "limit": limit})
 
     def events(self, batch: Event | dict[str, Any] | list[Event | dict[str, Any]]) -> dict[str, Any]:
         items = batch if isinstance(batch, list) else [batch]

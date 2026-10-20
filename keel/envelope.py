@@ -26,7 +26,10 @@ def parse_iso(value: Any) -> datetime:
     if isinstance(value, datetime):
         d = value
     else:
-        d = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        try:
+            d = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError(f"'{value}' is not an ISO 8601 date or datetime, e.g. 2026-10-03 or 2026-10-03T08:00:00Z") from None
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 

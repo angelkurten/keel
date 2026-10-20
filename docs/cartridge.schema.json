@@ -70,6 +70,9 @@
         "$ref": "#/$defs/consolidation"
       }
     },
+    "context": {
+      "$ref": "#/$defs/context"
+    },
     "calendar": {
       "$ref": "#/$defs/calendar"
     },
@@ -818,6 +821,24 @@
           }
         }
       }
+    },
+    "context": {
+      "type": "object",
+      "description": "How much `context` carries: relations listed, and neighbours read with depth=1, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.",
+      "markdownDescription": "How much `context` carries: relations listed, and neighbours read with `depth=1`, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.\n\n```yaml\ncontext: { relations: 10, neighbors: 5 }\n```",
+      "properties": {
+        "relations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Relations listed per relation and direction, the most recent ones. Default 10."
+        },
+        "neighbors": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Neighbours read with depth=1 per relation and direction, the most recent ones. Default 5."
+        }
+      },
+      "additionalProperties": false
     },
     "calendar": {
       "type": "object",

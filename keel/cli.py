@@ -788,6 +788,7 @@ def serve(
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="With --index: the embedder spec."),
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
     cdc: Path | None = typer.Option(None, "--cdc", envvar="KEEL_CDC_MAP", help="http only: also follow Postgres tables (the `keel cdc` map; KEEL_PG_DSN), in a thread of this server; /health shows its state."),
+    clock: str | None = typer.Option(None, "--clock", envvar="KEEL_CLOCK", help="Start the tools' clock at this ISO instant and let it run: a demo or a test pinned to a day, whose agents' notes land on that day too. Ingest keeps real time."),
     index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
@@ -800,6 +801,11 @@ def serve(
         from keel.semantic import load_embedder, load_index, load_reranker
 
         semantic = {"embedder": load_embedder(embedder), "index": load_index(index), "reranker": load_reranker(reranker) if reranker else None}
+    if clock:
+        from keel.envelope import parse_iso
+        from keel.tools import running_from
+
+        semantic["clock"] = running_from(parse_iso(clock))
     if transport == "stdio":
         from keel.mcp_server import build_server
 

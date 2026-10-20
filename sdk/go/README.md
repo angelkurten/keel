@@ -18,4 +18,6 @@ got, err := c.Context(ctx, "tire:T-9001", nil)
 
 `keel.Options` also takes `Agent`, `Traceparent` (sent as the W3C header on every call; Keel stores it with every write) and `HTTPClient` (default: `&http.Client{Timeout: 30 * time.Second}`, so set your own for another timeout or transport). Each call also honours its `context.Context`.
 
+The client returns the shapes its types declare, whatever the HTTP API's agent-oriented defaults: `Context*`, `History` and `Annotate` ask for detail `"full"` (`ContextConcise`/`ContextBrief`, `HistoryFilter.Detail: "concise"` and `Annotation.Detail: "ack"` ask for less), and `History`, `SearchWith` and `RelatedWith` return every entry unless you set `Limit`. A subject nothing is known about comes back with `Found` false.
+
 A refusal from the server is a `*keel.Error` with `Status` and `Detail`. The generated file is `go vet` and `gofmt` clean; keep it fresh with `keel sdk go ... --check` in CI.

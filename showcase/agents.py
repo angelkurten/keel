@@ -70,6 +70,7 @@ class Settings:
     keel_url: str = "http://127.0.0.1:8000"
     keel_key: str | None = None
     max_steps: int = 10
+    pin_today: bool = True  # pass as_of=TODAY on reads; off when Keel runs with --clock TODAY, so notes land on that day too
 
 
 @dataclass
@@ -135,7 +136,7 @@ class Agents:
     def keel(self, run: Run, tool: str, args: dict[str, Any]) -> Any:
         if tool == "search_help":
             return self.search_help(str(args.get("query", "")))
-        if tool in ("context", "search", "related") and not args.get("as_of"):
+        if self.s.pin_today and tool in ("context", "search", "related") and not args.get("as_of"):
             args["as_of"] = TODAY.isoformat()  # today is fixed, so the rules are evaluated on the scenario's day
         if run.task and tool in ("context", "history", "annotate") and not args.get("task"):
             args["task"] = run.task
@@ -196,7 +197,9 @@ class Agents:
                         result, ok = call(name, args), True
                     except Exception as exc:  # noqa: BLE001 - the model reads the error, as over MCP
                         result, ok = {"error": str(exc)}, False
-                    text = json.dumps(result, default=str, ensure_ascii=False)[:RESULT_CHARS]
+                    text = json.dumps(result, default=str, ensure_ascii=False, separators=(",", ":"))  # compact, as over MCP
+                    if len(text) > RESULT_CHARS:  # still valid JSON, and the model learns why and what to ask instead
+                        text = json.dumps({"truncated": f"{len(text)} characters; ask for less (detail, limit, relation, a narrower query)", "head": text[:RESULT_CHARS]}, ensure_ascii=False)
                     messages.append({"role": "tool", "tool_call_id": c["id"], "content": text})
                     trace.append({"tool": name, "arguments": args, "ok": ok, "result": text[:1500]})
             else:

@@ -1,0 +1,229 @@
+{
+ "definitions": {
+  "tokens": 1653,
+  "tokens_without_output_schema": 1394
+ },
+ "probes": {
+  "fleet.context": {
+   "tokens": 920,
+   "structured_tokens": 1089,
+   "chars": 2626,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"unit:MXK-4821\",\"entity\":{\"tenant\":\"acme-logistics\",\"kind\":\"unit\",\"id\":\"MXK-4821\",\"ref\":\"fleet.vehicles#MXK-4821\",\"key\":\"unit:MXK-4821\",\"attrs\":{\"plate\":\"MXK-4821\",\"model\":\"Freightliner Cascadia\"}},\"facts\":[{\"tenant\":\"acme-logistics\",\"subject\":\"unit:MXK-4821\",\"predicate\":\"last_fuel_load\","
+  },
+  "fleet.context.depth1": {
+   "tokens": 2445,
+   "structured_tokens": 2927,
+   "chars": 7289,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"unit:MXK-4821\",\"entity\":{\"tenant\":\"acme-logistics\",\"kind\":\"unit\",\"id\":\"MXK-4821\",\"ref\":\"fleet.vehicles#MXK-4821\",\"key\":\"unit:MXK-4821\",\"attrs\":{\"plate\":\"MXK-4821\",\"model\":\"Freightliner Cascadia\"}},\"facts\":[{\"tenant\":\"acme-logistics\",\"subject\":\"unit:MXK-4821\",\"predicate\":\"last_fuel_load\","
+  },
+  "fleet.history.tire": {
+   "tokens": 330,
+   "structured_tokens": 388,
+   "chars": 894,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"acme-logistics\",\"subject\":\"tire:T-9001\",\"predicate\":\"depth_mm\",\"value\":5.2,\"valid_from\":\"2026-09-10T08:00:00+00:00\",\"valid_to\":\"2026-10-03T08:00:00+00:00\",\"recorded_at\":\"2026-10-20T18:11:32.637636+00:00\",\"source\":\"tires.measurements\",\"scope\":\"tenant\",\"corrected_by\":null,\"evidence\":\"32a33"
+  },
+  "fleet.related": {
+   "tokens": 227,
+   "structured_tokens": 276,
+   "chars": 653,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"relation\":\"assigned_to\",\"direction\":\"in\",\"subject\":\"driver:D-118\",\"since\":\"2026-09-01T09:05:00+00:00\"},{\"relation\":\"covers_unit\",\"direction\":\"in\",\"subject\":\"document:POL-7731\",\"since\":\"2026-09-01T10:00:00+00:00\"},{\"relation\":\"mounted_on\",\"direction\":\"in\",\"subject\":\"tire:T-9001\",\"since\":\"2026-09-1"
+  },
+  "fleet.search.kind": {
+   "tokens": 42,
+   "structured_tokens": 55,
+   "chars": 114,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"acme-logistics\",\"kind\":\"tire\",\"id\":\"T-9001\",\"ref\":null,\"key\":\"tire:T-9001\",\"attrs\":{\"position\":\"P3\"}}]"
+  },
+  "fleet.annotate": {
+   "tokens": 176,
+   "structured_tokens": 204,
+   "chars": 475,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\"tenant\":\"acme-logistics\",\"subject\":\"tire:T-9001\",\"predicate\":\"assessment\",\"value\":\"critical: 2.6 mm < 3 mm\",\"valid_from\":\"2026-10-20T18:11:32.724378+00:00\",\"valid_to\":null,\"recorded_at\":\"2026-10-20T18:11:32.724404+00:00\",\"source\":\"annotate:agent:eval\",\"scope\":\"task\",\"corrected_by\":\"agent:eval\",\"ev"
+  },
+  "relay.context.acme": {
+   "tokens": 3101,
+   "structured_tokens": 3712,
+   "chars": 8663,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"account:acme\",\"entity\":{\"tenant\":\"acme\",\"kind\":\"account\",\"id\":\"acme\",\"ref\":\"relay.core#acme\",\"key\":\"account:acme\",\"attrs\":{\"name\":\"Acme Corp\"}},\"facts\":[{\"tenant\":\"acme\",\"subject\":\"account:acme\",\"predicate\":\"region\",\"value\":\"us-east\",\"valid_from\":\"2026-04-03T09:00:00+00:00\",\"valid_to\":nu"
+  },
+  "relay.context.wayne.depth1": {
+   "tokens": 11009,
+   "structured_tokens": 13433,
+   "chars": 34601,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"account:wayne\",\"entity\":{\"tenant\":\"wayne\",\"kind\":\"account\",\"id\":\"wayne\",\"ref\":\"relay.core#wayne\",\"key\":\"account:wayne\",\"attrs\":{\"name\":\"Wayne Enterprises\"}},\"facts\":[{\"tenant\":\"wayne\",\"subject\":\"account:wayne\",\"predicate\":\"plan\",\"value\":\"pro\",\"valid_from\":\"2026-04-22T09:00:00+00:00\",\"val"
+  },
+  "relay.search.sla": {
+   "tokens": 53,
+   "structured_tokens": 69,
+   "chars": 170,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"stark\",\"kind\":\"ticket\",\"id\":\"T-3112\",\"ref\":\"relay.support#T-3112\",\"key\":\"ticket:T-3112\",\"attrs\":{\"title\":\"SSO login loop for all users\",\"category\":\"access\"}}]"
+  },
+  "relay.search.text": {
+   "tokens": 625,
+   "structured_tokens": 762,
+   "chars": 2051,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"initech\",\"kind\":\"integration\",\"id\":\"I-initech-sf\",\"ref\":\"relay.integrations#I-initech-sf\",\"key\":\"integration:I-initech-sf\",\"attrs\":{\"app\":\"Salesforce\"},\"matched\":\"app\",\"snippet\":\"Salesforce\"},{\"tenant\":\"initech\",\"kind\":\"ticket\",\"id\":\"T-5400\",\"ref\":\"relay.support#T-5400\",\"key\":\"ticket:T-5"
+  },
+  "relay.search.kind": {
+   "tokens": 3892,
+   "structured_tokens": 5093,
+   "chars": 13192,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"stark\",\"kind\":\"ticket\",\"id\":\"T-3105\",\"ref\":\"relay.support#T-3105\",\"key\":\"ticket:T-3105\",\"attrs\":{\"title\":\"Add 20 seats\",\"category\":\"billing\"}},{\"tenant\":\"stark\",\"kind\":\"ticket\",\"id\":\"T-3112\",\"ref\":\"relay.support#T-3112\",\"key\":\"ticket:T-3112\",\"attrs\":{\"title\":\"SSO login loop for all users"
+  },
+  "relay.history.ticket": {
+   "tokens": 1220,
+   "structured_tokens": 1448,
+   "chars": 3588,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"initech\",\"subject\":\"ticket:T-2201\",\"predicate\":\"status\",\"value\":\"open\",\"valid_from\":\"2026-09-28T09:00:00+00:00\",\"valid_to\":\"2026-10-02T11:30:00+00:00\",\"recorded_at\":\"2026-10-20T18:11:32.748595+00:00\",\"source\":\"relay.support\",\"scope\":\"tenant\",\"corrected_by\":null,\"evidence\":\"relay-01926\",\""
+  },
+  "relay.history.plan": {
+   "tokens": 287,
+   "structured_tokens": 345,
+   "chars": 832,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"tenant\":\"globex\",\"subject\":\"account:globex\",\"predicate\":\"plan\",\"value\":\"pro\",\"valid_from\":\"2026-04-08T09:00:00+00:00\",\"valid_to\":\"2026-10-10T15:00:00+00:00\",\"recorded_at\":\"2026-10-20T18:11:32.730063+00:00\",\"source\":\"relay.core\",\"scope\":\"tenant\",\"corrected_by\":null,\"evidence\":\"relay-00031\",\"expire"
+  },
+  "relay.related.stark": {
+   "tokens": 3614,
+   "structured_tokens": 4407,
+   "chars": 10657,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"relation\":\"has_invoice\",\"direction\":\"out\",\"subject\":\"invoice:INV-stark-2026-04\",\"since\":\"2026-04-01T06:00:00+00:00\"},{\"relation\":\"has_contact\",\"direction\":\"out\",\"subject\":\"contact:C-stark-1\",\"since\":\"2026-04-01T13:00:00+00:00\"},{\"relation\":\"has_ticket\",\"direction\":\"out\",\"subject\":\"ticket:T-5827\","
+  },
+  "relay.related.wayne.depth2": {
+   "tokens": 3994,
+   "structured_tokens": 5003,
+   "chars": 11666,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"relation\":\"has_contact\",\"direction\":\"out\",\"subject\":\"contact:C-wayne-1\",\"since\":\"2026-04-22T10:00:00+00:00\",\"hops\":1,\"via\":\"account:wayne\"},{\"relation\":\"has_contact\",\"direction\":\"out\",\"subject\":\"contact:C-wayne-12\",\"since\":\"2026-04-29T09:00:00+00:00\",\"hops\":1,\"via\":\"account:wayne\"},{\"relation\":\"h"
+  },
+  "relay.unknown.kind": {
+   "tokens": 1,
+   "structured_tokens": 5,
+   "chars": 2,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[]"
+  },
+  "fleet.context.tire.brief": {
+   "tokens": 156,
+   "structured_tokens": 179,
+   "chars": 383,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"tire:T-9001\",\"attrs\":{\"position\":\"P3\"},\"facts\":{\"depth_mm\":2.6,\"assessment\":\"critical: 2.6 mm < 3 mm\"},\"since\":{\"assessment\":\"2026-10-20T18:11:32.724378+00:00\",\"depth_mm\":\"2026-10-03T08:00:00+00:00\"},\"relations\":{\"mounted_on\":[\"unit:MXK-4821\"]},\"evaluation\":{\"tire_critical\":true},\"as_of\""
+  },
+  "relay.context.acme.brief": {
+   "tokens": 457,
+   "structured_tokens": 533,
+   "chars": 1242,
+   "blocks": 1,
+   "error": false,
+   "identical": false,
+   "missing": [],
+   "head": "{\"subject\":\"account:acme\",\"attrs\":{\"name\":\"Acme Corp\"},\"facts\":{\"region\":\"us-east\",\"csm\":\"Dana Ortiz\",\"plan\":\"enterprise\",\"seats\":40},\"since\":{\"seats\":\"2026-09-12T14:00:00+00:00\",\"plan\":\"2026-09-12T14:00:00+00:00\",\"csm\":\"2026-04-03T09:00:00+00:00\",\"region\":\"2026-04-03T09:00:00+00:00\"},\"relations\":{\""
+  },
+  "fleet.history.tire.concise": {
+   "tokens": 225,
+   "structured_tokens": 262,
+   "chars": 579,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"predicate\":\"depth_mm\",\"value\":5.2,\"valid_from\":\"2026-09-10T08:00:00+00:00\",\"valid_to\":\"2026-10-03T08:00:00+00:00\",\"source\":\"tires.measurements\",\"evidence\":\"32a333d483131ce7e6dbc25d3ff119d8\"},{\"predicate\":\"depth_mm\",\"value\":2.6,\"valid_from\":\"2026-10-03T08:00:00+00:00\",\"source\":\"tires.measurements\""
+  },
+  "relay.history.ticket.concise": {
+   "tokens": 468,
+   "structured_tokens": 559,
+   "chars": 1430,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"predicate\":\"status\",\"value\":\"open\",\"valid_from\":\"2026-09-28T09:00:00+00:00\",\"valid_to\":\"2026-10-02T11:30:00+00:00\",\"source\":\"relay.support\",\"evidence\":\"relay-01926\"},{\"predicate\":\"priority\",\"value\":\"high\",\"valid_from\":\"2026-09-28T09:00:00+00:00\",\"source\":\"relay.support\",\"evidence\":\"relay-01926\"},"
+  },
+  "relay.search.text.brief": {
+   "tokens": 374,
+   "structured_tokens": 458,
+   "chars": 1406,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "[{\"key\":\"integration:I-initech-sf\",\"attrs\":{\"app\":\"Salesforce\"},\"matched\":\"app\",\"snippet\":\"Salesforce\",\"facts\":{\"last_error\":\"REQUEST_LIMIT_EXCEEDED\",\"status\":\"connected\"}},{\"key\":\"ticket:T-5400\",\"attrs\":{\"title\":\"Salesforce sync failing\",\"category\":\"integrations\"},\"matched\":\"title\",\"snippet\":\"Sales"
+  },
+  "fleet.annotate.ack": {
+   "tokens": 64,
+   "structured_tokens": 73,
+   "chars": 161,
+   "blocks": 1,
+   "error": false,
+   "identical": true,
+   "missing": [],
+   "head": "{\"subject\":\"tire:T-9001\",\"predicate\":\"assessment\",\"valid_from\":\"2026-10-20T18:11:32.887137+00:00\",\"scope\":\"task\",\"expires_at\":\"2026-11-03T18:11:32.887137+00:00\"}"
+  }
+ },
+ "tokenizer": "o200k_base"
+}

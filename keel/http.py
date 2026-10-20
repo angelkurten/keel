@@ -136,6 +136,7 @@ def build_http_app(
     index: Any = None,
     reranker: Any = None,
     ui: bool = False,
+    clock: Any = None,
     account: str | None = None,
     health_extra: dict[str, Any] | None = None,
     recent: "RecentEvents | None" = None,
@@ -167,7 +168,7 @@ def build_http_app(
             except HTTPException as exc:
                 raise PermissionError(exc.detail) from exc
 
-        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter) if tenant is not None else per_request
+        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock) if tenant is not None else per_request
         server = build_server(bound, name=f"keel:{cartridge.name}")
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
@@ -240,7 +241,7 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter)
+            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -260,7 +261,7 @@ def build_http_app(
         depth: int = 0
         as_known_at: str | None = None
         task: str | None = None
-        detail: str = "full"
+        detail: str = "brief"  # an agent calling over HTTP: the cheapest answer unless it asks for more; the SDKs ask for "full"
         exclude: list[str] | None = None
         only: list[str] | None = None
 
@@ -273,7 +274,8 @@ def build_http_app(
         as_known_at: str | None = None
         task: str | None = None
         changed_since: str | None = None
-        limit: int | None = None
+        limit: int | None = 50
+        detail: str = "concise"
 
     class SearchIn(BaseModel):
         text: str | list[str] = ""
@@ -302,12 +304,14 @@ def build_http_app(
         task: str | None = None
         key: str | None = None
         status: str | None = None
+        detail: str = "ack"
 
     class RelatedIn(BaseModel):
         subject: str
         relation: str | list[str] | None = None
         as_of: str | None = None
         depth: int = 1
+        limit: int | None = 50
 
     def dt(s: str | None):
         return parse_iso(s) if s else None
@@ -385,7 +389,7 @@ def build_http_app(
 
     @app.post("/v1/history")
     def history(body: HistoryIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since), body.limit))
+        return run(lambda: tools_for(request).history(body.subject, dt(body.since), dt(body.until), body.predicate, body.scope, dt(body.as_known_at), body.task, dt(body.changed_since), body.limit, body.detail))
 
     @app.post("/v1/search")
     def search(body: SearchIn, request: Request) -> list[Any]:
@@ -398,11 +402,11 @@ def build_http_app(
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
         if body.scope == "global" and (key := key_of(request)) is not None and not key.glob:
             raise HTTPException(403, "only the account's global key may write global memory (keel keys create --global)")
-        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key, body.status))
+        return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key, body.status, body.detail))
 
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
-        return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth))
+        return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth, body.limit))
 
     @app.get("/v1/cartridge")
     def cartridge_doc() -> dict[str, Any]:

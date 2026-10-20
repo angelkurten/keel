@@ -77,6 +77,11 @@ test("typed events in, context with the rule's verdict out", async () => {
   const hops = await keel.related(subjects.tire("T-9001"), ["mounted_on", "assigned_to"], undefined, 2);
   expect(hops.find((r) => r.subject === "driver:D-118")).toMatchObject({ hops: 2, via: "unit:MXK-4821" });
   const other = client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant: "someone-else", secret: SECRET });
-  expect((await other.context(subjects.tire("T-9001"))).entity).toBeNull();
+  expect((await other.context(subjects.tire("T-9001"))).found).toBe(false);
+  // caps are the caller's: without a limit every entry, with one the most recent, never a {more} entry
+  expect((await keel.history(subjects.tire("T-9001"), { predicate: "depth_mm", limit: 1 })).map((f) => f.value)).toEqual([2.6]);
+  expect((await keel.related(subjects.tire("T-9001"), ["mounted_on", "assigned_to"], undefined, 2, 1)).map((r) => r.subject)).toEqual(["unit:MXK-4821"]);
+  expect((await keel.contextBrief(subjects.tire("T-9001"))).since).toHaveProperty("depth_mm");
+  expect(await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "seen", value: true, detail: "ack" })).not.toHaveProperty("tenant");
   await expect(client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant, secret: "wrong" }).search("x")).rejects.toMatchObject({ status: 401 });
 });

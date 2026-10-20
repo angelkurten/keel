@@ -223,7 +223,8 @@ def from_env() -> Any:
 
     env = os.environ
     s = Settings(key=env["OFOX_API_KEY"], model=env.get("SHOWCASE_MODEL", "openai/gpt-6-sol"), judge_model=env.get("SHOWCASE_JUDGE_MODEL", "anthropic/claude-sonnet-5.5"),
-                 keel_url=env["KEEL_URL"].rstrip("/"), keel_key=env.get("KEEL_KEY") or None)
+                 keel_url=env["KEEL_URL"].rstrip("/"), keel_key=env.get("KEEL_KEY") or None,
+                 pin_today=env.get("SHOWCASE_PIN_TODAY", "1") != "0")  # 0 when Keel serves with --clock at TODAY
     http = httpx.Client(timeout=180, headers={"User-Agent": "keel-showcase"})
     data = Path(env.get("SHOWCASE_DATA", "/data"))
     index = Index.load_or_build(data / "index.json", http, s.base_url, s.key)

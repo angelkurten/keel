@@ -12,10 +12,11 @@ They are plain functions first, so any framework can call them directly;
 
 from __future__ import annotations
 
+import difflib
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from keel.agents import resolve
@@ -78,6 +79,7 @@ def _conflicts(facts: list[Fact]) -> dict[str, list[dict[str, Any]]]:
 
 
 SNIPPET = 160  # characters of a matching value a search result quotes
+STOPWORDS = {"the", "and", "for", "with", "from", "that", "this", "what", "when", "which", "was", "are", "has", "have", "any", "its", "our"}
 
 
 def _same(a: Any, b: Any) -> bool:
@@ -101,6 +103,17 @@ def _snippet(value: Any, needles: list[str]) -> str:
     return ("…" if start else "") + s[start : start + SNIPPET] + ("…" if start + SNIPPET < len(s) else "")
 
 
+ACK = ("subject", "predicate", "scope", "valid_from", "valid_to", "expires_at", "task", "status")  # annotate(detail="ack")
+LEAN_DROP = {"tenant", "recorded_at", "closed_at", "idempotency_key", "trace", "cartridge"}
+
+
+def _lean(f: dict[str, Any], subject: bool = True) -> dict[str, Any]:
+    """A serialized fact in the fewest tokens that still say what was true when, and why: no nulls, no tenant (the
+    tool is bound to one), no transaction-time bookkeeping (ask `full` or `as_known_at` for it), the scope only when it
+    is not the tenant's, and the subject only when the caller did not name it."""
+    return {k: v for k, v in f.items() if v is not None and k not in LEAN_DROP and not (k == "subject" and not subject) and not (k == "scope" and v == "tenant")}
+
+
 def _compact_facts(facts: list[dict[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     by_pred: dict[str, Any] = {}
@@ -120,7 +133,7 @@ def _direction(rel: str, src: str, subject: str, symmetric: set[str]) -> str:
     return "both" if rel in symmetric else ("out" if src == subject else "in")
 
 
-def _capped(rels: list[Any], subject: str, symmetric: set[str]) -> tuple[list[Any], list[dict[str, Any]]]:
+def _capped(rels: list[Any], subject: str, symmetric: set[str], cap: int) -> tuple[list[Any], list[dict[str, Any]]]:
     """At most RELATION_CAP relations per (relation, direction), the most recent ones, and what was left out: an account
     with hundreds of tickets would otherwise put all of them in every context. The rest is one `related` or
     `search(related_to=...)` away."""
@@ -130,11 +143,12 @@ def _capped(rels: list[Any], subject: str, symmetric: set[str]) -> tuple[list[An
     keep: set[int] = set()
     more = []
     for (rel, direction), group in groups.items():
-        recent = sorted(group, key=lambda r: r.valid_from, reverse=True)[:RELATION_CAP]
+        recent = sorted(group, key=lambda r: r.valid_from, reverse=True)[:cap]
         keep |= {id(r) for r in recent}
-        if len(group) > RELATION_CAP:
-            more.append({"relation": rel, "direction": direction, "shown": RELATION_CAP, "total": len(group)})
-    return [r for r in rels if id(r) in keep], more
+        if len(group) > cap:
+            more.append({"relation": rel, "direction": direction, "shown": cap, "total": len(group)})
+    kept = sorted((r for r in rels if id(r) in keep), key=lambda r: (r.rel, r.valid_from, r.dst if r.src == subject else r.src))
+    return kept, more  # one order whatever the store's: by relation, then link time, then key
 
 
 def _grouped(rels: list[dict[str, Any]]) -> dict[str, list[str]]:
@@ -159,12 +173,13 @@ def _concise(ctx: dict[str, Any], symmetric: set[str] = frozenset()) -> dict[str
         "subject": ctx["subject"],
         "attrs": (ctx["entity"] or {}).get("attrs", {}),
         "facts": _compact_facts(ctx["facts"]),
+        "since": {f["predicate"]: f["valid_from"] for f in reversed(ctx["facts"])},  # when each value became true: "since when" in one call
         "relations": [rel(r, ctx["subject"]) for r in ctx["relations"]],
         "evaluation": ctx["evaluation"],
         "as_of": ctx["as_of"],
         "watermark": ctx.get("watermark"),
     }
-    for k in ("as_known_at", "conflicts", "neighbors_truncated", "relations_more"):
+    for k in ("as_known_at", "conflicts", "neighbors_truncated", "neighbors_more", "relations_more"):
         if k in ctx:
             out[k] = ctx[k]
     if "proposals" in ctx:
@@ -194,13 +209,45 @@ def _kind_list(kind: str | list[str] | None) -> list[str] | None:
     return kinds
 
 
+def running_from(start: datetime) -> Callable[[], datetime]:
+    """A clock that starts at `start` and runs forward: `Tools(clock=...)` and `keel serve --clock` for a demo or a test
+    pinned to a day, where what agents write must land on that day too."""
+    offset = utcnow() - start
+    return lambda: utcnow() - offset
+
+
+def _second(now: datetime) -> datetime:
+    """`now`, up to the next whole second: the same question asked twice answers in the same bytes, and nothing written
+    before the call (even this second) falls after it."""
+    return now.replace(microsecond=0) + timedelta(seconds=1) if now.microsecond else now
+
+
+def _scope(scope: str) -> Scope:
+    try:
+        return Scope(scope)
+    except ValueError:
+        raise ValueError(f"unknown scope '{scope}'. The scopes are: {', '.join(s.value for s in Scope)}") from None
+
+
 def _kind(subject: str) -> str:
     return subject.split(":", 1)[0]
 
 
 NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
+LIST_CAP = 50  # `related`, `history` and search listings return at most this many by default, the first entry saying what was cut
+TEXT_CAP = 20  # a text search returns its first matches; the first entry says how many more there were
 RELATION_CAP = 10  # per relation and direction, `context` lists the most recent ones and counts the rest (relations_more)
+NEIGHBORS_PER_RELATION = 5  # `context(depth=1)` reads this many neighbours per relation and direction (neighbors_more counts the rest)
 SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at once
+
+
+DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools.spec(): short, and fixed so prompt caches hold
+    "context": """What is true about a subject ('<kind>:<id>', or a list of them) now or at as_of: facts, relations, each rule's evaluation. depth=1 adds the neighbours. detail: brief (default; facts as {predicate: value} with `since`), concise (relations one by one), full (an audit: transaction times and ids; costly). as_known_at: what Keel knew then. task: that task's memory. exclude/only: predicates to drop/keep. watermark: the cursor for history(changed_since=).""",
+    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject, with changed_since (a watermark): the tenant's changes. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
+    "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full; depth=1 adds neighbours. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
+    "annotate": """Record what you learned (value: any JSON). Scopes tenant and global need evidence; task ties it to a job; key makes a retry return the first write; status="proposed" waits for a person or authorized agent. Returns a receipt (detail="full": the stored fact).""",
+    "related": """Neighbours of a subject, by relation (one or a list), now or at as_of. depth 2 or 3 walks further (each entry says hops and via). At most limit (0: all); a cut list starts with {"more": ...} counting each relation.""",
+}
 
 
 class _Graph:
@@ -293,8 +340,10 @@ class Tools:
     def __init__(
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
         embedder: Any = None, index: Any = None, reranker: Any = None, meter: Callable[[str, str], None] | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.cartridge = cartridge
+        self.now = clock or utcnow  # what "now" is for reads without as_of and for what annotate writes (running_from)
         self.store = store
         if is_global(tenant):
             raise ValueError(f"tenant '{tenant}' is reserved for global-scope memory")
@@ -313,6 +362,10 @@ class Tools:
     # ---- registry enforcement: the agent never polices itself -------------------------------
 
     def _readable(self, subject: str) -> None:
+        if not isinstance(subject, str) or ":" not in subject:
+            hint = [k for k in self.cartridge.entities if self.store.entity(self.tenant, f"{k}:{subject}")]
+            raise ValueError(f"'{subject}' is not a subject key: subjects are '<kind>:<id>'" + (f"; did you mean '{hint[0]}:{subject}'?" if hint else ""))
+        self._known("kind", _kind(subject), self.cartridge.entities)
         if self.agent and not self.agent.sees_kind(_kind(subject)):
             raise PermissionError(f"agent '{self.agent.id}' may not read kind '{_kind(subject)}'")
 
@@ -409,7 +462,8 @@ class Tools:
         is the tenant's latest transaction time, the cursor for `history(changed_since=)`. `proposals`
         lists pending proposals; `conflicts` lists predicates with more than one open value (multi-valued
         predicates written by several authors). `detail="concise"` returns about a third of the tokens:
-        facts as {predicate: value}, relations as (relation, direction, subject), no rule definitions.
+        facts as {predicate: value} with `since` {predicate: valid_from}, relations as (relation, direction,
+        subject), no rule definitions.
         A list of subjects returns their answers in order, in one call. `exclude` hides those predicates
         from the facts, proposals and neighbours returned (an evaluation where the agent must not see the
         answer); rules still evaluate on the whole truth. `only` returns just those predicates (the
@@ -425,7 +479,7 @@ class Tools:
         for s in subjects:
             self._readable(s)
         as_of, as_known_at = _t(as_of), _t(as_known_at)
-        now = as_of or as_known_at or utcnow()
+        now = as_of or as_known_at or _second(self.now())
         graph = self._graph(now, as_known_at, task)
         if len(subjects) > 1:
             graph.prime(subjects)
@@ -440,7 +494,10 @@ class Tools:
         self, subject: str, graph: _Graph, now: datetime, as_known_at: datetime | None, depth: int, detail: str,
         shown: Callable[[list[Fact]], list[Fact]], entity: Entity | None, watermark: datetime | None,
     ) -> dict[str, Any]:
-        rels, more = _capped(self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject), subject, self.symmetric)
+        rels, more = _capped(self._dedupe([r for r in graph.relations(subject) if self._visible(r, subject)], subject), subject, self.symmetric,
+                             self.cartridge.context.get("relations", RELATION_CAP))
+        if entity is None and not rels and not graph.facts(subject) and not graph.proposals(subject):
+            return _ser({"subject": subject, "found": False, "as_of": now, "watermark": watermark})  # nothing known, not even rules to read
         out: dict[str, Any] = {
             "subject": subject,
             "entity": entity,
@@ -463,10 +520,11 @@ class Tools:
             out["conflicts"] = conflicts
         if depth >= 1:
             neighbors = []
-            others = [r.dst if r.src == subject else r.src for r in rels[:NEIGHBOR_CAP]]
+            near, near_more = _capped(rels, subject, self.symmetric, self.cartridge.context.get("neighbors", NEIGHBORS_PER_RELATION))
+            others = [r.dst if r.src == subject else r.src for r in near[:NEIGHBOR_CAP]]
             graph.prime(others)
             entities = self._entities(others)
-            for r, other in zip(rels[:NEIGHBOR_CAP], others):
+            for r, other in zip(near[:NEIGHBOR_CAP], others):
                 neighbors.append(
                     {
                         "relation": r.rel,
@@ -478,7 +536,9 @@ class Tools:
                     }
                 )
             out["neighbors"] = neighbors
-            if len(rels) > NEIGHBOR_CAP:
+            if near_more:  # the rest of each relation are in `relations`, or one `related` away
+                out["neighbors_more"] = near_more
+            if len(near) > NEIGHBOR_CAP:
                 out["neighbors_truncated"] = True
         if detail == "brief":
             return _brief(_ser(out), self.symmetric)
@@ -494,16 +554,22 @@ class Tools:
         as_known_at: Instant = None,
         task: str | None = None,
         changed_since: Instant = None,
-        limit: int | None = None,
+        limit: int | None = LIST_CAP,
+        detail: str = "full",
     ) -> list[dict[str, Any]]:
         """Facts over time: valid_from/valid_to (world), recorded_at and closed_at (when we learned
-        them). Filters: one predicate, one memory scope, one task (only what that task wrote; without it,
+        them). `detail="concise"` returns each fact in about a quarter of the tokens: predicate, value,
+        valid_from/valid_to, source, evidence and whatever else is set, without the transaction-time bookkeeping. Filters: one predicate, one memory scope, one task (only what that task wrote; without it,
         task-scope memory tied to a task is not returned). Another agent's agent-scope memory is never
         returned. `as_known_at`: as Keel knew them
         then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
-        with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run"."""
+        with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run".
+        `limit` (default LIST_CAP, None or 0 for all) keeps the most recent; when it cuts, the first entry is
+        {"more": {shown, total, omitted, next}}."""
         if self.meter:
             self.meter(self.tenant, "history")
+        if detail not in ("full", "concise"):
+            raise ValueError("history detail is 'full' or 'concise'")
         since, until, as_known_at, changed_since = _t(since), _t(until), _t(as_known_at), _t(changed_since)
         if subject is None:
             if changed_since is None:
@@ -525,12 +591,17 @@ class Tools:
         if predicate:
             facts = [f for f in facts if f.predicate == predicate]
         if scope:
-            facts = [f for f in facts if f.scope == Scope(scope)]
+            facts = [f for f in facts if f.scope == _scope(scope)]
         if task:  # only what that task wrote
             facts = [f for f in facts if f.task == task]
-        if limit:  # the most recent `limit`, still oldest first; ask for limit + 1 to know whether more exist
+        total = len(facts)
+        if limit:  # the most recent `limit`, still oldest first
             facts = facts[-limit:]
-        return _ser(facts)
+        out = _ser(facts)
+        out = out if detail == "full" else [_lean(f, subject is None) for f in out]
+        if total > len(out):
+            return [{"more": {"shown": len(out), "total": total, "omitted": "the oldest", "next": "narrow with predicate=, since=/until=, or raise limit"}}, *out]
+        return out
 
     def search(
         self,
@@ -578,10 +649,13 @@ class Tools:
         (the attribute, predicate, or "key") and `snippet`, the part of the value that matched.
 
         `kind` may be a list: the listing covers those kinds (still ordered by key), a semantic ranking
-        only them, and `per_kind` takes the best n of each of them (the first n by key in text mode)."""
+        only them, and `per_kind` takes the best n of each of them (the first n by key in text mode).
+
+        Without `limit`, a listing returns its first LIST_CAP entities and a text search its first TEXT_CAP
+        matches; when more exist, the first entry is {"more": {shown, total, next}} (`next` says how to page)."""
         if self.meter:
             self.meter(self.tenant, "search")
-        graph = self._graph(_t(as_of) or utcnow())  # shared by every text of a list: each subject's facts are read once
+        graph = self._graph(_t(as_of) or self.now())  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
             return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph) for t in text]
         return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph)
@@ -603,7 +677,14 @@ class Tools:
         if hidden := sorted(set(where or ()) & hide):
             raise ValueError(f"where filters on {hidden}, which exclude hides")
         kinds = _kind_list(kind)
-        if per_kind is not None:
+        for k in kinds or ():
+            self._known("kind", k, self.cartridge.entities)
+        note = None
+        if mode == "semantic" and (self.embedder is None or self.index is None) and text:
+            note, mode = "semantic search is not configured on this server: ranked by the query's words instead", "words"
+        if mode == "words":
+            hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
+        elif per_kind is not None:
             if per_kind < 1:
                 raise ValueError("per_kind is at least 1")
             if after is not None:
@@ -628,11 +709,45 @@ class Tools:
                         hits.append(h)
         else:
             hits = self._search(text, kinds, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
+            if not hits and mode == "text" and kinds is None and rule is None and len(set(tokens(text))) > 1:
+                note, mode = "nothing contains the whole text: ranked by its words instead", "words"
+                hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        total, cap, hint = len(hits), None, ""
+        if limit is None and per_kind is None and mode in ("text", "words"):  # nobody asked for everything: cut, and say so
+            listing = kinds is not None or rule is not None
+            cap = LIST_CAP if listing else TEXT_CAP
+            hits = hits[:cap]
+            hint = (f"page with after='{hits[-1].get('key') or hits[-1]['subject']}'" if listing and hits else
+                    "narrow with kind=, related_to= or a longer text, or pass limit=")
         if detail == "key":  # a listing's keys, each once (a fact hit gives its subject)
-            return list(dict.fromkeys(h.get("key") or h["subject"] for h in hits))
-        self._explain(hits, text, mode, hide, graph)
-        return self._enrich(hits, detail, depth, hide, graph)
+            out: list[Any] = list(dict.fromkeys(h.get("key") or h["subject"] for h in hits))
+        else:
+            self._explain(hits, text, mode, hide, graph)
+            out = self._enrich(hits, detail, depth, hide, graph)
+        out = [{"more": {"shown": len(hits), "total": total, "next": hint}}, *out] if cap and total > cap else out
+        return [{"note": note}, *out] if note and out else out
+
+    def _words(self, text: str, kinds: list[str] | None, rule: str | None, related_to: str | None, via: str | None, graph: _Graph,
+               where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Subjects ranked by how many of the query's words they contain (key, attributes, current facts): what an agent
+        means by "Salesforce sync problem" when no value holds the whole phrase, and no embedder ranks by meaning."""
+        found: dict[str, set[str]] = {}
+        for w in dict.fromkeys(tokens(text)):
+            if len(w) < 3 or w in STOPWORDS:
+                continue
+            for h in self._search(w, None, None, None, None, "text", None, None, None, graph):
+                found.setdefault(h.get("key") or h["subject"], set()).add(w)
+        near = self._neighbours(related_to, via, graph) if related_to else None
+        spec = self._rule(rule) if rule else None
+        keys = [k for k in found if (kinds is None or _kind(k) in kinds) and (near is None or k in near)
+                and (spec is None or evaluate(spec, k, graph.as_of, graph) is True)]
+        keys.sort(key=lambda k: (-len(found[k]), k))
+        ents = self._entities(keys)
+        if where:
+            graph.prime(keys)
+            keys = [k for k in keys if self._where(graph, k, ents[k], where)]
+        return [_ser(ents[k]) if ents[k] else {"key": k} for k in keys]
 
     def _explain(self, hits: list[dict[str, Any]], text: str, mode: str, hide: set[str], graph: _Graph) -> None:
         """`matched` and `snippet` on each ranked entity: why it is a result, without a `context` call."""
@@ -695,6 +810,8 @@ class Tools:
                     h["neighbors"].append(n)
                 if len(rels) > NEIGHBOR_CAP:
                     h["neighbors_truncated"] = True
+        if detail in ("brief", "concise"):  # a fact hit as a lean fact: its subject, not its bookkeeping
+            hits = [_lean(h) if "predicate" in h else h for h in hits]
         if detail == "brief":  # for an LLM: the key says the kind and id; the tenant and the row ref are known
             for h in entities:
                 for k in ("tenant", "kind", "id", "ref", "similarity"):
@@ -718,7 +835,7 @@ class Tools:
         vector: list[float] | None = None,
     ) -> list[dict[str, Any]]:
         """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked."""
-        graph = graph or self._graph(utcnow())
+        graph = graph or self._graph(self.now())
         hide = hide or set()
         if mode not in ("text", "semantic"):
             raise ValueError("mode is 'text' or 'semantic'")
@@ -744,9 +861,7 @@ class Tools:
             return _ser(hits[:limit] if limit else hits)
         spec = None
         if rule is not None:
-            spec = self.cartridge.rules.get(rule)
-            if spec is None or not spec.get("when"):
-                raise ValueError(f"rule '{rule}' does not exist or has no `when` to evaluate")
+            spec = self._rule(rule)
             kind = kind or spec.get("applies_to")
             if kind is None:
                 raise ValueError(f"rule '{rule}' applies to every kind: pass `kind` too")
@@ -789,6 +904,20 @@ class Tools:
                 if limit and len(found) >= limit:
                     return _ser(found)
         return _ser(found)
+
+    def _known(self, what: str, name: str, declared: Iterable[str]) -> None:
+        """A name the cartridge does not declare is the caller's typo, not an empty answer: say so, and what exists."""
+        names = sorted(declared)
+        if name not in names:
+            close = difflib.get_close_matches(name, names, n=1)
+            raise ValueError(f"unknown {what} '{name}'" + (f"; did you mean '{close[0]}'?" if close else "") + f" The {what}s are: {', '.join(names)}")
+
+    def _rule(self, rule: str) -> dict[str, Any]:
+        spec = self.cartridge.rules.get(rule)
+        if spec is None or not spec.get("when"):
+            self._known("rule", rule, [r for r, sp in self.cartridge.rules.items() if sp.get("when")])
+            raise ValueError(f"rule '{rule}' has no `when` to evaluate")
+        return spec
 
     def _where(self, graph: _Graph, key: str, ent: Entity | None, where: dict[str, Any]) -> bool:
         """Every `where` entry holds as an attribute or as a current fact of the subject."""
@@ -838,7 +967,7 @@ class Tools:
         floor = min_score if min_score is not None else policy.get("min_score")
         w_lex = float(policy.get("lexical_weight", 0.3))
         lexical = getattr(self.index, "text_query", None) if w_lex > 0 else None
-        graph = graph or self._graph(utcnow())
+        graph = graph or self._graph(self.now())
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
@@ -915,6 +1044,7 @@ class Tools:
         task: str | None = None,
         key: str | None = None,
         status: str | None = None,
+        detail: str = "full",
     ) -> dict[str, Any]:
         """Write earned memory. The registry says who may write which scope; the scope policy says
         whether evidence is required and how long it lives. Both are enforced here. `task` ties the
@@ -923,12 +1053,17 @@ class Tools:
         `status="proposed"` writes a proposal: it does not touch accepted facts, waits in `context`'s
         `proposals`, and needs no write right on `scope` (only some write right), so an agent can propose
         a tenant fact a person then accepts. An accepted write (no status) or `status="rejected"`
-        decides: it closes the predicate's open proposals and needs the right on `scope`."""
+        decides: it closes the predicate's open proposals and needs the right on `scope`. `detail="ack"`
+        returns only what was written where (subject, predicate, scope, valid_from, and expires_at, task,
+        status when set): the caller already knows the value."""
         if self.meter:
             self.meter(self.tenant, "annotate")
+        if detail not in ("full", "ack"):
+            raise ValueError("annotate detail is 'full' or 'ack'")
+        done = lambda f: _ser(f) if detail == "full" else {k: v for k, v in _ser(f).items() if k in ACK and v is not None}
         if status not in (None, "proposed", "rejected"):
             raise ValueError("status is None (accepted), 'proposed' or 'rejected'")
-        sc = Scope(scope)
+        sc = _scope(scope)
         self._readable(subject)
         forgotten = getattr(self.store, "forgotten", None)
         if forgotten and (at := forgotten(self.tenant)) is not None:  # an erased tenant is not revived by a late write
@@ -943,14 +1078,14 @@ class Tools:
         def replayed(f: Fact) -> dict[str, Any]:
             if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):
                 raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
-            return _ser(f)
+            return done(f)
 
         if key is not None:
             for f in self.store.facts(part, subject):
                 if f.idempotency_key == key:
                     return replayed(f)
         ttl = self.cartridge.policy.ttl.get(sc)
-        now = utcnow()
+        now = self.now()
         author = self.author or by or "agent"
         try:
             f = self.store.open_fact(
@@ -963,7 +1098,7 @@ class Tools:
                 scope=sc,
                 corrected_by=by or (author if self.agent_id else None),
                 evidence=evidence,
-                expires_at=(now + ttl) if ttl else None,
+                expires_at=(utcnow() + ttl) if ttl else None,  # retention runs on real time, whatever the tools' clock says
                 task=task,
                 idempotency_key=key,
                 status=status,
@@ -979,20 +1114,24 @@ class Tools:
         if status == "rejected":  # the rejection itself is recorded, closed at once: history only
             self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected", **every_scope)
             f.valid_to = now
-        return _ser(f)
+        return done(f)
 
-    def related(self, subject: str, relation: str | list[str] | None = None, as_of: Instant = None, depth: int = 1) -> list[dict[str, Any]]:
+    def related(self, subject: str, relation: str | list[str] | None = None, as_of: Instant = None, depth: int = 1, limit: int | None = LIST_CAP) -> list[dict[str, Any]]:
         """Neighbours by relation type (one, or a list), now or at `as_of`. A symmetric relation shows once,
         direction `both`. `depth` 2 or 3 walks further through the same relations, each subject once,
         nearest first; every entry then says how many `hops` away it is and which subject it was reached
-        `via` (its direction is relative to that subject)."""
+        `via` (its direction is relative to that subject), ordered by hop, relation and link time. At most
+        `limit` entries (None or 0: all), the nearest and most recent kept; when more exist, the first entry is
+        {"more": {shown, total, omitted, by_relation, next}}."""
         if self.meter:
             self.meter(self.tenant, "related")
         if depth not in (1, 2, 3):
             raise ValueError("related depth is 1, 2 or 3")
         self._readable(subject)
         allowed = None if relation is None else {relation} if isinstance(relation, str) else set(relation)
-        graph = self._graph(_t(as_of) or utcnow())
+        for r in sorted(allowed or ()):
+            self._known("relation", r, self.cartridge.relations)
+        graph = self._graph(_t(as_of) or self.now())
         out: list[dict[str, Any]] = []
         seen, frontier = {subject}, [subject]
         for hop in range(1, depth + 1):
@@ -1011,14 +1150,27 @@ class Tools:
                     out.append(entry)
                     reached.append(other)
             frontier = list(dict.fromkeys(reached))
+        counts: dict[str, int] = {}
+        for e in out:
+            counts[e["relation"]] = counts.get(e["relation"], 0) + 1
+        if limit and len(out) > limit:  # keep the nearest hops and, within them, the most recent links
+            ranked = sorted(out, key=lambda e: e["since"], reverse=True)
+            keep = {id(e) for e in sorted(ranked, key=lambda e: e.get("hops", 1))[:limit]}
+            out = [e for e in out if id(e) in keep]
+        out.sort(key=lambda e: e["subject"])  # one order whatever the store's: by hop, relation, oldest link first, key
+        out.sort(key=lambda e: e["since"])
+        out.sort(key=lambda e: (e.get("hops", 1), e["relation"]))
+        if len(out) < sum(counts.values()):
+            return [{"more": {"shown": len(out), "total": sum(counts.values()), "omitted": "the oldest links", "by_relation": counts,
+                              "next": f"narrow with relation=, or page one relation with search(related_to='{subject}', via=<relation>, limit=, after=<last key>)"}}, *out]
         return out
 
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
         return [
-            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?", "only?"], "doc": self.context.__doc__},
-            {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?"], "doc": self.history.__doc__},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?"], "doc": self.search.__doc__},
-            {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?"], "doc": self.annotate.__doc__},
-            {"name": "related", "args": ["subject", "relation?", "as_of?", "depth?"], "doc": self.related.__doc__},
+            {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?", "only?"], "doc": DESCRIPTIONS["context"]},
+            {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?", "detail?"], "doc": DESCRIPTIONS["history"]},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?"], "doc": DESCRIPTIONS["search"]},
+            {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?", "detail?"], "doc": DESCRIPTIONS["annotate"]},
+            {"name": "related", "args": ["subject", "relation?", "as_of?", "depth?", "limit?"], "doc": DESCRIPTIONS["related"]},
         ]

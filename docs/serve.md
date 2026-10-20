@@ -43,6 +43,8 @@ codex exec --json "Which tires on unit:MXK-4821 are critical according to the ca
 
 Checked on 2026-10-14 with Codex CLI 0.162 and `openai/gpt-5.2-codex` behind an OpenAI-compatible gateway: seven calls (`search`, `related`, `context`, `history` with `predicate=depth_mm`), the right tire, the right depth on 2026-09-20, and the threshold quoted from the cartridge rather than assumed. Any other MCP client works the same way: a stdio server, five tools, one tenant per server instance. If the cartridge declares `agents:`, add `--agent <id>`: the server then reads and writes only what that agent may, and signs its annotations. Agent-scope memory is read only by the agent that wrote it, so a server started without `--agent` reads none.
 
+What the model reads is kept small. Each result is one text block of compact JSON, with the same data in `structuredContent` for programmatic clients. `context` defaults to `detail="brief"`, `history` to `"concise"` and `annotate` to `"ack"` (ask for `"full"` when you need the transaction-time bookkeeping), `search` returns fact hits without that bookkeeping, and long lists are capped with a leading `{"more": ...}` that says how to read the rest. A server bound to one tenant (stdio, or `/mcp` with `--tenant`) states in its `instructions`, once per session, the cartridge's kinds, relations and rule definitions, so answers carry rule verdicts without repeating their definitions. `detail="text"` on `context` and `history` (experimental) renders lines instead of JSON for models that read prose better. A demo or a test pinned to a day runs with `--clock 2026-10-15T12:00:00Z` (or `KEEL_CLOCK`): reads without `as_of` and what agents write land on that day, so a note written during the demo is read back on the same day; ingest and retention keep real time.
+
 From LangGraph (LangChain's `create_agent`), through `langchain-mcp-adapters`: `examples/fleet/agent_langgraph.py` starts the same stdio server, hands the five tools to the agent and asks about unit MXK-4821. Its dependencies are declared inline, so `uv run` installs them and nothing is added to Keel:
 
 ```bash
@@ -88,21 +90,21 @@ KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --http2 
 | `GET /v1/events/recent` | | the tenant's last 200 events received by this server, newest first, each with `status` (`applied`, `duplicate`, `unhandled`, `skipped`, `error`) and the `reason`; kept in memory, so a restart empties it |
 | `POST /v1/events/check` | a list of envelopes | what the catalog would refuse in each (`index`, `problems`), the same checks as `keel validate --events`; nothing is ingested |
 | `GET /v1/sdk/{language}` | | the typed client for this cartridge, as `keel sdk` generates it: `filename`, `code`, `sha256` |
-| `POST /v1/context` | `{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("full" or "concise")}` | what `context` returns |
-| `POST /v1/history` | `{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"?}` | facts |
-| `POST /v1/search` | `{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?}` | entities and facts |
-| `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"? ("task"), "evidence"?, "by"?, "task"?, "key"?, "status"?}` | the fact |
-| `POST /v1/related` | `{"subject", "relation"?, "as_of"?}` | neighbours |
+| `POST /v1/context` | `{"subject", "as_of"?, "depth"? (0), "as_known_at"?, "task"?, "detail"? ("brief"; "concise" or "full"), "exclude"?, "only"?}` | what `context` returns; `{subject, found: false, as_of, watermark}` for a subject nothing is known about |
+| `POST /v1/history` | `{"subject"?, "since"?, "until"?, "predicate"?, "scope"?, "as_known_at"?, "task"?, "changed_since"?, "limit"? (50; 0 for all), "detail"? ("concise" or "full")}` | facts, the most recent `limit`; when cut, led by `{"more": ...}` |
+| `POST /v1/search` | `{"text"? (""), "kind"?, "rule"?, "limit"?, "after"?, "mode"? ("text" or "semantic"), "min_score"?, "related_to"?, "via"?, "detail"? ("entity"), "depth"?, "per_kind"?, "exclude"?, "as_of"?, "where"?}` | entities and facts; without `limit`, the first 20 matches or 50 of a listing, led by `{"more": ...}` when cut, or by `{"note": ...}` when ranked by the query's words |
+| `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"? ("task"), "evidence"?, "by"?, "task"?, "key"?, "status"?, "detail"? ("ack" or "full")}` | a receipt (`subject`, `predicate`, `scope`, `valid_from`, and `valid_to`, `expires_at`, `task`, `status` when set), or the fact with `"full"` |
+| `POST /v1/related` | `{"subject", "relation"?, "as_of"?, "depth"? (1), "limit"? (50; 0 for all)}` | neighbours; when cut, led by `{"more": ...}` |
 | `GET /health` | | `{"ok", "cartridge", "mcp"}` |
 | `GET /openapi.json` | | the contract, for generated clients |
 
-Times are ISO 8601 strings. Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` (optional when the server is bound with `--tenant` or `KEEL_TENANT`, which is then the default) and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. `/health`, `/openapi.json`, `/docs` and `/redoc` need no token. Two optional headers are stored with every write the request makes: `traceparent` (W3C trace context) and `X-Keel-Tool-Call` (the agent's tool call id).
+The defaults are for an agent calling directly: `context` answers `brief`, `history` `concise` (lean facts) and `annotate` a short receipt; pass `"detail": "full"` for the whole shape, as the SDKs and `keel.client` do. Lists are capped, and a cut list's first element says what was left out and how to read the rest ([SPEC §7](SPEC.md#7-the-five-tools)). Times are ISO 8601 strings. Every request carries `Authorization: Bearer $KEEL_SECRET`, `X-Keel-Tenant` (optional when the server is bound with `--tenant` or `KEEL_TENANT`, which is then the default) and, when the cartridge declares agents, `X-Keel-Agent`. Your product authenticates its users and sets the two headers; Keel takes them as given and builds the tools for that tenant and agent per request. `/health`, `/openapi.json`, `/docs` and `/redoc` need no token. Two optional headers are stored with every write the request makes: `traceparent` (W3C trace context) and `X-Keel-Tool-Call` (the agent's tool call id).
 
 On `/v1/events`, `X-Keel-Tenant` is optional: each envelope names its tenant, and when the header is present every envelope must match it. The agent registry does not apply to ingest.
 
 | Status | Meaning |
 | --- | --- |
-| `400` | bad input: missing `X-Keel-Tenant`, an envelope of another tenant, an unknown rule, an invalid `mode` or `detail` |
+| `400` | bad input: missing `X-Keel-Tenant`, an envelope of another tenant, a subject without `<kind>:`, an unknown kind, relation, rule or scope (the reason names the valid ones), a time that is not ISO 8601, an invalid `mode` or `detail` |
 | `401` | bad or missing bearer token |
 | `403` | a refusal (scope policy, agent registry), with its reason |
 | `422` | a malformed body, such as an envelope that fails validation |

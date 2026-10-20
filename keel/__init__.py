@@ -12,7 +12,7 @@ from keel.scopes import Scope
 from keel.store.memory import MemoryStore
 from keel.store.mysql import MysqlStore
 from keel.store.sqlite import SqliteStore
-from keel.tools import Tools
+from keel.tools import Tools, running_from
 
 __all__ = [
     "Cartridge",
@@ -25,6 +25,7 @@ __all__ = [
     "SqliteStore",
     "Tools",
     "load_cartridge",
+    "running_from",
 ]
 
 __version__ = "0.30.2"

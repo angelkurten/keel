@@ -19,7 +19,9 @@ final class Client
     /** @return array<string, mixed> */
     /** `$depth = 1` adds each neighbour's entity, open facts and evaluation under `neighbors`; `$asKnownAt` answers
      * what Keel knew then; `$task` keeps one task's memory; `$exclude` leaves predicates out, `$only` keeps just those. The result's `watermark`
-     * is the changes cursor. A list of subjects returns a list of answers, in order.
+     * is the changes cursor. A list of subjects returns a list of answers, in order. `$detail` is 'full', 'concise' (facts as
+     * [predicate => value], with `since`) or 'brief' (concise, relations as [relation => subjects]); a subject nothing is known
+     * about comes back as `found` => false with only `subject`, `as_of` and `watermark`.
      * @param string|list<string> $subject @param list<string>|null $exclude @param list<string>|null $only */
     public function context(string|array $subject, \DateTimeInterface|string|null $asOf = null, int $depth = 0, \DateTimeInterface|string|null $asKnownAt = null, ?string $task = null, string $detail = 'full', ?array $exclude = null, ?array $only = null): array
     {
@@ -35,12 +37,13 @@ final class Client
         ]);
     }
 
-    /** `$subject = null` with `changed_since` lists the tenant's changes since a watermark.
-     * @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string, as_known_at?: \DateTimeInterface|string, task?: string, changed_since?: \DateTimeInterface|string} $filter @return list<array<string, mixed>> */
+    /** `$subject = null` with `changed_since` lists the tenant's changes since a watermark. Every fact unless `limit` (the
+     * most recent n); `detail` => 'concise' returns lean facts instead of whole ones.
+     * @param array{since?: \DateTimeInterface|string, until?: \DateTimeInterface|string, predicate?: string, scope?: string, as_known_at?: \DateTimeInterface|string, task?: string, changed_since?: \DateTimeInterface|string, limit?: int, detail?: string} $filter @return list<array<string, mixed>> */
     public function history(?string $subject, array $filter = []): array
     {
         $iso = fn(string $k) => isset($filter[$k]) ? Envelope::iso($filter[$k]) : null;
-        return $this->post('/v1/history', [
+        return self::items($this->post('/v1/history', [
             'subject' => $subject,
             'since' => $iso('since'),
             'until' => $iso('until'),
@@ -49,13 +52,16 @@ final class Client
             'as_known_at' => $iso('as_known_at'),
             'task' => $filter['task'] ?? null,
             'changed_since' => $iso('changed_since'),
-            'limit' => $filter['limit'] ?? null,
-        ]);
+            'limit' => $filter['limit'] ?? 0,
+            'detail' => $filter['detail'] ?? 'full',
+        ]));
     }
 
     /** With `kind` or `rule`: the entities of a kind, or where a rule fires now, paged by `limit`/`after`.
      * `mode` => 'semantic' ranks by meaning, each result with a `score` and `similarity`; `min_score` drops results below a cosine.
-     * `related_to` (+ `via`) keeps only that subject's neighbours. `detail` => 'concise' puts each result's facts in it,
+     * Without `limit` the whole listing comes back (sent as 0, no cap); a semantic ranking still returns its first 10.
+     * `related_to` (+ `via`) keeps only that subject's neighbours. `detail` => 'concise' or 'brief' puts each result's facts in it
+     * ('full' as whole facts, and fact hits whole; 'key' only the keys),
      * `depth` => 1 its neighbours, `per_kind` => n the best of every kind (with `related_to` and semantic mode, the
      * context for a task); `exclude` leaves predicates out; `as_of` evaluates at that instant; `where` => [name => value] keeps
      * the entities whose attribute or current fact has that value. Each ranked result says why: `matched` and `snippet`.
@@ -67,26 +73,39 @@ final class Client
         if (isset($filter['as_of'])) {
             $filter['as_of'] = Envelope::iso($filter['as_of']);
         }
-        return $this->post('/v1/search', ['text' => $text] + $filter);
+        $filter['limit'] ??= 0;
+        $out = $this->post('/v1/search', ['text' => $text] + $filter);
+        return is_array($text) ? array_map(self::items(...), $out) : self::items($out);
     }
 
-    /** `$task` ties the fact to a job; `$key` makes a retried write return the first one. @return array<string, mixed> */
-    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null, ?string $task = null, ?string $key = null, ?string $status = null): array
+    /** `$task` ties the fact to a job; `$key` makes a retried write return the first one. Returns the whole fact;
+     * `$detail = 'ack'` only a short receipt. @return array<string, mixed> */
+    public function annotate(string $subject, string $predicate, mixed $value, string $scope = 'task', ?string $evidence = null, ?string $by = null, ?string $task = null, ?string $key = null, ?string $status = null, string $detail = 'full'): array
     {
-        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key, 'status' => $status]);
+        return $this->post('/v1/annotate', ['subject' => $subject, 'predicate' => $predicate, 'value' => $value, 'scope' => $scope, 'evidence' => $evidence, 'by' => $by, 'task' => $task, 'key' => $key, 'status' => $status, 'detail' => $detail]);
     }
 
-    /** Neighbours by relation (one, or a list); `$depth` 2 or 3 walks further, each entry with `hops` and `via`.
+    /** Neighbours by relation (one, or a list); `$depth` 2 or 3 walks further, each entry with `hops` and `via`. Every
+     * neighbour unless `$limit` (then the nearest, most recent n).
      * @param string|list<string>|null $relation @return list<array<string, mixed>> */
-    public function related(string $subject, string|array|null $relation = null, \DateTimeInterface|string|null $asOf = null, int $depth = 1): array
+    public function related(string $subject, string|array|null $relation = null, \DateTimeInterface|string|null $asOf = null, int $depth = 1, int $limit = 0): array
     {
-        return $this->post('/v1/related', ['subject' => $subject, 'relation' => $relation, 'as_of' => $asOf === null ? null : Envelope::iso($asOf), 'depth' => $depth]);
+        return self::items($this->post('/v1/related', ['subject' => $subject, 'relation' => $relation, 'as_of' => $asOf === null ? null : Envelope::iso($asOf), 'depth' => $depth, 'limit' => $limit]));
     }
 
     /** @param list<array<string, mixed>> $batch @return array<string, mixed> */
     public function events(array $batch): array
     {
         return $this->post('/v1/events', $batch);
+    }
+
+    /** A list without the `more` (what a cap cut) or `note` entries the server may put first. @param list<mixed> $list @return list<mixed> */
+    private static function items(array $list): array
+    {
+        while ($list !== [] && is_array($list[0]) && count($list[0]) === 1 && (isset($list[0]['more']) || isset($list[0]['note']))) {
+            array_shift($list);
+        }
+        return $list;
     }
 
     private function post(string $path, mixed $body): mixed

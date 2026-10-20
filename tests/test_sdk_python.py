@@ -79,7 +79,7 @@ def test_generated_python_client(tmp_path, server):
     traced = m.client(server, TENANT, secret=SECRET, timeout=5, traceparent="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
     assert traced.annotate("tire:T-9001", "swap", True, status="proposed")["trace"] == traced.traceparent
     assert keel.context("tire:T-9001", detail="concise")["facts"]["depth_mm"] == 2.6
-    assert m.client(server, "someone-else", secret=SECRET).context("tire:T-9001")["entity"] is None
+    assert m.client(server, "someone-else", secret=SECRET).context("tire:T-9001")["found"] is False
     with pytest.raises(KeelError) as err:
         m.client(server, TENANT, secret="wrong").search("x")
     assert err.value.status == 401

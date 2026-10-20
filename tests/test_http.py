@@ -53,7 +53,7 @@ def test_secret_tenant_header_and_ingest():
     assert client.post("/v1/related", json={"subject": "unit:MXK-4821", "relation": "mounted_on", "as_of": "2026-09-05"}, headers=h).json() == []
     deep = client.post("/v1/context", json={"subject": "unit:MXK-4821", "depth": 1}, headers=h).json()
     assert any(n["subject"] == "tire:T-9001" and n["evaluation"] == {"tire_critical": True} for n in deep["neighbors"])
-    assert client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={**AUTH, "X-Keel-Tenant": "other"}).json()["entity"] is None
+    assert client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={**AUTH, "X-Keel-Tenant": "other"}).json()["found"] is False
     paths = set(client.get("/openapi.json").json()["paths"])
     assert {"/v1/events", "/v1/context", "/v1/history", "/v1/search", "/v1/annotate", "/v1/related"} <= paths
 
@@ -71,7 +71,7 @@ def test_registry_and_policy_refusals_are_403():
     res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical", "scope": "tenant", "evidence": "e"}, headers=h)
     assert res.status_code == 403 and "may not write scope 'tenant'" in res.json()["detail"]
     tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
-    res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical"}, headers={**h, "traceparent": tp, "X-Keel-Tool-Call": "call_9"})
+    res = client.post("/v1/annotate", json={"subject": "tire:T-9001", "predicate": "assessment", "value": "critical", "detail": "full"}, headers={**h, "traceparent": tp, "X-Keel-Tool-Call": "call_9"})
     assert res.status_code == 200 and res.json()["source"] == "annotate:tires-bot"
     assert res.json()["trace"] == f"{tp}; tool_call_id=call_9"  # joins the caller's trace to the audit export
     short = client.post("/v1/context", json={"subject": "tire:T-9001", "detail": "concise"}, headers=h).json()
@@ -168,7 +168,7 @@ def test_mcp_over_http_for_many_tenants():
         err, text = anyio.run(call, {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c1"})
         assert not err and json.loads(text)["evaluation"] == {"tire_critical": True}
         err, text = anyio.run(call, {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c2"})  # another tenant: nothing there
-        assert not err and json.loads(text)["evaluation"] != {"tire_critical": True}
+        assert not err and json.loads(text)["found"] is False
         err, text = anyio.run(call, {"Authorization": f"Bearer {narrow}", "X-Keel-Tenant": "c1"})
         assert err and "reaches only tenant 'c2'" in text
         err, text = anyio.run(call, {"Authorization": f"Bearer {narrow}"})  # a narrowed key needs no header
@@ -240,7 +240,7 @@ def test_the_task_context_parameters_over_http():
     Ingestor(c, s).ingest(JsonlAdapter(EVENTS), strict=True)
     client, h = _client(c, s), {**AUTH, "X-Keel-Tenant": TENANT}
     both = client.post("/v1/context", json={"subject": ["tire:T-9001", "unit:MXK-4821"], "exclude": ["depth_mm"]}, headers=h).json()
-    assert [x["subject"] for x in both] == ["tire:T-9001", "unit:MXK-4821"] and both[0]["facts"] == []
+    assert [x["subject"] for x in both] == ["tire:T-9001", "unit:MXK-4821"] and both[0]["facts"] == {}
     [tire] = client.post("/v1/search", json={"text": "T-9001", "detail": "concise"}, headers=h).json()
     assert tire["facts"] == {"depth_mm": 2.6}
     lists = client.post("/v1/search", json={"text": ["T-9001", "MXK"], "per_kind": 1}, headers=h).json()
@@ -340,15 +340,15 @@ def test_api_keys_confine_an_account():
     assert store.tenants() == ["acme/c1"]  # the server prefixed the account
     tire = {"subject": "tire:T-9001"}
     assert client.post("/v1/context", json=tire, headers=bearer(acme, "c1")).json()["evaluation"] == {"tire_critical": True}
-    assert client.post("/v1/context", json=tire, headers=bearer(narrow)).json()["entity"] is not None  # its tenant is fixed
+    assert client.post("/v1/context", json=tire, headers=bearer(narrow)).json()["facts"]  # its tenant is fixed
     assert client.post("/v1/context", json=tire, headers=bearer(narrow, "c2")).status_code == 403
-    assert client.post("/v1/context", json=tire, headers=bearer(zeta, "c1")).json()["entity"] is None  # zeta/c1, empty
+    assert client.post("/v1/context", json=tire, headers=bearer(zeta, "c1")).json()["found"] is False  # zeta/c1, empty
     assert client.post("/v1/context", json=tire, headers=bearer(acme, "zeta/c1")).status_code == 400  # no choosing the prefix
     assert client.post("/v1/events", json=lines, headers=bearer(narrow, "c1")).json()["duplicates"] == 12
     for e in lines:
         e["tenant"] = "c2"
     assert client.post("/v1/events", json=lines, headers=bearer(narrow)).status_code == 403
-    assert client.post("/v1/context", json=tire, headers={**AUTH, "X-Keel-Tenant": "acme/c1"}).json()["entity"] is not None  # the operator
+    assert client.post("/v1/context", json=tire, headers={**AUTH, "X-Keel-Tenant": "acme/c1"}).json()["facts"]  # the operator
     assert client.post("/v1/context", json=tire, headers=bearer("kk_nope_x", "c1")).status_code == 401
     note = {**tire, "predicate": "glossary", "value": "a tire under 3 mm is critical", "scope": "global", "evidence": "manual"}
     assert client.post("/v1/annotate", json=note, headers=bearer(acme, "c1")).status_code == 403
@@ -472,4 +472,14 @@ def test_a_server_bound_to_one_account(tmp_path):
     assert res.status_code == 403 and "acme" in res.json()["detail"]  # another account's key, refused here
     assert SqliteStore(tmp_path / "acme.db").tenants() == ["acme/c1"] and shared.tenants() == []
     op = client.post("/v1/context", json={"subject": "tire:T-9001"}, headers={**AUTH, "X-Keel-Tenant": "acme/c1"})
-    assert op.json()["entity"] is not None  # the operator reads this account's graph
+    assert op.json()["facts"]  # the operator reads this account's graph
+
+
+def test_the_mcp_server_says_the_ontology_once():
+    """Kinds, relations and what each rule means go in the server's instructions, once per session, not in every answer."""
+    from keel.mcp_server import instructions
+
+    text = instructions(load_cartridge(FLEET))
+    assert "Kinds: document, driver, inspection" in text and "mounted_on (tire->unit)" in text
+    assert "- tire_critical (tire): A tire is critical when tread depth is below 3 mm." in text
+    assert text == instructions(load_cartridge(FLEET))  # stable bytes: the prompt cache keeps it

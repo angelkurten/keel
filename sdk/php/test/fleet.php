@@ -68,7 +68,10 @@ ok(count($keel->search(['T-9001', 'MXK'], ['per_kind' => 1])) === 2, 'search lis
 $keel->events([Emit::driverAssigned($tenant, Subjects::unit('MXK-4821'), '2026-09-01T09:05:00Z', 'core', new DriverAssignedPayload('D-118'))]);
 $hops = array_values(array_filter($keel->related('tire:T-9001', ['mounted_on', 'assigned_to'], null, 2), fn($r) => $r['subject'] === 'driver:D-118'));
 ok(count($hops) === 1 && $hops[0]['hops'] === 2 && $hops[0]['via'] === 'unit:MXK-4821', 'related depth');
-ok(Keel::client($base, 'someone-else', $secret)->context('tire:T-9001')['entity'] === null, 'tenant isolation');
+ok((Keel::client($base, 'someone-else', $secret)->context('tire:T-9001')['found'] ?? null) === false, 'tenant isolation');
+// caps are the caller's: without a limit every entry, with one the most recent, never a {more} entry
+ok(array_map(fn($f) => $f['value'], $keel->history('tire:T-9001', ['predicate' => 'depth_mm', 'limit' => 1])) === [2.6], 'history limit');
+ok(array_map(fn($r) => $r['subject'], $keel->related('tire:T-9001', ['mounted_on', 'assigned_to'], null, 2, 1)) === ['unit:MXK-4821'], 'related limit');
 $tp = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
 ok(Keel::client($base, $tenant, $secret, null, 5, $tp)->annotate('tire:T-9001', 'traced', 'yes')['trace'] === $tp, 'client() passes traceparent');
 try {

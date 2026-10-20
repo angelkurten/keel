@@ -154,8 +154,18 @@ func TestGeneratedClient(t *testing.T) {
 		t.Fatalf("related depth: %v %+v", err, hops)
 	}
 	other := NewClient(keel.Options{BaseURL: base, Tenant: "someone-else", Secret: secret})
-	if got, err := other.Context(ctx, "tire:T-9001", nil); err != nil || got.Entity != nil {
-		t.Fatalf("tenant isolation: %v %+v", err, got.Entity)
+	if got, err := other.Context(ctx, "tire:T-9001", nil); err != nil || got.Entity != nil || got.Found == nil || *got.Found {
+		t.Fatalf("tenant isolation: %v %+v", err, got)
+	}
+	// caps are the caller's: without a limit every entry, with one the most recent, never a {more} entry
+	if last, err := c.History(ctx, "tire:T-9001", keel.HistoryFilter{Predicate: "depth_mm", Limit: 1}); err != nil || len(last) != 1 || last[0].Value != 2.6 {
+		t.Fatalf("history limit: %v %+v", err, last)
+	}
+	if near, err := c.RelatedWith(ctx, "tire:T-9001", keel.RelatedOptions{Relations: []string{"mounted_on", "assigned_to"}, Depth: 2, Limit: 1}); err != nil || len(near) != 1 || near[0].Subject != "unit:MXK-4821" {
+		t.Fatalf("related limit: %v %+v", err, near)
+	}
+	if brief, err := c.ContextBrief(ctx, "tire:T-9001", keel.ContextOptions{}); err != nil || brief["since"].(map[string]any)["depth_mm"] == nil {
+		t.Fatalf("brief: %v %+v", err, brief)
 	}
 	_, err = NewClient(keel.Options{BaseURL: base, Tenant: tenant, Secret: "wrong"}).Search(ctx, "x")
 	if !errors.As(err, &ke) || ke.Status != 401 {
