@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=https://angelkurten.github.io/keel/cartridge.schema.json
+# Jira, for the paper's benchmark (docs/design/paper.md) over the Public Jira Dataset (MSR 2022).
+# One tenant per Jira instance. events are written by evals/jira/adapt.py from the dataset's issues and changelogs.
+
+name: jira
+version: 0.1.0
+
+entities:
+  project:
+    description: A Jira project; its key prefixes its issues.
+    ref: projects.key
+  issue:
+    description: A Jira issue (bug, task, story, epic, sub-task...). Status, assignee, priority, resolution and type are facts over time.
+    ref: issues.id
+
+relations:
+  in_project:   { from: issue, to: project }
+  subtask_of:   { from: issue, to: issue }
+  blocks:       { from: issue, to: issue }
+  duplicates:   { from: issue, to: issue }
+  clones:       { from: issue, to: issue }
+  depends_on:   { from: issue, to: issue }
+  relates_to:   { from: issue, to: issue, symmetric: true }
+
+events:
+  issue.created:
+    subject: issue
+    owner: jira
+    payload:
+      project: string
+      summary: string
+      issue_type: string
+      status: string
+      status_category: [new, indeterminate, done, null]
+      priority: string | null
+      assignee: string | null
+      reporter: string | null
+      resolution: string | null
+      parent: string | null
+  issue.status_changed:
+    subject: issue
+    owner: jira
+    payload: { status: string, status_category: [new, indeterminate, done, null], by: string | null }
+  issue.assigned:
+    subject: issue
+    owner: jira
+    payload: { assignee: string | null, by: string | null }
+  issue.priority_changed:
+    subject: issue
+    owner: jira
+    payload: { priority: string | null, by: string | null }
+  issue.resolution_changed:
+    subject: issue
+    owner: jira
+    payload: { resolution: string | null, by: string | null }
+  issue.type_changed:
+    subject: issue
+    owner: jira
+    payload: { issue_type: string, by: string | null }
+  issue.linked:
+    subject: issue
+    owner: jira
+    payload: { relation: [subtask_of, blocks, duplicates, clones, depends_on, relates_to], other: string }
+  issue.unlinked:
+    subject: issue
+    owner: jira
+    payload: { relation: [subtask_of, blocks, duplicates, clones, depends_on, relates_to], other: string }
+
+rules:
+  blocked:
+    applies_to: issue
+    definition: "An issue is blocked while an issue that blocks it is not done."
+    when:
+      all:
+        - { not: { predicate: status_category, eq: done } }
+        - { via: blocks, direction: in, any: { not: { predicate: status_category, eq: done } } }
+  stalled:
+    applies_to: issue
+    definition: "An issue has stalled when it is in progress and its status has not changed for 30 days."
+    when: { predicate: status_category, eq: indeterminate, open_for_days: { gte: 30 } }
+  urgent_unassigned:
+    applies_to: issue
+    definition: "An urgent issue (priority Blocker or Critical) that is not done and has nobody assigned."
+    when:
+      all:
+        - { predicate: priority, in: [Blocker, Critical, Highest] }
+        - { not: { predicate: status_category, eq: done } }
+        - { predicate: assignee, eq: null }
+
+memory:
+  ttl:
+    global: never
+    tenant: never
+    task: 14d
+    agent: 1d
+  requires_evidence: [global, tenant]

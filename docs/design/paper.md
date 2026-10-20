@@ -46,3 +46,8 @@ Already measured (`evals/efficiency`, 0.31.0): tool-result tokens 45.2k to 12.3k
 - E1's write-fidelity scoring for Graphiti and Mem0 means mapping their stored facts back to changelog fields; it may add a week to the harness (weeks 5–7).
 - E4 depends on TGMS's repo running as published.
 - kagent promised `keel usage` around 2026-11-08: real usage for C3.
+- **Transaction time comes from the ingest clock, not the envelope.** Stores stamp a fact's `recorded_at` with `utcnow()` unless the handler passes one, and `close_fact` and `link` always use the clock. So replay reproduces the facts but not when Keel learned them, and late arrivals cannot be simulated by `recorded_at` alone. The Jira cartridge passes `recorded_at=event.recorded_at` and writes nulls as facts instead of closing them; links stay on the ingest clock, so as-known-at questions are about facts only. Whether the core should take transaction time from the envelope (and what that does to rule 1's "identical graph") is a core decision, not taken here.
+
+## Week 2: the Jira cartridge and adapter
+
+`evals/jira/`: `cartridge.yaml` and `handlers.py` (issues, projects, six link relations, three rules: blocked, stalled, urgent_unassigned), `adapt.py` (issues with changelogs in Jira's REST shape, JSON or the dataset's BSON, to events; values named by id as they are today, links recorded from their outward end, moved issues under their final key) and `check.py` (replay must end where Jira is today). On kagent's 359 cards: 2,341 events, no mismatch with Jira's current fields, the same file byte for byte on a second run.
