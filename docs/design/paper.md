@@ -63,3 +63,20 @@ The tenants, one whole project per Jira instance (whole projects keep links insi
 All three: no mismatch with Jira's current fields, and the same graph, transaction time included, in log order, reversed, and three shuffles (memory and SQLite in batches). Ingest takes 0.1–0.2 s per tenant in memory.
 
 Two core bugs surfaced on the way and are fixed, each with a conformance test: a close took the arriving fact's `recorded_at` instead of the later of the two (so a successor arriving first gave a different `closed_at`), and facts starting at the same instant (INDY-1393 moved to "To Test" twice in one second) were ordered by arrival, which left two open statuses. A predicate's history is now ordered by `valid_from`, then `recorded_at`, then evidence and value.
+
+## Week 4: questions and gold answers
+
+`evals/jira/questions.py` fills templates with a fixed seed (7) and computes every gold answer with its own oracle, a walk over the log that imports nothing from Keel. 105 questions per tenant, 315 in all:
+
+| Type | Per tenant | What it asks | Gold |
+| --- | --- | --- | --- |
+| current | 20 | a field's value now | value |
+| as_of | 25 | a field's value at an instant inside its history; in 80% the value is no longer current, so today's value does not pass for remembering | value |
+| known_at | 25 | a field's value at an instant, as recorded by a later one, over the injected windows, before and after the record arrived | value |
+| links | 15 | of the issues linked to one by a relation at an instant, which were done (or not) then | sorted list of keys |
+| rule | 15 | blocked, stalled or urgent and unassigned at an instant, the definition in the question; yes and no balanced; Spring SEC has no blocks links, so its share goes to the other two | bool |
+| abstain | 5 | an issue that does not exist, or a field the tracker does not keep | unknown |
+
+Instants are whole minutes at least an hour from any change the question reads. `None` as a value means none (unassigned, unresolved). Statuses whose category no current issue shows (a migrated workflow: Spring's Open, Resolved, Reopened...) take it from a declared table of Jira's standard workflows (`FALLBACK_CATEGORIES` in adapt.py); without it, 61% of Spring's status events had none and its rules could not be evaluated over history.
+
+`--check` answers every question with Keel's primitives directly, no agent: 315 of 315 agree. That is the ceiling an agent with Keel can reach, and the oracle and Keel checked against each other. Regenerating gives the same file.

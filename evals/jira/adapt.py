@@ -23,6 +23,13 @@ from typing import Any
 
 SOURCE = "jira"
 FIELDS = {"status": "status", "assignee": "assignee", "priority": "priority", "resolution": "resolution", "issuetype": "issue_type"}
+# Jira knows a status's category (new, indeterminate, done) only for statuses some issue has today; a workflow
+# that was migrated leaves old ones without it. These follow Jira's standard workflows and apply only then.
+FALLBACK_CATEGORIES = {
+    **dict.fromkeys(["Open", "Reopened", "To Do", "Backlog", "Icebox"], "new"),
+    **dict.fromkeys(["In Progress", "Design", "To Test", "Customer Validation", "Investigating", "Waiting for Feedback"], "indeterminate"),
+    **dict.fromkeys(["Resolved", "Verified", "Invalid", "Won't Fix"], "done"),
+}
 RELATIONS = [("subtask", "subtask_of"), ("block", "blocks"), ("duplicat", "duplicates"), ("clone", "clones"), ("depend", "depends_on")]
 
 
@@ -158,7 +165,7 @@ def main() -> None:
             v = i["fields"].get(field)
             if isinstance(v, dict) and ident(v):
                 names[field][ident(v)] = name(v)
-    categories = {i["fields"]["status"]["name"]: (i["fields"]["status"].get("statusCategory") or {}).get("key") for i in issues}
+    categories = FALLBACK_CATEGORIES | {i["fields"]["status"]["name"]: (i["fields"]["status"].get("statusCategory") or {}).get("key") for i in issues}
     # an issue that moved project changed key; old links point at the old key
     alias = {it["fromString"]: i["key"] for i in issues for h in (i.get("changelog") or {}).get("histories") or []
              for it in h.get("items") or [] if it["field"] == "Key" and it.get("fromString")}
