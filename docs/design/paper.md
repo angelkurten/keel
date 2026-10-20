@@ -91,3 +91,5 @@ Three agents, one per tenant, rebuilt the gold answer of 50 stratified questions
 - **Link questions** whose linked issues were all in one category made the done/not-done filter moot; now 80% have a mix.
 
 To state in the paper: a correction window's gold answer before the correction arrives is the injected wrong value, a value that never existed in Jira, by design. Jira's "includes" / "is part of" links map to relates_to. An issue moved to another project keeps its old key in the changelog and its new one in `issuelinks`, so a link to it can split across two keys; links outside the tenant are not asked about.
+
+Round two (24 new link, rule and abstain questions, same method): 24 ok; the three fixes hold. One more change from it: link questions ask only about the tenant's own issues (one asked about MDEV-20119, reached only through MXS issues' links).

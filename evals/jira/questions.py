@@ -213,6 +213,7 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
 
     # links: issues reached by one relation, filtered by their state at an instant
     linked = sorted({(src, rel) for src, rel, dst, _, _ in o.links if rel in LINK_ASKS} | {(dst, rel) for src, rel, dst, _, _ in o.links if rel in LINK_ASKS})
+    linked = [(subject, rel) for subject, rel in linked if subject in o.created]  # ask about the tenant's own issues
     rng.shuffle(linked)
     for subject, rel in linked:
         if sum(q["type"] == "links" for q in out) >= counts["links"]:
