@@ -13,6 +13,8 @@ happened and when it was recorded, corrections included), in its best ordinary f
 - api:    a Jira-like product API: get_issue (current fields and links), get_changelog (the audit log, each
           entry with both times), search_issues over current fields.
 - closed: no tools: what the model knows of these public trackers from training (a contamination control).
+- graphiti, mem0: search over what their LLM extractor made of the log (evals/jira/memories.py; they ingest the
+          subset the questions touch, and --subset gives every other system the same subset).
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -62,15 +64,33 @@ TOOLS_TEXT = {
     "rag": "The project's records (every change to every issue, with when it happened and when it was recorded) are searchable through search_records.",
     "api": "The tracker's API is available: get_issue, get_changelog and search_issues.",
     "closed": "You have no tools: answer from what you know.",
+    "graphiti": "The project's history is in a temporal knowledge graph (Graphiti), searchable through search_memory: facts with when they became and stopped being true.",
+    "mem0": "The project's history is in a memory store (Mem0), searchable through search_memory: memories with when the change happened and when it was recorded.",
 }
+MEMORY_TOOLS = [{"type": "function", "function": {
+    "name": "search_memory", "description": "Search the project's memory for facts relevant to a query.",
+    "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer", "description": "how many results (default 15, at most 50)"}},
+                   "required": ["query"]}}}]
+EXTRACTOR = "anthropic/claude-haiku-5.5"  # --extractor: the model Graphiti and Mem0 ingested with
 
 
 # ---- the source, read once per tenant ---------------------------------------------------
 
 
+SUBSET = False  # --subset: every system reads only the issues the questions touch, as Graphiti and Mem0 do
+
+
 @cache
 def log(data: Path, tenant: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in (data / f"{tenant}.bitemporal.jsonl").open()]
+
+
+def source(data: Path, tenant: str) -> list[dict[str, Any]]:
+    if SUBSET:
+        from evals.jira.memories import subset
+
+        return subset(data, tenant)
+    return log(data, tenant)
 
 
 def when(s: str) -> str:
@@ -104,7 +124,7 @@ def keel_cartridge() -> Any:
 def keel_server(data: Path, tenant: str) -> Any:
     """A fresh graph per question: what one agent annotates never reaches another run."""
     store = MemoryStore()
-    Ingestor(keel_cartridge(), store).ingest([Event(**e) for e in log(data, tenant)], strict=True)
+    Ingestor(keel_cartridge(), store).ingest([Event(**e) for e in source(data, tenant)], strict=True)
     return build_server(Tools(keel_cartridge(), store, tenant=tenant))
 
 
@@ -121,7 +141,7 @@ WORD = re.compile(r"[a-z0-9]+(?:-[0-9]+)?")
 
 class Rag:
     def __init__(self, data: Path, tenant: str, gw: Gateway) -> None:
-        self.texts, self.keys = zip(*(record(e) for e in log(data, tenant)), strict=True)
+        self.texts, self.keys = zip(*(record(e) for e in source(data, tenant)), strict=True)
         digest = hashlib.sha1("\n".join(self.texts).encode()).hexdigest()[:12]  # a changed log is embedded again
         path = data / f"{tenant}.rag-{digest}.npy"
         if path.exists():
@@ -185,7 +205,7 @@ class Api:
         self.changelog: dict[str, list[dict[str, Any]]] = defaultdict(list)
         links: dict[tuple[str, str, str], bool] = {}
         latest: dict[tuple[str, str], tuple[str, str]] = {}  # (key, field) -> (occurred, recorded) of the value shown
-        for e in sorted(log(data, tenant), key=lambda e: (e["recorded_at"], e["id"])):  # the product writes what it learns, in order
+        for e in sorted(source(data, tenant), key=lambda e: (e["recorded_at"], e["id"])):  # the product writes what it learns, in order
             key, p = e["subject"].split(":", 1)[1], e["payload"]
             entry = {"happened": when(e["occurred_at"]), "recorded": when(e["recorded_at"])}
             if e["type"] == "issue.created":
@@ -247,7 +267,8 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     if server is not None:
         tools_text += "\n\n" + mcp_server.instructions(keel_cartridge())
     prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
-    tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None}[system]
+    tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
+             "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS}[system]
     messages: list[dict[str, Any]] = [{"role": "system", "content": prompt}, {"role": "user", "content": q["question"]}]
     used, cost, calls, errors, reply, start = {"input": 0, "output": 0}, 0.0, [], 0, "", time.monotonic()
     for _ in range(max_steps):
@@ -274,6 +295,13 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                     text, _, error, _ = call(server, name, args)
                 elif system == "rag":
                     text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
+                elif system in ("graphiti", "mem0"):
+                    from evals.jira import memories
+
+                    k = min(int(args.get("k") or 15), 50)
+                    hits = (memories.graphiti_search(tenant, EXTRACTOR, str(args.get("query", "")), k) if system == "graphiti"
+                            else memories.mem0_search(data, tenant, EXTRACTOR, str(args.get("query", "")), k))
+                    text = json.dumps(hits, ensure_ascii=False)
                 else:
                     text = json.dumps(apis[tenant].call(name, args), ensure_ascii=False)
             except Exception as exc:  # noqa: BLE001 - a bad argument is the agent's to read, as a real tool would say it
@@ -328,6 +356,7 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
 
 
 def main() -> None:
+    global SUBSET, EXTRACTOR
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", type=Path, required=True)
     ap.add_argument("--systems", default="keel,rag,api,closed")
@@ -338,7 +367,10 @@ def main() -> None:
     ap.add_argument("--reps", type=int, default=1)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--subset", action="store_true", help="every system reads only the issues the questions touch")
+    ap.add_argument("--extractor", default=EXTRACTOR, help="the model Graphiti and Mem0 ingested with")
     a = ap.parse_args()
+    SUBSET, EXTRACTOR = a.subset, a.extractor
     logging.getLogger("httpx").setLevel(logging.WARNING)
     data = a.data.expanduser()
     gw = Gateway()

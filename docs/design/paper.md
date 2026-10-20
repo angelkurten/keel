@@ -105,3 +105,17 @@ Round two (24 new link, rule and abstain questions, same method): 24 ok; the thr
 Smoke run (Hyperledger, one question per type, 2026-10-20): Haiku 5.5 and DeepSeek V4.1 Flash 1017, 48 runs, 0.17 USD, every answer parseable. Keel, RAG and the API all answered the six correctly; closed book got only the abstention, so the models do not know these trackers from training. Six questions separate nothing; the differences will be in the full run and in cost (DeepSeek on RAG read 43k input tokens per question, on Keel 15k, on the API 3k).
 
 `openai/gpt-6-luna` answers 401 through OfoxAI since 2026-10-20 (the gateway's OpenAI account is deactivated; embeddings still work). Agents: to be decided.
+
+### Graphiti and Mem0 (2026-10-20)
+
+`evals/jira/memories.py`, pinned to releases at least two weeks old: graphiti-core 0.30.2 (0.31.x came out 2026-10-15 and 10-20) and mem0ai 2.2.1 with its `extras` (BM25 on). Configured as their guides say for an OpenAI-compatible provider (checked against their current docs): Graphiti with `OpenAIGenericClient` on Neo4j 5.26 (its Kuzu backend is deprecated and fails in 0.30.2); `json_object` structured output made Haiku add text after the JSON (5 failed calls in 29), the default `json_schema` had none. Mem0 with its openai LLM and embedder pointed at the gateway and Qdrant embedded on disk; its OSS SDK refuses a `timestamp`, so times travel in the text and metadata, as its guide does for dates.
+
+Ingest cost, measured per event with Haiku 5.5 as the extractor (12 events each):
+
+| | LLM calls | Input tokens | Output tokens | Seconds |
+| --- | --- | --- | --- | --- |
+| Graphiti | 3.3 | 9,984 | 432 | 11.0 |
+| Mem0 | 1.0 | 13,398 | 427 | 5.9 |
+| Keel | 0 | 0 | 0 | ~0.00001 (51,669 events in ~0.5 s) |
+
+The whole log through Graphiti would be ~134 hours and ~46 USD. Both ingest the subset the questions touch (asked issues and their linked ones: 2,321 + 1,122 + 938 = 4,381 events), about 12 USD and 7 hours with the three tenants in parallel. That subset is less noise than the other systems read, which favours Graphiti and Mem0; `bench.py --subset` gives every system the same subset for a like-for-like table. Both systems run through the harness end to end (`search_memory`).
