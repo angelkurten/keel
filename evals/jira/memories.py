@@ -98,8 +98,15 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
             if e["id"] in done:
                 continue
             before, start = (meter.calls, meter.input, meter.output), time.monotonic()
-            await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
-                                reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
+            for wait in backoff():
+                try:
+                    await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
+                                        reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
+                    break
+                except Exception as exc:
+                    if not limited(exc, wait):
+                        raise
+                    await asyncio.sleep(wait)
             note(progress, e, before, meter, start)
     finally:
         await g.close()
@@ -154,8 +161,15 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
             continue
         before, start = (meter.calls, meter.input, meter.output), time.monotonic()
         # the OSS SDK takes no timestamp: time travels in the text and the metadata, as its guide does for dates
-        m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
-              metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
+        for wait in backoff():
+            try:
+                m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
+                      metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
+                break
+            except Exception as exc:
+                if not limited(exc, wait):
+                    raise
+                time.sleep(wait)
         note(progress, e, before, meter, start)
 
 
@@ -170,6 +184,18 @@ def mem0_search(data: Path, tenant: str, model: str, query: str, k: int) -> list
 
 
 # ---- ingest bookkeeping -----------------------------------------------------------------------
+
+
+def backoff() -> list[float]:
+    """Waits between attempts at one event when the gateway limits requests per minute; the last raises."""
+    return [5, 10, 20, 40, 60, 60, 60, 60, 0]
+
+
+def limited(exc: Exception, wait: float) -> bool:
+    """Retry this exception? Only a rate limit (429), and not after the last wait. A retried event may have
+    written part of its extraction before failing; Graphiti and Mem0 deduplicate what the retry writes again."""
+    return wait > 0 and ("429" in str(exc) or type(exc).__name__ == "RateLimitError")
+
 
 
 def note(progress: Path, e: dict[str, Any], before: tuple[int, int, int], meter: Meter, start: float) -> None:
@@ -189,6 +215,7 @@ def main() -> None:
     a = ap.parse_args()
     for name in ("httpx", "neo4j", "graphiti_core"):
         logging.getLogger(name).setLevel(logging.WARNING)
+    os.environ.setdefault("SEMAPHORE_LIMIT", "3")  # Graphiti's concurrency: six ingests share the gateway's per-minute limit
     data = a.data.expanduser()
     progress = data / f"{a.tenant}.{a.system}.{a.model.replace('/', '_')}.ingest.jsonl"
     events = subset(data, a.tenant)[: a.limit]
