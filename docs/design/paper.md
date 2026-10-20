@@ -1,6 +1,6 @@
 # Design note: the paper
 
-Status: week 1 of 16 (plan at https://claude.ai/artifact/L1ZYTBKwJqx16z8uSKfyyZ). Decided 2026-10-20: a benchmark of our own over the Public Jira Dataset (MSR 2022, Zenodo, CC BY 4.0); five systems (Keel, RAG, the product's API as tools, Graphiti, Mem0); agents `openai/gpt-6-luna` and `anthropic/claude-haiku-5.5`; judge `deepseek/deepseek-v4-pro-0813` (to confirm); a preprint on arXiv in early February 2027; about 110–140 USD of API.
+Status: week 1 of 16 (plan at https://claude.ai/artifact/L1ZYTBKwJqx16z8uSKfyyZ). Decided 2026-10-20: a benchmark of our own over the Public Jira Dataset (MSR 2022, Zenodo, CC BY 4.0); five systems (Keel, RAG, the product's API as tools, Graphiti, Mem0); agents `openai/gpt-6-luna` and `anthropic/claude-haiku-5.5`; no judge (answers are structured and graded by exact match; decided in week 5); a preprint on arXiv in early February 2027; about 110–140 USD of API.
 
 ## What is not ours to claim
 
@@ -119,3 +119,5 @@ Ingest cost, measured per event with Haiku 5.5 as the extractor (12 events each)
 | Keel | 0 | 0 | 0 | ~0.00001 (51,669 events in ~0.5 s) |
 
 The whole log through Graphiti would be ~134 hours and ~46 USD. Both ingest the subset the questions touch (asked issues and their linked ones: 2,321 + 1,122 + 938 = 4,381 events), about 12 USD and 7 hours with the three tenants in parallel. That subset is less noise than the other systems read, which favours Graphiti and Mem0; `bench.py --subset` gives every system the same subset for a like-for-like table. Both systems run through the harness end to end (`search_memory`).
+
+**Agents confirmed (2026-10-20): `openai/gpt-6-luna` and `anthropic/claude-haiku-5.5`**, no judge (exact match). Luna answered again through OfoxAI the same evening; it is also the extractor for Graphiti and Mem0. Luna smoke run (Hyperledger, six questions): every answer parseable; on Keel 1.8 tool calls and 5.6k input tokens per question.
