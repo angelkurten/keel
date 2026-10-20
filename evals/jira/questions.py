@@ -40,7 +40,8 @@ MARGIN = timedelta(hours=1)
 # Rule questions spell out which statuses count (a reader must not guess whether "Confirmed" is in progress), and
 # never say "stalled": MariaDB has a status by that name. {done} and {progress} are the tenant's own statuses.
 RULES = {
-    "blocked": ("An issue is blocked while an issue that blocks it is not done (done means a status among: {done}).", "Was {key} blocked on {at}?"),
+    "blocked": ("An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: {done}).",
+                "Was {key} blocked on {at}?"),
     "stalled": ("Call an issue idle when its status is one of {progress} and its status has not changed for 30 days or more.", "Was {key} idle on {at}?"),
     "urgent_unassigned": (("An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status "
                            "among: {done}), and nobody is assigned to it."), "Was {key} urgent and unassigned on {at}?"),
