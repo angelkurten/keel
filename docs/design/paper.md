@@ -93,3 +93,11 @@ Three agents, one per tenant, rebuilt the gold answer of 50 stratified questions
 To state in the paper: a correction window's gold answer before the correction arrives is the injected wrong value, a value that never existed in Jira, by design. Jira's "includes" / "is part of" links map to relates_to. An issue moved to another project keeps its old key in the changelog and its new one in `issuelinks`, so a link to it can split across two keys; links outside the tenant are not asked about.
 
 Round two (24 new link, rule and abstain questions, same method): 24 ok; the three fixes hold. One more change from it: link questions ask only about the tenant's own issues (one asked about MDEV-20119, reached only through MXS issues' links).
+
+## Week 5: the harness (Keel, RAG, the product's API, closed book)
+
+`evals/jira/bench.py`. Every system reads the same source, the tenant's log as written (each event with when it happened and when it was recorded, corrections included), in its best ordinary form: Keel's five tools through a real MCP session; RAG with one text record per event, both times in it, hybrid search (dense `text-embedding-3-small` at 512 dimensions plus BM25, fused by RRF) and an optional issue-key filter; a Jira-like API (`get_issue`, `get_changelog` with both times, `search_issues`); and no tools at all, a contamination control. Same model, same prompt but for the paragraph about the tools, temperature 0. The agent ends with `ANSWER: <json>`, graded by exact match after normalising (case, none/unassigned, sets of keys, yes/no), so **no judge model is needed**: every answer in this benchmark is structured. That drops the judge's cost and its bias, and the judge-validation step shrinks to checking the normaliser.
+
+Smoke run (Hyperledger, one question per type, 2026-10-20): Haiku 5.5 and DeepSeek V4.1 Flash 1017, 48 runs, 0.17 USD, every answer parseable. Keel, RAG and the API all answered the six correctly; closed book got only the abstention, so the models do not know these trackers from training. Six questions separate nothing; the differences will be in the full run and in cost (DeepSeek on RAG read 43k input tokens per question, on Keel 15k, on the API 3k).
+
+`openai/gpt-6-luna` answers 401 through OfoxAI since 2026-10-20 (the gateway's OpenAI account is deactivated; embeddings still work). Agents: to be decided.
