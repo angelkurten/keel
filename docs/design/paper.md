@@ -80,3 +80,14 @@ Two core bugs surfaced on the way and are fixed, each with a conformance test: a
 Instants are whole minutes at least an hour from any change the question reads. `None` as a value means none (unassigned, unresolved). Statuses whose category no current issue shows (a migrated workflow: Spring's Open, Resolved, Reopened...) take it from a declared table of Jira's standard workflows (`FALLBACK_CATEGORIES` in adapt.py); without it, 61% of Spring's status events had none and its rules could not be evaluated over history.
 
 `--check` answers every question with Keel's primitives directly, no agent: 315 of 315 agree. That is the ceiling an agent with Keel can reach, and the oracle and Keel checked against each other. Regenerating gives the same file.
+
+### Review by independent judges (2026-10-20)
+
+Three agents, one per tenant, rebuilt the gold answer of 50 stratified questions (17, 17, 16) from the raw Jira export with code, never from the event log, so a bug shared by the adapter, the oracle and Keel could show. 46 ok, 3 ambiguous, 1 wrong. Fixed:
+
+- **Wrong (an adapter bug):** Jira can hold the same link twice (INDY-2293 linked INDY-2292 twice and removed it once; 58 duplicate adds in Hyperledger alone). The adapter treated links as a set, so one removal dropped a link that still existed. It now counts adds and removes, as kagent's exporter did. `check.py` now also compares each issue's open links with its current `issuelinks` (relates_to without direction, since Jira shows it outward on one end): no mismatch in the three tenants, 4 with the old adapter.
+- **Ambiguous (rule wording):** "stalled when it is in progress" tested the indeterminate category, which includes Confirmed (MariaDB) and Waiting for Feedback (Spring); MariaDB also has a status named Stalled. Rule and link questions now list the tenant's statuses that count as done or in progress, and the stalled rule is asked as "idle".
+- **Abstentions on fields the raw tracker may hold** (sprint, due date: MariaDB has 2,129 sprint changes) were unfair to systems that read raw Jira. Abstentions are now issues that never existed and issues asked about before they were created.
+- **Link questions** whose linked issues were all in one category made the done/not-done filter moot; now 80% have a mix.
+
+To state in the paper: a correction window's gold answer before the correction arrives is the injected wrong value, a value that never existed in Jira, by design. Jira's "includes" / "is part of" links map to relates_to. An issue moved to another project keeps its old key in the changelog and its new one in `issuelinks`, so a link to it can split across two keys; links outside the tenant are not asked about.

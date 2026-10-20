@@ -116,6 +116,7 @@ def events_of(issue: dict[str, Any], tenant: str, names: dict[str, dict[str, str
         "parent": alias.get(parent, parent),
     })]
     seen_links = set()
+    open_links: dict[tuple[str, str], int] = {}  # Jira can hold the same link twice: one removal leaves the other
     for when, hid, n, it, by in changes:
         eid, field = f"{key}:h{hid}:{n}", it["field"]
         if field == "status":
@@ -136,7 +137,10 @@ def events_of(issue: dict[str, Any], tenant: str, names: dict[str, dict[str, str
             if kind and other and not kind[1]:  # outward: the other end records the inward phrase
                 other = alias.get(other, other)
                 seen_links.add((kind[0], other))
-                out.append(ev(eid, "issue.linked" if added else "issue.unlinked", when, {"relation": kind[0], "other": other}))
+                count = open_links.get((kind[0], other), 0) + (1 if added else -1)
+                open_links[(kind[0], other)] = max(count, 0)
+                if (added and count == 1) or (not added and count == 0):  # Keel holds one edge per pair
+                    out.append(ev(eid, "issue.linked" if added else "issue.unlinked", when, {"relation": kind[0], "other": other}))
     for link in f.get("issuelinks") or []:  # links the changelog never recorded (imported, or older than it)
         if "outwardIssue" in link:
             kind = link_kind("x " + link["type"]["outward"] + " x")

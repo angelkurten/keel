@@ -11,7 +11,7 @@ Keel is checked against it, not graded by itself. Six types:
              arrivals and corrections of inject.py).
 - links:     the issues linked to one by a relation, filtered by their state at an instant (two hops).
 - rule:      a rule's verdict at an instant, the definition given in the question (blocked, stalled, urgent_unassigned).
-- abstain:   an issue that does not exist, or a field the tracker does not keep: the answer is "unknown".
+- abstain:   an issue that does not exist, or one asked about before it was created: the answer is "unknown".
 
 Instants are whole minutes at least an hour from any change to what the question reads, so rounding never
 decides an answer. Gold answers: a value (None reads "none"), a sorted list of issue keys, a bool, or None
@@ -37,10 +37,13 @@ CHANGES = {"issue.status_changed": ("status", "status_category"), "issue.assigne
 URGENT = {"Blocker", "Critical", "Highest"}
 STALL = timedelta(days=30)
 MARGIN = timedelta(hours=1)
+# Rule questions spell out which statuses count (a reader must not guess whether "Confirmed" is in progress), and
+# never say "stalled": MariaDB has a status by that name. {done} and {progress} are the tenant's own statuses.
 RULES = {
-    "blocked": "An issue is blocked while an issue that blocks it is not done.",
-    "stalled": "An issue has stalled when it is in progress and its status has not changed for 30 days or more.",
-    "urgent_unassigned": "An urgent issue is one with priority Blocker, Critical or Highest; it is urgent and unassigned when it is not done and nobody is assigned.",
+    "blocked": ("An issue is blocked while an issue that blocks it is not done (done means a status among: {done}).", "Was {key} blocked on {at}?"),
+    "stalled": ("Call an issue idle when its status is one of {progress} and its status has not changed for 30 days or more.", "Was {key} idle on {at}?"),
+    "urgent_unassigned": (("An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status "
+                           "among: {done}), and nobody is assigned to it."), "Was {key} urgent and unassigned on {at}?"),
 }
 LINK_ASKS = {  # relation -> (direction from the asked issue, phrase)
     "blocks": ("in", "the issues that block {key}"),
@@ -144,6 +147,11 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
     rng = random.Random(f"{seed}:{tenant}")
     o = Oracle(events)
     issues = sorted(o.created)
+    by_category: dict[str, set[str]] = defaultdict(set)
+    for e in events:
+        if e["payload"].get("status_category"):
+            by_category[e["payload"]["status_category"]].add(e["payload"]["status"])
+    statuses = {"done": ", ".join(sorted(by_category["done"])), "progress": ", ".join(sorted(by_category["indeterminate"]))}
     key = lambda s: s.split(":", 1)[1]
     out: list[dict[str, Any]] = []
 
@@ -218,12 +226,14 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
         cats = {n: o.value(n, "status_category", at) for n in others}
         if len(others) < 2 or None in cats.values() or any(abs(at - x) < MARGIN for n in others for x in o.changes(n, ("status_category",))):
             continue
+        if len({c == "done" for c in cats.values()}) == 1 and rng.random() < 0.8:
+            continue  # mostly a mix of done and not done, so the filter is part of the question
         done = rng.random() < 0.5
         if all((c == "done") != done for c in cats.values()) and rng.random() < 0.8:
-            done = not done  # mostly ask for the side that has issues; an empty answer stays possible
+            done = not done  # an unmixed set: mostly ask for the side that has issues; an empty answer stays possible
         answer = sorted(key(n) for n, c in cats.items() if (c == "done") == done)
-        add("links", f"Of {phrase.format(key=key(subject))} on {fmt(at)}, which were {'done' if done else 'not done'} at that time?",
-            answer, "set", subject=subject, relation=rel, as_of=at, done=done)
+        add("links", f"On {fmt(at)}, of {phrase.format(key=key(subject))}, which were {'done' if done else 'not done'} "
+            f"(done means a status among: {statuses['done']})?", answer, "set", subject=subject, relation=rel, as_of=at, done=done)
 
     # rule: a verdict at an instant, yes and no alike
     rules = [r for r in RULES if r != "blocked" or any(rel == "blocks" for _, rel, _, _, _ in o.links)]  # no blocks links, no blocked
@@ -244,10 +254,12 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
             if verdict is None or want[verdict] == 0:
                 continue
             want[verdict] -= 1
-            add("rule", f"{RULES[name]} Was {key(subject)} {name.replace('_', ' and ')} on {fmt(at)}?", verdict, "bool",
+            definition, ask = RULES[name]
+            add("rule", f"{definition.format(**statuses)} {ask.format(key=key(subject), at=fmt(at))}", verdict, "bool",
                 subject=subject, rule=name, as_of=at)
 
-    # abstain: what nobody recorded
+    # abstain: what no record can answer, in any system: an issue that never existed, or one before it was created.
+    # Never a field the benchmark leaves out (sprint, due date...): the raw tracker may hold it.
     project = key(issues[0]).rsplit("-", 1)[0]
     top = max(int(key(s).rsplit("-", 1)[1]) for s in issues)
     for i in range(counts["abstain"]):
@@ -256,8 +268,8 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
             add("abstain", f"What is the current status of {ghost}?", None, "unknown", subject=f"issue:{ghost}", predicate="status")
         else:
             subject = rng.choice(issues)
-            field = rng.choice(["story points", "sprint", "fix version", "due date"])
-            add("abstain", f"What was the {field} of {key(subject)}?", None, "unknown", subject=subject, predicate=field)
+            at = minute(o.created[subject] - timedelta(days=rng.randint(30, 365)))
+            add("abstain", f"What was the status of {key(subject)} on {fmt(at)}?", None, "unknown", subject=subject, predicate="status", as_of=at)
     return out
 
 
@@ -293,8 +305,8 @@ def check(events: list[dict[str, Any]], questions: list[dict[str, Any]]) -> int:
         elif q["type"] == "rule":
             got = tools.context(p["subject"], as_of=at_(p, "as_of"))["evaluation"][p["rule"]]
         else:
-            known = store.entity(tenant, p["subject"]) is not None and p["predicate"] in FIELDS
-            got = "<known>" if known else None
+            got = value(p["subject"], p["predicate"], at_(p, "as_of"))
+            got = None if got == "<unknown>" else got
         if got != q["answer"]:
             bad += 1
             if bad <= 8:

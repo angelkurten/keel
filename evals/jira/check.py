@@ -3,7 +3,7 @@
     uv run --with pymongo python -m evals.jira.check <issues.json|collection.bson> events.jsonl [--projects ...]
 
 For every issue in the events, the open status, assignee, priority, resolution and type after replay must equal
-the issue's current fields. A mismatch means the changelog walk is wrong (or Jira's changelog has a gap).
+the issue's current fields, and its open outward links to issues of the tenant must equal its current issuelinks. A mismatch means the changelog walk is wrong (or Jira's changelog has a gap).
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from evals.jira.adapt import load, name
+from evals.jira.adapt import link_kind, load, name
 from keel import Ingestor, MemoryStore, load_cartridge
 from keel.envelope import Event
 
@@ -31,6 +31,7 @@ def main() -> None:
     Ingestor(load_cartridge(HERE), store).ingest(events, strict=True)
     tenant = events[0].tenant
     keys = {e.subject_id for e in events if e.type == "issue.created"}
+    subjects = {f"issue:{k}" for k in keys}
     bad, checked = Counter(), 0
     for issue in load(a.source):
         if issue["key"] not in keys:
@@ -47,6 +48,23 @@ def main() -> None:
                 bad[predicate] += 1
                 if bad[predicate] <= 3:
                     print(f"  {issue['key']} {predicate}: graph {facts.get(predicate)!r}, Jira {want!r}")
+        # links: the outward ones Jira shows today, between issues of this tenant (a moved issue's old key splits a link)
+        # relates_to is symmetric: Jira shows it outward on one end, the graph may hold it from either
+        me = f"issue:{issue['key']}"
+        want_links = set()
+        for link in issue["fields"].get("issuelinks") or []:
+            side = "outwardIssue" if "outwardIssue" in link else "inwardIssue"
+            kind = link_kind("x " + link["type"]["outward"] + " x")
+            other = f"issue:{link[side]['key']}"
+            if kind and other in subjects and (side == "outwardIssue" or kind[0] == "relates_to"):
+                want_links.add((kind[0], other))
+        have_links = {(r.rel, r.dst if r.src == me else r.src) for r in store.relations(tenant, me)
+                      if r.valid_to is None and (r.src == me or r.rel == "relates_to") and r.rel not in ("in_project", "subtask_of")
+                      and (r.dst if r.src == me else r.src) in subjects}
+        if "issuelinks" in issue["fields"] and have_links != want_links:
+            bad["links"] += 1
+            if bad["links"] <= 3:
+                print(f"  {issue['key']} links: graph {sorted(have_links - want_links)} extra, {sorted(want_links - have_links)} missing")
     print(f"{checked} issues checked; mismatches: {dict(bad) or 'none'}")
     raise SystemExit(1 if bad else 0)
 
