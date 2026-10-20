@@ -44,9 +44,9 @@ def _ser(o: Any) -> Any:
         d = asdict(o)
         out = {k: _ser(v) for k, v in d.items() if k != "attrs"}
         return {**out, "key": o.key, "attrs": _ser(d["attrs"])}  # the '<kind>:<id>' every other call takes
-    if isinstance(o, Fact):
+    if isinstance(o, (Fact, Relation)):
         d = asdict(o)
-        return {k: _ser(v) for k, v in d.items()}
+        return {k: _ser(v) for k, v in d.items() if k != "changed_at"}  # the change cursor's bookkeeping, not an answer
     if isinstance(o, datetime):
         return o.isoformat()
     if isinstance(o, Scope):
@@ -502,7 +502,7 @@ class Tools:
             "subject": subject,
             "entity": entity,
             "facts": shown(graph.facts(subject)),
-            "relations": [asdict(r) for r in rels],
+            "relations": [_ser(r) for r in rels],
             "rules": self._rules_for(subject),
             "evaluation": self._evaluation(subject, graph),
             "as_of": now,

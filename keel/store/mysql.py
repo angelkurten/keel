@@ -29,6 +29,7 @@ def _fold(key: str) -> str:
 
 
 class MysqlStore(SqlStore):
+    TIME = "VARCHAR(40)"
     PLACEHOLDER = "%s"
     ENTITY_ORDER = "seq"
     PER_THREAD_READS = True

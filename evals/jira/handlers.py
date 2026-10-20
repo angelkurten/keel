@@ -6,10 +6,8 @@ registry = HandlerRegistry()
 
 
 def _fact(store, event, predicate, value):
-    # recorded_at from the event, so "what was known at T" follows the log, not the ingest clock.
-    # A null value (unassigned, unresolved) is a fact too: close_fact would stamp the ingest clock.
-    store.open_fact(event.tenant, event.subject, predicate, value, valid_from=event.occurred_at,
-                    recorded_at=event.recorded_at, source=event.source, evidence=event.id)
+    # a null value (unassigned, unresolved) is a fact too, so a rule can test it
+    store.open_fact(event.tenant, event.subject, predicate, value, valid_from=event.occurred_at, source=event.source, evidence=event.id)
 
 
 @registry.on("issue.created")

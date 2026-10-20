@@ -22,13 +22,14 @@ from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relatio
 
 
 def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
+    now = utcnow()
     return Fact(
         tenant=tenant,
         subject=subject,
         predicate=predicate,
         value=value,
         valid_from=valid_from,
-        recorded_at=kw.get("recorded_at") or utcnow(),
+        recorded_at=kw.get("recorded_at") or now,
         source=kw.get("source"),
         scope=Scope(kw.get("scope", Scope.TENANT)),
         corrected_by=kw.get("corrected_by"),
@@ -39,6 +40,7 @@ def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: 
         status=kw.get("status"),
         trace=kw.get("trace"),
         cartridge=kw.get("cartridge"),
+        changed_at=now,
     )
 
 
@@ -86,12 +88,18 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
     closed = None
     if prev is not None and (prev.valid_to is None or prev.valid_to > new.valid_from):
         prev.valid_to = new.valid_from
-        prev.closed_at = new.recorded_at  # we learned it ended when we learned what replaced it
+        prev.closed_at = _later(prev.recorded_at, new.recorded_at)  # we learned it ended once we knew both
+        prev.changed_at = new.changed_at
         closed = prev
     if nxt is not None:
         new.valid_to = nxt.valid_from
-        new.closed_at = new.recorded_at
+        new.closed_at = _later(new.recorded_at, nxt.recorded_at)  # the next one may have been recorded later
     return closed
+
+
+def _later(a: datetime | None, b: datetime | None) -> datetime | None:
+    """The later of two transaction times: arrival order then never changes when a close was learned."""
+    return max((t for t in (a, b) if t is not None), default=None)
 
 
 def as_known_at(facts: Iterable[Fact], known_at: datetime) -> list[Fact]:
@@ -105,10 +113,16 @@ def as_known_at(facts: Iterable[Fact], known_at: datetime) -> list[Fact]:
     return out
 
 
+def changed_at(f: Fact | Relation) -> datetime | None:
+    """When a fact or link was last written. Rows from before `changed_at` existed fall back to their transaction times."""
+    return f.changed_at or max((t for t in (f.recorded_at, getattr(f, "closed_at", None)) if t is not None), default=None)
+
+
 def changed_after(facts: Iterable[Fact], after: datetime) -> list[Fact]:
-    """Facts recorded or closed after a watermark, oldest change first: an agent's "since my last run"."""
-    out = [f for f in facts if (f.recorded_at and f.recorded_at > after) or (f.closed_at and f.closed_at > after)]
-    return sorted(out, key=lambda f: max(t for t in (f.recorded_at, f.closed_at) if t is not None))
+    """Facts written (opened or closed) after a watermark, oldest change first: an agent's "since my last run".
+    By the ingest clock, not transaction time: an event declaring an old recorded_at still shows up as a change."""
+    out = [f for f in facts if (changed_at(f) or after) > after]
+    return sorted(out, key=changed_at)
 
 
 def filter_facts(
@@ -162,7 +176,7 @@ class MemoryStore:
         self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
         self._tx: list[tuple[str, str]] | None = None
-        self._watermark: dict[str, datetime] = {}  # tenant -> latest recorded_at or closed_at
+        self._watermark: dict[str, datetime] = {}  # tenant -> latest changed_at (ingest clock)
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
         self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
@@ -187,12 +201,13 @@ class MemoryStore:
             ent.attrs.update(attrs)
         return ent
 
-    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation:
+    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation:
         for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 return r  # already open; idempotent
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
-        self._mark(tenant, r.recorded_at)
+        now = utcnow()
+        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
+        self._mark(tenant, now)
         self._rels[tenant][src].append(r)
         if dst != src:
             self._rels[tenant][dst].append(r)
@@ -202,7 +217,8 @@ class MemoryStore:
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
         for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
-                r.valid_to = valid_to
+                r.valid_to, r.changed_at = valid_to, utcnow()
+                self._mark(tenant, r.changed_at)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
         # the old value keeps its history, it is never overwritten; and the new fact takes its
@@ -216,17 +232,18 @@ class MemoryStore:
         place_fact(f, same_slot(self._facts[tenant][subject], f, kw.get("per_source", False)))
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
-        self._mark(tenant, f.recorded_at)
+        self._mark(tenant, f.changed_at)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
+                   recorded_at: datetime | None = None) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone. `status` picks accepted facts (None) or proposals.
         # `scope` (tenant by default, what handlers write) keeps a handler from closing agent or task memory.
         now = utcnow()
         for f in self._facts[tenant][subject]:
             if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
-                f.valid_to, f.closed_at = valid_to, now
+                f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
                 self._mark(tenant, now)
 
     # ---- reads -------------------------------------------------------------------
@@ -255,11 +272,11 @@ class MemoryStore:
         return [f for f in changed_after(self._all_facts[tenant], after) if f.expires_at is None or f.expires_at > now]
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
-        """Relations recorded after a watermark (links; an unlink carries no transaction time yet)."""
-        return [r for r in self._all_rels[tenant] if r.recorded_at and r.recorded_at > after]
+        """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
+        return [r for r in self._all_rels[tenant] if (changed_at(r) or after) > after]
 
     def watermark(self, tenant: str) -> datetime | None:
-        """The latest transaction time in the tenant: a cursor for `changes`."""
+        """The latest write in the tenant (ingest clock): a cursor for `changes`."""
         return self._watermark.get(tenant)
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
@@ -415,5 +432,4 @@ class MemoryStore:
         for f in kept:
             self._facts[tenant][f.subject].append(f)
             self._all_facts[tenant].append(f)
-            self._mark(tenant, f.recorded_at)
-            self._mark(tenant, f.closed_at)
+            self._mark(tenant, changed_at(f))

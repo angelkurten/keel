@@ -2,8 +2,10 @@
 
 A store holds, per tenant: entities, relations between them, and facts
 about them. Facts are bitemporal: `valid_from`/`valid_to` say when the fact
-was true in the world; `recorded_at` says when Keel learned it. Facts are
-closed, never overwritten.
+was true in the world; `recorded_at` (and `closed_at` for its end) says when it
+was learned: the event's own `recorded_at` when its source declared one, else
+when Keel ingested it. `changed_at` is the ingest clock of the last write, the
+cursor of `changes`; it is never a query time. Facts are closed, never overwritten.
 
 The graph holds pointers (`ref`) to rows in the SaaS's own systems, the
 semantics, and earned memory. It never holds copies of those rows.
@@ -67,6 +69,7 @@ class Relation:
     valid_to: datetime | None = None
     recorded_at: datetime | None = None
     source: str | None = None
+    changed_at: datetime | None = None  # ingest clock of the link or unlink: the cursor of relation_changes
 
 
 @dataclass
@@ -89,6 +92,7 @@ class Fact:
     status: str | None = None  # None = accepted; "proposed" waits for a decision; "rejected" records one
     trace: str | None = None  # the caller's W3C traceparent / tool call id, joining traces to the audit
     cartridge: str | None = None  # annotations: the cartridge (name@version#rules) the decision was made under
+    changed_at: datetime | None = None  # ingest clock of the last write (open or close): the cursor of changes()
 
 
 class DuplicateKey(ValueError):
@@ -105,13 +109,15 @@ class Store(Protocol):
 
     def upsert_entity(self, tenant: str, kind: str, id: str, ref: str | None = None, **attrs: Any) -> Entity: ...
 
-    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation: ...
+    # recorded_at: the transaction time to write (the Ingestor passes an event's declared one); None is now
+    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation: ...
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None: ...
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...  # may raise DuplicateKey
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None: ...  # scope None: every scope
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
+                   recorded_at: datetime | None = None) -> None: ...  # scope None: every scope
 
     # reads
     def entity(self, tenant: str, key: str) -> Entity | None: ...
@@ -124,7 +130,7 @@ class Store(Protocol):
 
     def entities(self, tenant: str, kind: str | None = None) -> list[Entity]: ...  # Tools lists kinds with it
 
-    def changes(self, tenant: str, after: datetime) -> list[Fact]: ...  # recorded or closed after a watermark
+    def changes(self, tenant: str, after: datetime) -> list[Fact]: ...  # written (changed_at) after a watermark
 
     # ingest bookkeeping (the Ingestor, never handlers): at-least-once delivery means duplicates arrive
     def seen(self, tenant: str, event_id: str) -> bool: ...  # was this event already applied?

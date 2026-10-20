@@ -39,7 +39,7 @@ Every event, from any adapter, MUST be an envelope with these fields.
 | `type` | string | yes | Dotted lowercase event type from the cartridge catalog, e.g. `inspection.created`. |
 | `subject` | string | yes | `<kind>:<id>`. `kind` MUST be an entity kind declared in the cartridge. |
 | `occurred_at` | datetime (tz-aware) | yes | When it happened in the world. Valid time. |
-| `recorded_at` | datetime (tz-aware) | no | When Keel received it. Transaction time. Defaults to now (UTC). |
+| `recorded_at` | datetime (tz-aware) | no | When the source recorded it: transaction time. When the event declares it, what its handler writes carries it (a replay rebuilds the same history, a late event keeps its own time); when it does not, it defaults to now (UTC) and the facts carry the time they are ingested. |
 | `source` | string | yes | System of record or adapter, e.g. `fleet.vehicles`, `webhook:telematics`. |
 | `payload` | object | no | Event-specific data. The core MUST NOT read it. Only handlers do. |
 
@@ -75,8 +75,9 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `tenant`, `src`, `rel`, `dst` | string | Edge from entity key `src` to entity key `dst` of type `rel`. |
 | `valid_from` | datetime | World time the relation started. |
 | `valid_to` | datetime? | World time it ended. `null` = open. |
-| `recorded_at` | datetime | When Keel learned it. |
+| `recorded_at` | datetime | When Keel learned it: the event's declared `recorded_at`, else when it was ingested. |
 | `source` | string? | Provenance. |
+| `changed_at` | datetime? | Bookkeeping: the ingest clock of the link or unlink, the cursor of `relation_changes`. |
 
 `link` is idempotent on an open edge with the same `(src, rel, dst)`. `unlink` closes the open edge by setting `valid_to`. Edges are never deleted.
 
@@ -89,13 +90,14 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `value` | any JSON | The asserted value. |
 | `valid_from` | datetime | World time the fact became true. |
 | `valid_to` | datetime? | World time it stopped being true. `null` = open. |
-| `recorded_at` | datetime | When Keel learned it. |
+| `recorded_at` | datetime | When Keel learned it: the event's declared `recorded_at`, else when it was ingested (or when `annotate` wrote it). |
 | `source` | string? | Adapter or `annotate:<by>`. |
 | `scope` | enum | `global`, `tenant`, `task`, `agent` (§6). Default `tenant`. |
 | `evidence` | string? | Event id, row ref, photo URL or other pointer that justifies the fact. |
 | `corrected_by` | string? | A person or agent id when the fact is a correction or an annotation. |
 | `expires_at` | datetime? | Memory lifetime (not world time). Set from the scope's TTL, or to the close time when its task closes. |
 | `closed_at` | datetime? | Transaction time of the close: when Keel learned `valid_to`. With `recorded_at` it makes "as known at" queries possible. |
+| `changed_at` | datetime? | Bookkeeping, never a query time: the ingest clock of the fact's last write (open or close), the cursor of `changes` and the watermark. An event declaring an old `recorded_at` is still a new change. Not in tool answers. |
 | `task` | string? | The job a task-scope annotation belongs to (`annotate(task=)`). |
 | `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. |
 | `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
@@ -133,13 +135,15 @@ Writes (the only write path; handlers call these and nothing else):
 
 ```
 upsert_entity(tenant, kind, id, ref=None, **attrs) -> Entity
-link(tenant, src, rel, dst, valid_from, source=None) -> Relation
+link(tenant, src, rel, dst, valid_from, source=None, recorded_at=None) -> Relation
 unlink(tenant, src, rel, dst, valid_to) -> None
 open_fact(tenant, subject, predicate, value, valid_from, **provenance) -> Fact
-close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant") -> None
+close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant", recorded_at=None) -> None
     # status: only proposals, or only rejections; scope: only that scope's facts (None: every scope).
     # The tenant default is what a handler means: it never closes agent or task memory.
 ```
+
+`recorded_at` (on `link`, `close_fact`, and `open_fact`'s provenance) is the transaction time to write, `closed_at` for a close; `None` is now. Handlers do not pass it: for an event that declares `recorded_at`, the Ingestor hands its handler a store that fills it in, so the whole event is learned at the source's time. Every write also stamps `changed_at` from the ingest clock (§3.2, §3.3).
 
 `open_fact` provenance keywords: `source`, `scope`, `evidence`, `corrected_by`, `expires_at`, `recorded_at`, `task`, `idempotency_key`, `status`, `trace`, `cartridge`, and `per_source` (one history per author, §3.3). A store MUST reject a second fact with the same `idempotency_key` on a subject by raising `DuplicateKey` (carrying the fact already written), atomically, so two writers racing on one key write once; the SQL stores do it with a unique index.
 
@@ -151,9 +155,9 @@ facts(tenant, subject, at=None, since=None, until=None, known_at=None) -> [Fact]
 entities(tenant, kind=None) -> [Entity]
 relations(tenant, key, rel=None, at=None) -> [Relation]
 search(tenant, text) -> [Entity | Fact]
-changes(tenant, after) -> [Fact]               # recorded or closed after a watermark, oldest change first
-watermark(tenant) -> datetime | None           # optional: latest recorded_at or closed_at
-relation_changes(tenant, after) -> [Relation]  # optional: links recorded after a watermark (keel index)
+changes(tenant, after) -> [Fact]               # written (changed_at) after a watermark, oldest change first
+watermark(tenant) -> datetime | None           # optional: latest changed_at of facts and relations
+relation_changes(tenant, after) -> [Relation]  # optional: links and unlinks after a watermark (keel index)
 facts_of(tenant, subjects, **filters) -> {subject: [Fact]}   # optional: facts() for many subjects at once
 entities_of(tenant, keys) -> {key: Entity | None}           # optional: entity() for many keys at once
 relations_of(tenant, keys, at=None) -> {key: [Relation]}    # optional: relations() for many keys at once
@@ -414,7 +418,7 @@ What is true about a subject now, or at `as_of` (world time). `detail="brief"` (
 
 ### 7.2 `history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None, limit=50, detail="full") -> [Fact]`
 
-Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter (`task` returns only what that task wrote; without it, task memory tied to a task is not returned, §6); `limit` keeps the most recent n, still oldest first (`0` or `None`: all); when it cuts, the first element is `{"more": {shown, total, omitted, next}}`. `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts recorded or closed after a watermark; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`. `detail="concise"` (the default over MCP and HTTP, §7.7) returns lean facts, about a quarter of the tokens: no null fields, no `tenant`, no transaction-time bookkeeping (`recorded_at`, `closed_at`, `idempotency_key`, `trace`, `cartridge`), `scope` only when it is not `tenant`, and `subject` only when no subject was given; world time and provenance stay. `detail` is `"full"` or `"concise"`.
+Facts over time, oldest first, including closed ones. `predicate`, `scope` and `task` filter (`task` returns only what that task wrote; without it, task memory tied to a task is not returned, §6); `limit` keeps the most recent n, still oldest first (`0` or `None`: all); when it cuts, the first element is `{"more": {shown, total, omitted, next}}`. `as_known_at` returns the facts as Keel knew them then (§7.6). `changed_since` keeps the facts written (opened or closed) after a watermark, by the ingest clock; with no `subject` it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries `valid_from`, `valid_to`, `recorded_at`, `closed_at`, `source`, `evidence`, `scope`, `corrected_by`, `task`. `detail="concise"` (the default over MCP and HTTP, §7.7) returns lean facts, about a quarter of the tokens: no null fields, no `tenant`, no transaction-time bookkeeping (`recorded_at`, `closed_at`, `idempotency_key`, `trace`, `cartridge`), `scope` only when it is not `tenant`, and `subject` only when no subject was given; world time and provenance stay. `detail` is `"full"` or `"concise"`.
 
 ### 7.3 `search(text="", kind=None (or a list), rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None, detail="entity", depth=0, per_kind=None, exclude=None, as_of=None, where=None) -> [Entity | Fact]`
 
@@ -442,7 +446,7 @@ Open relations at now or at `as_of`, optionally filtered by type (one, or a list
 
 ### 7.6 Two time axes
 
-`as_of` is world time: what was true then. `as_known_at` is transaction time: what Keel knew then, which is what an agent saw when it decided. A fact counts as known at `t` when `recorded_at <= t`, its close counts only when `closed_at <= t`, and memory counts when it had not expired by `t`. `context(as_known_at=t)` defaults `as_of` to `t`, and also evaluates the rules on that view; relations count when `recorded_at <= t`. Every `context` carries `watermark`, the tenant's latest transaction time, which is the cursor an agent stores for its next `history(changed_since=)`, passed back exactly as received. Every time argument of the five tools takes a datetime or ISO 8601 text, in every transport. Entities are not bitemporal and are shown as they are now. Facts written before 0.9 have no `closed_at`; their closes count as always known.
+`as_of` is world time: what was true then. `as_known_at` is transaction time: what Keel knew then, which is what an agent saw when it decided. A fact counts as known at `t` when `recorded_at <= t`, its close counts only when `closed_at <= t`, and memory counts when it had not expired by `t`. `context(as_known_at=t)` defaults `as_of` to `t`, and also evaluates the rules on that view; relations count when `recorded_at <= t`. Every `context` carries `watermark`, the tenant's latest write (by the ingest clock, so a late event with an old `recorded_at` is still past it), which is the cursor an agent stores for its next `history(changed_since=)`, passed back exactly as received. Every time argument of the five tools takes a datetime or ISO 8601 text, in every transport. Entities are not bitemporal and are shown as they are now. Facts written before 0.9 have no `closed_at`; their closes count as always known.
 
 ### 7.7 Transport
 

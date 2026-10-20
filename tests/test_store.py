@@ -22,7 +22,7 @@ UTC = timezone.utc
 
 def _strip(o):  # recorded_at and as_of are transaction time: they differ between runs by design
     if isinstance(o, dict):
-        return {k: _strip(v) for k, v in o.items() if k not in ("recorded_at", "as_of", "closed_at", "watermark")}
+        return {k: _strip(v) for k, v in o.items() if k not in ("recorded_at", "as_of", "closed_at", "changed_at", "watermark")}
     if isinstance(o, list):
         return sorted((_strip(v) for v in o), key=lambda v: json.dumps(v, sort_keys=True))
     return o
@@ -313,6 +313,66 @@ def test_changes_since_a_watermark_span_the_tenant(store):
         t.history()
 
 
+def _declared(events, late=None):
+    """The fleet log as a source that declares recorded_at: an hour after each event, or `late` for the 2.6 mm reading."""
+    from datetime import timedelta
+
+    out = []
+    for e in events:
+        d = e.model_dump()
+        d["recorded_at"] = late if late and e.payload.get("depth_mm") == 2.6 else e.occurred_at + timedelta(hours=1)
+        out.append(type(e)(**d))
+    return out
+
+
+def test_a_declared_recorded_at_is_the_transaction_time_and_replay_keeps_it(store):
+    c = load_cartridge(FLEET)
+    events = _declared(JsonlAdapter(EVENTS))
+    ing = Ingestor(c, store)
+    ing.ingest(events, strict=True)
+    by_id = {e.id: e for e in events}
+
+    def times():
+        return sorted((f.subject, f.predicate, f.valid_from, f.recorded_at, f.closed_at) for f in store.dump(TENANT) if hasattr(f, "predicate"))
+
+    facts = [f for f in store.dump(TENANT) if hasattr(f, "predicate") and f.evidence in by_id]
+    assert facts and all(f.recorded_at == by_id[f.evidence].recorded_at for f in facts)
+    depth = sorted((f for f in facts if f.predicate == "depth_mm"), key=lambda f: f.valid_from)
+    assert depth[0].closed_at == depth[1].recorded_at  # the close was learned when the next reading was
+    before = times()
+    ing.replay(TENANT, events=events)
+    assert times() == before  # the same history, transaction times included
+
+
+def test_arrival_order_changes_nothing_transaction_time_included(store):
+    """A close is learned once both facts are known: the later recorded_at, whichever arrived first."""
+    c = load_cartridge(FLEET)
+    events = _declared(JsonlAdapter(EVENTS))
+    graphs = []
+    for order, s in ((events, MemoryStore()), (list(reversed(events)), store)):
+        Ingestor(c, s).ingest(order, strict=True)
+        graphs.append(sorted((f.subject, f.predicate, json.dumps(f.value), f.valid_from, f.valid_to, f.recorded_at, f.closed_at)
+                             for f in s.dump(TENANT) if hasattr(f, "predicate")))
+    assert graphs[0] == graphs[1]
+
+
+def test_a_late_event_keeps_its_own_time_and_still_reaches_the_change_feed(store):
+    c = load_cartridge(FLEET)
+    late = datetime(2026, 10, 10, tzinfo=UTC)  # the 2.6 mm reading of Oct 3 reached the source a week later
+    events = _declared(JsonlAdapter(EVENTS), late=late)
+    ing = Ingestor(c, store)
+    t = Tools(c, store, TENANT)
+    ing.ingest(events[:6], strict=True)
+    cursor = datetime.fromisoformat(t.context("unit:MXK-4821")["watermark"])
+    ing.ingest(events[6:], strict=True)
+    changed = t.history(changed_since=cursor)  # recorded_at is in the past, the change is new: the feed sees it
+    assert 2.6 in [f["value"] for f in changed if f["predicate"] == "depth_mm"]
+    then = t.context("tire:T-9001", as_of=datetime(2026, 10, 5, tzinfo=UTC), as_known_at=datetime(2026, 10, 8, tzinfo=UTC))
+    assert [f["value"] for f in then["facts"] if f["predicate"] == "depth_mm"] == [5.2]  # not known yet on Oct 8
+    now = t.context("tire:T-9001", as_of=datetime(2026, 10, 5, tzinfo=UTC), as_known_at=late)
+    assert [f["value"] for f in now["facts"] if f["predicate"] == "depth_mm"] == [2.6]
+
+
 def test_task_ids_scope_memory_and_close_with_the_task(store):
     c = load_cartridge(FLEET)
     Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
@@ -454,8 +514,12 @@ def test_old_databases_gain_the_new_columns(tmp_path):
     conn.commit()
     conn.close()
     store = SqliteStore(path)  # a 0.8 database: the columns are added on open, rows kept
-    assert {"task", "idempotency_key", "closed_at", "status", "trace"} <= store._columns("facts")
+    assert {"task", "idempotency_key", "closed_at", "status", "trace", "changed_at"} <= store._columns("facts")
+    assert "changed_at" in store._columns("relations")
     assert [f.value for f in store.facts("t", "tire:T-1")] == [4.0]
+    # 0.32: changed_at, the change cursor, starts at the row's transaction time, so the watermark does not move
+    assert store.watermark("t") == datetime(2026, 1, 1, tzinfo=UTC)
+    assert [f.value for f in store.changes("t", datetime(2025, 12, 31, tzinfo=UTC))] == [4.0]
 
 
 def test_time_arguments_accept_what_the_tools_return(store):
@@ -940,12 +1004,12 @@ def test_sqlite_reads_by_key_never_scan_the_tenant(tmp_path):
     from keel.store.sql import CHANGES, RELATIONS_OF
 
     store = SqliteStore(tmp_path / "plan.db")
-    for sql in (RELATIONS_OF, CHANGES):
-        plan = " | ".join(r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {sql}", ("t", "x", "t", "x")))
-        assert plan.count("SEARCH") == 2 and "(tenant=?)" not in plan, plan
+    plan = " | ".join(r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {RELATIONS_OF}", ("t", "x", "t", "x")))
+    assert plan.count("SEARCH") == 2 and "(tenant=?)" not in plan, plan
+    plan = " | ".join(r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {CHANGES}", ("t", "x")))
+    assert "facts_changed" in plan and "(tenant=?)" not in plan, plan
     # the watermark: one MAX per index, answered from the index alone
-    for sql in ("SELECT (SELECT MAX(recorded_at) FROM facts WHERE tenant = ?) AS r, (SELECT MAX(closed_at) FROM facts WHERE tenant = ?) AS c",
-                "SELECT MAX(recorded_at) AS r FROM relations WHERE tenant = ?"):
+    for sql in ("SELECT MAX(changed_at) AS m FROM facts WHERE tenant = ?", "SELECT MAX(changed_at) AS m FROM relations WHERE tenant = ?"):
         details = [r["detail"] for r in store._rows(f"EXPLAIN QUERY PLAN {sql}", ("t",) * sql.count("?"))]
         assert all("COVERING INDEX" in d for d in details if d.startswith("SEARCH")) and any(d.startswith("SEARCH") for d in details), details
 

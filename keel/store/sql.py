@@ -66,6 +66,7 @@ def _relation(row: Any) -> Relation:
         valid_to=_dt(row["valid_to"]),
         recorded_at=_dt(row["recorded_at"]),
         source=row["source"],
+        changed_at=_dt(row["changed_at"]),
     )
 
 
@@ -89,31 +90,38 @@ def _fact(row: Any) -> Fact:
         status=row["status"],
         trace=row["trace"],
         cartridge=row["cartridge"],
+        changed_at=_dt(row["changed_at"]),
     )
 
 
 FACT_COLUMNS = (
     "tenant, subject, predicate, value, valid_from, valid_to, recorded_at, source, scope, "
-    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace, cartridge"
+    "corrected_by, evidence, expires_at, task, idempotency_key, closed_at, status, trace, cartridge, changed_at"
 )
 # Two indexed branches, never `a = ? OR b = ?`: without table statistics SQLite plans that OR on the
 # tenant prefix alone and scans the whole tenant, so each read (and ingest) grew with the tenant.
 RELATIONS_OF = "SELECT * FROM relations WHERE tenant = ? AND src = ? UNION ALL SELECT * FROM relations WHERE tenant = ? AND dst = ? ORDER BY seq"
-CHANGES = "SELECT * FROM facts WHERE tenant = ? AND recorded_at > ? UNION ALL SELECT * FROM facts WHERE tenant = ? AND closed_at > ? ORDER BY seq"
+CHANGES = "SELECT * FROM facts WHERE tenant = ? AND changed_at > ? ORDER BY seq"
 
 
 def _once(rows: list[Any]) -> list[Any]:
-    """Rows of a UNION ALL, each seq once (a self-link, or a fact recorded and closed after the mark)."""
+    """Rows of a UNION ALL, each seq once (a self-link)."""
     seen: set[int] = set()
     return [r for r in rows if not (r["seq"] in seen or seen.add(r["seq"]))]
 
 
-INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(18))})"
+INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(19))})"
+INSERT_RELATION = "INSERT INTO relations (tenant, src, rel, dst, valid_from, valid_to, recorded_at, source, changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 
 def _fact_row(f: Fact) -> tuple[Any, ...]:
     return (f.tenant, f.subject, f.predicate, json.dumps(f.value), _ts(f.valid_from), _ts(f.valid_to), _ts(f.recorded_at), f.source,
-            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at), f.status, f.trace, f.cartridge)
+            f.scope.value, f.corrected_by, f.evidence, _ts(f.expires_at), f.task, f.idempotency_key, _ts(f.closed_at), f.status, f.trace, f.cartridge,
+            _ts(f.changed_at))
+
+
+def _relation_row(r: Relation) -> tuple[Any, ...]:
+    return (r.tenant, r.src, r.rel, r.dst, _ts(r.valid_from), _ts(r.valid_to), _ts(r.recorded_at), r.source, _ts(r.changed_at))
 
 
 class SqlStore:
@@ -124,9 +132,10 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
+    TIME = "TEXT"  # the dialect's type for a timestamp column
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
     PER_THREAD_READS = False  # a networked database: each thread reads on its own connection, never queued behind the lock
 
@@ -151,7 +160,8 @@ class SqlStore:
                 self._ddl(f"ALTER TABLE facts ADD COLUMN {name} {sqltype}", lambda n=name: n in self._columns("facts"))
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
                 self._ddl(index, lambda i=index: self._has_index("facts", re.search(r"INDEX (\w+)", i).group(1)))
-        if not self._has_index("relations", "relations_recorded"):  # the watermark's MAX, without a tenant scan
+        self._add_changed_at()
+        if not self._has_index("relations", "relations_recorded"):  # transaction-time reads of links
             self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
         if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
             self._ddl("CREATE INDEX facts_open ON facts (tenant, subject, valid_to)", lambda: self._has_index("facts", "facts_open"))
@@ -195,6 +205,20 @@ class SqlStore:
             conn = self._mine.conn = self._connect()
             self._prepare(conn)
         return conn
+
+    def _add_changed_at(self) -> None:
+        """Since 0.32: `changed_at`, the ingest clock of a row's last write, is the cursor of `changes` and
+        the watermark (transaction time may come from the event). Rows from before it take their latest
+        transaction time, which is what the watermark was then."""
+        for table, latest in (("facts", "CASE WHEN closed_at IS NOT NULL AND closed_at > recorded_at THEN closed_at ELSE recorded_at END"),
+                              ("relations", "recorded_at")):
+            if "changed_at" not in self._columns(table):
+                self._ddl(f"ALTER TABLE {table} ADD COLUMN changed_at {self.TIME}", lambda t=table: "changed_at" in self._columns(t))
+                # ponytail: one UPDATE over the table, once; a process that dies before it leaves old rows out of changes()
+                self._exec(f"UPDATE {table} SET changed_at = {latest} WHERE changed_at IS NULL")
+            index = f"{table}_changed"
+            if not self._has_index(table, index):
+                self._ddl(f"CREATE INDEX {index} ON {table} (tenant, changed_at)", lambda t=table, i=index: self._has_index(t, i))
 
     def _ddl(self, stmt: str, done: Callable[[], bool]) -> None:
         """A migration step several processes may race to run on one database: when it fails because
@@ -258,22 +282,23 @@ class SqlStore:
                 cur = self._cursor(self.db)
                 cur.executemany(self._sql(sql), rows[i : i + size])
 
-    def _close_rows(self, table: str, closes: dict[int, tuple[datetime | None, datetime | None]], size: int = 500) -> None:
+    def _close_rows(self, table: str, closes: dict[int, tuple[datetime | None, datetime | None, datetime | None]], size: int = 500) -> None:
         """One UPDATE ... CASE per chunk: PyMySQL's executemany is a round trip per row for UPDATE.
-        `closes` maps seq -> (valid_to, closed_at); relations have no closed_at column."""
+        `closes` maps seq -> (valid_to, closed_at, changed_at); relations have no closed_at column."""
         items = list(closes.items())
+        columns = ("valid_to", "closed_at", "changed_at") if table == "facts" else ("valid_to", None, "changed_at")
         for i in range(0, len(items), size):
             part = items[i : i + size]
             case = " ".join("WHEN ? THEN ?" for _ in part)
             marks = ", ".join("?" for _ in part)
             params: list[Any] = []
-            for seq, (valid_to, _) in part:
-                params += [seq, _ts(valid_to)]
-            sets = f"valid_to = CASE seq {case} END"
-            if table == "facts":
-                sets += f", closed_at = CASE seq {case} END"
-                for seq, (_, closed_at) in part:
-                    params += [seq, _ts(closed_at)]
+            assigns = []
+            for n, column in enumerate(columns):
+                if column:
+                    assigns.append(f"{column} = CASE seq {case} END")
+                    for seq, values in part:
+                        params += [seq, _ts(values[n])]
+            sets = ", ".join(assigns)
             params += [seq for seq, _ in part]
             self._exec(f"UPDATE {table} SET {sets} WHERE seq IN ({marks})", tuple(params))
 
@@ -344,9 +369,9 @@ class SqlStore:
             self._cache[("e", tenant, key)] = ent
         return ent
 
-    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None) -> Relation:
+    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation:
         if self._bulk is not None:
-            return self._bulk.link(tenant, src, rel, dst, valid_from, source)
+            return self._bulk.link(tenant, src, rel, dst, valid_from, source, recorded_at)
         key = ("r", tenant, src, rel, dst)
 
         def load() -> Relation | None:
@@ -356,11 +381,9 @@ class SqlStore:
         existing = self._cached(key, load)
         if existing is not None:
             return existing  # already open; idempotent
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
-        self._exec(
-            "INSERT INTO relations (tenant, src, rel, dst, valid_from, recorded_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (tenant, src, rel, dst, _ts(r.valid_from), _ts(r.recorded_at), source),
-        )
+        now = utcnow()
+        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
+        self._exec(INSERT_RELATION, _relation_row(r))
         if self._cache is not None:
             self._cache[key] = r
         return r
@@ -370,8 +393,8 @@ class SqlStore:
             self._bulk.unlink(tenant, src, rel, dst, valid_to)
             return
         self._exec(
-            "UPDATE relations SET valid_to = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
-            (_ts(valid_to), tenant, src, rel, dst),
+            "UPDATE relations SET valid_to = ?, changed_at = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
+            (_ts(valid_to), _ts(utcnow()), tenant, src, rel, dst),
         )
         if self._cache is not None:
             self._cache.pop(("r", tenant, src, rel, dst), None)
@@ -400,13 +423,14 @@ class SqlStore:
             raise DuplicateKey(_fact(row)) from exc
         if closed is not None:
             seq = next(s for fact, s in same if fact is closed)
-            self._exec("UPDATE facts SET valid_to = ?, closed_at = ? WHERE seq = ?", (_ts(closed.valid_to), _ts(closed.closed_at), seq))
+            self._exec("UPDATE facts SET valid_to = ?, closed_at = ?, changed_at = ? WHERE seq = ?", (_ts(closed.valid_to), _ts(closed.closed_at), _ts(closed.changed_at), seq))
         same.append((f, self._last_id))
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
+                   recorded_at: datetime | None = None) -> None:
         if self._bulk is not None:
-            self._bulk.close_fact(tenant, subject, predicate, valid_to, status, scope)
+            self._bulk.close_fact(tenant, subject, predicate, valid_to, status, scope, recorded_at)
             return
         # a close that predates a fact's start is about an earlier period and leaves this fact alone;
         # `status` picks accepted facts (None) or proposals
@@ -415,13 +439,13 @@ class SqlStore:
         if scope is not None:  # tenant by default: a handler never closes agent or task memory
             which += " AND scope = ?"
         self._exec(
-            f"UPDATE facts SET valid_to = ?, closed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND {which} AND valid_to IS NULL AND valid_from <= ?",
-            (_ts(valid_to), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), *(() if scope is None else (Scope(scope).value,)), _ts(valid_to)),
+            f"UPDATE facts SET valid_to = ?, closed_at = ?, changed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND {which} AND valid_to IS NULL AND valid_from <= ?",
+            (_ts(valid_to), _ts(recorded_at or now), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), *(() if scope is None else (Scope(scope).value,)), _ts(valid_to)),
         )
         if self._cache is not None:
             for fact, _ in self._cache.get(("f", tenant, subject, predicate), []):
                 if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to and in_scope(fact, scope):
-                    fact.valid_to, fact.closed_at = valid_to, now
+                    fact.valid_to, fact.closed_at, fact.changed_at = valid_to, recorded_at or now, now
 
     # ---- reads -------------------------------------------------------------------
 
@@ -520,22 +544,20 @@ class SqlStore:
         return [_entity(r) for r in rows]
 
     def changes(self, tenant: str, after: datetime) -> list[Fact]:
-        """Facts recorded or closed after a watermark, across subjects."""
-        a = _ts(after)
-        rows = _once(self._rows(CHANGES, (tenant, a, tenant, a)))
+        """Facts written (opened or closed) after a watermark, across subjects."""
+        rows = self._rows(CHANGES, (tenant, _ts(after)))
         now = utcnow()
         return [f for f in changed_after((_fact(r) for r in rows), after) if f.expires_at is None or f.expires_at > now]
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
-        """Relations recorded after a watermark (links; an unlink carries no transaction time yet)."""
-        return [_relation(r) for r in self._rows("SELECT * FROM relations WHERE tenant = ? AND recorded_at > ? ORDER BY seq", (tenant, _ts(after)))]
+        """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
+        return [_relation(r) for r in self._rows("SELECT * FROM relations WHERE tenant = ? AND changed_at > ? ORDER BY seq", (tenant, _ts(after)))]
 
     def watermark(self, tenant: str) -> datetime | None:
-        """The latest transaction time in the tenant (facts and links): a cursor for `changes`."""
-        # one MAX per statement: each is then a seek on its index; two in one SELECT scan the tenant
-        row = self._one("SELECT (SELECT MAX(recorded_at) FROM facts WHERE tenant = ?) AS r, (SELECT MAX(closed_at) FROM facts WHERE tenant = ?) AS c", (tenant, tenant))
-        rel = self._one("SELECT MAX(recorded_at) AS r FROM relations WHERE tenant = ?", (tenant,))
-        times = [_dt(row[k]) for k in ("r", "c") if row and row[k]] + ([_dt(rel["r"])] if rel and rel["r"] else [])
+        """The latest write in the tenant (facts and links, ingest clock): a cursor for `changes`."""
+        # one MAX per statement: each is then a seek on its index
+        times = [self._one(f"SELECT MAX(changed_at) AS m FROM {table} WHERE tenant = ?", (tenant,)) for table in ("facts", "relations")]
+        times = [_dt(row["m"]) for row in times if row and row["m"]]
         return max(times) if times else None
 
     def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int:
@@ -853,11 +875,12 @@ class _Bulk:
         self.dirty_entities.add((tenant, key))
         return ent
 
-    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None) -> Relation:
+    def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None, recorded_at: datetime | None = None) -> Relation:
         for r, _ in self._rels(tenant, src):
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 return r
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=utcnow(), source=source)
+        now = utcnow()
+        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
         self.new_rels.append(r)
         self._rels(tenant, src).append([r, None])
         if dst != src and (tenant, dst) in self.rels_by:
@@ -867,7 +890,7 @@ class _Bulk:
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
         for r, seq in self._rels(tenant, src):
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
-                r.valid_to = valid_to
+                r.valid_to, r.changed_at = valid_to, utcnow()
                 if seq is not None:
                     self.closed_rels[seq] = r
 
@@ -885,11 +908,12 @@ class _Bulk:
         self.new_facts.append(f)
         return f
 
-    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT) -> None:
+    def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
+                   recorded_at: datetime | None = None) -> None:
         now = utcnow()
         for f, seq in self._facts(tenant, subject):
             if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
-                f.valid_to, f.closed_at = valid_to, now
+                f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
                 if seq is not None:
                     self.closed_facts[seq] = f
 
@@ -914,15 +938,12 @@ class _Bulk:
             rows = [(t, e.kind, e.id, e.ref, json.dumps(e.attrs)) for (t, _), e in ((k, self.entities[k]) for k in self.dirty_entities) if e is not None]
             s._execmany(s.UPSERT_ENTITY, rows)
         if self.new_rels:
-            s._execmany(
-                "INSERT INTO relations (tenant, src, rel, dst, valid_from, valid_to, recorded_at, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                [(r.tenant, r.src, r.rel, r.dst, _ts(r.valid_from), _ts(r.valid_to), _ts(r.recorded_at), r.source) for r in self.new_rels],
-            )
+            s._execmany(INSERT_RELATION, [_relation_row(r) for r in self.new_rels])
         if self.closed_rels:
-            s._close_rows("relations", {seq: (r.valid_to, None) for seq, r in self.closed_rels.items()})
+            s._close_rows("relations", {seq: (r.valid_to, None, r.changed_at) for seq, r in self.closed_rels.items()})
         if self.new_facts:
             s._execmany(INSERT_FACT, [_fact_row(f) for f in self.new_facts])
         if self.closed_facts:
-            s._close_rows("facts", {seq: (f.valid_to, f.closed_at) for seq, f in self.closed_facts.items()})
+            s._close_rows("facts", {seq: (f.valid_to, f.closed_at, f.changed_at) for seq, f in self.closed_facts.items()})
         if self.new_ids:
             s._execmany(s.REMEMBER, self.new_ids)

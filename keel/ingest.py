@@ -11,6 +11,7 @@ from collections import Counter
 from collections.abc import Iterable, Iterator
 from contextlib import nullcontext
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,30 @@ def _chunks(events: Iterable[Event], size: int) -> Iterator[list[Event]]:
             buf = []
     if buf:
         yield buf
+
+
+class _Recorded:
+    """The store a handler writes to, for an event whose source declared `recorded_at`: what the handler
+    writes was learned then (transaction time from the log, not the ingest clock), so a replay rebuilds
+    the same history and a late event keeps its own time. Reads and everything else go straight through."""
+
+    def __init__(self, store: Store, at: datetime) -> None:
+        self._store, self._at = store, at
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._store, name)
+
+    def open_fact(self, *args: Any, **kw: Any) -> Any:
+        kw.setdefault("recorded_at", self._at)
+        return self._store.open_fact(*args, **kw)
+
+    def close_fact(self, *args: Any, **kw: Any) -> None:
+        kw.setdefault("recorded_at", self._at)
+        self._store.close_fact(*args, **kw)
+
+    def link(self, *args: Any, **kw: Any) -> Any:
+        kw.setdefault("recorded_at", self._at)
+        return self._store.link(*args, **kw)
 
 
 class Ingestor:
@@ -145,7 +170,9 @@ class Ingestor:
                     if self.keep_log:
                         self.log.append(ev)
                     try:
-                        self.cartridge.registry.dispatch(ev, self.store)
+                        # an event that does not declare recorded_at was learned now, as it is ingested
+                        declared = "recorded_at" in ev.model_fields_set
+                        self.cartridge.registry.dispatch(ev, _Recorded(self.store, ev.recorded_at) if declared else self.store)
                         report.processed += 1
                     except UnhandledEvent:
                         report.unhandled.append(ev.type)
