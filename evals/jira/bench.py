@@ -214,7 +214,9 @@ class Api:
             entry = {"happened": when(e["occurred_at"]), "recorded": when(e["recorded_at"])}
             if e["type"] == "issue.created":
                 self.issues[key] = {"key": key, "created": when(e["occurred_at"]), **{k: p[k] for k in ("summary", "issue_type", "status", "priority", "assignee", "resolution", "reporter", "parent")}}
-                self.changelog[key].append({**entry, "field": "created"})
+                # the creation carries the initial values, as Jira's history shows them: without it, a value before the
+                # first change cannot be read
+                self.changelog[key].append({**entry, "field": "created", "initial": {k: p[k] for k in ("status", "issue_type", "priority", "assignee", "resolution")}})
             elif e["type"] in ("issue.linked", "issue.unlinked"):
                 links[(key, p["relation"], p["other"])] = e["type"] == "issue.linked"
                 self.changelog[key].append({**entry, "field": "link", "to" if e["type"] == "issue.linked" else "from": f"{p['relation'].replace('_', ' ')} {p['other']}"})
@@ -251,7 +253,7 @@ class Api:
 API_TOOLS = [{"type": "function", "function": f} for f in (
     {"name": "get_issue", "description": "An issue's current fields (status, assignee, priority, resolution, type, summary) and its current links.",
      "parameters": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
-    {"name": "get_changelog", "description": "An issue's audit log, oldest write first: each change with its field, its new value (to), when it happened and when it was recorded.",
+    {"name": "get_changelog", "description": "An issue's audit log, oldest write first: its creation with the initial values, then each change with its field, its new value (to), when it happened and when it was recorded.",
      "parameters": {"type": "object", "properties": {"key": {"type": "string"}, "field": {"type": "string", "description": "status, assignee, priority, resolution, issue_type or link"}}, "required": ["key"]}},
     {"name": "search_issues", "description": "Issues by current status, assignee, priority, type and words in the summary.",
      "parameters": {"type": "object", "properties": {"text": {"type": "string"}, "status": {"type": "string"}, "assignee": {"type": "string"},
