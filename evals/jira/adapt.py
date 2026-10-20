@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections.abc import Iterator
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,8 +53,16 @@ def link_kind(phrase: str) -> tuple[str, bool] | None:
     return rel, inward and rel != "relates_to"
 
 
+ANONYMIZED = re.compile(r"<<\|[^|]*\|([0-9a-f]{8})[0-9a-f-]*\|>>")
+
+
+def pseudonym(value: Any) -> Any:
+    """The dataset anonymizes people as <<|author_displayName|<uuid>|>>; an agent reads user-<first 8 hex>."""
+    return ANONYMIZED.sub(lambda m: f"user-{m.group(1)}", value) if isinstance(value, str) else value
+
+
 def name(value: Any) -> str | None:
-    return (value.get("displayName") or value.get("name")) if isinstance(value, dict) else value
+    return pseudonym((value.get("displayName") or value.get("name")) if isinstance(value, dict) else value)
 
 
 def ident(value: dict[str, Any]) -> str | None:
@@ -78,7 +87,7 @@ def events_of(issue: dict[str, Any], tenant: str, names: dict[str, dict[str, str
 
     def named(field: str, side: str, item: dict[str, Any]) -> str | None:
         """A value named as it is today: Jira renames statuses and types (Done -> Finalizada), the changelog keeps the old name."""
-        return names[field].get(str(item.get(side)), item.get(side + "String"))
+        return names[field].get(str(item.get(side)), pseudonym(item.get(side + "String")))
 
     def initial(field: str) -> str | None:
         first = next((c[3] for c in changes if c[3]["field"] == field), None)
