@@ -81,6 +81,10 @@ Instants are whole minutes at least an hour from any change the question reads. 
 
 `--check` answers every question with Keel's primitives directly, no agent: 315 of 315 agree. That is the ceiling an agent with Keel can reach, and the oracle and Keel checked against each other. Regenerating gives the same file.
 
+### Human review (2026-10-20)
+
+Angel reviewed the 50-question sheet (`review-50.md`, stratified by tenant and type, drawn from the final questions) against the issues' history: all 50 ok.
+
 ### Review by independent judges (2026-10-20)
 
 Three agents, one per tenant, rebuilt the gold answer of 50 stratified questions (17, 17, 16) from the raw Jira export with code, never from the event log, so a bug shared by the adapter, the oracle and Keel could show. 46 ok, 3 ambiguous, 1 wrong. Fixed:
