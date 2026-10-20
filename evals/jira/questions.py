@@ -12,6 +12,8 @@ Keel is checked against it, not graded by itself. Six types:
 - links:     the issues linked to one by a relation, filtered by their state at an instant (two hops).
 - rule:      a rule's verdict at an instant, the definition given in the question (blocked, stalled, urgent_unassigned).
 - abstain:   an issue that does not exist, or one asked about before it was created: the answer is "unknown".
+- tenant:    the whole project at once: which issues had a status at an instant, how many were in progress, where a
+             rule held, which changed a field in a window, and which had a status as recorded by a later instant.
 
 Instants are whole minutes at least an hour from any change to what the question reads, so rounding never
 decides an answer. Gold answers: a value (None reads "none"), a sorted list of issue keys, a bool, or None
@@ -272,7 +274,110 @@ def generate(events: list[dict[str, Any]], injections: list[dict[str, Any]], see
             subject = rng.choice(issues)
             at = minute(o.created[subject] - timedelta(days=rng.randint(30, 365)))
             add("abstain", f"What was the status of {key(subject)} on {fmt(at)}?", None, "unknown", subject=subject, predicate="status", as_of=at)
+
+    # tenant: questions over the whole project at once, the way an agent inside a product asks ("what is blocked
+    # today?"). Added after the pilot showed one-issue questions saturate; appended last, so the questions
+    # above keep their text and gold. Instants keep MARGIN from every change in the tenant.
+    if counts.get("tenant"):
+        tenant_questions(o, rng, add, statuses, injections, project, counts["tenant"])
     return out
+
+
+def tenant_questions(o: Oracle, rng: random.Random, add: Any, statuses: dict[str, str], injections: list[dict[str, Any]],
+                     project: str, n: int) -> None:
+    import bisect
+
+    key = lambda s: s.split(":", 1)[1]
+    instants = sorted({f[0] for line in o.facts.values() for f in line} | {x for _, _, _, a, b in o.links for x in (a, b) if x})
+    recorded = sorted({f[1] for line in o.facts.values() for f in line})
+    start, end = min(o.created.values()), o.end
+
+    def quiet(at: datetime, among: list[datetime] = instants) -> bool:
+        i = bisect.bisect_left(among, at - MARGIN)
+        return i == len(among) or among[i] > at + MARGIN
+
+    def instant(lo: datetime = start, hi: datetime = end) -> datetime | None:
+        for _ in range(200):
+            at = minute(lo + (hi - lo) * rng.random())
+            if quiet(at):
+                return at
+        return None
+
+    def alive(at: datetime) -> list[str]:
+        return [s for s, c in o.created.items() if c <= at]
+
+    want = {"status_at": n // 4, "count_at": n // 6, "rule_at": n // 4, "changed": n // 6}
+    want["known_at"] = n - sum(want.values())
+    progress = statuses["progress"]
+    for kind, count in want.items():
+        made = tries = 0
+        while made < count and tries < 500:
+            tries += 1
+            if kind == "status_at":
+                at = instant()
+                if at is None:
+                    continue
+                by: dict[Any, list[str]] = defaultdict(list)
+                for s in alive(at):
+                    by[o.value(s, "status", at)].append(key(s))
+                fits = sorted(v for v, ks in by.items() if v and 2 <= len(ks) <= 15)
+                if not fits:
+                    continue
+                status = rng.choice(fits)
+                add("tenant", f"On {fmt(at)}, which issues of the {project} project had status {status}?", sorted(by[status]), "set",
+                    subtype=kind, status=status, as_of=at)
+            elif kind == "count_at":
+                at = instant()
+                if at is None:
+                    continue
+                total = sum(o.value(s, "status_category", at) == "indeterminate" for s in alive(at))
+                add("tenant", f"On {fmt(at)}, how many issues of the {project} project had a status among: {progress}?", total, "count",
+                    subtype=kind, category="indeterminate", as_of=at)
+            elif kind == "rule_at":
+                names = [r for r in RULES if r != "blocked" or any(rel == "blocks" for _, rel, _, _, _ in o.links)]
+                name = names[made % len(names)]
+                at = instant()
+                if at is None:
+                    continue
+                if name == "stalled" and any(abs(at - (o.fact(s, "status_category", at)[0] + STALL)) < MARGIN for s in alive(at)):
+                    continue  # an issue crosses the 30-day line too close to the instant
+                verdicts = {s: o.rule(name, s, at) for s in alive(at)}
+                hits = sorted(key(s) for s, v in verdicts.items() if v)
+                if None in verdicts.values() or not 1 <= len(hits) <= 15:
+                    continue
+                definition, _ = RULES[name]
+                label = {"blocked": "blocked", "stalled": "idle", "urgent_unassigned": "urgent and unassigned"}[name]
+                add("tenant", f"{definition.format(**statuses)} On {fmt(at)}, which issues of the {project} project were {label}?", hits, "set",
+                    subtype=kind, rule=name, as_of=at)
+            elif kind == "changed":
+                field = rng.choice(["assignee", "priority", "status"])
+                a = instant()
+                if a is None:
+                    continue
+                b = instant(a + timedelta(days=3), min(end, a + timedelta(days=30)))
+                if b is None:
+                    continue
+                hits = sorted({key(s) for (s, p), line in o.facts.items() if p == field
+                               for f in line if a <= f[0] < b and not f[2].endswith((":created", ":wrong"))})
+                if not 2 <= len(hits) <= 15:
+                    continue
+                add("tenant", f"Which issues of the {project} project had their {FIELDS[field]} changed between {fmt(a)} and {fmt(b)}?", hits, "set",
+                    subtype=kind, field=field, since=a, until=b)
+            else:  # known_at: a set of issues as the tracker stood at K, where a late or corrected record changes it
+                m = rng.choice([m for m in injections if m["predicate"] == "status"])
+                occurred, rec = t(m["occurred_at"]), t(m["recorded_at"])
+                later = [x for x in o.changes(m["subject"], ("status",)) if x > occurred]
+                at = minute(occurred + MARGIN + timedelta(minutes=rng.randint(1, 120)), up=True)  # clear of the change itself
+                known = minute(at + (rec - at) * rng.uniform(0.2, 0.8))
+                if not (at < known < rec and (not later or at < min(later) - MARGIN) and quiet(at) and quiet(known, recorded)):
+                    continue
+                status = m["before"]
+                hits = sorted(key(s) for s in alive(at) if o.value(s, "status", at, known) == status)
+                if not 1 <= len(hits) <= 25 or key(m["subject"]) not in hits:
+                    continue
+                add("tenant", f"According to what had been recorded by {fmt(known)}, which issues of the {project} project had status {status} at {fmt(at)}?",
+                    hits, "set", subtype=kind, status=status, as_of=at, known_at=known)
+            made += 1
 
 
 def check(events: list[dict[str, Any]], questions: list[dict[str, Any]]) -> int:
@@ -306,6 +411,19 @@ def check(events: list[dict[str, Any]], questions: list[dict[str, Any]]) -> int:
             got = sorted(n.split(":", 1)[1] for n in others if (value(n, "status_category", at) == "done") == p["done"])
         elif q["type"] == "rule":
             got = tools.context(p["subject"], as_of=at_(p, "as_of"))["evaluation"][p["rule"]]
+        elif q["type"] == "tenant":
+            at, issues = at_(p, "as_of"), [e.key for e in store.entities(tenant, "issue")]
+            if p["subtype"] in ("status_at", "known_at"):
+                got = sorted(k.split(":", 1)[1] for k in issues if value(k, "status", at, at_(p, "known_at")) == p["status"])
+            elif p["subtype"] == "count_at":
+                got = sum(value(k, "status_category", at) == "indeterminate" for k in issues)
+            elif p["subtype"] == "rule_at":  # what an agent would call: the rule's listing at that instant
+                got = sorted(k.split(":", 1)[1] for k in tools.search(rule=p["rule"], as_of=at, detail="key", limit=0) if isinstance(k, str))
+            else:
+                a, b = at_(p, "since"), at_(p, "until")
+                got = sorted(k.split(":", 1)[1] for k in issues if any(
+                    f.predicate == p["field"] and a <= f.valid_from < b and not (f.evidence or "").endswith((":created", ":wrong"))
+                    for f in store.facts(tenant, k)))
         else:
             got = value(p["subject"], p["predicate"], at_(p, "as_of"))
             got = None if got == "<unknown>" else got
@@ -325,7 +443,7 @@ def main() -> None:
     ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
     events = [json.loads(line) for line in a.events.open()]
-    counts = {"current": 20, "as_of": 25, "known_at": 25, "links": 15, "rule": 15, "abstain": 5}
+    counts = {"current": 20, "as_of": 25, "known_at": 25, "links": 15, "rule": 15, "abstain": 5, "tenant": 24}
     questions = generate(events, json.loads(a.injections.read_text()), a.seed, counts)
     a.out.write_text(json.dumps(questions, ensure_ascii=False, indent=1))
     by = {k: sum(q["type"] == k for q in questions) for k in counts}

@@ -33,7 +33,7 @@ import re
 import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import cache
 from pathlib import Path
 from threading import Lock
@@ -58,6 +58,7 @@ FORMATS = {
     "value": 'the value as a JSON string (for example "In Progress" or "user-1a2b3c4d"), or null when the field is empty (unassigned, unresolved).',
     "set": 'a JSON list of issue keys, for example ["INDY-12", "INDY-40"]; [] when there are none.',
     "bool": "true or false.",
+    "count": "a JSON integer.",
 }
 TOOLS_TEXT = {
     "keel": "The project's data is in Keel, a context graph, through five tools. Subjects are '<kind>:<id>', issues are 'issue:<KEY>'.",
@@ -246,8 +247,40 @@ class Api:
             hits = [i for i in self.issues.values()
                     if all(str(i.get(f) or "").casefold() == str(args[f]).casefold() for f in ("status", "assignee", "priority", "issue_type") if args.get(f))
                     and (not args.get("text") or str(args["text"]).casefold() in i["summary"].casefold())]
+            field = args.get("field")
+            if field and (args.get("was") is not None or args.get("on")):  # JQL's `<field> WAS <value> ON <instant>`
+                at = instant(args.get("on"))
+                hits = [i for i in hits if i["created"] <= when(at.isoformat()) and norm(self.was(i["key"], field, at)) == norm(args.get("was"))]
+            if field and (args.get("changed_from") or args.get("changed_until")):  # JQL's `<field> CHANGED DURING (<from>, <until>)`
+                lo, hi = instant(args.get("changed_from") or "1970-01-01"), instant(args.get("changed_until") or "2100-01-01")
+                hits = [i for i in hits if any(c["field"] == field and lo <= instant(c["happened"]) < hi for c in self.changelog[i["key"]])]
             return {"total": len(hits), "issues": [{k: i[k] for k in ("key", "summary", "status")} for i in hits[: int(args.get("limit") or 20)]]}
         return {"error": f"unknown tool {name}"}
+
+    def was(self, key: str, field: str, at: datetime) -> Any:
+        """A field's value at an instant, from the audit log as it stands now: the initial value, then the last change
+        that happened by then (a correction, recorded later for the same instant, wins it)."""
+        value, best = None, None
+        for c in self.changelog[key]:
+            stamp = (instant(c["happened"]), instant(c["recorded"]))
+            if stamp[0] > at:
+                continue
+            if c["field"] == "created":
+                v = c["initial"].get(field)
+            elif c["field"] == field:
+                v = c["to"]
+            else:
+                continue
+            if best is None or stamp >= best:
+                value, best = v, stamp
+        return value
+
+
+def instant(s: Any) -> datetime:
+    """An instant as agents write them: ISO 8601, or "2018-06-12 14:00 UTC" as the questions do; UTC when unzoned."""
+    text = str(s).strip().replace(" UTC", "+00:00").replace("Z", "+00:00")
+    at = datetime.fromisoformat(text)
+    return at if at.tzinfo else at.replace(tzinfo=timezone.utc)
 
 
 API_TOOLS = [{"type": "function", "function": f} for f in (
@@ -255,9 +288,15 @@ API_TOOLS = [{"type": "function", "function": f} for f in (
      "parameters": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}},
     {"name": "get_changelog", "description": "An issue's audit log, oldest write first: its creation with the initial values, then each change with its field, its new value (to), when it happened and when it was recorded.",
      "parameters": {"type": "object", "properties": {"key": {"type": "string"}, "field": {"type": "string", "description": "status, assignee, priority, resolution, issue_type or link"}}, "required": ["key"]}},
-    {"name": "search_issues", "description": "Issues by current status, assignee, priority, type and words in the summary.",
+    {"name": "search_issues", "description": ("Issues by current status, assignee, priority, type and words in the summary; returns the total and the "
+                                               "first `limit` (default 20). History filters, as JQL's WAS and CHANGED: `field` with `was` and `on` keeps "
+                                               "issues whose field had that value at that instant (was=null: empty); `field` with `changed_from` and "
+                                               "`changed_until` keeps issues whose field changed in that window."),
      "parameters": {"type": "object", "properties": {"text": {"type": "string"}, "status": {"type": "string"}, "assignee": {"type": "string"},
-                                                     "priority": {"type": "string"}, "issue_type": {"type": "string"}, "limit": {"type": "integer"}}}},
+                                                     "priority": {"type": "string"}, "issue_type": {"type": "string"}, "limit": {"type": "integer"},
+                                                     "field": {"type": "string", "description": "status, assignee, priority, resolution or issue_type"},
+                                                     "was": {"type": ["string", "null"]}, "on": {"type": "string", "description": "an instant, ISO 8601"},
+                                                     "changed_from": {"type": "string"}, "changed_until": {"type": "string"}}}},
 )]
 
 
@@ -352,6 +391,11 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
         return norm(answer) in (None, "unknown")
     if kind == "set":
         return isinstance(answer, list) and {str(a).upper().strip() for a in answer} == {g.upper() for g in gold}
+    if kind == "count":
+        try:
+            return int(str(answer).strip()) == gold
+        except ValueError:
+            return False
     if kind == "bool":
         b = {"true": True, "yes": True, "false": False, "no": False}.get(str(answer).strip().casefold()) if not isinstance(answer, bool) else answer
         return b is gold

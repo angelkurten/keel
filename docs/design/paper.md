@@ -127,3 +127,11 @@ The whole log through Graphiti would be ~134 hours and ~46 USD. Both ingest the 
 **Pilot findings to act on before the full run (2026-10-20):**
 - The API baseline's changelog lacked each issue's initial values (Jira's history shows them), so the API agent answered unknown to as_of questions whose answer was the initial status. Fixed (`4d782cd`); the API runs were redone.
 - Keel rejects times written as in the questions ("2016-09-14 07:38 UTC"): 3 of Haiku's 172 Keel calls failed on it, each costing a turn before the agent sent ISO 8601. Decided with Angel: accept that form in the core after the pilot and before the full run, rerun Keel there, and say so in the paper.
+
+### A sixth type: questions over the whole tenant (2026-10-20)
+
+The pilot with Haiku on MariaDB saturated: Keel, RAG and the API each answered 105 of 105 (closed book 0 of 90, all "unknown"), and the API was the cheapest (3.2k input tokens a question against Keel's 7.5k; Keel the fastest, 7 s against 17 s). Every question so far names one issue, and for that a per-issue API is enough. Agents inside a product also ask about the whole project at once ("what is blocked today?"), a category the benchmark lacked; it is added, and the one-issue questions stay and are reported as they are.
+
+`tenant`, 24 per tenant, appended last so the 315 earlier questions keep their text and gold (checked): which issues had a status at an instant (6), how many were in progress (4, a count), where a rule held (6), which changed a field in a window (4), and which had a status as recorded by a later instant (4, over an injected window). Instants keep an hour from every change in the tenant; set answers hold 1 to 41 keys. Keel's primitives agree on all 72 (`search(rule=, as_of=)` for the rule listings).
+
+Fairness: the API gets what Jira's JQL offers for history, `<field> WAS <value> ON <instant>` and `<field> CHANGED DURING (<from>, <until>)`, as filters on `search_issues`; with them it answers the 42 status, count and change questions exactly (checked without an agent). What neither the API nor Keel has a primitive for is reported as found: the API has no rule evaluation and no transaction time, and Keel's `search` has no `as_known_at` and no tenant-wide listing of changes in a world-time window.
