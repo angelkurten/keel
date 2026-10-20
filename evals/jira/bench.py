@@ -180,8 +180,12 @@ class Rag:
 def embed(gw: Gateway, texts: list[str]) -> list[list[float]]:
     out: list[list[float]] = []
     for i in range(0, len(texts), 512):
-        r = gw.http.post(f"{gw.base}/embeddings", json={"model": EMBEDDING_MODEL, "input": texts[i : i + 512], "dimensions": EMBEDDING_DIMS},
-                         headers=gw.auth, timeout=120)
+        for attempt in range(8):  # the gateway's per-minute limit is shared with the ingests: back off and retry
+            r = gw.http.post(f"{gw.base}/embeddings", json={"model": EMBEDDING_MODEL, "input": texts[i : i + 512], "dimensions": EMBEDDING_DIMS},
+                             headers=gw.auth, timeout=120)
+            if r.status_code != 429 and r.status_code < 500:
+                break
+            time.sleep(min(60, 5 * 2**attempt))
         r.raise_for_status()
         out += [d["embedding"] for d in sorted(r.json()["data"], key=lambda d: d["index"])]
     return out
