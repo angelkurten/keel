@@ -7,11 +7,12 @@ stores answer every query identically.
 
 from __future__ import annotations
 
+import json
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from keel.envelope import utcnow
@@ -83,8 +84,9 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
     """Slot `new` into the history of its predicate by valid_from, whatever order events arrive in:
     the fact current at new.valid_from closes there, and `new` closes at the next fact's start.
     Returns the fact that was closed, if any, so a durable store can persist that change."""
-    prev = max((f for f in same if f.valid_from <= new.valid_from), key=lambda f: f.valid_from, default=None)
-    nxt = min((f for f in same if f.valid_from > new.valid_from), key=lambda f: f.valid_from, default=None)
+    at = succession(new)
+    prev = max((f for f in same if f is not new and succession(f) <= at), key=succession, default=None)
+    nxt = min((f for f in same if succession(f) > at), key=succession, default=None)
     closed = None
     if prev is not None and (prev.valid_to is None or prev.valid_to > new.valid_from):
         prev.valid_to = new.valid_from
@@ -95,6 +97,16 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
         new.valid_to = nxt.valid_from
         new.closed_at = _later(new.recorded_at, nxt.recorded_at)  # the next one may have been recorded later
     return closed
+
+
+def succession(f: Fact) -> tuple[Any, ...]:
+    """The order of a predicate's history: by valid_from, and facts starting at the same instant (two
+    changes in one second) by when they were recorded, then by event and value. A total order on what
+    the facts carry, never on arrival, so any arrival order builds the same history."""
+    return (f.valid_from, f.recorded_at or valid_never, f.evidence or "", json.dumps(f.value, sort_keys=True, default=str))
+
+
+valid_never = datetime.min.replace(tzinfo=timezone.utc)
 
 
 def _later(a: datetime | None, b: datetime | None) -> datetime | None:

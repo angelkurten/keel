@@ -356,6 +356,26 @@ def test_arrival_order_changes_nothing_transaction_time_included(store):
     assert graphs[0] == graphs[1]
 
 
+def test_two_changes_in_the_same_instant_leave_one_open_fact_whatever_the_order(store):
+    """Regression (a Jira issue moved to the same status twice in one second): the tie is broken by what
+    the facts carry, so the same one stays open in every store and every arrival order."""
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    at = datetime(2026, 9, 10, 8, 0, tzinfo=UTC)
+    reads = [Event(id=f"m{i}", tenant=TENANT, type="tire.depth_measured", subject="tire:T-1", occurred_at=at, recorded_at=at,
+                   source="tires", payload={"unit_id": "U-1", "position": "P1", "depth_mm": d}) for i, d in ((1, 5.0), (2, 4.0))]
+    later = Event(id="m3", tenant=TENANT, type="tire.depth_measured", subject="tire:T-1", occurred_at=datetime(2026, 9, 20, tzinfo=UTC),
+                  recorded_at=datetime(2026, 9, 20, tzinfo=UTC), source="tires", payload={"unit_id": "U-1", "position": "P1", "depth_mm": 3.0})
+    seen = []
+    for order, s in (([*reads, later], MemoryStore()), ([later, reads[1], reads[0]], store)):
+        Ingestor(c, s).ingest(order, strict=True)
+        facts = s.facts(TENANT, "tire:T-1")
+        seen.append(sorted((f.value, f.valid_to) for f in facts if f.predicate == "depth_mm"))
+        assert [f.value for f in facts if f.predicate == "depth_mm" and f.valid_to is None] == [3.0]
+    assert seen[0] == seen[1]
+
+
 def test_a_late_event_keeps_its_own_time_and_still_reaches_the_change_feed(store):
     c = load_cartridge(FLEET)
     late = datetime(2026, 10, 10, tzinfo=UTC)  # the 2.6 mm reading of Oct 3 reached the source a week later

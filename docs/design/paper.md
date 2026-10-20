@@ -51,3 +51,15 @@ Already measured (`evals/efficiency`, 0.31.0): tool-result tokens 45.2k to 12.3k
 ## Week 2: the Jira cartridge and adapter
 
 `evals/jira/`: `cartridge.yaml` and `handlers.py` (issues, projects, six link relations, three rules: blocked, stalled, urgent_unassigned; nulls are facts, so a rule can test "nobody assigned"), `adapt.py` (issues with changelogs in Jira's REST shape, JSON or the dataset's BSON, to events; values named by id as they are today, links recorded from their outward end, moved issues under their final key) and `check.py` (replay must end where Jira is today). On kagent's 359 cards: 2,341 events, no mismatch with Jira's current fields, the same file byte for byte on a second run.
+
+The tenants, one whole project per Jira instance (whole projects keep links inside the tenant), restored from the dataset's `mongodump` with `mongorestore --nsInclude` and exported with `mongoexport --jsonArray`:
+
+| Tenant | Project | Span | Issues | Events | Links |
+| --- | --- | --- | --- | --- | --- |
+| hyperledger | INDY (Hyperledger Indy) | 2017-04 to 2020-11 | 2,323 | 18,036 | 1,590 (relates, blocks, clones, duplicates) |
+| mariadb | MXS (MaxScale) | 2014-01 to 2021-01 | 3,333 | 17,934 | 805 (relates, blocks, duplicates) |
+| spring | SEC (Spring Security) | 2005-06 to 2016-03 | 3,150 | 15,699 | 630 (relates, duplicates, depends on) |
+
+All three: no mismatch with Jira's current fields, and the same graph, transaction time included, in log order, reversed, and three shuffles (memory and SQLite in batches). Ingest takes 0.1–0.2 s per tenant in memory.
+
+Two core bugs surfaced on the way and are fixed, each with a conformance test: a close took the arriving fact's `recorded_at` instead of the later of the two (so a successor arriving first gave a different `closed_at`), and facts starting at the same instant (INDY-1393 moved to "To Test" twice in one second) were ordered by arrival, which left two open statuses. A predicate's history is now ordered by `valid_from`, then `recorded_at`, then evidence and value.

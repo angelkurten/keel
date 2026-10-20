@@ -66,7 +66,7 @@ def events_of(issue: dict[str, Any], tenant: str, names: dict[str, dict[str, str
               alias: dict[str, str]) -> list[dict[str, Any]]:
     key, f = issue["key"], issue["fields"]
     changes = sorted(
-        ((parse_dt(h["created"]), str(h["id"]), n, it, name(h.get("author"))) for h in (issue.get("changelog") or {}).get("histories") or []
+        ((parse_dt(h["created"]), f"{int(h['id']):012d}", n, it, name(h.get("author"))) for h in (issue.get("changelog") or {}).get("histories") or []
          for n, it in enumerate(h.get("items") or [])),
         key=lambda c: (c[0], c[1], c[2]),
     )
