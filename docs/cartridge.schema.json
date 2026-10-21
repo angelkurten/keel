@@ -1075,7 +1075,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "What counts as evidence in those scopes: event (an event id the tenant's log applied) or a ref prefix such as photo: or human:. Absent: any non-empty string."
+          "description": "What counts as evidence in those scopes: event (an event the tenant's log applied to the same subject) or a ref prefix such as photo: or human:. Absent: any non-empty string."
         }
       }
     }

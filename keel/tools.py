@@ -1110,7 +1110,7 @@ class Tools:
             raise PermissionError(f"agent '{self.agent.id}' may not write anything, so it may not propose")
         if self.agent and status != "proposed" and not self.agent.can_write(sc):
             raise PermissionError(f"agent '{self.agent.id}' may not write scope '{sc.value}'")
-        self.cartridge.policy.check_write(sc, evidence, lambda e: self.store.seen(self.tenant, e))
+        self.cartridge.policy.check_write(sc, evidence, lambda e: self.store.seen(self.tenant, e) and any(f.evidence == e for f in self.store.facts(self.tenant, subject)))
         part = self.glob if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
 
         def replayed(f: Fact) -> dict[str, Any]:

@@ -52,7 +52,7 @@ class MemoryPolicy:
 
     ttl: dict[Scope, timedelta | None]
     requires_evidence: set[Scope]
-    # what counts as evidence where it is required: "event" (an event id this tenant's log applied) or a
+    # what counts as evidence where it is required: "event" (an event this tenant's log applied to the same subject) or a
     # ref prefix ("photo:", "human:"). None: any non-empty string, as before
     evidence: tuple[str, ...] | None = None
 
@@ -69,7 +69,7 @@ class MemoryPolicy:
         )
 
     def check_write(self, scope: Scope, evidence: str | None, applied: Callable[[str], bool] = lambda _: False) -> None:
-        """`applied` says whether an event id is in the writer's log."""
+        """`applied` says whether an event id is in the writer's log and set a fact on the subject written about."""
         if scope not in self.requires_evidence:
             return
         if not evidence:
@@ -82,5 +82,5 @@ class MemoryPolicy:
             return
         raise PermissionError(
             f"evidence '{evidence}' for scope '{scope.value}' is not one this cartridge accepts: "
-            + ", ".join("an applied event id" if p == "event" else f"a '{p}' ref" for p in self.evidence)
+            + ", ".join("an event applied to this subject" if p == "event" else f"a '{p}' ref" for p in self.evidence)
         )

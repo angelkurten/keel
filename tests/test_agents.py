@@ -121,6 +121,9 @@ def test_declared_evidence_must_be_an_applied_event_or_a_declared_ref():
         copilot.annotate("tire:T-9001", "depth_mm", 1.0, scope="tenant", evidence="trust-me")
     with pytest.raises(PermissionError, match="not one this cartridge accepts"):  # another tenant's event is no evidence here
         Tools(c, s, "other-tenant", agent="fleet-copilot").annotate("tire:T-9001", "depth_mm", 1.0, scope="tenant", evidence=event_id)
+    other = copilot.history("unit:MXK-4821", detail="full")[0]["evidence"]  # a real event, about another subject
+    with pytest.raises(PermissionError, match="not one this cartridge accepts"):
+        copilot.annotate("tire:T-9001", "depth_mm", 1.0, scope="tenant", evidence=other)
     assert copilot.annotate("tire:T-9001", "depth_mm", 2.5, scope="tenant", evidence=event_id)["value"] == 2.5
     assert copilot.annotate("tire:T-9001", "depth_mm", 2.4, scope="tenant", evidence="photo:12")["value"] == 2.4
     assert copilot.annotate("tire:T-9001", "note", "x", scope="task")["value"] == "x"  # task needs no evidence

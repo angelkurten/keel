@@ -477,7 +477,7 @@ Over MCP, a result is one text block of compact JSON (no indentation, a list in 
 2. `open_fact` never overwrites: after two writes to the same predicate, both facts exist and the first is closed at the second's `valid_from`.
 3. A fact query `at=t` returns exactly the facts valid at `t`.
 4. Replay produces a graph equal to the one built incrementally.
-5. `annotate` to a scope in `requires_evidence` without evidence raises; when `evidence` is declared, so does evidence that is neither an event id the tenant's log applied (`event`) nor a declared ref prefix.
+5. `annotate` to a scope in `requires_evidence` without evidence raises; when `evidence` is declared, so does evidence that is neither an event id the tenant's log applied (`event`) nor a declared ref prefix; an `event` must have set a fact on the subject written about.
 6. `task`/`agent` annotations carry `expires_at`; `tenant`/`global` with `never` TTL do not.
 7. The core imports nothing from `cartridges/` or `examples/`; every example cartridge validates and passes after any core change.
 8. Ingest performs no I/O other than reading the adapter and writing the store.
