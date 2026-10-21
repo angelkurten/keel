@@ -409,6 +409,19 @@ def test_search_counts_lists_as_known_and_takes_times_as_people_write_them(store
         t.search(kind="tire", detail="count", depth=1)
 
 
+def test_history_over_the_whole_tenant_in_a_world_time_window(store):
+    """No subject, since/until: what started in the world in that window across the tenant, oldest first."""
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    t = Tools(c, store, TENANT)
+    window = t.history(since="2026-10-01 00:00 UTC", until="2026-10-04T00:00:00Z", predicate="depth_mm", limit=0)
+    assert [(f["subject"], f["value"]) for f in window] == [("tire:T-9001", 2.6)]  # the Oct 3 reading, not the Sep 10 one
+    every = t.history(since="2026-01-01", limit=0)
+    assert every == sorted(every, key=lambda f: f["valid_from"]) and {f["subject"] for f in every} >= {"tire:T-9001", "unit:MXK-4821"}
+    with pytest.raises(ValueError):
+        t.history()
+
+
 def test_a_deployment_may_cap_listings_and_says_so(store):
     """max_list: "all" (or more than the ceiling) returns the ceiling and a marker; unset, nothing changes."""
     c = load_cartridge(FLEET)

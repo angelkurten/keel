@@ -16,7 +16,7 @@ import difflib
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from keel.agents import resolve
@@ -234,6 +234,7 @@ def _kind(subject: str) -> str:
 
 
 NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
+EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 LIST_CAP = 50  # `related`, `history` and search listings return at most this many by default, the first entry saying what was cut
 TEXT_CAP = 20  # a text search returns its first matches; the first entry says how many more there were
 RELATION_CAP = 10  # per relation and direction, `context` lists the most recent ones and counts the rest (relations_more)
@@ -243,7 +244,7 @@ SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at 
 
 DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools.spec(): short, and fixed so prompt caches hold
     "context": """What is true about a subject ('<kind>:<id>', or a list of them) now or at as_of: facts, relations, each rule's evaluation. depth=1 adds the neighbours. detail: brief (default; facts as {predicate: value} with `since`), concise (relations one by one), full (an audit: transaction times and ids; costly). as_known_at: what Keel knew then. task: that task's memory. exclude/only: predicates to drop/keep. watermark: the cursor for history(changed_since=).""",
-    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject, with changed_since (a watermark): the tenant's changes. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
+    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject: with since/until, what changed in the world across the tenant in that window (with predicate: e.g. whose assignee changed); with changed_since (a watermark), what Keel recorded since your last run. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
     "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full, count ({"count": n}, nothing listed: how many, without reading them); depth=1 adds neighbours. as_of: rules, where and facts at that instant; as_known_at: as Keel knew them then. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
     "annotate": """Record what you learned (value: any JSON). Scopes tenant and global need evidence; task ties it to a job; key makes a retry return the first write; status="proposed" waits for a person or authorized agent. Returns a receipt (detail="full": the stored fact).""",
     "related": """Neighbours of a subject, by relation (one or a list), now or at as_of. depth 2 or 3 walks further (each entry says hops and via). At most limit (0: all); a cut list starts with {"more": ...} counting each relation.""",
@@ -573,6 +574,9 @@ class Tools:
         returned. `as_known_at`: as Keel knew them
         then. `changed_since` (a watermark from `context`): only facts recorded or closed after it;
         with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run".
+        With no `subject` and `since`/`until` instead: the tenant's facts that started (valid_from) in that
+        window, in world time, oldest first: "what changed this week", or with `predicate` "whose assignee
+        changed"; `evidence` says which event set each (its creation, or a later change).
         `limit` (default LIST_CAP, None or 0 for all) keeps the most recent; when it cuts, the first entry is
         {"more": {shown, total, omitted, next}}."""
         if self.meter:
@@ -581,9 +585,14 @@ class Tools:
             raise ValueError("history detail is 'full' or 'concise'")
         since, until, as_known_at, changed_since = _t(since), _t(until), _t(as_known_at), _t(changed_since)
         if subject is None:
-            if changed_since is None:
-                raise ValueError("history needs a subject, or changed_since for the whole tenant")
-            facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(self.glob, changed_since) if f.scope == Scope.GLOBAL], changed_since)
+            if changed_since is None and since is None and until is None:
+                raise ValueError("history needs a subject, or for the whole tenant changed_since (a watermark) or since/until (world time)")
+            if changed_since is not None:
+                facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(self.glob, changed_since) if f.scope == Scope.GLOBAL], changed_since)
+            else:  # what started in the world in that window, across the tenant
+                # ponytail: reads every fact of the tenant (changes since the epoch); a store query on valid_from if tenants grow past ~1M facts
+                lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
+                facts = sorted((f for f in self.store.changes(self.tenant, EPOCH) if lo <= f.valid_from <= hi), key=lambda f: (f.valid_from, f.subject))
             facts = [f for f in facts if self._sees(f, task)]
             if self.agent:
                 facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
