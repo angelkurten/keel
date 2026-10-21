@@ -31,6 +31,7 @@ import json
 import logging
 import math
 import re
+import sys
 import time
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -492,16 +493,45 @@ def main() -> None:
     summarize(a.out)
 
 
-def summarize(path: Path) -> None:
-    runs = [json.loads(line) for line in path.open()]
+def per_question(runs: list[dict[str, Any]]) -> dict[str, float]:
+    """Accuracy per question, its repetitions averaged: the reps of one question are not independent draws."""
+    by: dict[str, list[bool]] = defaultdict(list)
+    for r in runs:
+        by[r["id"]].append(bool(r["correct"]))
+    return {q: sum(v) / len(v) for q, v in by.items()}
+
+
+def bootstrap(values: list[float], b: int = 10_000, seed: int = 0) -> tuple[float, float, float, float]:
+    """Mean, 95% percentile interval and two-sided p (of the mean being 0, for paired differences) by resampling
+    questions with replacement; seeded, so a summary is reproducible."""
+    v = np.asarray(values, dtype=float)
+    means = v[np.random.default_rng(seed).integers(0, len(v), (b, len(v)))].mean(axis=1)
+    p = min(1.0, 2 * min((means <= 0).mean(), (means >= 0).mean()))
+    lo, hi = np.percentile(means, [2.5, 97.5])
+    return float(v.mean()), float(lo), float(hi), float(p)
+
+
+def summarize(*paths: Path) -> None:
+    runs = [json.loads(line) for path in paths for line in path.open()]
     table: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for r in runs:
         table[(r["model"], r["system"])].append(r)
-    print(f"{'model':32} {'system':7} {'n':>4} {'acc':>5} {'parsed':>6} {'calls':>5} {'in tok':>7} {'usd':>7}")
+    print(f"{'model':32} {'system':7} {'n':>4} {'q':>4} {'acc':>5} {'95% CI':>13} {'parsed':>6} {'calls':>5} {'in tok':>7} {'usd':>7}")
     for (m, s), rs in sorted(table.items()):
-        n = len(rs)
-        print(f"{m:32} {s:7} {n:4} {sum(bool(r['correct']) for r in rs) / n:5.2f} {sum(r['parsed'] for r in rs) / n:6.2f} "
-              f"{sum(len(r['calls']) for r in rs) / n:5.1f} {sum(r['tokens']['input'] for r in rs) / n:7.0f} {sum(r['cost_usd'] for r in rs):7.3f}")
+        n, acc = len(rs), per_question(rs)
+        _, lo, hi, _ = bootstrap(list(acc.values()))
+        print(f"{m:32} {s:7} {n:4} {len(acc):4} {sum(acc.values()) / len(acc):5.2f} [{lo:4.2f}, {hi:4.2f}] "
+              f"{sum(r['parsed'] for r in rs) / n:6.2f} {sum(len(r['calls']) for r in rs) / n:5.1f} "
+              f"{sum(r['tokens']['input'] for r in rs) / n:7.0f} {sum(r['cost_usd'] for r in rs):7.3f}")
+    print("paired, Keel minus each system, same agent, questions both answered:")
+    for (m, s), rs in sorted(table.items()):
+        if s == "keel" or (m, "keel") not in table:
+            continue
+        k, o = per_question(table[(m, "keel")]), per_question(rs)
+        both = sorted(k.keys() & o.keys())
+        if both:
+            d, lo, hi, p = bootstrap([k[q] - o[q] for q in both])
+            print(f"{m:32} {s:7} {len(both):4} {d:+5.2f} [{lo:+4.2f}, {hi:+4.2f}] p={p:.3f}")
     by_type: dict[tuple[str, str], list[bool]] = defaultdict(list)
     for r in runs:
         by_type[(r["system"], r["type"])].append(bool(r["correct"]))
@@ -512,4 +542,7 @@ def summarize(path: Path) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["summarize"]:  # summarize results.jsonl [more.jsonl ...]: several runs pooled
+        summarize(*map(Path, sys.argv[2:]))
+    else:
+        main()

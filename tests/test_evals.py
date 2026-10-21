@@ -30,3 +30,15 @@ def test_one_sandbox_end_to_end_offline():
     assert {"dense", "bm25", "convex+key"} <= configs
     ids = [r for r in rows if r["config"] == "convex+key" and r["family"] == "exact"]
     assert ids and all(r["mrr@10"] == 1.0 for r in ids)  # "Bancolombia" is a shared word: lexical leg finds it
+
+
+def test_bootstrap_over_questions():
+    from evals.jira.bench import bootstrap, per_question
+
+    runs = [{"id": "a", "correct": True}, {"id": "a", "correct": False}, {"id": "b", "correct": True}]
+    assert per_question(runs) == {"a": 0.5, "b": 1.0}
+    mean, lo, hi, p = bootstrap([1.0] * 20)
+    assert (mean, lo, hi) == (1.0, 1.0, 1.0) and p == 0.0
+    mean, lo, hi, p = bootstrap([1.0, -1.0] * 20)
+    assert mean == 0.0 and lo < 0 < hi and p == 1.0
+    assert bootstrap([0.0, 1.0] * 10) == bootstrap([0.0, 1.0] * 10)  # seeded
