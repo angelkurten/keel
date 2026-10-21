@@ -235,7 +235,9 @@ def limited(exc: Exception, wait: float) -> bool:
     """Retry this exception? A rate limit (429), or the gateway's upstream account outage (a 401 that says
     'deactivated', which came and went on 2026-10-20), and not after the last wait. A retried event may have
     written part of its extraction before failing; Graphiti and Mem0 deduplicate what the retry writes again."""
-    return wait > 0 and (transient(exc) or type(exc).__name__ == "RateLimitError")
+    # ValidationError: the extractor answered something its schema rejects (Luna once echoed the schema itself); a retry
+    # asks again, and backoff() bounds the attempts
+    return wait > 0 and (transient(exc) or type(exc).__name__ in ("RateLimitError", "ValidationError"))
 
 
 refused_last = False  # whether the last event was refused; one ingest per process, so a module flag is enough
