@@ -1,0 +1,35 @@
+[10/20/26 18:50:22] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 18:50:36] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 18:50:57] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 18:51:34] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 18:51:40] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 18:51:53] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:51:58] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:52:36] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+640 runs (200 already in evals/jira/results/pilot-mariadb.jsonl)
+model                            system     n   acc parsed calls  in tok     usd
+anthropic/claude-haiku-5.5       api      105  1.00   1.00   2.7    3238   0.069
+anthropic/claude-haiku-5.5       closed   105  0.05   1.00   0.0     255   0.016
+anthropic/claude-haiku-5.5       keel     105  1.00   1.00   1.7    7463   0.102
+anthropic/claude-haiku-5.5       rag      105  1.00   1.00   2.1    5299   0.092
+openai/gpt-6-luna                api      105  0.95   0.97   2.5    1601   0.028
+openai/gpt-6-luna                closed   105  0.05   1.00   0.0     190   0.011
+openai/gpt-6-luna                keel     105  0.99   1.00   1.6    4547   0.055
+openai/gpt-6-luna                rag      105  0.99   0.99   1.5    1510   0.025
+accuracy by type:   abstain     as_of   current  known_at     links      rule
+api                    1.00      0.92      1.00      0.98      1.00      1.00
+closed                 1.00      0.00      0.00      0.00      0.00      0.00
+keel                   1.00      1.00      1.00      0.98      1.00      1.00
+rag                    1.00      1.00      1.00      0.98      1.00      1.00

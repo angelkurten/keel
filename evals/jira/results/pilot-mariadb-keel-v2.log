@@ -1,0 +1,35 @@
+[10/20/26 20:44:35] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or for the whole tenant                 
+                             changed_since (a watermark) or                     
+                             since/until (world time)'                          
+                    INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:44:51] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:45:00] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:45:09] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:45:15] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:45:20] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+[10/20/26 20:45:26] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or for the whole tenant                 
+                             changed_since (a watermark) or                     
+                             since/until (world time)'                          
+[10/20/26 20:45:41] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or for the whole tenant                 
+                             changed_since (a watermark) or                     
+                             since/until (world time)'                          
+[10/20/26 20:45:43] INFO     Tool 'context' rejected arguments:    server.py:450
+                             ['subject']                                        
+210 runs (0 already in evals/jira/results/pilot-mariadb-keel-v2.jsonl)
+model                            system     n   acc parsed calls  in tok     usd
+anthropic/claude-haiku-5.5       keel     105  1.00   1.00   1.7    8064   0.110
+openai/gpt-6-luna                keel     105  0.98   1.00   1.6    4680   0.057
+accuracy by type:   abstain     as_of   current  known_at     links      rule
+keel                   1.00      1.00      1.00      0.98      1.00      0.97

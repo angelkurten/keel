@@ -1,0 +1,62 @@
+[10/20/26 18:56:28] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:57:44] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:57:50] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:58:06] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:58:18] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 18:59:51] INFO     Tool 'search' failed: 'Error          server.py:453
+                             executing tool search: `after` pages               
+                             the kind/rule listing; semantic and                
+                             text search rank, page them with                   
+                             `limit`'                                           
+[10/20/26 19:54:54] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 19:55:07] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 19:55:13] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+[10/20/26 19:56:15] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or changed_since for the                
+                             whole tenant'                                      
+192 runs (0 already in evals/jira/results/pilot-mariadb-tenant.jsonl)
+  mariadb-tenant-018 keel anthropic/claude-haiku-5.5: RuntimeError: anthropic/claude-haiku-5.5 answered 400: {"error":{"code":null,"message":"The model returned the following errors: prompt is too long: 4338170 tokens \u003e 1000000 maximum","param":null,"request_id":"2d13b0c1-2083-495b-b7c7-d514d9b0abd5","type":"ValidationException"}}
+  mariadb-tenant-019 keel anthropic/claude-haiku-5.5: RuntimeError: anthropic/claude-haiku-5.5 answered 400: {"error":{"code":null,"message":"The model returned the following errors: prompt is too long: 1042103 tokens \u003e 1000000 maximum","param":null,"request_id":"342ce2f5-1d2b-43ad-9364-a3cfd8bc4d37","type":"ValidationException"}}
+  mariadb-tenant-017 keel anthropic/claude-haiku-5.5: RuntimeError: anthropic/claude-haiku-5.5 answered 400: {"error":{"code":null,"message":"The model returned the following errors: prompt is too long: 2609882 tokens \u003e 1000000 maximum","param":null,"request_id":"d870c622-1888-47e6-826a-53f546d1fd8f","type":"ValidationException"}}
+  mariadb-tenant-022 keel anthropic/claude-haiku-5.5: RuntimeError: anthropic/claude-haiku-5.5 answered 400: {"error":{"code":null,"message":"The model returned the following errors: prompt is too long: 2125590 tokens \u003e 1000000 maximum","param":null,"request_id":"8c20a596-8d5c-46b1-b7c6-3fc27c12d6ef","type":"ValidationException"}}
+  mariadb-tenant-020 keel anthropic/claude-haiku-5.5: RuntimeError: anthropic/claude-haiku-5.5 answered 400: {"error":{"code":null,"message":"The model returned the following errors: prompt is too long: 1546791 tokens \u003e 1000000 maximum","param":null,"request_id":"b5d6b32f-d6ce-4a4d-8a80-d9ae2efc7e6a","type":"ValidationException"}}
+  mariadb-tenant-018 keel openai/gpt-6-luna: RuntimeError: openai/gpt-6-luna answered 400: {"error":{"code":null,"message":"Invalid 'input[5].output': string too long. Expected a string with maximum length 10485760, but got a string with length 17582199 instead.","param":null,"request_id":"3afa0d8b-51b6-4740-8f70-5a21a428dd42","type":"invalid_request_error"}}
+model                            system     n   acc parsed calls  in tok     usd
+anthropic/claude-haiku-5.5       api       24  0.71   1.00  16.2   99009   0.307
+anthropic/claude-haiku-5.5       closed    24  0.00   1.00   0.0     258   0.005
+anthropic/claude-haiku-5.5       keel      19  0.84   1.00   6.9  190315   0.397
+anthropic/claude-haiku-5.5       rag       24  0.33   0.79  66.2  488014   1.462
+openai/gpt-6-luna                api       24  0.46   0.96  12.2   44353   0.123
+openai/gpt-6-luna                closed    24  0.00   1.00   0.0     190   0.002
+openai/gpt-6-luna                keel      23  0.70   0.83   7.2  245166   0.574
+openai/gpt-6-luna                rag       24  0.17   0.75  33.6  279116   0.726
+accuracy by type:    tenant
+api                    0.58
+closed                 0.00
+keel                   0.76
+rag                    0.25

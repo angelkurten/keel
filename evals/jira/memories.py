@@ -259,8 +259,13 @@ def refused(exc: Exception) -> bool:
     return refused_last
 
 
+OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account")  # the gateway's upstream account, down for a while
+
+
 def transient(exc: Exception) -> bool:
-    return "429" in str(exc) or "has been deactivated" in str(exc)
+    """A rate limit (429), or the gateway's upstream accounts down (OpenAI deactivated, Anthropic not allowed, a
+    circuit breaker; each came and went on 2026-10-20): waited out, never counted against a system."""
+    return "429" in str(exc) or any(o in str(exc) for o in OUTAGES)
 
 
 

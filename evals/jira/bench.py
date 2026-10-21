@@ -445,7 +445,7 @@ def main() -> None:
 
     def run(job: tuple[dict[str, Any], str, str, int]) -> None:
         q, s, m, r = job
-        from evals.jira.memories import backoff, transient
+        from evals.jira.memories import OUTAGES, backoff, transient
 
         for wait in backoff():  # a gateway outage (429, or its upstream account down for a while) waits it out
             try:
@@ -456,7 +456,7 @@ def main() -> None:
                     time.sleep(wait)
                     continue
                 print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {str(exc)[:300]}")
-                if "has been deactivated" in str(exc) or "circuit breaker" in str(exc):
+                if any(o in str(exc) for o in OUTAGES):
                     return  # the gateway was down, not the system: left out, so a rerun asks it again
                 res = {"id": q["id"], "tenant": q["tenant"], "type": q["type"], "system": s, "model": m, "gold": q["answer"], "answer": None,
                        "parsed": False, "correct": False, "error": f"{type(exc).__name__}: {str(exc)[:500]}", "reply": "", "calls": [],
