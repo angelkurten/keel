@@ -1,0 +1,7 @@
+24 runs (0 already in evals/jira/results/pilot-mariadb-tenant-tgms.jsonl)
+  budget reached: 1.60 USD of 1.50; the remaining runs are left for a rerun
+  budget reached: 2.22 USD of 1.50; the remaining runs are left for a rerun
+model                            system     n   acc parsed calls  in tok     usd
+openai/gpt-6-luna                tgms      18  0.39   0.61   4.6 1223393   2.221
+accuracy by type:    tenant
+tgms                   0.39
