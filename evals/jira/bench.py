@@ -79,6 +79,7 @@ EXTRACTOR = "anthropic/claude-haiku-5.5"  # --extractor: the model Graphiti and 
 
 
 SUBSET = False  # --subset: every system reads only the issues the questions touch, as Graphiti and Mem0 do
+KEEL_MAX_LIST: int | None = None  # --keel-max-list: the deployment ceiling an operator serving agents would set (off by default)
 
 
 @cache
@@ -126,7 +127,7 @@ def keel_server(data: Path, tenant: str) -> Any:
     """A fresh graph per question: what one agent annotates never reaches another run."""
     store = MemoryStore()
     Ingestor(keel_cartridge(), store).ingest([Event(**e) for e in source(data, tenant)], strict=True)
-    return build_server(Tools(keel_cartridge(), store, tenant=tenant))
+    return build_server(Tools(keel_cartridge(), store, tenant=tenant, max_list=KEEL_MAX_LIST))
 
 
 @cache
@@ -359,6 +360,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     answer, parsed = extract(reply)
     return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": system, "model": model, "gold": q["answer"],
             "answer": answer, "parsed": parsed, "correct": parsed and grade(q, answer), "reply": reply[-2000:], "calls": calls,
+            **({"keel_max_list": KEEL_MAX_LIST} if system == "keel" and KEEL_MAX_LIST else {}),
             "tool_errors": errors, "turns": sum(m["role"] == "assistant" for m in messages), "tokens": used,
             "cost_usd": round(cost, 6), "ms": round((time.monotonic() - start) * 1000)}
 
@@ -407,7 +409,7 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
 
 
 def main() -> None:
-    global SUBSET, EXTRACTOR
+    global SUBSET, EXTRACTOR, KEEL_MAX_LIST
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", type=Path, required=True)
     ap.add_argument("--systems", default="keel,rag,api,closed")
@@ -420,8 +422,9 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--subset", action="store_true", help="every system reads only the issues the questions touch")
     ap.add_argument("--extractor", default=EXTRACTOR, help="the model Graphiti and Mem0 ingested with")
+    ap.add_argument("--keel-max-list", type=int, help="Keel's listing ceiling (keel serve --max-list), an ablation; unset: Keel as installed")
     a = ap.parse_args()
-    SUBSET, EXTRACTOR = a.subset, a.extractor
+    SUBSET, EXTRACTOR, KEEL_MAX_LIST = a.subset, a.extractor, a.keel_max_list
     logging.getLogger("httpx").setLevel(logging.WARNING)
     data = a.data.expanduser()
     gw = Gateway()
