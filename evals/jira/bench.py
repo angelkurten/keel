@@ -433,7 +433,8 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--subset", action="store_true", help="every system reads only the issues the questions touch")
     ap.add_argument("--extractor", default=EXTRACTOR, help="the model Graphiti and Mem0 ingested with")
-    ap.add_argument("--keel-max-list", type=int, help="Keel's listing ceiling (keel serve --max-list), an ablation; unset: Keel as installed")
+    ap.add_argument("--keel-max-list", type=int, default=200,
+                    help="Keel's listing ceiling (keel serve --max-list), the full run's setting (plan B); 0: none, the ablation")
     ap.add_argument("--max-usd", type=float, help="stop starting runs once this invocation has spent this much")
     a = ap.parse_args()
     SUBSET, EXTRACTOR, KEEL_MAX_LIST = a.subset, a.extractor, a.keel_max_list

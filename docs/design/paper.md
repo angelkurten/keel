@@ -158,16 +158,20 @@ Costs per question measured in the pilot, times 3 tenants and 2 agents (Luna, Ha
 
 | System | Questions | Reps | USD |
 | --- | --- | --- | --- |
-| Keel (as installed) | one-issue and tenant | 3 | 10.13 |
+| Keel with --max-list 200 | one-issue and tenant | 3 | 3.33 |
 | API (JQL) | one-issue and tenant | 3 | 4.74 |
 | RAG | one-issue | 3 | 1.06 |
 | RAG | tenant | 1 | 6.57 |
-| Keel with --max-list 200 (ablation) | tenant | 1 | 0.52 |
+| Keel without a ceiling (ablation, Luna only) | tenant | 1 | 0.98 |
 | Graphiti, Mem0 | one-issue | 1 | 0.70 |
 | Closed book | all | 1 | 0.10 |
 
-About 24 USD, plus ~4 USD to finish the Graphiti and Mem0 ingests; ~10.5 USD spent by 2026-10-20 (TGMS 2.22 of it, not run further). Plan A (three repetitions of everything) was 39.60 USD; plan C (one of everything) 13.20.
+About 18 USD, plus ~4 USD to finish the Graphiti and Mem0 ingests; ~10.5 USD spent by 2026-10-20 (TGMS 2.22 of it, not run further). Plan A (three repetitions of everything) was 39.60 USD; plan C (one of everything) 13.20.
 
 ### Claude through the Anthropic endpoint (2026-10-20)
 
 OfoxAI stopped serving Claude on its OpenAI-compatible endpoint on 2026-10-20 (`protocol_not_supported`). The harness now sends `anthropic/*` models to the gateway's Anthropic messages endpoint with the same system prompt, turns and tools, thinking off (`evals/efficiency/run.py`, `to_anthropic`/`from_anthropic`). The pilot's Haiku "before" rows went through the OpenAI endpoint; every Haiku row of the full run goes through the Anthropic one, so the paper compares Haiku runs from one route only. The gateway bills a Claude prompt above 100K input tokens at 5x, and the cost accounting does too. A 429 now waits the gateway's `retry-after` (at least 1 s) or 1–3 s with jitter; only an outage waits long.
+
+### Keel runs with the 200 ceiling (decided with Angel, 2026-10-20)
+
+In the MariaDB pilot the ceiling kept accuracy and cut cost: on the tenant questions Haiku answered 10/12 uncapped (1.82 USD, 311k tokens a question; two runs overflowed its context) and 10/12 with `--max-list 200` (0.07 USD, 53k tokens; both misses were reasoning over correct data); Luna 23/24 uncapped, 22/24 capped (24/24 in content). Uncapped, a single listing reached 257k tokens and the gateway's 5x rate for Claude prompts above 100K made three questions cost 1.80 USD. So the full run uses the ceiling (the bench's default, `--keel-max-list 200`); the uncapped ablation runs with Luna only (`--keel-max-list 0`), and Haiku uncapped is reported from the 12 pilot rows. Keel's per-question costs from the pilot: Luna 0.0005 USD one-issue and 0.0025 tenant; Haiku 0.0010 and 0.0060. Haiku's costs for the other systems were measured on the OpenAI route, without the 5x rate, so the full run sets `--max-usd` per invocation.
