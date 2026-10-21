@@ -114,7 +114,7 @@ def pause(headers: Any = None) -> float:
     """Seconds to wait after a 429. The gateway counts requests per minute, team-wide, so a slot frees within seconds:
     its retry-after, else 1-3 s with jitter (a long backoff only idles while other clients take the slots)."""
     try:
-        return float((headers or {}).get("retry-after"))
+        return max(1.0, float((headers or {}).get("retry-after")))  # it says 0 s when the window is about to turn
     except (TypeError, ValueError):
         return random.uniform(1, 3)
 
