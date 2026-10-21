@@ -127,19 +127,27 @@ class Gateway:
         self.http = httpx.Client(timeout=180)
         r = self.http.get(f"{self.base}/models", headers=self.auth)
         r.raise_for_status()
-        self.prices = {m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"])) for m in r.json()["data"] if m.get("pricing")}
+        models = r.json()["data"]
+        r = self.http.get(f"{self.base.removesuffix('/v1')}/anthropic/v1/models", headers={"x-api-key": self.key, "anthropic-version": "2023-06-01"})
+        models += r.json()["data"] if r.is_success else []  # Claude is listed only there
+        self.prices = {m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"])) for m in models if m.get("pricing")}
 
     @property
     def auth(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.key}"}
 
     def chat(self, model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> tuple[dict[str, Any], dict[str, int], float]:
-        body: dict[str, Any] = {"model": model, "messages": messages, "temperature": 0, **({"tools": tools} if tools else {})}
+        if model.startswith("anthropic/"):  # since 2026-10-20 the gateway serves Claude only on its Anthropic endpoint
+            url, body, headers = f"{self.base.removesuffix('/v1')}/anthropic/v1/messages", to_anthropic(model, messages, tools), \
+                {"x-api-key": self.key, "anthropic-version": "2023-06-01"}
+        else:
+            url, headers = f"{self.base}/chat/completions", self.auth
+            body = {"model": model, "messages": messages, "temperature": 0, **({"tools": tools} if tools else {})}
         import httpx
 
         for attempt in range(8):  # the gateway limits requests per minute and sometimes stalls: back off and retry
             try:
-                r = self.http.post(f"{self.base}/chat/completions", json=body, headers=self.auth)
+                r = self.http.post(url, json=body, headers=headers)
             except httpx.TimeoutException:
                 if attempt == 7:
                     raise
@@ -150,10 +158,52 @@ class Gateway:
         if r.status_code >= 400:
             raise RuntimeError(f"{model} answered {r.status_code}: {r.text[:300]}")
         data = r.json()
-        usage = data.get("usage") or {}
-        i, o = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
+        if model.startswith("anthropic/"):
+            msg, usage = from_anthropic(data), data.get("usage") or {}
+            i, o = int(usage.get("input_tokens") or 0), int(usage.get("output_tokens") or 0)
+        else:
+            msg, usage = data["choices"][0]["message"], data.get("usage") or {}
+            i, o = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
         pin, pout = self.prices.get(model, (0.0, 0.0))
-        return data["choices"][0]["message"], {"input": i, "output": o}, i * pin + o * pout
+        if model.startswith("anthropic/") and i > 100_000:
+            pin *= 5  # the gateway bills a Claude prompt above 100K input tokens at 5x
+        return msg, {"input": i, "output": o}, i * pin + o * pout
+
+
+def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """An OpenAI chat request as an Anthropic messages request: the same prompt, turns and tools, thinking off as on the
+    OpenAI endpoint. Consecutive tool results go back in one user turn, as that API wants."""
+    out: list[dict[str, Any]] = []
+    for m in messages:
+        if m["role"] == "system":
+            continue
+        if m["role"] == "tool":
+            block = {"type": "tool_result", "tool_use_id": m["tool_call_id"], "content": m["content"]}
+            if out and out[-1]["role"] == "user" and isinstance(out[-1]["content"], list):
+                out[-1]["content"].append(block)
+            else:
+                out.append({"role": "user", "content": [block]})
+        elif m["role"] == "assistant":
+            blocks = [{"type": "text", "text": m["content"]}] if m.get("content") else []
+            blocks += [{"type": "tool_use", "id": t["id"], "name": t["function"]["name"], "input": json.loads(t["function"]["arguments"] or "{}")}
+                       for t in m.get("tool_calls") or []]
+            out.append({"role": "assistant", "content": blocks})
+        else:
+            out.append({"role": "user", "content": m["content"]})
+    body: dict[str, Any] = {"model": model, "max_tokens": 8192, "temperature": 0, "thinking": {"type": "disabled"}, "messages": out}
+    if system := "\n\n".join(m["content"] for m in messages if m["role"] == "system"):
+        body["system"] = system
+    if tools:
+        body["tools"] = [{"name": t["function"]["name"], "description": t["function"].get("description", ""), "input_schema": t["function"]["parameters"]}
+                         for t in tools]
+    return body
+
+
+def from_anthropic(data: dict[str, Any]) -> dict[str, Any]:
+    """An Anthropic reply as the OpenAI message the agent loops read: its text, and its tool calls."""
+    blocks = data.get("content") or []
+    calls = [{"id": b["id"], "type": "function", "function": {"name": b["name"], "arguments": json.dumps(b["input"])}} for b in blocks if b["type"] == "tool_use"]
+    return {"role": "assistant", "content": "".join(b["text"] for b in blocks if b["type"] == "text"), **({"tool_calls": calls} if calls else {})}
 
 
 def ask(gw: Gateway, model: str, q: dict[str, Any], max_steps: int = 12) -> dict[str, Any]:
