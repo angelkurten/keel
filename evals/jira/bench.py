@@ -450,12 +450,17 @@ def main() -> None:
             try:
                 res = ask(gw, data, s, m, q, rags, apis) | {"rep": r}
                 break
-            except Exception as exc:  # noqa: BLE001 - one failed run is logged and retried on the next invocation
+            except Exception as exc:  # noqa: BLE001 - a run that ends in an error is a wrong answer, recorded with its error
                 if wait and transient(exc):
                     time.sleep(wait)
                     continue
-                print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {exc}")
-                return
+                print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {str(exc)[:300]}")
+                if "has been deactivated" in str(exc) or "circuit breaker" in str(exc):
+                    return  # the gateway was down, not the system: left out, so a rerun asks it again
+                res = {"id": q["id"], "tenant": q["tenant"], "type": q["type"], "system": s, "model": m, "gold": q["answer"], "answer": None,
+                       "parsed": False, "correct": False, "error": f"{type(exc).__name__}: {str(exc)[:500]}", "reply": "", "calls": [],
+                       "tool_errors": 0, "turns": 0, "tokens": {"input": 0, "output": 0}, "cost_usd": 0.0, "ms": 0, "rep": r}
+                break
         with lock, a.out.open("a") as fh:
             fh.write(json.dumps(res, ensure_ascii=False, default=str) + "\n")
 
