@@ -486,8 +486,8 @@ def main() -> None:
                     time.sleep(delay(exc, wait))
                     continue
                 print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {str(exc)[:300]}")
-                if any(o in str(exc) for o in OUTAGES):
-                    return  # the gateway was down, not the system: left out, so a rerun asks it again
+                if any(o in str(exc) for o in OUTAGES) or transient(exc):
+                    return  # the gateway or the network was down, not the system: left out, so a rerun asks it again
                 res = {"id": q["id"], "tenant": q["tenant"], "type": q["type"], "system": s, "model": m, "gold": q["answer"], "answer": None,
                        "parsed": False, "correct": False, "error": f"{type(exc).__name__}: {str(exc)[:500]}", "reply": "", "calls": [],
                        "tool_errors": 0, "turns": 0, "tokens": {"input": 0, "output": 0}, "cost_usd": 0.0, "ms": 0, "rep": r}

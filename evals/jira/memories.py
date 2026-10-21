@@ -253,6 +253,9 @@ def refused(exc: Exception) -> bool:
     return refused_last
 
 
+# the machine's own network down (DNS gone for a while on 2026-10-21): waited out like an outage, never a wrong answer
+NETWORK = ("ConnectError", "ConnectTimeout", "ReadError", "ReadTimeout", "WriteError", "RemoteProtocolError",
+           "APIConnectionError", "APITimeoutError")
 OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account", "protocol_not_supported")  # the gateway's upstream account, down for a while
 
 
@@ -312,7 +315,7 @@ async def fallback_async(add: Any, use: Any) -> str:
 
 def delay(exc: Exception | None, wait: float) -> float:
     """The wait before retrying after `exc`: backoff()'s long `wait` for an outage, a few seconds for a rate limit."""
-    if exc is None or any(o in str(exc) for o in OUTAGES):
+    if exc is None or any(o in str(exc) for o in OUTAGES) or type(exc).__name__ in NETWORK:
         return wait
     return pause(getattr(getattr(exc, "response", None), "headers", None))
 
@@ -320,7 +323,7 @@ def delay(exc: Exception | None, wait: float) -> float:
 def transient(exc: Exception) -> bool:
     """A rate limit (429), or the gateway's upstream accounts down (OpenAI deactivated, Anthropic not allowed, a
     circuit breaker; each came and went on 2026-10-20): waited out, never counted against a system."""
-    return "429" in str(exc) or any(o in str(exc) for o in OUTAGES)
+    return "429" in str(exc) or any(o in str(exc) for o in OUTAGES) or type(exc).__name__ in NETWORK
 
 
 
