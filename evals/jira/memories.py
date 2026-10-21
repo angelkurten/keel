@@ -158,6 +158,8 @@ def graphiti_search(tenant: str, model: str, query: str, k: int) -> list[dict[st
 
 
 def mem0(data: Path, tenant: str, model: str) -> Any:
+    # its telemetry opens one shared Qdrant under ~/.mem0 per client: a second tenant in the process would hit the lock
+    os.environ["MEM0_TELEMETRY"] = "False"
     from mem0 import Memory
 
     key = os.environ["OFOX_API_KEY"]
