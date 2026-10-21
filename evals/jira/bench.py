@@ -390,7 +390,8 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
     if kind == "unknown":  # abstaining, in any wording that does not invent a value
         return norm(answer) in (None, "unknown")
     if kind == "set":
-        return isinstance(answer, list) and {str(a).upper().strip() for a in answer} == {g.upper() for g in gold}
+        # a key as Keel writes it ("issue:MXS-12") names the same issue: the answer is right in either form
+        return isinstance(answer, list) and {str(a).upper().strip().removeprefix("ISSUE:") for a in answer} == {g.upper() for g in gold}
     if kind == "count":
         try:
             return int(str(answer).strip()) == gold
