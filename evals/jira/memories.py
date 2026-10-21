@@ -31,6 +31,10 @@ from typing import Any
 from evals.jira.bench import log, record
 
 BASE = "https://api.ofox.ai/v1"
+# when the extractor's provider refuses an extraction prompt (OpenAI's filter refuses some harmless Jira text that
+# Haiku and DeepSeek accept, seen 2026-10-20), that one event is extracted with this model instead, and recorded
+FALLBACK = "anthropic/claude-haiku-5.5"
+COOL_DOWN = 30  # seconds after a refusal: a burst of refusals trips the gateway's circuit breaker
 EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
 NEO4J = ("bolt://localhost:7699", "neo4j", "benchpass")
 
@@ -111,7 +115,21 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
                     if not limited(exc, wait):
                         raise
                     await asyncio.sleep(wait)
-            note(progress, e, before, meter, start, skipped="content_filter" if refused_last else None)
+            outcome = None
+            if refused_last:
+                await asyncio.sleep(COOL_DOWN)
+                g.llm_client.model, g.llm_client.small_model = FALLBACK, FALLBACK
+                try:
+                    await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
+                                        reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
+                    outcome = "fallback"
+                except Exception as exc:
+                    if not refused(exc):
+                        raise
+                    outcome = "content_filter"
+                finally:
+                    g.llm_client.model, g.llm_client.small_model = model, model
+            note(progress, e, before, meter, start, skipped=outcome)
     finally:
         await g.close()
 
@@ -176,7 +194,21 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
                 if not limited(exc, wait):
                     raise
                 time.sleep(wait)
-        note(progress, e, before, meter, start, skipped="content_filter" if refused_last else None)
+        outcome = None
+        if refused_last:
+            time.sleep(COOL_DOWN)
+            m.llm.config.model = FALLBACK
+            try:
+                m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
+                      metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
+                outcome = "fallback"
+            except Exception as exc:
+                if not refused(exc):
+                    raise
+                outcome = "content_filter"
+            finally:
+                m.llm.config.model = model
+        note(progress, e, before, meter, start, skipped=outcome)
 
 
 _mem0_cache: dict[tuple[str, str], Any] = {}
@@ -225,8 +257,8 @@ def note(progress: Path, e: dict[str, Any], before: tuple[int, int, int], meter:
     refused_last = False
     row = {"id": e["id"], "calls": meter.calls - before[0], "input": meter.input - before[1], "output": meter.output - before[2],
            "seconds": round(time.monotonic() - start, 2)}
-    with progress.open("a") as fh:
-        fh.write(json.dumps(row | ({"skipped": skipped} if skipped else {})) + "\n")
+    with progress.open("a") as fh:  # "fallback": extracted by FALLBACK after a refusal; "content_filter": refused by both, not stored
+        fh.write(json.dumps(row | ({"refused": skipped} if skipped else {})) + "\n")
 
 
 def main() -> None:
@@ -255,7 +287,9 @@ def main() -> None:
     rows = [json.loads(line) for line in progress.open()] if progress.exists() else []
     if rows:
         n = len(rows)
-        print(f"{n} events ingested ({sum('skipped' in r for r in rows)} refused by the content filter): {sum(r['calls'] for r in rows) / n:.1f} LLM calls, "
+        refusals = [r.get("refused") for r in rows if r.get("refused")]
+        print(f"{n} events ingested ({refusals.count('fallback')} extracted by {FALLBACK} after a refusal, {refusals.count('content_filter')} not stored): "
+              f"{sum(r['calls'] for r in rows) / n:.1f} LLM calls, "
               f"{sum(r['input'] for r in rows) / n:.0f} input and {sum(r['output'] for r in rows) / n:.0f} output tokens, {sum(r['seconds'] for r in rows) / n:.1f} s per event")
 
 

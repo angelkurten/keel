@@ -144,3 +144,5 @@ From the pilot's Keel transcripts: agents copied times as the questions write th
 - `search(detail="count")` returns `[{"count": n}]`, no cap, nothing listed.
 - `search(as_known_at=...)`, as `context` and `history` have it.
 - A deployment's ceiling on one listing (`max_list`, `keel serve --max-list`), off by default: a report or an export may want everything, and the operator decides; the paper measures Keel with it off.
+
+**Extraction refused (2026-10-20).** OpenAI's content filter (through OfoxAI) refused Mem0's extraction prompt for harmless Jira text: the same prompt passes on Haiku and DeepSeek, no single line of it is refused alone, and Mem0 carries its last 10 messages in every prompt, so one flagged record refused the next several. A burst of refusals then tripped the gateway's circuit breaker for Luna. Not to charge Mem0 (or Graphiti) for OpenAI's filter, a refused event is retried once with Haiku 5.5 (same price) after a 30 s cool-down and recorded as `fallback`; refused by both, it is recorded as not stored. The counts go in the paper: an LLM extraction pipeline can decline to store a record, which a deterministic one cannot.
