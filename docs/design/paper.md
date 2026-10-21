@@ -167,3 +167,7 @@ Costs per question measured in the pilot, times 3 tenants and 2 agents (Luna, Ha
 | Closed book | all | 1 | 0.10 |
 
 About 24 USD, plus ~4 USD to finish the Graphiti and Mem0 ingests; ~10.5 USD spent by 2026-10-20 (TGMS 2.22 of it, not run further). Plan A (three repetitions of everything) was 39.60 USD; plan C (one of everything) 13.20.
+
+### Claude through the Anthropic endpoint (2026-10-20)
+
+OfoxAI stopped serving Claude on its OpenAI-compatible endpoint on 2026-10-20 (`protocol_not_supported`). The harness now sends `anthropic/*` models to the gateway's Anthropic messages endpoint with the same system prompt, turns and tools, thinking off (`evals/efficiency/run.py`, `to_anthropic`/`from_anthropic`). The pilot's Haiku "before" rows went through the OpenAI endpoint; every Haiku row of the full run goes through the Anthropic one, so the paper compares Haiku runs from one route only. The gateway bills a Claude prompt above 100K input tokens at 5x, and the cost accounting does too. A 429 now waits the gateway's `retry-after` (at least 1 s) or 1–3 s with jitter; only an outage waits long.
