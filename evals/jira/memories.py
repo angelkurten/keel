@@ -271,7 +271,7 @@ def fallback_sync(add: Any, use: Any) -> str:
             except Exception as exc:
                 if refused(exc):
                     refused_by.add(name)
-                elif not transient(exc):
+                elif not limited(exc, wait):
                     raise
                 last = exc
         if len(refused_by) == len(FALLBACKS):
@@ -297,7 +297,7 @@ async def fallback_async(add: Any, use: Any) -> str:
             except Exception as exc:
                 if refused(exc):
                     refused_by.add(name)
-                elif not transient(exc):
+                elif not limited(exc, wait):
                     raise
                 last = exc
         if len(refused_by) == len(FALLBACKS):
