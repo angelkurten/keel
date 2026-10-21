@@ -31,6 +31,7 @@ import json
 import logging
 import math
 import re
+import subprocess
 import sys
 import time
 from collections import Counter, defaultdict
@@ -460,6 +461,8 @@ def main() -> None:
     print(f"{len(jobs)} runs ({len(done)} already in {a.out})")
     lock = Lock()
     spent = [0.0]
+    vers = versions()
+    print(f"keel {vers['commit'][:10]}{' (uncommitted changes)' if vers['dirty'] else ''}")
 
     def run(job: tuple[dict[str, Any], str, str, int]) -> None:
         q, s, m, r = job
@@ -482,6 +485,7 @@ def main() -> None:
                        "parsed": False, "correct": False, "error": f"{type(exc).__name__}: {str(exc)[:500]}", "reply": "", "calls": [],
                        "tool_errors": 0, "turns": 0, "tokens": {"input": 0, "output": 0}, "cost_usd": 0.0, "ms": 0, "rep": r}
                 break
+        res["versions"] = vers
         with lock, a.out.open("a") as fh:
             fh.write(json.dumps(res, ensure_ascii=False, default=str) + "\n")
             spent[0] += res["cost_usd"]
@@ -491,6 +495,22 @@ def main() -> None:
     with ThreadPoolExecutor(a.workers) as pool:
         list(pool.map(run, jobs))
     summarize(a.out)
+
+
+def versions() -> dict[str, Any]:
+    """What a row was measured with: the repo's commit (Keel, harness and questions), whether keel/ or evals/ had
+    uncommitted changes (results aside), and the versions of the packages the systems run on."""
+    from importlib.metadata import PackageNotFoundError, version
+
+    root = Path(__file__).resolve().parents[2]
+    git = lambda *args: subprocess.run(["git", "-C", str(root), *args], check=False, capture_output=True, text=True).stdout.strip()
+    out: dict[str, Any] = {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain", "keel", "evals", ":!evals/jira/results"))}
+    for pkg in ("graphiti-core", "mem0ai", "tgms", "anthropic", "openai"):
+        try:
+            out[pkg] = version(pkg)
+        except PackageNotFoundError:
+            pass
+    return out
 
 
 def per_question(runs: list[dict[str, Any]]) -> dict[str, float]:
