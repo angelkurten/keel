@@ -256,7 +256,7 @@ def refused(exc: Exception) -> bool:
 # the machine's own network down (DNS gone for a while on 2026-10-21): waited out like an outage, never a wrong answer
 NETWORK = ("ConnectError", "ConnectTimeout", "ReadError", "ReadTimeout", "WriteError", "RemoteProtocolError",
            "APIConnectionError", "APITimeoutError")
-OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account", "protocol_not_supported")  # the gateway's upstream account, down for a while
+OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account", "protocol_not_supported", "<!doctype")  # the gateway's upstream account, down for a while
 
 
 def fallback_sync(add: Any, use: Any) -> str:
