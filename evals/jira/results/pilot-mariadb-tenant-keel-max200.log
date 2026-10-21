@@ -12,3 +12,18 @@ model                            system     n   acc parsed calls  in tok     usd
 openai/gpt-6-luna                keel      24  0.92   0.92   6.3   21219   0.059
 accuracy by type:    tenant
 keel                   0.92
+[10/20/26 22:51:13] INFO     Tool 'search' failed: 'Error          server.py:453
+                             executing tool search: `after` pages               
+                             the kind/rule listing; semantic and                
+                             text search rank, page them with                   
+                             `limit`'                                           
+[10/20/26 22:52:39] INFO     Tool 'search' failed: "Error          server.py:453
+                             executing tool search: unknown rule                
+                             '' The rules are: blocked, stalled,                
+                             urgent_unassigned"                                 
+12 runs (36 already in evals/jira/results/pilot-mariadb-tenant-keel-max200.jsonl)
+model                            system     n   acc parsed calls  in tok     usd
+anthropic/claude-haiku-5.5       keel      24  0.83   0.92   4.9  180680   1.892
+openai/gpt-6-luna                keel      24  0.92   0.92   6.3   21219   0.059
+accuracy by type:    tenant
+keel                   0.88
