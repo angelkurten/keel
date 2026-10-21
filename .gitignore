@@ -12,3 +12,4 @@ sdk/typescript/dist/
 .keel/
 .playwright-mcp/
 keel/console/
+evals/jira/results/c4-mem0/
