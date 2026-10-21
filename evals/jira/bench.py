@@ -371,7 +371,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     answer, parsed = extract(reply)
     return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": system, "model": model, "gold": q["answer"],
             "answer": answer, "parsed": parsed, "correct": parsed and grade(q, answer), "reply": reply[-2000:], "calls": calls,
-            **({"keel_max_list": KEEL_MAX_LIST} if system == "keel" and KEEL_MAX_LIST else {}),
+            **({"keel_max_list": KEEL_MAX_LIST} if system == "keel" and KEEL_MAX_LIST else {}), "route": gw.route(model),
             "tool_errors": errors, "turns": sum(m["role"] == "assistant" for m in messages), "tokens": used,
             "cost_usd": round(cost, 6), "ms": round((time.monotonic() - start) * 1000)}
 

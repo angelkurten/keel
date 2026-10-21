@@ -175,3 +175,13 @@ OfoxAI stopped serving Claude on its OpenAI-compatible endpoint on 2026-10-20 (`
 ### Keel runs with the 200 ceiling (decided with Angel, 2026-10-20)
 
 In the MariaDB pilot the ceiling kept accuracy and cut cost: on the tenant questions Haiku answered 10/12 uncapped (1.82 USD, 311k tokens a question; two runs overflowed its context) and 10/12 with `--max-list 200` (0.07 USD, 53k tokens; both misses were reasoning over correct data); Luna 23/24 uncapped, 22/24 capped (24/24 in content). Uncapped, a single listing reached 257k tokens and the gateway's 5x rate for Claude prompts above 100K made three questions cost 1.80 USD. So the full run uses the ceiling (the bench's default, `--keel-max-list 200`); the uncapped ablation runs with Luna only (`--keel-max-list 0`), and Haiku uncapped is reported from the 12 pilot rows. Keel's per-question costs from the pilot: Luna 0.0005 USD one-issue and 0.0025 tenant; Haiku 0.0010 and 0.0060. Haiku's costs for the other systems were measured on the OpenAI route, without the 5x rate, so the full run sets `--max-usd` per invocation.
+
+### Claude straight from Anthropic, and what the credit buys (decided with Angel, 2026-10-20)
+
+Angel has 100 USD of Anthropic credit, usable only for Claude. Three uses, all approved:
+
+1. **Every Haiku run goes to Anthropic directly**, not through OfoxAI: the gateway's Claude access failed twice on 2026-10-20, its Anthropic endpoint is served from Bedrock, and its 100 requests a minute are shared with Graphiti and Luna. The Gateway takes this route whenever `ANTHROPIC_API_KEY` or `~/.anthropic_key` is set (run with `--with anthropic`), through the official SDK; each result records its `route`. Same list prices as the gateway (Haiku 0.10/0.50 USD per million, five times above 100K prompt tokens); the conversation is cached, so each turn's resent history is billed at 0.1x. Straight from Anthropic, Haiku 5.5 and Sonnet 5.5 refuse a non-default temperature, so their runs use the default; Sonnet turns thinking off with `between_tools`, Haiku with `disabled`.
+2. **Haiku moves from plan B to plan A**: three repetitions of every system, for narrower intervals.
+3. **A frontier subset with Sonnet 5.5** (2/10 USD per million): the tenant questions, Keel with the 200 ceiling and the API, one repetition, three tenants, about 25–30 USD. RAG is left out at that price. It answers the "no frontier model" limitation.
+
+Expected draw on the credit: about 45–55 USD. Luna stays on OfoxAI.

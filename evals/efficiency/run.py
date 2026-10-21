@@ -131,12 +131,25 @@ class Gateway:
         r = self.http.get(f"{self.base.removesuffix('/v1')}/anthropic/v1/models", headers={"x-api-key": self.key, "anthropic-version": "2023-06-01"})
         models += r.json()["data"] if r.is_success else []  # Claude is listed only there
         self.prices = {m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"])) for m in models if m.get("pricing")}
+        key = os.environ.get("ANTHROPIC_API_KEY") or (KEY_FILE.read_text().strip() if KEY_FILE.exists() else "")
+        if key:  # Claude straight from Anthropic, not through the gateway (run with `--with anthropic`)
+            import anthropic
+
+            self.direct = anthropic.Anthropic(api_key=key, max_retries=8)
+
+    direct: Any = None
+
+    def route(self, model: str) -> str:
+        return "anthropic" if model.startswith("anthropic/") and self.direct else "ofox"
 
     @property
     def auth(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.key}"}
 
     def chat(self, model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None) -> tuple[dict[str, Any], dict[str, int], float]:
+        if self.route(model) == "anthropic":
+            data = self.direct.messages.create(**to_anthropic(direct_id(model), messages, tools, direct=True)).to_dict()
+            return from_anthropic(data), *direct_cost(model, data.get("usage") or {})
         if model.startswith("anthropic/"):  # since 2026-10-20 the gateway serves Claude only on its Anthropic endpoint
             url, body, headers = f"{self.base.removesuffix('/v1')}/anthropic/v1/messages", to_anthropic(model, messages, tools), \
                 {"x-api-key": self.key, "anthropic-version": "2023-06-01"}
@@ -173,9 +186,31 @@ class Gateway:
         return msg, {"input": i, "output": o}, i * pin + o * pout
 
 
-def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None) -> dict[str, Any]:
+KEY_FILE = Path.home() / ".anthropic_key"
+# Anthropic's list prices (2026-10-06), per token: input, output. Haiku bills a prompt above 100K tokens at 5x; a cache
+# read costs 0.1x the input rate, a 5-minute cache write 1.25x.
+DIRECT_PRICES = {"anthropic/claude-haiku-5.5": (0.10e-6, 0.50e-6), "anthropic/claude-sonnet-5.5": (2.00e-6, 10.00e-6)}
+
+
+def direct_id(model: str) -> str:
+    """The gateway's name for a Claude model as Anthropic's id: anthropic/claude-haiku-5.5 -> claude-haiku-5-5."""
+    return model.split("/", 1)[1].replace(".", "-")
+
+
+def direct_cost(model: str, usage: dict[str, Any]) -> tuple[dict[str, int], float]:
+    fresh, read, write = (int(usage.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+    o = int(usage.get("output_tokens") or 0)
+    pin, pout = DIRECT_PRICES[model]
+    if "haiku" in model and fresh + read + write > 100_000:
+        pin, pout = pin * 5, pout * 5
+    return {"input": fresh + read + write, "output": o}, fresh * pin + read * pin * 0.1 + write * pin * 1.25 + o * pout
+
+
+def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None, direct: bool = False) -> dict[str, Any]:
     """An OpenAI chat request as an Anthropic messages request: the same prompt, turns and tools, thinking off as on the
-    OpenAI endpoint. Consecutive tool results go back in one user turn, as that API wants."""
+    OpenAI endpoint. Consecutive tool results go back in one user turn, as that API wants. Straight to Anthropic, the
+    Claude 5.5 models refuse a non-default temperature, Sonnet turns thinking off with between_tools, and the
+    conversation is cached (each turn resends the last one)."""
     out: list[dict[str, Any]] = []
     for m in messages:
         if m["role"] == "system":
@@ -193,7 +228,9 @@ def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[st
             out.append({"role": "assistant", "content": blocks})
         else:
             out.append({"role": "user", "content": m["content"]})
-    body: dict[str, Any] = {"model": model, "max_tokens": 8192, "temperature": 0, "thinking": {"type": "disabled"}, "messages": out}
+    body: dict[str, Any] = {"model": model, "max_tokens": 8192, "thinking": {"type": "between_tools" if "sonnet" in model else "disabled"},
+                            "messages": out}
+    body |= {"cache_control": {"type": "ephemeral"}} if direct else {"temperature": 0}
     if system := "\n\n".join(m["content"] for m in messages if m["role"] == "system"):
         body["system"] = system
     if tools:
