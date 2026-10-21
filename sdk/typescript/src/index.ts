@@ -155,6 +155,8 @@ export type SearchOptions<S extends string = string> = {
   exclude?: string[];
   /** evaluate rules, neighbours and facts at this instant */
   asOf?: Date | string;
+  /** read them as Keel knew them at this instant (transaction time); asOf defaults to it */
+  asKnownAt?: Date | string;
   /** only entities whose attribute or current fact has this value (or a list holding it; text without case) */
   where?: Record<string, unknown>;
 };
@@ -342,14 +344,21 @@ export class Client<S extends string = string> {
     return this.post<S[]>("/v1/search", { ...this.searchBody(text, opts), detail: "key" }).then(items);
   }
 
+  /** How many results `search` would list (`detail: "count"`), with no cap and nothing listed: "how many are blocked". */
+  count(text = "", opts: Omit<SearchOptions<S>, "detail" | "depth" | "limit" | "after" | "perKind"> = {}): Promise<number> {
+    return this.post<Array<{ count?: number }>>("/v1/search", { ...this.searchBody(text, opts), detail: "count" })
+      .then((out) => out.find((x) => typeof x?.count === "number")?.count ?? 0);
+  }
+
   /** `search` for many texts in one call: one result list per text, in order. */
   searches(texts: string[], opts: SearchOptions<S> = {}): Promise<Array<Array<Entity | Fact>>> {
     return this.post<Array<Array<Entity | Fact>>>("/v1/search", this.searchBody(texts, opts)).then((lists) => lists.map(items));
   }
 
   private searchBody(text: string | string[], opts: SearchOptions<S>) {
-    const { minScore, relatedTo, perKind, asOf, ...rest } = opts;
-    return { text, ...rest, limit: rest.limit ?? 0, min_score: minScore, related_to: relatedTo, per_kind: perKind, as_of: asOf ? iso(asOf) : undefined };
+    const { minScore, relatedTo, perKind, asOf, asKnownAt, ...rest } = opts;
+    return { text, ...rest, limit: rest.limit ?? 0, min_score: minScore, related_to: relatedTo, per_kind: perKind, as_of: asOf ? iso(asOf) : undefined,
+             as_known_at: asKnownAt ? iso(asKnownAt) : undefined };
   }
 
   /** Write earned memory. The server enforces the scope policy and the agent registry. `task` ties it to a job;

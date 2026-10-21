@@ -70,12 +70,26 @@ final class Client
      * @param array{kind?: string|list<string>, rule?: string, limit?: int, after?: string, mode?: string, min_score?: float, related_to?: string, via?: string, detail?: string, depth?: int, per_kind?: int, exclude?: list<string>, as_of?: \DateTimeInterface|string, where?: array<string, mixed>} $filter @return list<mixed> */
     public function search(string|array $text = '', array $filter = []): array
     {
-        if (isset($filter['as_of'])) {
-            $filter['as_of'] = Envelope::iso($filter['as_of']);
+        foreach (['as_of', 'as_known_at'] as $time) {
+            if (isset($filter[$time])) {
+                $filter[$time] = Envelope::iso($filter[$time]);
+            }
         }
         $filter['limit'] ??= 0;
         $out = $this->post('/v1/search', ['text' => $text] + $filter);
         return is_array($text) ? array_map(self::items(...), $out) : self::items($out);
+    }
+
+    /** How many results `search` would list (detail "count"), with no cap and nothing listed. */
+    public function count(string $text = '', array $filter = []): int
+    {
+        unset($filter['detail'], $filter['depth'], $filter['limit'], $filter['after'], $filter['per_kind']);
+        foreach ($this->search($text, $filter + ['detail' => 'count']) as $x) {
+            if (is_array($x) && isset($x['count'])) {
+                return (int) $x['count'];
+            }
+        }
+        return 0;
     }
 
     /** `$task` ties the fact to a job; `$key` makes a retried write return the first one. Returns the whole fact;

@@ -789,6 +789,7 @@ def serve(
     reranker: str | None = typer.Option(None, "--reranker", help="With --index: http, llm (KEEL_RERANK_* env vars), or pkg.module:factory."),
     cdc: Path | None = typer.Option(None, "--cdc", envvar="KEEL_CDC_MAP", help="http only: also follow Postgres tables (the `keel cdc` map; KEEL_PG_DSN), in a thread of this server; /health shows its state."),
     clock: str | None = typer.Option(None, "--clock", envvar="KEEL_CLOCK", help="Start the tools' clock at this ISO instant and let it run: a demo or a test pinned to a day, whose agents' notes land on that day too. Ingest keeps real time."),
+    max_list: int | None = typer.Option(None, "--max-list", envvar="KEEL_MAX_LIST", help="The most entries one listing returns (search, related, history) when a caller asks for all or for more; the rest is paged, and the answer says so. Unset: no ceiling, as a report or an export may want everything."),
     index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
@@ -806,6 +807,8 @@ def serve(
         from keel.tools import running_from
 
         semantic["clock"] = running_from(parse_iso(clock))
+    if max_list:
+        semantic["max_list"] = max_list
     if transport == "stdio":
         from keel.mcp_server import build_server
 

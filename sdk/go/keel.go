@@ -349,6 +349,7 @@ type SearchOptions struct {
 	PerKind                 int            // the best n of every kind: with RelatedTo and Mode "semantic", the context for a task
 	Exclude                 []string       // predicates left out of what is returned
 	AsOf                    *time.Time     // rules, neighbours and facts at this instant
+	AsKnownAt               *time.Time     // as Keel knew them at this instant (transaction time); AsOf defaults to it
 	Where                   map[string]any // only entities whose attribute or current fact has this value (or a list holding it)
 }
 
@@ -373,6 +374,9 @@ func (o SearchOptions) body(text any) map[string]any {
 	if o.AsOf != nil {
 		body["as_of"] = iso(o.AsOf)
 	}
+	if o.AsKnownAt != nil {
+		body["as_known_at"] = iso(o.AsKnownAt)
+	}
 	if len(o.Where) > 0 {
 		body["where"] = o.Where
 	}
@@ -384,6 +388,22 @@ func (o SearchOptions) body(text any) map[string]any {
 
 func (c *Client) SearchWith(ctx context.Context, o SearchOptions) ([]map[string]any, error) {
 	return postList[map[string]any](c, ctx, "/v1/search", o.body(o.Text))
+}
+
+// Count is how many results SearchWith would list (detail "count"), with no cap and nothing listed.
+// o.Detail, o.Depth, o.Limit, o.After and o.PerKind are ignored.
+func (c *Client) Count(ctx context.Context, o SearchOptions) (int, error) {
+	o.Detail, o.Depth, o.Limit, o.After, o.PerKind = "count", 0, 0, "", 0
+	out, err := postList[map[string]any](c, ctx, "/v1/search", o.body(o.Text))
+	if err != nil {
+		return 0, err
+	}
+	for _, x := range out {
+		if n, ok := x["count"].(float64); ok {
+			return int(n), nil
+		}
+	}
+	return 0, nil
 }
 
 // SearchKeys is SearchWith returning only the keys (detail "key"), each once: the cheapest listing.

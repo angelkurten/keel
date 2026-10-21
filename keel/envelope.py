@@ -22,12 +22,13 @@ def utcnow() -> datetime:
 
 
 def parse_iso(value: Any) -> datetime:
-    """ISO 8601 date or datetime to an aware UTC datetime. Accepts a trailing Z on Python 3.10 too."""
+    """ISO 8601 date or datetime to an aware UTC datetime. Accepts a trailing Z on Python 3.10 too, and a trailing " UTC"."""
     if isinstance(value, datetime):
         d = value
     else:
         try:
-            d = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            text = str(value).strip().removesuffix(" UTC")  # "2016-09-14 07:38 UTC", as people and agents write times
+            d = datetime.fromisoformat(text.replace("Z", "+00:00"))
         except ValueError:
             raise ValueError(f"'{value}' is not an ISO 8601 date or datetime, e.g. 2026-10-03 or 2026-10-03T08:00:00Z") from None
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)

@@ -244,7 +244,7 @@ SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at 
 DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools.spec(): short, and fixed so prompt caches hold
     "context": """What is true about a subject ('<kind>:<id>', or a list of them) now or at as_of: facts, relations, each rule's evaluation. depth=1 adds the neighbours. detail: brief (default; facts as {predicate: value} with `since`), concise (relations one by one), full (an audit: transaction times and ids; costly). as_known_at: what Keel knew then. task: that task's memory. exclude/only: predicates to drop/keep. watermark: the cursor for history(changed_since=).""",
     "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject, with changed_since (a watermark): the tenant's changes. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
-    "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full; depth=1 adds neighbours. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
+    "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full, count ({"count": n}, nothing listed: how many, without reading them); depth=1 adds neighbours. as_of: rules, where and facts at that instant; as_known_at: as Keel knew them then. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
     "annotate": """Record what you learned (value: any JSON). Scopes tenant and global need evidence; task ties it to a job; key makes a retry return the first write; status="proposed" waits for a person or authorized agent. Returns a receipt (detail="full": the stored fact).""",
     "related": """Neighbours of a subject, by relation (one or a list), now or at as_of. depth 2 or 3 walks further (each entry says hops and via). At most limit (0: all); a cut list starts with {"more": ...} counting each relation.""",
 }
@@ -340,9 +340,12 @@ class Tools:
     def __init__(
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
         embedder: Any = None, index: Any = None, reranker: Any = None, meter: Callable[[str, str], None] | None = None,
-        clock: Callable[[], datetime] | None = None,
+        clock: Callable[[], datetime] | None = None, max_list: int | None = None,
     ) -> None:
         self.cartridge = cartridge
+        # a deployment's ceiling on one listing (search, related, history), asked for as "all" or more; None: no ceiling.
+        # Off by default: a report or an export may want everything, and the operator decides who may (`keel serve --max-list`).
+        self.max_list = max_list
         self.now = clock or utcnow  # what "now" is for reads without as_of and for what annotate writes (running_from)
         self.store = store
         if is_global(tenant):
@@ -374,6 +377,12 @@ class Tools:
             return True
         other = r.dst if r.src == subject else r.src
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
+
+    def _ceiling(self, limit: int | None) -> int | None:
+        """`limit` under the deployment's ceiling (max_list): "all" (None or 0) or more than it becomes it."""
+        if self.max_list and (not limit or limit > self.max_list):
+            return self.max_list
+        return limit
 
     def _graph(self, now: datetime, known_at: datetime | None = None, task: str | None = None) -> _Graph:
         return _Graph(self.store, self.tenant, now, self.cartridge.calendar, self.symmetric, known_at, task, self._fetch, self._fetch_many)
@@ -595,6 +604,7 @@ class Tools:
         if task:  # only what that task wrote
             facts = [f for f in facts if f.task == task]
         total = len(facts)
+        limit = self._ceiling(limit)
         if limit:  # the most recent `limit`, still oldest first
             facts = facts[-limit:]
         out = _ser(facts)
@@ -620,6 +630,7 @@ class Tools:
         exclude: list[str] | None = None,
         as_of: Instant = None,
         where: dict[str, Any] | None = None,
+        as_known_at: Instant = None,
     ) -> list[Any]:
         """Entities and facts matching text. `mode="semantic"` ranks subjects by meaning through the
         deployment's embedder and vector index (keel.semantic): ids in the query first, then dense and
@@ -639,8 +650,10 @@ class Tools:
         direction, subject, and their facts when `detail` asks for them). `per_kind=n` returns the best n
         of every kind instead of one ranking: with `related_to` for the scope and `mode="semantic"`, the
         context a task needs in one call. `exclude` hides predicates from what is returned, and drops fact
-        hits on them; `as_of` evaluates rules, neighbours and facts at that instant. A list of texts
-        returns one result list per text, in order.
+        hits on them; `as_of` evaluates rules, neighbours and facts at that instant, and `as_known_at` as Keel
+        knew them then (transaction time; `as_of` defaults to it). `detail="count"` returns `[{"count": n}]`,
+        the number of results with no cap and nothing listed: "how many are blocked" without reading them.
+        A list of texts returns one result list per text, in order.
 
         `where={name: value}` keeps the entities whose attribute or current fact `name` is `value` (or
         a list holding it; text compares without case), in every mode: a visual by its exact title is
@@ -655,7 +668,8 @@ class Tools:
         matches; when more exist, the first entry is {"more": {shown, total, next}} (`next` says how to page)."""
         if self.meter:
             self.meter(self.tenant, "search")
-        graph = self._graph(_t(as_of) or self.now())  # shared by every text of a list: each subject's facts are read once
+        known = _t(as_known_at)
+        graph = self._graph(_t(as_of) or known or self.now(), known)  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
             return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph) for t in text]
         return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph)
@@ -665,12 +679,20 @@ class Tools:
         min_score: float | None, related_to: str | None, via: str | None, detail: str, depth: int, per_kind: int | None,
         exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph,
     ) -> list[Any]:
-        if detail not in ("key", "entity", "concise", "brief", "full"):
-            raise ValueError("search detail is 'key', 'entity', 'concise', 'brief' or 'full'")
+        if detail not in ("key", "entity", "concise", "brief", "full", "count"):
+            raise ValueError("search detail is 'key', 'entity', 'concise', 'brief', 'full' or 'count'")
         if depth not in (0, 1):
             raise ValueError("search depth is 0 or 1")
-        if detail == "key" and depth:
-            raise ValueError("detail='key' returns keys only; depth=1 needs detail 'entity' or more")
+        if detail in ("key", "count") and depth:
+            raise ValueError(f"detail='{detail}' returns no entities; depth=1 needs detail 'entity' or more")
+        if detail == "count":
+            if after is not None or per_kind is not None:
+                raise ValueError("detail='count' counts every result: no after= or per_kind=")
+            limit = 0  # count them all
+        # a request for everything, or for more than the deployment's ceiling, gets the ceiling and a marker that says so
+        ceiling = self.max_list if self.max_list and detail != "count" and (limit == 0 or (limit or 0) > self.max_list) else None
+        if ceiling:
+            limit = 0
         hide = set(exclude or ())
         if where is not None and (not isinstance(where, dict) or not where):
             raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
@@ -713,7 +735,14 @@ class Tools:
                 note, mode = "nothing contains the whole text: ranked by its words instead", "words"
                 hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        if detail == "count":
+            counted = len(dict.fromkeys(h.get("key") or h["subject"] for h in hits))  # each subject once, as detail='key' lists them
+            return [{"note": note}, {"count": counted}] if note else [{"count": counted}]
         total, cap, hint = len(hits), None, ""
+        if ceiling and total > ceiling:
+            cap, hits = ceiling, hits[:ceiling]
+            hint = (f"this server returns at most {ceiling} per call: page with after='{hits[-1].get('key') or hits[-1]['subject']}', "
+                    "narrow the search, or count with detail='count'")
         if limit is None and per_kind is None and mode in ("text", "words"):  # nobody asked for everything: cut, and say so
             listing = kinds is not None or rule is not None
             cap = LIST_CAP if listing else TEXT_CAP
@@ -1123,6 +1152,7 @@ class Tools:
         `via` (its direction is relative to that subject), ordered by hop, relation and link time. At most
         `limit` entries (None or 0: all), the nearest and most recent kept; when more exist, the first entry is
         {"more": {shown, total, omitted, by_relation, next}}."""
+        limit = self._ceiling(limit)
         if self.meter:
             self.meter(self.tenant, "related")
         if depth not in (1, 2, 3):

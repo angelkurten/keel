@@ -10,7 +10,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     GET  /v1/sdk/{language}                          -> the typed client generated from this cartridge (keel sdk)
     POST /v1/context   {subject (or a list), as_of?, depth?, exclude?, only?}  -> the context object (or a list)
     POST /v1/history   {subject, since?, until?, predicate?, scope?}
-    POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?}
+    POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?, as_known_at?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
     GET  /openapi.json, /health
@@ -137,6 +137,7 @@ def build_http_app(
     reranker: Any = None,
     ui: bool = False,
     clock: Any = None,
+    max_list: int | None = None,
     account: str | None = None,
     health_extra: dict[str, Any] | None = None,
     recent: "RecentEvents | None" = None,
@@ -168,7 +169,7 @@ def build_http_app(
             except HTTPException as exc:
                 raise PermissionError(exc.detail) from exc
 
-        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock) if tenant is not None else per_request
+        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list) if tenant is not None else per_request
         server = build_server(bound, name=f"keel:{cartridge.name}")
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
@@ -241,7 +242,7 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock)
+            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -293,6 +294,7 @@ def build_http_app(
         exclude: list[str] | None = None
         as_of: str | None = None
         where: dict[str, Any] | None = None
+        as_known_at: str | None = None
 
     class AnnotateIn(BaseModel):
         subject: str
@@ -395,7 +397,7 @@ def build_http_app(
     def search(body: SearchIn, request: Request) -> list[Any]:
         return run(lambda: tools_for(request).search(
             body.text, body.kind, body.rule, body.limit, body.after, body.mode, body.min_score, body.related_to, body.via,
-            body.detail, body.depth, body.per_kind, body.exclude, dt(body.as_of), body.where,
+            body.detail, body.depth, body.per_kind, body.exclude, dt(body.as_of), body.where, dt(body.as_known_at),
         ))
 
     @app.post("/v1/annotate")

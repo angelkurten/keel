@@ -180,12 +180,13 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
     @guarded
     def search(
         text: str | list[str] = "", kind: str | list[str] | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: Literal["text", "semantic"] = "text",
-        min_score: float | None = None, related_to: str | None = None, via: str | None = None, detail: Literal["key", "entity", "brief", "concise", "full"] = "entity", depth: int = 0,
+        min_score: float | None = None, related_to: str | None = None, via: str | None = None,
+        detail: Literal["key", "entity", "brief", "concise", "full", "count"] = "entity", depth: int = 0,
         per_kind: int | None = None, exclude: list[str] | None = None, as_of: str | None = None,
-        where: dict[str, Any] | None = None,
+        where: dict[str, Any] | None = None, as_known_at: str | None = None,
         ctx: Context | None = None,
     ) -> list[Any]:
-        out = bound(ctx).search(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, _dt(as_of), where)
+        out = bound(ctx).search(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, _dt(as_of), where, _dt(as_known_at))
         if detail != "entity":
             return out
         lean = lambda hits: [_lean(h) if isinstance(h, dict) and "predicate" in h else h for h in hits]  # an agent reads fact hits without bookkeeping

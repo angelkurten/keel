@@ -393,6 +393,36 @@ def test_a_late_event_keeps_its_own_time_and_still_reaches_the_change_feed(store
     assert [f["value"] for f in now["facts"] if f["predicate"] == "depth_mm"] == [2.6]
 
 
+def test_search_counts_lists_as_known_and_takes_times_as_people_write_them(store):
+    """detail="count" says how many without listing; as_known_at reads a listing as Keel knew it; "... UTC" is a time."""
+    c = load_cartridge(FLEET)
+    late = datetime(2026, 10, 10, tzinfo=UTC)  # the 2.6 mm reading of Oct 3 reached the source on Oct 10
+    Ingestor(c, store).ingest(_declared(JsonlAdapter(EVENTS), late=late), strict=True)
+    t = Tools(c, store, TENANT)
+    assert t.search(kind="tire", detail="count") == [{"count": len(t.search(kind="tire", detail="key", limit=0))}]
+    assert t.search(rule="tire_critical", detail="count") == [{"count": 1}]
+    on = "2026-10-05 12:00 UTC"  # as the benchmark's questions write it, and agents copy it
+    assert t.search(rule="tire_critical", as_of=on, detail="key") == ["tire:T-9001"]
+    assert t.search(rule="tire_critical", as_of=on, as_known_at="2026-10-08 00:00 UTC", detail="key") == []  # not known yet
+    assert t.search(kind="tire", where={"depth_mm": 5.2}, as_of=on, as_known_at="2026-10-08T00:00:00Z", detail="key") == ["tire:T-9001"]
+    with pytest.raises(ValueError):
+        t.search(kind="tire", detail="count", depth=1)
+
+
+def test_a_deployment_may_cap_listings_and_says_so(store):
+    """max_list: "all" (or more than the ceiling) returns the ceiling and a marker; unset, nothing changes."""
+    c = load_cartridge(FLEET)
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    every = Tools(c, store, TENANT).search(text="", kind=["unit", "tire", "ticket", "document", "inspection"], detail="key", limit=0)
+    assert len(every) > 3 and not any(isinstance(x, dict) for x in every)
+    capped = Tools(c, store, TENANT, max_list=3)
+    out = capped.search(text="", kind=["unit", "tire", "ticket", "document", "inspection"], detail="key", limit=0)
+    assert out[0]["more"]["shown"] == 3 and out[0]["more"]["total"] == len(every) and "at most 3" in out[0]["more"]["next"] and out[1:] == every[:3]
+    assert capped.search(text="", kind=["unit", "tire", "ticket", "document", "inspection"], detail="count") == [{"count": len(every)}]  # a count is never capped
+    assert len([h for h in capped.history("tire:T-9001", limit=0) if "more" not in h]) <= 3
+    assert len([r for r in capped.related("unit:MXK-4821", limit=0) if "more" not in r]) <= 3
+
+
 def test_task_ids_scope_memory_and_close_with_the_task(store):
     c = load_cartridge(FLEET)
     Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)

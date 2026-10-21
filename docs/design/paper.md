@@ -135,3 +135,12 @@ The pilot with Haiku on MariaDB saturated: Keel, RAG and the API each answered 1
 `tenant`, 24 per tenant, appended last so the 315 earlier questions keep their text and gold (checked): which issues had a status at an instant (6), how many were in progress (4, a count), where a rule held (6), which changed a field in a window (4), and which had a status as recorded by a later instant (4, over an injected window). Instants keep an hour from every change in the tenant; set answers hold 1 to 41 keys. Keel's primitives agree on all 72 (`search(rule=, as_of=)` for the rule listings).
 
 Fairness: the API gets what Jira's JQL offers for history, `<field> WAS <value> ON <instant>` and `<field> CHANGED DURING (<from>, <until>)`, as filters on `search_issues`; with them it answers the 42 status, count and change questions exactly (checked without an agent). What neither the API nor Keel has a primitive for is reported as found: the API has no rule evaluation and no transaction time, and Keel's `search` has no `as_known_at` and no tenant-wide listing of changes in a world-time window.
+
+### Core changes after the pilot (2026-10-20, decided with Angel)
+
+From the pilot's Keel transcripts: agents copied times as the questions write them ("2016-09-14 07:38 UTC"), which Keel refused (3 of 172 calls); on tenant-wide questions they began by listing every issue with its facts (`search(kind="issue", detail="brief", limit=0)`, 80k to 250k tokens) to count or to orient, then made the right call (`search(where=..., as_of=...)`, 8 to 120 tokens); and `search` had no `as_known_at`, so a set "as recorded by K" was approximated. Changes, each with a conformance test, all reruns of Keel to come in the full run:
+
+- Every time argument takes a trailing " UTC".
+- `search(detail="count")` returns `[{"count": n}]`, no cap, nothing listed.
+- `search(as_known_at=...)`, as `context` and `history` have it.
+- A deployment's ceiling on one listing (`max_list`, `keel serve --max-list`), off by default: a report or an export may want everything, and the operator decides; the paper measures Keel with it off.
