@@ -33,7 +33,8 @@ from evals.jira.bench import log, record
 BASE = "https://api.ofox.ai/v1"
 # when the extractor's provider refuses an extraction prompt (OpenAI's filter refuses some harmless Jira text that
 # Haiku and DeepSeek accept, seen 2026-10-20), that one event is extracted with this model instead, and recorded
-FALLBACK = "anthropic/claude-haiku-5.5"
+FALLBACKS = ("anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017")  # in order; a model that is down is skipped
+FALLBACK = FALLBACKS[0]
 COOL_DOWN = 30  # seconds after a refusal: a burst of refusals trips the gateway's circuit breaker
 EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
 NEO4J = ("bolt://localhost:7699", "neo4j", "benchpass")
@@ -118,23 +119,18 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
             outcome = None
             if refused_last:
                 await asyncio.sleep(COOL_DOWN)
-                g.llm_client.model, g.llm_client.small_model = FALLBACK, FALLBACK
+
+                def use(name: str) -> None:
+                    g.llm_client.model, g.llm_client.small_model = name, name
+
+                async def add(e: dict[str, Any] = e) -> None:
+                    await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
+                                        reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
+
                 try:
-                    for wait in backoff():  # the fallback meets the same rate limit as the first try
-                        try:
-                            await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
-                                                reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
-                            outcome = "fallback"
-                            break
-                        except Exception as exc:
-                            if refused(exc):
-                                outcome = "content_filter"
-                                break
-                            if not limited(exc, wait):
-                                raise
-                            await asyncio.sleep(wait)
+                    outcome = await fallback_async(add, use)
                 finally:
-                    g.llm_client.model, g.llm_client.small_model = model, model
+                    use(model)
             note(progress, e, before, meter, start, skipped=outcome)
     finally:
         await g.close()
@@ -203,23 +199,15 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
         outcome = None
         if refused_last:
             time.sleep(COOL_DOWN)
-            m.llm.config.model = FALLBACK
+
+            def use(name: str) -> None:
+                m.llm.config.model = name
+
             try:
-                for wait in backoff():  # the fallback meets the same rate limit as the first try
-                    try:
-                        m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
-                              metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
-                        outcome = "fallback"
-                        break
-                    except Exception as exc:
-                        if refused(exc):
-                            outcome = "content_filter"
-                            break
-                        if not limited(exc, wait):
-                            raise
-                        time.sleep(wait)
+                outcome = fallback_sync(lambda e=e: m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
+                                                      metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]}), use)
             finally:
-                m.llm.config.model = model
+                use(model)
         note(progress, e, before, meter, start, skipped=outcome)
 
 
@@ -262,6 +250,56 @@ def refused(exc: Exception) -> bool:
 OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account")  # the gateway's upstream account, down for a while
 
 
+def fallback_sync(add: Any, use: Any) -> str:
+    """Extract one refused event with the FALLBACKS in order: a model the filter refuses, or one that is down, is passed
+    over for the next; only when every one is down at once does it wait. Returns `fallback:<model>`, or
+    `content_filter` when every model refused it (not stored)."""
+    refused_by: set[str] = set()
+    for wait in backoff():
+        for name in FALLBACKS:
+            if name in refused_by:
+                continue
+            use(name)
+            try:
+                add()
+                return f"fallback:{name}"
+            except Exception as exc:
+                if refused(exc):
+                    refused_by.add(name)
+                elif not transient(exc):
+                    raise
+        if len(refused_by) == len(FALLBACKS):
+            return "content_filter"
+        if not wait:
+            raise RuntimeError("every fallback model stayed down")
+        time.sleep(wait)
+    return "content_filter"
+
+
+async def fallback_async(add: Any, use: Any) -> str:
+    """fallback_sync for Graphiti's async writes."""
+    refused_by: set[str] = set()
+    for wait in backoff():
+        for name in FALLBACKS:
+            if name in refused_by:
+                continue
+            use(name)
+            try:
+                await add()
+                return f"fallback:{name}"
+            except Exception as exc:
+                if refused(exc):
+                    refused_by.add(name)
+                elif not transient(exc):
+                    raise
+        if len(refused_by) == len(FALLBACKS):
+            return "content_filter"
+        if not wait:
+            raise RuntimeError("every fallback model stayed down")
+        await asyncio.sleep(wait)
+    return "content_filter"
+
+
 def transient(exc: Exception) -> bool:
     """A rate limit (429), or the gateway's upstream accounts down (OpenAI deactivated, Anthropic not allowed, a
     circuit breaker; each came and went on 2026-10-20): waited out, never counted against a system."""
@@ -274,7 +312,7 @@ def note(progress: Path, e: dict[str, Any], before: tuple[int, int, int], meter:
     refused_last = False
     row = {"id": e["id"], "calls": meter.calls - before[0], "input": meter.input - before[1], "output": meter.output - before[2],
            "seconds": round(time.monotonic() - start, 2)}
-    with progress.open("a") as fh:  # "fallback": extracted by FALLBACK after a refusal; "content_filter": refused by both, not stored
+    with progress.open("a") as fh:  # "fallback[:<model>]": extracted by a fallback after a refusal; "content_filter": refused by all, not stored
         fh.write(json.dumps(row | ({"refused": skipped} if skipped else {})) + "\n")
 
 
@@ -305,7 +343,9 @@ def main() -> None:
     if rows:
         n = len(rows)
         refusals = [r.get("refused") for r in rows if r.get("refused")]
-        print(f"{n} events ingested ({refusals.count('fallback')} extracted by {FALLBACK} after a refusal, {refusals.count('content_filter')} not stored): "
+        fell = [x for x in refusals if x.startswith("fallback")]
+        print(f"{n} events ingested ({len(fell)} extracted by a fallback after a refusal: { {x: fell.count(x) for x in set(fell)} }; "
+              f"{refusals.count('content_filter')} not stored): "
               f"{sum(r['calls'] for r in rows) / n:.1f} LLM calls, "
               f"{sum(r['input'] for r in rows) / n:.0f} input and {sum(r['output'] for r in rows) / n:.0f} output tokens, {sum(r['seconds'] for r in rows) / n:.1f} s per event")
 
