@@ -346,25 +346,32 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                 args = json.loads(t["function"]["arguments"])
             except ValueError:
                 args = {}
-            error = False
-            try:
-                if system == "keel":
-                    text, _, error, _ = call(server, name, args)
-                elif system == "rag":
-                    text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
-                elif system == "tgms":
-                    text = tgms_system.call(data, tenant, name, args)
-                elif system in ("graphiti", "mem0"):
-                    from evals.jira import memories
+            from evals.jira.memories import backoff, delay, transient
 
-                    k = min(int(args.get("k") or 15), 50)
-                    hits = (memories.graphiti_search(tenant, EXTRACTOR, str(args.get("query", "")), k) if system == "graphiti"
-                            else memories.mem0_search(data, tenant, EXTRACTOR, str(args.get("query", "")), k))
-                    text = json.dumps(hits, ensure_ascii=False)
-                else:
-                    text = json.dumps(apis[tenant].call(name, args), ensure_ascii=False)
-            except Exception as exc:  # noqa: BLE001 - a bad argument is the agent's to read, as a real tool would say it
-                text, error = json.dumps({"error": f"{type(exc).__name__}: {exc}"}), True
+            for wait in backoff():  # a rate limit or gateway outage under a search is waited out, never shown to the agent
+                error = False
+                try:
+                    if system == "keel":
+                        text, _, error, _ = call(server, name, args)
+                    elif system == "rag":
+                        text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
+                    elif system == "tgms":
+                        text = tgms_system.call(data, tenant, name, args)
+                    elif system in ("graphiti", "mem0"):
+                        from evals.jira import memories
+
+                        k = min(int(args.get("k") or 15), 50)
+                        hits = (memories.graphiti_search(tenant, EXTRACTOR, str(args.get("query", "")), k) if system == "graphiti"
+                                else memories.mem0_search(data, tenant, EXTRACTOR, str(args.get("query", "")), k))
+                        text = json.dumps(hits, ensure_ascii=False)
+                    else:
+                        text = json.dumps(apis[tenant].call(name, args), ensure_ascii=False)
+                except Exception as exc:  # noqa: BLE001 - a bad argument is the agent's to read, as a real tool would say it
+                    if wait and transient(exc):
+                        time.sleep(delay(exc, wait))
+                        continue
+                    text, error = json.dumps({"error": f"{type(exc).__name__}: {exc}"}), True
+                break
             errors += bool(error)
             calls.append({"tool": name, "args": args, "tokens": tokens(text), "error": bool(error)})
             messages.append({"role": "tool", "tool_call_id": t["id"], "content": text})
