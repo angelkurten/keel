@@ -3,6 +3,7 @@
 import json
 import shutil
 import sys
+from dataclasses import replace
 
 import pytest
 
@@ -107,3 +108,19 @@ def test_mcp_server_is_bound_to_one_agent(tmp_path):
             assert is_error and "may not read kind 'ticket'" in res.content[0].text
 
     anyio.run(run)
+
+
+def test_declared_evidence_must_be_an_applied_event_or_a_declared_ref():
+    c, s = _fleet_with_agents()
+    open_tools = Tools(load_cartridge(FLEET), s, TENANT, agent="anyone")
+    open_tools.annotate("tire:T-9001", "depth_mm", 9.9, scope="tenant", evidence="trust-me")  # undeclared: any string, as before
+    c.policy = replace(c.policy, evidence=("event", "photo:"))
+    copilot = Tools(c, s, TENANT, agent="fleet-copilot")
+    event_id = copilot.history("tire:T-9001", predicate="depth_mm", detail="full")[0]["evidence"]
+    with pytest.raises(PermissionError, match="not one this cartridge accepts"):
+        copilot.annotate("tire:T-9001", "depth_mm", 1.0, scope="tenant", evidence="trust-me")
+    with pytest.raises(PermissionError, match="not one this cartridge accepts"):  # another tenant's event is no evidence here
+        Tools(c, s, "other-tenant", agent="fleet-copilot").annotate("tire:T-9001", "depth_mm", 1.0, scope="tenant", evidence=event_id)
+    assert copilot.annotate("tire:T-9001", "depth_mm", 2.5, scope="tenant", evidence=event_id)["value"] == 2.5
+    assert copilot.annotate("tire:T-9001", "depth_mm", 2.4, scope="tenant", evidence="photo:12")["value"] == 2.4
+    assert copilot.annotate("tire:T-9001", "note", "x", scope="task")["value"] == "x"  # task needs no evidence

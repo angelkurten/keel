@@ -13,6 +13,7 @@ intent, and expiry is enforced here, not trusted to each agent.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
@@ -51,6 +52,9 @@ class MemoryPolicy:
 
     ttl: dict[Scope, timedelta | None]
     requires_evidence: set[Scope]
+    # what counts as evidence where it is required: "event" (an event id this tenant's log applied) or a
+    # ref prefix ("photo:", "human:"). None: any non-empty string, as before
+    evidence: tuple[str, ...] | None = None
 
     @classmethod
     def default(cls) -> MemoryPolicy:
@@ -64,8 +68,19 @@ class MemoryPolicy:
             requires_evidence={Scope.GLOBAL, Scope.TENANT},
         )
 
-    def check_write(self, scope: Scope, evidence: str | None) -> None:
-        if scope in self.requires_evidence and not evidence:
+    def check_write(self, scope: Scope, evidence: str | None, applied: Callable[[str], bool] = lambda _: False) -> None:
+        """`applied` says whether an event id is in the writer's log."""
+        if scope not in self.requires_evidence:
+            return
+        if not evidence:
             raise PermissionError(
                 f"writing to scope '{scope.value}' requires evidence (an event id, a row ref, or a human correction)"
             )
+        if self.evidence is None:
+            return
+        if ("event" in self.evidence and applied(evidence)) or any(evidence.startswith(p) for p in self.evidence if p != "event"):
+            return
+        raise PermissionError(
+            f"evidence '{evidence}' for scope '{scope.value}' is not one this cartridge accepts: "
+            + ", ".join("an applied event id" if p == "event" else f"a '{p}' ref" for p in self.evidence)
+        )

@@ -159,6 +159,7 @@ class Cartridge:
             "memory": {
                 "ttl": {s.value: (None if d is None else d.total_seconds()) for s, d in self.policy.ttl.items()},
                 "requires_evidence": sorted(s.value for s in self.policy.requires_evidence),
+                **({"evidence": list(self.policy.evidence)} if self.policy.evidence is not None else {}),
             },
         }
 
@@ -196,7 +197,8 @@ def _policy_from(raw: dict[str, Any] | None) -> MemoryPolicy:
     for k, v in (raw.get("ttl") or {}).items():
         ttl[Scope(k)] = _parse_ttl(v)
     req = {Scope(s) for s in raw.get("requires_evidence", [s.value for s in base.requires_evidence])}
-    return MemoryPolicy(ttl=ttl, requires_evidence=req)
+    ev = raw.get("evidence")
+    return MemoryPolicy(ttl=ttl, requires_evidence=req, evidence=None if ev is None else tuple(str(e) for e in ev))
 
 
 def _load_registry(path: Path) -> HandlerRegistry:
