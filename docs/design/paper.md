@@ -151,3 +151,19 @@ From the pilot's Keel transcripts: agents copied times as the questions write th
 ### TGMS, on the pilot only (2026-10-20, decided with Angel: no budget for more)
 
 TGMS 0.8.0 (`evals/jira/tgms_system.py`) answered 18 of MariaDB's 24 tenant questions with Luna before the spending brake stopped it: 7 correct (39%), 1.22M input tokens a question on average (one question 4.4M), 2.22 USD for the 18 (the brake was 1.50; runs in flight finished). By subtype: status at an instant 4/6, counts 1/4, rule listings 1/6, changes 1/2. Keel with the 200 ceiling on the same questions: 22/24, 21k tokens a question. TGMS loads MariaDB in 2 s with no LLM, as Keel does; its cost is on the read side, its tools return large results. It is not run further (no Haiku, no other tenant, no full run) for lack of budget; the paper reports this pilot as a bounded comparison, says the load was ours (offered to its author for review), and that "as recorded by" questions cannot be answered natively by it.
+
+### The full run: plan B (decided with Angel, 2026-10-20)
+
+Costs per question measured in the pilot, times 3 tenants and 2 agents (Luna, Haiku). Three repetitions where the comparison is close, one where the gap is far larger than run-to-run noise; confidence intervals by bootstrap over questions. MariaDB pilot runs of systems that did not change since count as their first repetition.
+
+| System | Questions | Reps | USD |
+| --- | --- | --- | --- |
+| Keel (as installed) | one-issue and tenant | 3 | 10.13 |
+| API (JQL) | one-issue and tenant | 3 | 4.74 |
+| RAG | one-issue | 3 | 1.06 |
+| RAG | tenant | 1 | 6.57 |
+| Keel with --max-list 200 (ablation) | tenant | 1 | 0.52 |
+| Graphiti, Mem0 | one-issue | 1 | 0.70 |
+| Closed book | all | 1 | 0.10 |
+
+About 24 USD, plus ~4 USD to finish the Graphiti and Mem0 ingests; ~10.5 USD spent by 2026-10-20 (TGMS 2.22 of it, not run further). Plan A (three repetitions of everything) was 39.60 USD; plan C (one of everything) 13.20.
