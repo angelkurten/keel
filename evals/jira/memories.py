@@ -249,7 +249,7 @@ def refused(exc: Exception) -> bool:
     return refused_last
 
 
-OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account")  # the gateway's upstream account, down for a while
+OUTAGES = ("has been deactivated", "circuit breaker", "not allowed for this account", "protocol_not_supported")  # the gateway's upstream account, down for a while
 
 
 def fallback_sync(add: Any, use: Any) -> str:
