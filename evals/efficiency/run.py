@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import statistics
 import sys
 import time
@@ -109,6 +110,15 @@ def chat_tools() -> list[dict[str, Any]]:
             for t in tool_list(build_server(Tools(cart, store, tenant="acme-logistics")))]
 
 
+def pause(headers: Any = None) -> float:
+    """Seconds to wait after a 429. The gateway counts requests per minute, team-wide, so a slot frees within seconds:
+    its retry-after, else 1-3 s with jitter (a long backoff only idles while other clients take the slots)."""
+    try:
+        return float((headers or {}).get("retry-after"))
+    except (TypeError, ValueError):
+        return random.uniform(1, 3)
+
+
 class Gateway:
     def __init__(self) -> None:
         import httpx
@@ -136,7 +146,7 @@ class Gateway:
                 continue
             if r.status_code < 500 and r.status_code != 429:
                 break
-            time.sleep(min(60, 5 * 2**attempt))
+            time.sleep(pause(r.headers) if r.status_code == 429 else min(60, 5 * 2**attempt))
         if r.status_code >= 400:
             raise RuntimeError(f"{model} answered {r.status_code}: {r.text[:300]}")
         data = r.json()

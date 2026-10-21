@@ -42,7 +42,7 @@ from typing import Any
 
 import numpy as np
 
-from evals.efficiency.run import Gateway, call, tokens, tool_list
+from evals.efficiency.run import Gateway, call, pause, tokens, tool_list
 from keel import Ingestor, MemoryStore, Tools, load_cartridge, mcp_server
 from keel.envelope import Event
 from keel.mcp_server import build_server
@@ -189,7 +189,7 @@ def embed(gw: Gateway, texts: list[str]) -> list[list[float]]:
                              headers=gw.auth, timeout=120)
             if r.status_code != 429 and r.status_code < 500:
                 break
-            time.sleep(min(60, 5 * 2**attempt))
+            time.sleep(pause(r.headers) if r.status_code == 429 else min(60, 5 * 2**attempt))
         r.raise_for_status()
         out += [d["embedding"] for d in sorted(r.json()["data"], key=lambda d: d["index"])]
     return out
@@ -463,7 +463,7 @@ def main() -> None:
         q, s, m, r = job
         if a.max_usd is not None and spent[0] >= a.max_usd:
             return  # over budget: the rest is left for a rerun to pick up
-        from evals.jira.memories import OUTAGES, backoff, transient
+        from evals.jira.memories import OUTAGES, backoff, delay, transient
 
         for wait in backoff():  # a gateway outage (429, or its upstream account down for a while) waits it out
             try:
@@ -471,7 +471,7 @@ def main() -> None:
                 break
             except Exception as exc:  # noqa: BLE001 - a run that ends in an error is a wrong answer, recorded with its error
                 if wait and transient(exc):
-                    time.sleep(wait)
+                    time.sleep(delay(exc, wait))
                     continue
                 print(f"  {q['id']} {s} {m}: {type(exc).__name__}: {str(exc)[:300]}")
                 if any(o in str(exc) for o in OUTAGES):

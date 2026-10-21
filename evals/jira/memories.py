@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from evals.efficiency.run import pause
 from evals.jira.bench import log, record
 
 BASE = "https://api.ofox.ai/v1"
@@ -115,7 +116,7 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
                         break
                     if not limited(exc, wait):
                         raise
-                    await asyncio.sleep(wait)
+                    await asyncio.sleep(delay(exc, wait))
             outcome = None
             if refused_last:
                 await asyncio.sleep(COOL_DOWN)
@@ -195,7 +196,7 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
                     break
                 if not limited(exc, wait):
                     raise
-                time.sleep(wait)
+                time.sleep(delay(exc, wait))
         outcome = None
         if refused_last:
             time.sleep(COOL_DOWN)
@@ -225,7 +226,8 @@ def mem0_search(data: Path, tenant: str, model: str, query: str, k: int) -> list
 
 
 def backoff() -> list[float]:
-    """Waits between attempts at one event, ~35 minutes in all; the last raises."""
+    """Waits between attempts at one event when the gateway's upstream is down, ~35 minutes in all; the last raises.
+    A rate limit waits only delay()'s few seconds per attempt."""
     return [5, 10, 20, 40] + [60] * 34 + [0]
 
 
@@ -255,6 +257,7 @@ def fallback_sync(add: Any, use: Any) -> str:
     over for the next; only when every one is down at once does it wait. Returns `fallback:<model>`, or
     `content_filter` when every model refused it (not stored)."""
     refused_by: set[str] = set()
+    last: Exception | None = None
     for wait in backoff():
         for name in FALLBACKS:
             if name in refused_by:
@@ -268,17 +271,19 @@ def fallback_sync(add: Any, use: Any) -> str:
                     refused_by.add(name)
                 elif not transient(exc):
                     raise
+                last = exc
         if len(refused_by) == len(FALLBACKS):
             return "content_filter"
         if not wait:
             raise RuntimeError("every fallback model stayed down")
-        time.sleep(wait)
+        time.sleep(delay(last, wait))
     return "content_filter"
 
 
 async def fallback_async(add: Any, use: Any) -> str:
     """fallback_sync for Graphiti's async writes."""
     refused_by: set[str] = set()
+    last: Exception | None = None
     for wait in backoff():
         for name in FALLBACKS:
             if name in refused_by:
@@ -292,12 +297,20 @@ async def fallback_async(add: Any, use: Any) -> str:
                     refused_by.add(name)
                 elif not transient(exc):
                     raise
+                last = exc
         if len(refused_by) == len(FALLBACKS):
             return "content_filter"
         if not wait:
             raise RuntimeError("every fallback model stayed down")
-        await asyncio.sleep(wait)
+        await asyncio.sleep(delay(last, wait))
     return "content_filter"
+
+
+def delay(exc: Exception | None, wait: float) -> float:
+    """The wait before retrying after `exc`: backoff()'s long `wait` for an outage, a few seconds for a rate limit."""
+    if exc is None or any(o in str(exc) for o in OUTAGES):
+        return wait
+    return pause(getattr(getattr(exc, "response", None), "headers", None))
 
 
 def transient(exc: Exception) -> bool:
