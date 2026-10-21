@@ -1,0 +1,14 @@
+[10/20/26 21:10:27] INFO     Tool 'search' failed: "Error          server.py:453
+                             executing tool search: unknown rule                
+                             '' The rules are: blocked, stalled,                
+                             urgent_unassigned"                                 
+[10/20/26 21:14:51] INFO     Tool 'history' failed: 'Error         server.py:453
+                             executing tool history: history needs              
+                             a subject, or for the whole tenant                 
+                             changed_since (a watermark) or                     
+                             since/until (world time)'                          
+24 runs (0 already in evals/jira/results/pilot-mariadb-tenant-keel-max200.jsonl)
+model                            system     n   acc parsed calls  in tok     usd
+openai/gpt-6-luna                keel      24  0.92   0.92   6.3   21219   0.059
+accuracy by type:    tenant
+keel                   0.92

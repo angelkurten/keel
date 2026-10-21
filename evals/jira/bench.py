@@ -15,6 +15,7 @@ happened and when it was recorded, corrections included), in its best ordinary f
 - closed: no tools: what the model knows of these public trackers from training (a contamination control).
 - graphiti, mem0: search over what their LLM extractor made of the log (evals/jira/memories.py; they ingest the
           subset the questions touch, and --subset gives every other system the same subset).
+- tgms:   TGMS 0.8.0's own tools over the log loaded into its bi-temporal graph (evals/jira/tgms_system.py).
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -67,6 +68,7 @@ TOOLS_TEXT = {
     "closed": "You have no tools: answer from what you know.",
     "graphiti": "The project's history is in a temporal knowledge graph (Graphiti), searchable through search_memory: facts with when they became and stopped being true.",
     "mem0": "The project's history is in a memory store (Mem0), searchable through search_memory: memories with when the change happened and when it was recorded.",
+    "tgms": "",  # filled from evals.jira.tgms_system on first use
 }
 MEMORY_TOOLS = [{"type": "function", "function": {
     "name": "search_memory", "description": "Search the project's memory for facts relevant to a query.",
@@ -313,8 +315,15 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     if server is not None:
         tools_text += "\n\n" + mcp_server.instructions(keel_cartridge())
     prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
+    if system == "tgms":
+        from evals.jira import tgms_system
+
+        tools_text = tgms_system.TOOLS_TEXT
+        prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
-             "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS}[system]
+             "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None}[system]
+    if system == "tgms":
+        tools = tgms_system.tools()
     messages: list[dict[str, Any]] = [{"role": "system", "content": prompt}, {"role": "user", "content": q["question"]}]
     used, cost, calls, errors, reply, start = {"input": 0, "output": 0}, 0.0, [], 0, "", time.monotonic()
     for _ in range(max_steps):
@@ -341,6 +350,8 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                     text, _, error, _ = call(server, name, args)
                 elif system == "rag":
                     text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
+                elif system == "tgms":
+                    text = tgms_system.call(data, tenant, name, args)
                 elif system in ("graphiti", "mem0"):
                     from evals.jira import memories
 
@@ -423,6 +434,7 @@ def main() -> None:
     ap.add_argument("--subset", action="store_true", help="every system reads only the issues the questions touch")
     ap.add_argument("--extractor", default=EXTRACTOR, help="the model Graphiti and Mem0 ingested with")
     ap.add_argument("--keel-max-list", type=int, help="Keel's listing ceiling (keel serve --max-list), an ablation; unset: Keel as installed")
+    ap.add_argument("--max-usd", type=float, help="stop starting runs once this invocation has spent this much")
     a = ap.parse_args()
     SUBSET, EXTRACTOR, KEEL_MAX_LIST = a.subset, a.extractor, a.keel_max_list
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -445,9 +457,12 @@ def main() -> None:
     jobs = [(q, s, m, r) for r in range(a.reps) for m in models for s in systems for q in questions if (q["id"], s, m, r) not in done]
     print(f"{len(jobs)} runs ({len(done)} already in {a.out})")
     lock = Lock()
+    spent = [0.0]
 
     def run(job: tuple[dict[str, Any], str, str, int]) -> None:
         q, s, m, r = job
+        if a.max_usd is not None and spent[0] >= a.max_usd:
+            return  # over budget: the rest is left for a rerun to pick up
         from evals.jira.memories import OUTAGES, backoff, transient
 
         for wait in backoff():  # a gateway outage (429, or its upstream account down for a while) waits it out
@@ -467,6 +482,9 @@ def main() -> None:
                 break
         with lock, a.out.open("a") as fh:
             fh.write(json.dumps(res, ensure_ascii=False, default=str) + "\n")
+            spent[0] += res["cost_usd"]
+            if a.max_usd is not None and spent[0] >= a.max_usd:
+                print(f"  budget reached: {spent[0]:.2f} USD of {a.max_usd:.2f}; the remaining runs are left for a rerun")
 
     with ThreadPoolExecutor(a.workers) as pool:
         list(pool.map(run, jobs))
