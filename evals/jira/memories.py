@@ -34,7 +34,9 @@ from evals.jira.bench import log, record
 BASE = "https://api.ofox.ai/v1"
 # when the extractor's provider refuses an extraction prompt (OpenAI's filter refuses some harmless Jira text that
 # Haiku and DeepSeek accept, seen 2026-10-20), that one event is extracted with this model instead, and recorded
-FALLBACKS = ("anthropic/claude-haiku-5.5", "deepseek/deepseek-v4.1-flash-1017")  # in order; a model that is down is skipped
+# in order; a model that is down is skipped. Haiku extracted Mem0's first refusals; since 2026-10-20 the gateway serves
+# Claude only on its Anthropic protocol, which Graphiti's and Mem0's OpenAI clients do not speak, so it is gone
+FALLBACKS = ("deepseek/deepseek-v4.1-flash-1017",)
 FALLBACK = FALLBACKS[0]
 COOL_DOWN = 30  # seconds after a refusal: a burst of refusals trips the gateway's circuit breaker
 EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
