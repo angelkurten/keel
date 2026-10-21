@@ -36,8 +36,10 @@ NEO4J = ("bolt://localhost:7699", "neo4j", "benchpass")
 
 
 def subset(data: Path, tenant: str) -> list[dict[str, Any]]:
-    """The events of the issues the questions ask about and of the issues linked to them, in log order."""
-    asked = {q["params"]["subject"] for q in json.loads((data / f"{tenant}.questions.json").read_text())}
+    """The events of the issues the one-issue questions ask about and of the issues linked to them, in log order.
+    Questions over the whole tenant need the whole log, which these systems cannot ingest at a reasonable cost
+    (~134 hours for Graphiti); they are measured on Keel, RAG and the API only, and the paper says so."""
+    asked = {q["params"]["subject"] for q in json.loads((data / f"{tenant}.questions.json").read_text()) if "subject" in q["params"]}
     events = log(data, tenant)
     keep = set(asked)
     for e in events:
@@ -104,10 +106,12 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
                                         reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
                     break
                 except Exception as exc:
+                    if refused(exc):
+                        break
                     if not limited(exc, wait):
                         raise
                     await asyncio.sleep(wait)
-            note(progress, e, before, meter, start)
+            note(progress, e, before, meter, start, skipped="content_filter" if refused_last else None)
     finally:
         await g.close()
 
@@ -167,10 +171,12 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
                       metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
                 break
             except Exception as exc:
+                if refused(exc):
+                    break
                 if not limited(exc, wait):
                     raise
                 time.sleep(wait)
-        note(progress, e, before, meter, start)
+        note(progress, e, before, meter, start, skipped="content_filter" if refused_last else None)
 
 
 _mem0_cache: dict[tuple[str, str], Any] = {}
@@ -198,15 +204,29 @@ def limited(exc: Exception, wait: float) -> bool:
     return wait > 0 and (transient(exc) or type(exc).__name__ == "RateLimitError")
 
 
+refused_last = False  # whether the last event was refused; one ingest per process, so a module flag is enough
+
+
+def refused(exc: Exception) -> bool:
+    """The provider's content filter refused the extraction prompt (it carries memories retrieved for context, so a
+    harmless event can trip it). The event is recorded as not stored, and the ingest goes on: a loss to measure."""
+    global refused_last
+    refused_last = "content safety" in str(exc) or "content_filter" in str(exc)
+    return refused_last
+
+
 def transient(exc: Exception) -> bool:
     return "429" in str(exc) or "has been deactivated" in str(exc)
 
 
 
-def note(progress: Path, e: dict[str, Any], before: tuple[int, int, int], meter: Meter, start: float) -> None:
+def note(progress: Path, e: dict[str, Any], before: tuple[int, int, int], meter: Meter, start: float, skipped: str | None = None) -> None:
+    global refused_last
+    refused_last = False
+    row = {"id": e["id"], "calls": meter.calls - before[0], "input": meter.input - before[1], "output": meter.output - before[2],
+           "seconds": round(time.monotonic() - start, 2)}
     with progress.open("a") as fh:
-        fh.write(json.dumps({"id": e["id"], "calls": meter.calls - before[0], "input": meter.input - before[1], "output": meter.output - before[2],
-                             "seconds": round(time.monotonic() - start, 2)}) + "\n")
+        fh.write(json.dumps(row | ({"skipped": skipped} if skipped else {})) + "\n")
 
 
 def main() -> None:
@@ -235,8 +255,8 @@ def main() -> None:
     rows = [json.loads(line) for line in progress.open()] if progress.exists() else []
     if rows:
         n = len(rows)
-        print(f"{n} events ingested: {sum(r['calls'] for r in rows) / n:.1f} LLM calls, {sum(r['input'] for r in rows) / n:.0f} input and "
-              f"{sum(r['output'] for r in rows) / n:.0f} output tokens, {sum(r['seconds'] for r in rows) / n:.1f} s per event")
+        print(f"{n} events ingested ({sum('skipped' in r for r in rows)} refused by the content filter): {sum(r['calls'] for r in rows) / n:.1f} LLM calls, "
+              f"{sum(r['input'] for r in rows) / n:.0f} input and {sum(r['output'] for r in rows) / n:.0f} output tokens, {sum(r['seconds'] for r in rows) / n:.1f} s per event")
 
 
 if __name__ == "__main__":
