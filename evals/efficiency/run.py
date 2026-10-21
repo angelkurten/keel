@@ -160,11 +160,14 @@ class Gateway:
         data = r.json()
         if model.startswith("anthropic/"):
             msg, usage = from_anthropic(data), data.get("usage") or {}
-            i, o = int(usage.get("input_tokens") or 0), int(usage.get("output_tokens") or 0)
+            # its input_tokens leaves out what the gateway cached; the prompt is all three
+            i = sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+            o = int(usage.get("output_tokens") or 0)
         else:
             msg, usage = data["choices"][0]["message"], data.get("usage") or {}
             i, o = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
         pin, pout = self.prices.get(model, (0.0, 0.0))
+        # ponytail: cached tokens priced as fresh input, an upper bound; their own rates if the gap matters
         if model.startswith("anthropic/") and i > 100_000:
             pin *= 5  # the gateway bills a Claude prompt above 100K input tokens at 5x
         return msg, {"input": i, "output": o}, i * pin + o * pout
