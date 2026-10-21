@@ -120,13 +120,19 @@ async def graphiti_ingest(events: list[dict[str, Any]], tenant: str, model: str,
                 await asyncio.sleep(COOL_DOWN)
                 g.llm_client.model, g.llm_client.small_model = FALLBACK, FALLBACK
                 try:
-                    await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
-                                        reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
-                    outcome = "fallback"
-                except Exception as exc:
-                    if not refused(exc):
-                        raise
-                    outcome = "content_filter"
+                    for wait in backoff():  # the fallback meets the same rate limit as the first try
+                        try:
+                            await g.add_episode(name=e["id"], episode_body=record(e)[0], source_description="Jira change log",
+                                                reference_time=datetime.fromisoformat(e["occurred_at"]), source=EpisodeType.text, group_id=tenant)
+                            outcome = "fallback"
+                            break
+                        except Exception as exc:
+                            if refused(exc):
+                                outcome = "content_filter"
+                                break
+                            if not limited(exc, wait):
+                                raise
+                            await asyncio.sleep(wait)
                 finally:
                     g.llm_client.model, g.llm_client.small_model = model, model
             note(progress, e, before, meter, start, skipped=outcome)
@@ -199,13 +205,19 @@ def mem0_ingest(events: list[dict[str, Any]], data: Path, tenant: str, model: st
             time.sleep(COOL_DOWN)
             m.llm.config.model = FALLBACK
             try:
-                m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
-                      metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
-                outcome = "fallback"
-            except Exception as exc:
-                if not refused(exc):
-                    raise
-                outcome = "content_filter"
+                for wait in backoff():  # the fallback meets the same rate limit as the first try
+                    try:
+                        m.add([{"role": "user", "content": record(e)[0]}], user_id=tenant,
+                              metadata={"issue": e["subject"].split(":", 1)[1], "happened": e["occurred_at"], "recorded": e["recorded_at"]})
+                        outcome = "fallback"
+                        break
+                    except Exception as exc:
+                        if refused(exc):
+                            outcome = "content_filter"
+                            break
+                        if not limited(exc, wait):
+                            raise
+                        time.sleep(wait)
             finally:
                 m.llm.config.model = model
         note(progress, e, before, meter, start, skipped=outcome)
