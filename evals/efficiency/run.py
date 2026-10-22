@@ -232,7 +232,8 @@ def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[st
                             "messages": out}
     body |= {"cache_control": {"type": "ephemeral"}} if direct else {"temperature": 0}
     if system := "\n\n".join(m["content"] for m in messages if m["role"] == "system"):
-        body["system"] = system
+        # its own breakpoint: the one at the end holds the question, so without this no two questions share a cache entry
+        body["system"] = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}] if direct else system
     if tools:
         body["tools"] = [{"name": t["function"]["name"], "description": t["function"].get("description", ""), "input_schema": t["function"]["parameters"]}
                          for t in tools]
