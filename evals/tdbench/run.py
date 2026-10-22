@@ -5,7 +5,8 @@ at End), and a stratified sample of its questions on them (Allen-relation "basic
 asked of an agent three ways:
 
     keel     the five tools over that graph
-    open     the office's rows pasted into the prompt (TDBench's open-book setting)
+    open     the office's rows pasted into the prompt (TDBench's open-book setting: retrieval done perfectly for the model)
+    table    both whole tables pasted into the prompt (569 terms): what a model faces without a retrieval step
     closed   no tools (its closed-book setting; the facts are public, so models know many)
 
 Graded by exact set match of names against TDBench's correct_rows (its answer accuracy A; its time accuracy T needs
@@ -50,6 +51,7 @@ TOOLS_TEXT = {
     "keel": "The records are in Keel, a context graph, through five tools. Offices are 'office:<Country>/<Role>' and posts "
             "'post:<Organization>/<Role>'; each has a `holder` fact over time.",
     "open": "The records for this question:\n{rows}",
+    "table": "All the records, one term per line:\n{rows}",
     "closed": "You have no tools: answer from what you know.",
 }
 
@@ -141,6 +143,9 @@ def ask(gw: Gateway, src: Path, system: str, model: str, q: dict[str, Any], max_
     if system == "open":
         rows = [e.payload for e in events(src)[0] if e.subject == q["subject"]]
         text = text.format(rows="\n".join(f"{r['holder']}, {r['role']}, from {r['start']} to {r['end'] or 'now'}" for r in rows))
+    if system == "table":
+        text = text.format(rows="\n".join(f"{e.payload.get('country') or e.payload['organization']}, {e.payload['role']}: {e.payload['holder']}, "
+                                          f"from {e.payload['start']} to {e.payload['end'] or 'now'}" for e in events(src)[0]))
     messages = [{"role": "system", "content": SYSTEM.format(tools=text)}, {"role": "user", "content": q["question"]}]
     used, cost, calls, reply, start = {"input": 0, "output": 0}, 0.0, [], "", time.monotonic()
     for _ in range(max_steps):
@@ -224,12 +229,12 @@ def main() -> None:
     report(a.out)
 
 
-def report(path: Path) -> None:
+def report(*paths: Path) -> None:
     from evals.jira.bench import bootstrap, per_question
 
-    rows = [json.loads(line) for line in path.open()]
+    rows = [json.loads(line) for path in paths for line in path.open()]
     for m in sorted({r["model"] for r in rows}):
-        for s in ("keel", "open", "closed"):
+        for s in ("keel", "open", "table", "closed"):
             rs = [r for r in rows if r["model"] == m and r["system"] == s]
             if not rs:
                 continue
@@ -245,6 +250,6 @@ if __name__ == "__main__":
     import sys
 
     if sys.argv[1:2] == ["report"]:
-        report(Path(sys.argv[2]))
+        report(*map(Path, sys.argv[2:]))
     else:
         main()
