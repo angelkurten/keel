@@ -351,7 +351,7 @@ def test_arrival_order_changes_nothing_transaction_time_included(store):
     graphs = []
     for order, s in ((events, MemoryStore()), (list(reversed(events)), store)):
         Ingestor(c, s).ingest(order, strict=True)
-        graphs.append(sorted((f.subject, f.predicate, json.dumps(f.value), f.valid_from, f.valid_to, f.recorded_at, f.closed_at)
+        graphs.append(sorted((f.subject, f.predicate, json.dumps(f.value, sort_keys=True), f.valid_from, f.valid_to, f.recorded_at, f.closed_at)
                              for f in s.dump(TENANT) if hasattr(f, "predicate")))
     assert graphs[0] == graphs[1]
 

@@ -1,5 +1,7 @@
 """The semantic-search eval harness keeps working (offline: hash embedder, no network)."""
 
+import pytest
+
 from evals.semantic.run import BM25, convex, key_first, rrf
 from evals.semantic.sandboxes import SANDBOXES
 
@@ -33,6 +35,7 @@ def test_one_sandbox_end_to_end_offline():
 
 
 def test_bootstrap_over_questions():
+    pytest.importorskip("numpy")  # the eval harness's own dependency, not the core's
     from evals.jira.bench import bootstrap, per_question
 
     runs = [{"id": "a", "correct": True}, {"id": "a", "correct": False}, {"id": "b", "correct": True}]
