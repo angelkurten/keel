@@ -193,7 +193,6 @@ def test_history_windows_read_the_view_known_then(store):
     assert [f["value"] for f in t.history(SUBJECT, predicate="depth_mm")] == [4.2, 3.87, 3.5]
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: tenant-wide history windows before rebuilding closes, so successors outside the window are lost")
 def test_tenant_wide_history_known_then_ends_each_fact_at_its_successor_known_then(store):
     """§7.2/§7.6: history(since, until, as_known_at) without a subject must close a fact where its
     successor known then starts, even if that successor started outside the window. A (Oct 1), B (Oct

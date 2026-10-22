@@ -215,7 +215,6 @@ def test_a_key_makes_the_write_idempotent_across_retries(store):
     assert Tools(c, store, A, agent="a1").annotate("unit:MXK-4821", "note", "once", task="t1", key="step-1")["subject"] == "unit:MXK-4821"
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: annotate(key=) finds another author's fact and returns it, so the second agent's private write never happens")
 def test_one_agents_key_never_returns_another_agents_private_fact(store):
     """§6, §7.4: a key returns the fact *it* wrote; another agent's agent memory is never returned to it."""
     c = _fleet(store)
@@ -254,7 +253,6 @@ def test_writes_outside_the_agents_scopes_are_refused(store):
     assert store.facts("__global__", "tire:T-9001") == []
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: Tools.annotate trusts `writes: [global]` at runtime; only `keel validate` flags it")
 def test_an_agent_never_writes_global_even_if_its_entry_says_so(store):
     """§6.1: `global` is never writable by an agent (§6: a privileged process, a Tools bound to no registry agent)."""
     c = _fleet(store, agents={"rogue": {"writes": ["task", "global"]}})
@@ -262,7 +260,6 @@ def test_an_agent_never_writes_global_even_if_its_entry_says_so(store):
         Tools(c, store, A, agent="rogue").annotate("tire:T-9001", "advice", "x", scope="global", evidence="photo:1")
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: a proposal skips the scope right, so an agent writes a proposed fact into __global__ that every tenant reads")
 def test_an_agent_cannot_reach_other_tenants_through_a_global_proposal(store):
     """§6, invariant 1: global memory holds only what a privileged process wrote; one tenant's agent never writes what another tenant reads."""
     c = _fleet(store, A, B, agents=AGENTS)
@@ -458,7 +455,6 @@ def test_closing_a_task_hides_its_memory_now_but_not_as_known_before(store):
     assert _values(t.history("tire:T-9001", task="t1", as_known_at=before), "note") == []  # physically dropped now
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: history() with no subject drops memory expired by real now before applying as_known_at")
 def test_tenant_wide_history_as_known_before_a_task_closed_still_has_its_memory(store):
     """§7.6: memory counts when it had not expired by t, on the tenant-wide history as on a subject's."""
     c = _fleet(store)
@@ -482,7 +478,6 @@ def test_reads_hide_expired_memory_before_the_job_drops_it(store):
     assert store.expire(A, now=after) == 1
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: store.search scans every fact with no expiry filter, and Tools.search does not drop expired hits")
 def test_text_search_hides_expired_memory(store):
     """§6: reads MUST exclude expired facts on every path that returns facts, text search included."""
     c = _fleet(store)

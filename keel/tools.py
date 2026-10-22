@@ -36,7 +36,7 @@ from keel.semantic import (
     value_hash,
 )
 from keel.store.base import DuplicateKey, Entity, Fact, Relation, Store
-from keel.store.memory import changed_after, filter_facts, search_in
+from keel.store.memory import changed_after, search_in
 
 
 def _ser(o: Any) -> Any:
@@ -594,7 +594,9 @@ class Tools:
         if subject is None:
             if changed_since is None and since is None and until is None:
                 raise ValueError("history needs a subject, or for the whole tenant changed_since (a watermark) or since/until (world time)")
-            if changed_since is not None:
+            if as_known_at is not None:
+                facts = self._tenant_history_known(as_known_at, changed_since, since, until, task)
+            elif changed_since is not None:
                 facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(self.glob, changed_since) if f.scope == Scope.GLOBAL], changed_since)
             else:  # what started in the world in that window, across the tenant
                 # ponytail: reads every fact of the tenant (changes since the epoch); a store query on valid_from if tenants grow past ~1M facts
@@ -603,8 +605,6 @@ class Tools:
             facts = [f for f in facts if self._sees(f, task)]
             if self.agent:
                 facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
-            if as_known_at is not None:
-                facts = filter_facts(facts, known_at=as_known_at, multi=self.multi)
         else:
             self._readable(subject)
             kw: dict[str, Any] = {"since": since, "until": until}
@@ -628,6 +628,19 @@ class Tools:
         if total > len(out):
             return [{"more": {"shown": len(out), "total": total, "omitted": "the oldest", "next": "narrow with predicate=, since=/until=, or raise limit"}}, *out]
         return out
+
+    def _tenant_history_known(self, known_at: datetime, changed_since: datetime | None, since: datetime | None, until: datetime | None, task: str | None) -> list[Fact]:
+        """Tenant-wide history as Keel knew it at `known_at`: each subject that had something then is read
+        whole as known then (closes rebuilt, memory alive then), and only then windowed. Windowing first
+        would hide the successor that closes a fact when it starts outside the window."""
+        alive = {"alive_at": known_at} if accepts(self.store.changes, "alive_at") else {}
+        pool = self.store.changes(self.tenant, changed_since or EPOCH, **alive) + [f for f in self.store.changes(self.glob, changed_since or EPOCH, **alive) if f.scope == Scope.GLOBAL]
+        subjects = sorted({f.subject for f in pool if f.recorded_at is None or f.recorded_at <= known_at})
+        facts = [f for s, fs in self._fetch_many(subjects, task, known_at=known_at).items() for f in fs]
+        if changed_since is not None:
+            return changed_after(facts, changed_since)
+        lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
+        return sorted((f for f in facts if lo <= f.valid_from <= hi), key=lambda f: (f.valid_from, f.subject))
 
     def search(
         self,
@@ -762,6 +775,8 @@ class Tools:
         if limit is None and per_kind is None and mode in ("text", "words"):  # nobody asked for everything: cut, and say so
             listing = kinds is not None or rule is not None
             cap = LIST_CAP if listing else TEXT_CAP
+            if self.max_list:  # the default page is one listing too: the deployment's ceiling holds, as in history and related
+                cap = min(cap, self.max_list)
             hits = hits[:cap]
             hint = (f"page with after='{hits[-1].get('key') or hits[-1]['subject']}'" if listing and hits else
                     "narrow with kind=, related_to= or a longer text, or pass limit=")
@@ -894,6 +909,10 @@ class Tools:
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text) + [h for h in self.store.search(self.glob, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
             hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
+            # a fact hit is read like any other: expired memory is gone (§6), and as known then only what was recorded by then
+            alive_at = graph.known_at or utcnow()
+            hits = [h for h in hits if isinstance(h, Entity) or ((h.expires_at is None or h.expires_at > alive_at)
+                                                                 and (graph.known_at is None or h.recorded_at is None or h.recorded_at <= graph.known_at))]
             if self.agent:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
             if neighbours is not None:
@@ -973,8 +992,8 @@ class Tools:
     def _neighbours(self, subject: str, via: str | None, graph: _Graph) -> set[str]:
         """The subjects linked to `subject` at the graph's instant (through `via` when given), as the caller may see them."""
         self._readable(subject)
-        if via is not None and via not in self.cartridge.relations:
-            raise ValueError(f"relation '{via}' is not declared")
+        if via is not None:
+            self._known("relation", via, self.cartridge.relations)  # a typo names the closest relation and the valid ones
         return {r.dst if r.src == subject else r.src for r in graph.relations(subject, via) if self._visible(r, subject)}
 
     def _exact_keys(self, text: str, kinds: list[str] | None) -> list[str]:
@@ -1113,6 +1132,8 @@ class Tools:
         forgotten = getattr(self.store, "forgotten", None)
         if forgotten and (at := forgotten(self.tenant)) is not None:  # an erased tenant is not revived by a late write
             raise PermissionError(f"tenant '{self.tenant}' was forgotten at {at.isoformat()}; nothing more is written for it")
+        if self.agent and sc == Scope.GLOBAL:  # a privileged process writes global, never an agent: not even a proposal
+            raise PermissionError(f"agent '{self.agent.id}' may not write scope 'global': only a Tools bound to no registry agent does")
         if self.agent and status == "proposed" and not self.agent.writes:
             raise PermissionError(f"agent '{self.agent.id}' may not write anything, so it may not propose")
         if self.agent and status != "proposed" and not self.agent.can_write(sc):
@@ -1125,13 +1146,17 @@ class Tools:
                 raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
             return done(f)
 
+        author = self.author or by or "agent"
+        source = f"annotate:{author}"
+        # a key is its author's: stored under the author, so another agent's key never finds (or returns) its fact.
+        # Rows written before keys were namespaced carry the bare key; they still match their own author.
+        stored_key = None if key is None else f"{source}/{key}"
         if key is not None:
             for f in self.store.facts(part, subject):
-                if f.idempotency_key == key:
+                if f.idempotency_key == stored_key or (f.idempotency_key == key and f.source == source):
                     return replayed(f)
         ttl = self.cartridge.policy.ttl.get(sc)
         now = self.now()
-        author = self.author or by or "agent"
         try:
             f = self.store.open_fact(
                 part,
@@ -1139,13 +1164,13 @@ class Tools:
                 predicate,
                 value,
                 valid_from=now,
-                source=f"annotate:{author}",
+                source=source,
                 scope=sc,
                 corrected_by=by or (author if self.agent_id else None),
                 evidence=evidence,
                 expires_at=(utcnow() + ttl) if ttl else None,  # retention runs on real time, whatever the tools' clock says
                 task=task,
-                idempotency_key=key,
+                idempotency_key=stored_key,
                 status=status,
                 trace=self.trace,
                 cartridge=self.cartridge.ident,

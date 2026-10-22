@@ -99,7 +99,7 @@ The store holds three kinds of records, each partitioned by `tenant`. There is n
 | `closed_at` | datetime? | Transaction time of the close: when Keel learned `valid_to`. With `recorded_at` it makes "as known at" queries possible. |
 | `changed_at` | datetime? | Bookkeeping, never a query time: the ingest clock of the fact's last write (open or close), the cursor of `changes` and the watermark. An event declaring an old `recorded_at` is still a new change. Not in tool answers. |
 | `task` | string? | The job a task-scope annotation belongs to (`annotate(task=)`). |
-| `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. |
+| `idempotency_key` | string? | `annotate(key=)`: a retried write with the same key returns this fact. A key is its author's: `annotate` stores it as `annotate:<author>/<key>`, so another author's key never finds or returns this fact. |
 | `status` | string? | `null` = accepted (the truth rules and `context.facts` read); `proposed` = waiting for a decision; `rejected` = a decision, closed at once. |
 | `trace` | string? | The caller's W3C `traceparent` and tool call id at write time (HTTP `traceparent` / `X-Keel-Tool-Call` headers, MCP `_meta`), so a Langfuse or LangSmith trace joins the audit export. |
 | `cartridge` | string? | Annotations and consolidations: the cartridge they were made under, `name@version#rules` (`Cartridge.ident`; the hash covers the rules and the calendar, so a rule edited without bumping `version` still shows). To replay a decision under its rules, check out that cartridge and replay the log. Facts from events leave it empty: the event log is their record. |

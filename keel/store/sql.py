@@ -544,10 +544,10 @@ class SqlStore:
             rows = self._rows("SELECT * FROM entities WHERE tenant = ? AND kind = ? ORDER BY id", (tenant, kind))
         return [_entity(r) for r in rows]
 
-    def changes(self, tenant: str, after: datetime) -> list[Fact]:
-        """Facts written (opened or closed) after a watermark, across subjects."""
+    def changes(self, tenant: str, after: datetime, alive_at: datetime | None = None) -> list[Fact]:
+        """Facts written (opened or closed) after a watermark, across subjects; memory expired by `alive_at` (now by default) is left out."""
         rows = self._rows(CHANGES, (tenant, _ts(after)))
-        now = utcnow()
+        now = alive_at or utcnow()
         return [f for f in changed_after((_fact(r) for r in rows), after) if f.expires_at is None or f.expires_at > now]
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:

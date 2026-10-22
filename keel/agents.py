@@ -39,7 +39,7 @@ class AgentSpec:
     relations: frozenset[str] | None = None  # None = every relation
 
     def can_write(self, scope: Scope) -> bool:
-        return scope.value in self.writes
+        return scope != Scope.GLOBAL and scope.value in self.writes  # global is never an agent's, whatever its entry says
 
     def sees_kind(self, kind: str) -> bool:
         return self.kinds is None or kind in self.kinds

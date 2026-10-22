@@ -375,10 +375,9 @@ def test_strict_handler_error_raises(store):
         Ingestor(c, store).ingest([_ev(payload={"position": "FL"})], strict=True)
 
 
-MEMORY_NO_ROLLBACK = pytest.mark.xfail(strict=True, reason="BUG: MemoryStore.transaction() rolls back dedupe marks, not writes")
 
 
-@pytest.mark.parametrize("kind", [pytest.param("memory", marks=MEMORY_NO_ROLLBACK), "sqlite"])
+@pytest.mark.parametrize("kind", ["memory", "sqlite"])
 def test_strict_failure_is_redelivered_whole(kind, tmp_path):
     """§4: a chunk that raises in strict mode is rolled back whole and redelivered whole: the redelivery
     ends in the same graph as a clean ingest, on every store that offers transaction()."""
@@ -490,10 +489,9 @@ def test_cli_ingest_reports_counts_and_strict_fails(tmp_path):
 # ---- rule 4 provenance ------------------------------------------------------------------
 
 
-CLINICS_NO_SOURCE = pytest.mark.xfail(strict=True, reason="BUG: examples/clinics/handlers.py:15,20 open_fact without source=")
 
 
-@pytest.mark.parametrize("name", [pytest.param(n, marks=CLINICS_NO_SOURCE) if n == "clinics" else n for n in EXAMPLES])
+@pytest.mark.parametrize("name", EXAMPLES)
 def test_every_fact_from_ingest_carries_source_and_evidence(store, name):
     """Rule 4: after ingest, every fact has a source and an evidence pointer; event facts point at their event."""
     c = load_cartridge(f"examples/{name}")

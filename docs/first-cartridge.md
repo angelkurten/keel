@@ -75,12 +75,12 @@ def booked(event, store):
     appt = f"appointment:{p['id']}"
     store.upsert_entity(event.tenant, "patient", event.subject_id)
     store.upsert_entity(event.tenant, "appointment", p["id"], starts_at=p["starts_at"])
-    store.link(event.tenant, appt, "booked_by", event.subject, event.occurred_at)
-    store.open_fact(event.tenant, appt, "status", "booked", valid_from=event.occurred_at, evidence=event.id)
+    store.link(event.tenant, appt, "booked_by", event.subject, event.occurred_at, source=event.source)
+    store.open_fact(event.tenant, appt, "status", "booked", valid_from=event.occurred_at, source=event.source, evidence=event.id)
 
 @registry.on("appointment.no_show")
 def no_show(event, store):
-    store.open_fact(event.tenant, event.subject, "status", "no_show", valid_from=event.occurred_at, evidence=event.id)
+    store.open_fact(event.tenant, event.subject, "status", "no_show", valid_from=event.occurred_at, source=event.source, evidence=event.id)
 ```
 
 `open_fact` closes the previous value of the same predicate instead of overwriting it, and a late event takes its place in the history rather than closing a newer value backwards. That is what makes the graph bitemporal: you can ask what was true on any date. Events are deduplicated by id, so retrying a batch is safe.

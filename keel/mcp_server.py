@@ -113,7 +113,10 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
 
     def _trace(ctx: Any) -> str | None:
         """The caller's trace context from the request `_meta` (MCP carries W3C traceparent there)."""
-        rc = getattr(ctx, "request_context", None)
+        try:
+            rc = getattr(ctx, "request_context", None)
+        except ValueError:  # a call made in-process, outside a request, has no request context and no trace
+            return None
         meta = getattr(rc, "meta", None)
         if meta is None:
             return None
@@ -196,7 +199,7 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
     @guarded
     def annotate(
         # int stays apart from float so pydantic keeps 3 as 3, not 3.0
-        subject: str, predicate: str, value: str | int | float | bool | list[Any] | dict[str, Any], scope: Literal["agent", "task", "tenant", "global"] = "task", evidence: str | None = None, by: str | None = None,  # noqa: PYI041
+        subject: str, predicate: str, value: str | int | float | bool | list[Any] | dict[str, Any] | None, scope: Literal["agent", "task", "tenant", "global"] = "task", evidence: str | None = None, by: str | None = None,  # noqa: PYI041
         task: str | None = None, key: str | None = None, status: Literal["proposed", "rejected"] | None = None, detail: Literal["ack", "full"] = "ack", ctx: Context | None = None,
     ) -> dict[str, Any]:
         t = bound(ctx)

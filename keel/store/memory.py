@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -215,7 +215,7 @@ class MemoryStore:
         self._facts: dict[str, dict[str, list[Fact]]] = defaultdict(lambda: defaultdict(list))  # tenant -> subject -> facts
         self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
-        self._tx: list[tuple[str, str]] | None = None
+        self._tx: list[Callable[[], None]] | None = None  # inside transaction(): how to undo each write, in order
         self._watermark: dict[str, datetime] = {}  # tenant -> latest changed_at (ingest clock)
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
         self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
@@ -225,7 +225,21 @@ class MemoryStore:
 
     def _mark(self, tenant: str, t: datetime | None) -> None:
         if t is not None and (tenant not in self._watermark or t > self._watermark[tenant]):
+            if self._tx is not None:
+                old = self._watermark.get(tenant)
+                self._tx.append(lambda: self._watermark.pop(tenant, None) if old is None else self._watermark.__setitem__(tenant, old))
             self._watermark[tenant] = t
+
+    def _keep(self, obj: Entity | Relation | Fact) -> None:
+        """Inside a transaction, remember an object's fields before a write changes them in place."""
+        if self._tx is not None:
+            saved = {k: dict(v) if isinstance(v, dict) else v for k, v in vars(obj).items()}
+            self._tx.append(lambda: vars(obj).update(saved))
+
+    def _added(self, *lists: list[Any], item: Any) -> None:
+        """Inside a transaction, remember that `item` was appended to these lists."""
+        if self._tx is not None:
+            self._tx.append(lambda: [lst.remove(item) for lst in lists])
 
     # ---- writes (the primitives) -------------------------------------------------
 
@@ -235,7 +249,10 @@ class MemoryStore:
         if ent is None:
             ent = Entity(tenant=tenant, kind=kind, id=id, ref=ref, attrs=dict(attrs))
             self._entities[tenant][key] = ent
+            if self._tx is not None:
+                self._tx.append(lambda: self._entities[tenant].pop(key, None))
         else:
+            self._keep(ent)
             if ref:
                 ent.ref = ref
             ent.attrs.update(attrs)
@@ -252,11 +269,13 @@ class MemoryStore:
         if dst != src:
             self._rels[tenant][dst].append(r)
         self._all_rels[tenant].append(r)
+        self._added(self._rels[tenant][src], *([self._rels[tenant][dst]] if dst != src else []), self._all_rels[tenant], item=r)
         return r
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
         for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
+                self._keep(r)
                 r.valid_to, r.changed_at = valid_to, utcnow()
                 self._mark(tenant, r.changed_at)
 
@@ -269,9 +288,13 @@ class MemoryStore:
                 if x.idempotency_key == key:
                     raise DuplicateKey(x)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        place_fact(f, same_slot(self._facts[tenant][subject], f, kw.get("per_source", False)))
+        slot = same_slot(self._facts[tenant][subject], f, kw.get("per_source", False))
+        for x in slot:  # place_fact may move a neighbour's close
+            self._keep(x)
+        place_fact(f, slot)
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
+        self._added(self._facts[tenant][subject], self._all_facts[tenant], item=f)
         self._mark(tenant, f.changed_at)
         return f
 
@@ -283,6 +306,7 @@ class MemoryStore:
         now = utcnow()
         for f in self._facts[tenant][subject]:
             if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
+                self._keep(f)
                 f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
                 self._mark(tenant, now)
 
@@ -307,9 +331,9 @@ class MemoryStore:
         """Every entity of a kind (or all), ordered by key: the work list of a sweep."""
         return sorted((e for e in self._entities[tenant].values() if kind is None or e.kind == kind), key=lambda e: e.key)
 
-    def changes(self, tenant: str, after: datetime) -> list[Fact]:
-        """Facts recorded or closed after a watermark, across subjects."""
-        now = utcnow()
+    def changes(self, tenant: str, after: datetime, alive_at: datetime | None = None) -> list[Fact]:
+        """Facts recorded or closed after a watermark, across subjects; memory expired by `alive_at` (now by default) is left out."""
+        now = alive_at or utcnow()
         return [f for f in changed_after(self._all_facts[tenant], after) if f.expires_at is None or f.expires_at > now]
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
@@ -336,13 +360,14 @@ class MemoryStore:
             return False
         self._seen[tenant].add(event_id)
         if self._tx is not None:
-            self._tx.append((tenant, event_id))
+            self._tx.append(lambda: self._seen[tenant].discard(event_id))
         return True
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
-        """No durability to protect here; this only forgets the ids remembered inside a chunk that
-        raised, so the redelivery is not skipped as a duplicate."""
+        """A chunk that raises is rolled back whole, as on the SQL stores: every write it made is undone
+        (newest first) and its event ids are forgotten, so the redelivery applies it cleanly.
+        ponytail: an undo log of the primitives; forget/forget_before inside a failed chunk are not undone."""
         if self._tx is not None:
             yield
             return
@@ -350,8 +375,8 @@ class MemoryStore:
         try:
             yield
         except BaseException:
-            for tenant, event_id in self._tx:
-                self._seen[tenant].discard(event_id)
+            for undo in reversed(self._tx):
+                undo()
             raise
         finally:
             self._tx = None

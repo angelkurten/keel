@@ -298,7 +298,6 @@ def test_max_list_ceiling_on_history_and_related(store):
     assert t.history(since=d(1, 1), limit=0)[0]["more"]["shown"] == 2 and t.related("issue:A", depth=3, limit=0)[0]["more"]["shown"] == 2
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: search's default listing (50) ignores Tools(max_list=n); history and related honour it")
 def test_max_list_caps_the_default_listing(store):
     """The ceiling is on one listing: the default page of 50 is more than a ceiling of 10."""
     t = Tools(cartridge(), bulk(store).store, T, clock=lambda: NOW, max_list=10)
@@ -337,7 +336,6 @@ def test_search_related_to_and_depth(store):
     assert {(n["relation"], n["direction"], n["subject"]) for n in b["neighbors"]} == {("blocks", "in", "issue:A"), ("blocks", "out", "issue:K")}
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: an undeclared `via` in search raises without the closest name or the valid ones (§7)")
 def test_search_unknown_via_suggests(store):
     """A relation the cartridge does not declare raises ValueError with the closest name and the valid ones."""
     with pytest.raises(ValueError, match="did you mean 'blocks'"):
@@ -645,7 +643,6 @@ def test_mcp_answers_like_python(store):
     assert call("related", subject="issue:A", depth=2) == t.related("issue:A", depth=2)
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: MCP annotate rejects value=null; §7.7 says value is any JSON in every transport")
 def test_mcp_annotate_takes_any_json_value(store):
     """`annotate`'s value is any JSON over MCP, null included, as in Python and over HTTP."""
     call = _mcp(store)
