@@ -1,6 +1,6 @@
 # Keel
 
-[![ci](https://github.com/angelkurten/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/angelkurten/keel/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/keel-context)](https://pypi.org/project/keel-context/) [![docs](https://img.shields.io/badge/docs-angelkurten.github.io%2Fkeel-black)](https://angelkurten.github.io/keel/)
+[![ci](https://github.com/angelkurten/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/angelkurten/keel/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/keel-context)](https://pypi.org/project/keel-context/) [![docs](https://img.shields.io/badge/docs-angelkurten.github.io%2Fkeel-black)](https://angelkurten.github.io/keel/) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23571090.svg)](https://doi.org/10.5281/zenodo.23571090)
 
 **Stop rebuilding the pipeline for every agent.**
 
@@ -146,6 +146,21 @@ Open:
 
 - [ ] Real agent queries from pilots in the semantic-search eval bench
 - [ ] Cartridge catalog, hosted Keel, enterprise features (2027)
+
+## Paper
+
+**Keel: one deterministic context layer for product agents** ([PDF on Zenodo](https://doi.org/10.5281/zenodo.23571090), source in [`docs/paper/`](docs/paper/)). On 387 questions over three real Jira projects, with three agents, Keel leads the product's own API by 21 to 32 points on tenant-wide questions and is cheapest per correct answer; the harness and every result row are in [`evals/jira/`](evals/jira/).
+
+```bibtex
+@misc{kurten2026keel,
+  author    = {K{\"u}rten, Angel},
+  title     = {Keel: one deterministic context layer for product agents},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.23571090},
+  url       = {https://doi.org/10.5281/zenodo.23571090}
+}
+```
 
 ## License
 
