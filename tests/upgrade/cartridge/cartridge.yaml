@@ -1,0 +1,51 @@
+# The upgrade fixture: written by old releases, read by the current one (tests/test_upgrade.py).
+# Only what every release since 0.1.0 understands: no agents, rules or predicates.
+
+name: upgrade
+version: 0.1.0
+
+entities:
+  site:
+    description: A place machines are installed at.
+  machine:
+    description: A machine with a status over time.
+  operator:
+    description: A person who runs a machine.
+
+relations:
+  located_at:  { from: machine, to: site }
+  operated_by: { from: machine, to: operator }
+
+events:
+  site.opened:
+    subject: site
+    owner: plant
+    payload: { name: string }
+  machine.installed:
+    subject: site
+    owner: plant
+    payload: { id: string, model: string }
+  operator.assigned:
+    subject: machine
+    owner: staffing
+    payload: { operator: string, name: string }
+  operator.released:
+    subject: machine
+    owner: staffing
+    payload: { operator: string }
+  machine.status_changed:
+    subject: machine
+    owner: telemetry
+    payload: { status: string }
+  machine.retired:
+    subject: machine
+    owner: plant
+    payload: {}
+
+memory:
+  ttl:
+    global: never
+    tenant: never
+    task: never
+    agent: never
+  requires_evidence: [global, tenant]

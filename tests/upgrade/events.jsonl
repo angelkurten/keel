@@ -1,0 +1,12 @@
+{"id":"e01","tenant":"acme","type":"site.opened","subject":"site:S1","occurred_at":"2026-01-01T08:00:00Z","recorded_at":"2026-01-01T08:00:05Z","source":"plant.sites","payload":{"name":"North yard"}}
+{"id":"e02","tenant":"acme","type":"machine.installed","subject":"site:S1","occurred_at":"2026-01-02T09:00:00Z","recorded_at":"2026-01-02T09:00:05Z","source":"plant.machines","payload":{"id":"M1","model":"press-40"}}
+{"id":"e03","tenant":"acme","type":"operator.assigned","subject":"machine:M1","occurred_at":"2026-01-03T07:00:00Z","source":"staffing.shifts","payload":{"operator":"O1","name":"Rosa"}}
+{"id":"e04","tenant":"acme","type":"machine.installed","subject":"site:S1","occurred_at":"2026-01-04T10:00:00Z","source":"plant.machines","payload":{"id":"M2","model":"lathe-9"}}
+{"id":"e05","tenant":"acme","type":"machine.status_changed","subject":"machine:M1","occurred_at":"2026-01-05T12:00:00Z","recorded_at":"2026-01-05T12:00:05Z","source":"telemetry","payload":{"status":"running"}}
+{"id":"e06","tenant":"acme","type":"machine.status_changed","subject":"machine:M2","occurred_at":"2026-01-06T12:00:00Z","source":"telemetry","payload":{"status":"running"}}
+{"id":"e07","tenant":"acme","type":"machine.status_changed","subject":"machine:M1","occurred_at":"2026-01-10T12:00:00Z","source":"telemetry","payload":{"status":"stopped"}}
+{"id":"e08","tenant":"acme","type":"site.opened","subject":"site:S1","occurred_at":"2026-01-11T08:00:00Z","recorded_at":"2026-01-11T08:00:05Z","source":"plant.sites","payload":{"name":"North yard (east gate)"}}
+{"id":"e09","tenant":"acme","type":"operator.released","subject":"machine:M1","occurred_at":"2026-01-12T07:00:00Z","recorded_at":"2026-01-12T07:00:05Z","source":"staffing.shifts","payload":{"operator":"O1"}}
+{"id":"e10","tenant":"acme","type":"operator.assigned","subject":"machine:M1","occurred_at":"2026-01-13T07:00:00Z","source":"staffing.shifts","payload":{"operator":"O2","name":"Ivan"}}
+{"id":"e11","tenant":"acme","type":"machine.status_changed","subject":"machine:M1","occurred_at":"2026-01-07T12:00:00Z","recorded_at":"2026-01-14T09:00:00Z","source":"telemetry","payload":{"status":"maintenance"}}
+{"id":"e12","tenant":"acme","type":"machine.retired","subject":"machine:M1","occurred_at":"2026-01-20T17:00:00Z","recorded_at":"2026-01-20T17:00:05Z","source":"plant.machines","payload":{}}

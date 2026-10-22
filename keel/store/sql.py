@@ -169,6 +169,7 @@ class SqlStore:
         self._add_changed_at()
         if "closed_at" not in self._columns("relations"):  # since 0.33: the transaction time of an unlink
             self._ddl(f"ALTER TABLE relations ADD COLUMN closed_at {self.TIME}", lambda: "closed_at" in self._columns("relations"))
+            self._mark_old_closes()  # a database from <= 0.32 (no relations.closed_at) never wrote a close mark
         if not self._has_index("relations", "relations_recorded"):  # transaction-time reads of links
             self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
         if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
@@ -213,6 +214,22 @@ class SqlStore:
             conn = self._mine.conn = self._connect()
             self._prepare(conn)
         return conn
+
+    def _mark_old_closes(self) -> None:
+        """Releases up to 0.32 kept an explicit close_fact only as the fact's valid_to. A tenant fact whose
+        valid_to no later fact of its predicate starts at was closed that way: write the close mark it would
+        have today, so a late fact still meets the close. Learned when the close was; no change to the cursor."""
+        # ponytail: one pass over the accepted tenant facts, once; two processes migrating at once write a mark twice, which ends nothing more
+        rows = self._rows("SELECT * FROM facts WHERE status IS NULL AND scope = ? ORDER BY seq", (Scope.TENANT.value,))
+        starts = {(r["tenant"], r["subject"], r["predicate"], _dt(r["valid_from"])) for r in rows}  # parsed: old releases wrote other formats
+        marks = []
+        for r in rows:
+            if r["valid_to"] is not None and r["source"] != CLOSE and (r["tenant"], r["subject"], r["predicate"], _dt(r["valid_to"])) not in starts:
+                c = close_mark(r["tenant"], r["subject"], r["predicate"], _dt(r["valid_to"]), None, Scope.TENANT, _dt(r["closed_at"]) or _dt(r["recorded_at"]))
+                c.changed_at = _dt(r["changed_at"])  # _add_changed_at ran first
+                marks.append(_fact_row(c))
+        if marks:
+            self._execmany(INSERT_FACT, marks)
 
     def _add_changed_at(self) -> None:
         """Since 0.32: `changed_at`, the ingest clock of a row's last write, is the cursor of `changes` and
