@@ -402,6 +402,7 @@ class Tools:
     def _fetch(self, subject: str, task: str | None = None, **kw: Any) -> list[Fact]:
         """A subject's facts in this tenant plus the global partition's, as this caller may see them."""
         # ponytail: one extra indexed lookup per subject read; a has-global flag if it ever shows in profiles
+        kw = self._with_multi(kw)
         glob = [f for f in self.store.facts(self.glob, subject, **kw) if f.scope == Scope.GLOBAL]
         facts = self.store.facts(self.tenant, subject, **kw)
         if glob:
@@ -414,6 +415,7 @@ class Tools:
         many = getattr(self.store, "facts_of", None)
         if many is None:
             return {s: self._fetch(s, task, **kw) for s in subjects}
+        kw = self._with_multi(kw)
         mine, glob = many(self.tenant, subjects, **kw), many(self.glob, subjects, **kw)
         out = {}
         for s in subjects:
@@ -421,6 +423,11 @@ class Tools:
             facts = sorted(mine.get(s, []) + g, key=lambda f: f.valid_from) if g else mine.get(s, [])
             out[s] = [f for f in facts if self._sees(f, task)]
         return out
+
+    def _with_multi(self, kw: dict[str, Any]) -> dict[str, Any]:
+        """A read as known then rebuilds closes per slot, and only the cartridge knows which predicates are
+        multi-valued (one slot per author). Passed only then, like `known_at`: an older store need not take it."""
+        return {**kw, "multi": self.multi} if kw.get("known_at") is not None and self.multi else kw
 
     def _entities(self, keys: list[str]) -> dict[str, Entity | None]:
         many = getattr(self.store, "entities_of", None)
@@ -597,7 +604,7 @@ class Tools:
             if self.agent:
                 facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
             if as_known_at is not None:
-                facts = filter_facts(facts, known_at=as_known_at)
+                facts = filter_facts(facts, known_at=as_known_at, multi=self.multi)
         else:
             self._readable(subject)
             kw: dict[str, Any] = {"since": since, "until": until}

@@ -17,7 +17,7 @@ import json
 import re
 import threading
 import warnings
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
@@ -468,11 +468,12 @@ class SqlStore:
         since: datetime | None = None,
         until: datetime | None = None,
         known_at: datetime | None = None,
+        multi: Iterable[str] = (),
     ) -> list[Fact]:
         if self._bulk is not None:
-            return filter_facts(self._bulk.facts(tenant, subject), at, since, until, known_at)
+            return filter_facts(self._bulk.facts(tenant, subject), at, since, until, known_at, multi)
         rows = self._fact_rows(tenant, [subject], at if known_at is None else None)
-        return filter_facts((_fact(r) for r in rows), at, since, until, known_at)
+        return filter_facts((_fact(r) for r in rows), at, since, until, known_at, multi)
 
     def _fact_rows(self, tenant: str, subjects: list[str], open_at: datetime | None) -> list[Any]:
         """Facts of some subjects; with `open_at`, only those still open then (valid_to after it, or none):
@@ -499,7 +500,7 @@ class SqlStore:
             for r in self._fact_rows(tenant, subs[i : i + _Bulk.CHUNK], open_at):
                 if r["subject"] in out:  # exactly: a case-insensitive collation also matches its look-alikes
                     out[r["subject"]].append(_fact(r))
-        return {s: filter_facts(fs, kw.get("at"), kw.get("since"), kw.get("until"), kw.get("known_at")) for s, fs in out.items()}
+        return {s: filter_facts(fs, kw.get("at"), kw.get("since"), kw.get("until"), kw.get("known_at"), kw.get("multi", ())) for s, fs in out.items()}
 
     def relations_of(self, tenant: str, keys: list[str], at: datetime | None = None) -> dict[str, list[Relation]]:
         """`relations` for many keys in a few statements (optional, like `facts_of`)."""

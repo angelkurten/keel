@@ -122,15 +122,34 @@ def _later(a: datetime | None, b: datetime | None) -> datetime | None:
     return max((t for t in (a, b) if t is not None), default=None)
 
 
-def as_known_at(facts: Iterable[Fact], known_at: datetime) -> list[Fact]:
-    """The facts as Keel knew them at `known_at` (transaction time): only those recorded by then, and
-    a close learned later is not applied yet. Copies, so the stored facts are never touched."""
-    out = []
+def as_known_at(facts: Iterable[Fact], known_at: datetime, multi: Iterable[str] = ()) -> list[Fact]:
+    """The facts as Keel knew them at `known_at` (transaction time): only those recorded by then, each
+    closed where the next fact of its slot known by then starts, or by a close already learned. Closes
+    are rebuilt from what was known, not read off the stored row: a late fact that later moved a close
+    must not reopen the fact before it. `multi` names multi-valued predicates (one slot per author, as
+    proposals). Copies, so the stored facts are never touched."""
+    multi = set(multi)
+    slots: dict[tuple[Any, ...], list[Fact]] = defaultdict(list)
     for f in facts:
-        if f.recorded_at is not None and f.recorded_at > known_at:
-            continue
-        out.append(replace(f, valid_to=None) if f.closed_at is not None and f.closed_at > known_at else f)
+        if f.recorded_at is None or f.recorded_at <= known_at:
+            slots[_slot(f, f.status is not None or f.predicate in multi)].append(f)
+    out = []
+    for group in slots.values():
+        group.sort(key=succession)
+        for f, nxt in zip(group, [*group[1:], None]):
+            ends = [(nxt.valid_from, _later(f.recorded_at, nxt.recorded_at))] if nxt is not None else []
+            if f.valid_to is not None and (f.closed_at is None or f.closed_at <= known_at):  # a close learned by then
+                ends.append((f.valid_to, f.closed_at))
+            valid_to, closed_at = min(ends, key=lambda e: e[0], default=(None, None))
+            out.append(f if (valid_to, closed_at) == (f.valid_to, f.closed_at) else replace(f, valid_to=valid_to, closed_at=closed_at))
     return out
+
+
+def _slot(f: Fact, per_source: bool) -> tuple[Any, ...]:
+    """`same_slot` as a key: the facts that close each other."""
+    scope = Scope(f.scope)
+    return (f.tenant, f.subject, f.predicate, f.status, scope, f.task if scope == Scope.TASK else None,
+            f.source if scope == Scope.AGENT else None, author(f) if per_source else None)
 
 
 def changed_at(f: Fact | Relation) -> datetime | None:
@@ -151,8 +170,9 @@ def filter_facts(
     since: datetime | None = None,
     until: datetime | None = None,
     known_at: datetime | None = None,
+    multi: Iterable[str] = (),
 ) -> list[Fact]:
-    out = as_known_at(facts, known_at) if known_at is not None else list(facts)
+    out = as_known_at(facts, known_at, multi) if known_at is not None else list(facts)
     if at is not None:
         out = [f for f in out if f.valid_from <= at and (f.valid_to is None or f.valid_to > at)]
     if since is not None:
@@ -279,8 +299,9 @@ class MemoryStore:
         since: datetime | None = None,
         until: datetime | None = None,
         known_at: datetime | None = None,
+        multi: Iterable[str] = (),
     ) -> list[Fact]:
-        return filter_facts(self._facts[tenant].get(subject, ()), at, since, until, known_at)
+        return filter_facts(self._facts[tenant].get(subject, ()), at, since, until, known_at, multi)
 
     def entities(self, tenant: str, kind: str | None = None) -> list[Entity]:
         """Every entity of a kind (or all), ordered by key: the work list of a sweep."""

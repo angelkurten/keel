@@ -7,7 +7,7 @@ Run it against your own store with KEEL_STORE="your_pkg.module:factory", a zero-
 import importlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from typer.testing import CliRunner
@@ -1551,3 +1551,46 @@ def test_a_correction_arriving_before_the_value_it_corrects_closes_the_predecess
     assert (p[2], p[4]) == (t1, t1)  # ended at T, known at T: not at T+2d, whichever of C and D came first
     Ingestor(c, store).ingest(events[::-1], strict=True)  # the store under test, worst order: D, C, P
     assert sorted((f.value, f.valid_from, f.valid_to, f.recorded_at, f.closed_at) for f in store.facts(TENANT, "tire:T-9")) == histories[0]
+
+
+def test_as_known_at_closes_each_fact_where_its_next_known_successor_starts_in_every_arrival_order(store):
+    """A late fact can land between two facts already stored and move the first one's close. Asked what
+    Keel knew before that late fact was recorded, the first fact must end where the successor known then
+    starts, never reopen beside it. A holds from Sep 1; B starts Oct 15 (learned Oct 16); C starts Oct 1
+    but is learned only Oct 20. One tenant per arrival order, so every order runs on the store under test."""
+    import itertools
+
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    d = lambda month, day, hour=0: datetime(2026, month, day, hour, tzinfo=UTC)
+    ev = lambda tenant, occurred, recorded, depth, eid: Event(id=eid, tenant=tenant, type="tire.depth_measured", subject="tire:T-9", occurred_at=occurred,
+                                                              recorded_at=recorded, source="b", payload={"unit_id": "U1", "position": "P1", "depth_mm": depth})
+    rows = [(d(9, 1, 8), d(9, 1, 8), 4.2, "a"), (d(10, 15), d(10, 16, 10), 3.5, "b"), (d(10, 1), d(10, 20, 10), 3.87, "c")]
+    # as known on → {as of: the one value true then}
+    expected = {
+        d(10, 17, 12): {d(9, 15): 4.2, d(10, 10): 4.2, d(10, 17, 12): 3.5},  # C not known yet: A runs to Oct 15
+        d(10, 18, 12): {d(9, 15): 4.2, d(10, 10): 4.2, d(10, 17, 12): 3.5},
+        d(10, 21, 12): {d(9, 15): 4.2, d(10, 10): 3.87, d(10, 17, 12): 3.5},  # C known: A ends Oct 1
+    }
+    for n, order in enumerate(itertools.permutations(rows)):
+        tenant = f"order-{n}"
+        Ingestor(c, store).ingest([ev(tenant, *r) for r in order], strict=True)
+        for known, by_instant in expected.items():
+            for at, value in by_instant.items():
+                got = [f.value for f in store.facts(tenant, "tire:T-9", at=at, known_at=known) if f.predicate == "depth_mm"]
+                assert got == [value], (order, known, at, got)  # one value, never two open in the slot
+            ctx = Tools(c, store, tenant).context("tire:T-9", as_of=d(10, 17, 12), as_known_at=known, detail="brief")
+            assert ctx["facts"]["depth_mm"] == 3.5, (order, known, ctx["facts"])
+
+
+def test_as_known_at_keeps_every_author_of_a_multi_valued_predicate(store):
+    """Rebuilding closes as known then must not let one author's value close another's on a multi predicate."""
+    c = load_cartridge(FLEET)
+    c.predicates = {"recommendation": {"multi": True}}
+    Ingestor(c, store).ingest(JsonlAdapter(EVENTS), strict=True)
+    Tools(c, store, TENANT, agent="tires-bot").annotate("unit:MXK-4821", "recommendation", "replace tire", task="r1")
+    Tools(c, store, TENANT, agent="compliance-bot").annotate("unit:MXK-4821", "recommendation", "renew policy", task="r1")
+    later = datetime.now(UTC) + timedelta(seconds=5)
+    ctx = Tools(c, store, TENANT).context("unit:MXK-4821", task="r1", as_known_at=later)
+    assert sorted(f["value"] for f in ctx["facts"] if f["predicate"] == "recommendation") == ["renew policy", "replace tire"]
