@@ -1,0 +1,21 @@
+# TDBench (Kim et al., ICLR 2026; github.com/ssoy0701/tdbench): its leaders and organizations tables as one tenant.
+# Each row is a term: who held an office or a post from Start to End. Valid time only; the tables have no transaction time.
+
+name: tdbench
+version: 0.1.0
+
+entities:
+  office:
+    description: A role in a country's government (Italy/President). Its holder is a fact over time.
+  post:
+    description: A role in an organization (Walmart/CEO). Its holder is a fact over time.
+
+events:
+  office.term:
+    subject: office
+    owner: tdbench
+    payload: { country: string, role: string, holder: string, start: string, end: string }
+  post.term:
+    subject: post
+    owner: tdbench
+    payload: { organization: string, kind: string, role: string, holder: string, start: string, end: string }
