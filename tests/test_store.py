@@ -1525,3 +1525,29 @@ def test_a_pinned_clock_puts_reads_and_notes_on_that_day():
     note = t.annotate("tire:T-9001", "note", "check again", detail="full")
     assert note["valid_from"].startswith("2026-09-20")
     assert t.context("tire:T-9001", as_of=day.replace(hour=13), detail="brief")["facts"]["note"] == "check again"  # visible that day
+
+
+def test_a_correction_arriving_before_the_value_it_corrects_closes_the_predecessor_when_it_was_first_known(store):
+    """Order independence of transaction time: P holds until T; a wrong value C is recorded at T and the
+    right one D arrives later (recorded T+2d) with the same valid_from. Whatever the arrival order, P's
+    close was learned at T, the earliest a successor was known, and every fact's four times agree."""
+    import itertools
+    from datetime import timedelta
+
+    from keel import Event
+
+    c = load_cartridge(FLEET)
+    t0, t1 = datetime(2026, 1, 1, 8, tzinfo=UTC), datetime(2026, 2, 1, 8, tzinfo=UTC)
+    ev = lambda occurred, recorded, depth, eid: Event(id=eid, tenant=TENANT, type="tire.depth_measured", subject="tire:T-9", occurred_at=occurred,
+                                                     recorded_at=recorded, source="b", payload={"unit_id": "U1", "position": "P1", "depth_mm": depth})
+    events = [ev(t0, t0, 6.0, "p"), ev(t1, t1, 2.0, "c"), ev(t1, t1 + timedelta(days=2), 2.5, "d")]
+    histories = []
+    for order in itertools.permutations(events):
+        s = MemoryStore()
+        Ingestor(c, s).ingest(list(order), strict=True)
+        histories.append(sorted((f.value, f.valid_from, f.valid_to, f.recorded_at, f.closed_at) for f in s.facts(TENANT, "tire:T-9")))
+    assert all(h == histories[0] for h in histories), histories
+    p = next(f for f in histories[0] if f[0] == 6.0)
+    assert (p[2], p[4]) == (t1, t1)  # ended at T, known at T: not at T+2d, whichever of C and D came first
+    Ingestor(c, store).ingest(events[::-1], strict=True)  # the store under test, worst order: D, C, P
+    assert sorted((f.value, f.valid_from, f.valid_to, f.recorded_at, f.closed_at) for f in store.facts(TENANT, "tire:T-9")) == histories[0]

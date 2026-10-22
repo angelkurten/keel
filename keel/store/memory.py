@@ -93,6 +93,14 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
         prev.closed_at = _later(prev.recorded_at, new.recorded_at)  # we learned it ended once we knew both
         prev.changed_at = new.changed_at
         closed = prev
+    elif prev is not None and prev.valid_to == new.valid_from:
+        # already closed there by a successor that was recorded later than this one (a correction that
+        # arrived before the value it corrects): the end was known as soon as the earliest successor was
+        learned = _later(prev.recorded_at, new.recorded_at)
+        if learned is not None and (prev.closed_at is None or learned < prev.closed_at):
+            prev.closed_at = learned
+            prev.changed_at = new.changed_at
+            closed = prev
     if nxt is not None:
         new.valid_to = nxt.valid_from
         new.closed_at = _later(new.recorded_at, nxt.recorded_at)  # the next one may have been recorded later
