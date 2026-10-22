@@ -199,6 +199,13 @@ nav .btn { height: 34px; padding: 0 12px; font-size: 14px; }
 .code .legend b { font: 500 12.5px var(--mono); color: var(--ink); }
 .err { color: var(--bad); }
 
+/* sdk tabs */
+.sdk .bar { display: flex; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--bg-2); overflow-x: auto; }
+.sdk .cmd { border-bottom: 1px solid var(--line); color: var(--muted); }
+.sdk .cmd .p { color: var(--dim); user-select: none; }
+.sdk pre { font-size: 12.5px; }
+.sdk pre.use { min-height: 236px; }
+
 /* rule play */
 .rp { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
 .rp .q { font-size: 14px; color: var(--muted); }
@@ -414,7 +421,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 48px 0 40
     <h2 class="rise" data-i18n="how.h">How it works</h2>
     <ol class="flow" style="margin-top:32px">
       <li class="rise"><h3 data-i18n="how.1">Send your events</h3><p data-i18n="how.1p">From Postgres CDC, an outbox, Kafka, SQS, webhooks or the SDK.</p></li>
-      <li class="rise" style="--d:60ms"><h3 data-i18n="how.2">Declare a cartridge</h3><p data-i18n="how.2p">Your entities, events and rules in YAML, plus ten-line handlers.</p></li>
+      <li class="rise" style="--d:60ms"><h3 data-i18n="how.2">Declare a cartridge</h3><p data-i18n="how.2p">Your entities, events and rules in YAML, plus ten-line handlers. Typed SDKs come out of it.</p></li>
       <li class="rise" style="--d:120ms"><h3 data-i18n="how.3">Keel builds the graph</h3><p data-i18n="how.3p">One bitemporal graph per tenant. No LLM in ingest; replay gives the same graph.</p></li>
       <li class="rise" style="--d:180ms"><h3 data-i18n="how.4">Agents read five tools</h3><p data-i18n="how.4p">context, history, search, related, annotate. Rules arrive evaluated.</p></li>
     </ol>
@@ -502,6 +509,81 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 48px 0 40
 <pre>tools.annotate(<span class="s">"issue:SPR-142"</span>, <span class="s">"root_cause"</span>, <span class="s">"vendor patch"</span>,
                scope=<span class="s">"tenant"</span>, evidence=late_event.id)
 <span class="c"># stored; every agent of this tenant can read it</span></pre></div>
+      </div>
+    </div>
+
+    <div class="feature flip">
+      <div class="rise">
+        <span class="kicker">sdk</span>
+        <h2 data-i18n="f4.h">Your cartridge, as a typed client in your language</h2>
+        <p class="lead" data-i18n="f4.p">keel sdk writes one file for your product's repo, the way protoc does: a type per event payload, a constructor per event, subject helpers, the rules, and a client for the five tools. Your compiler catches a payload that drifts from the catalog before Keel ever sees it.</p>
+        <ul>
+          <li data-i18n="f4.l1"><b>TypeScript, Python, Go and PHP,</b> each with a small published runtime and tested end to end against keel serve.</li>
+          <li data-i18n="f4.l2"><b>--check in CI</b> fails the build when the cartridge moves on and the generated file is stale.</li>
+          <li data-i18n="f4.l3"><b>One contract:</b> the same cartridge drives ingest, the tools and every client.</li>
+        </ul>
+      </div>
+      <div class="code sdk rise" style="--d:80ms">
+        <div class="bar" role="tablist" aria-label="SDK language" id="sdk-tabs">
+          <button class="tab" role="tab" id="sdk-t-ts" aria-controls="sdk-ts" aria-selected="true" tabindex="0">TypeScript</button>
+          <button class="tab" role="tab" id="sdk-t-py" aria-controls="sdk-py" aria-selected="false" tabindex="-1">Python</button>
+          <button class="tab" role="tab" id="sdk-t-go" aria-controls="sdk-go" aria-selected="false" tabindex="-1">Go</button>
+          <button class="tab" role="tab" id="sdk-t-php" aria-controls="sdk-php" aria-selected="false" tabindex="-1">PHP</button>
+        </div>
+        <div class="pane" id="sdk-ts" role="tabpanel" aria-labelledby="sdk-t-ts">
+<pre class="cmd"><span class="p">$ </span>keel sdk typescript cartridges/jira -o src/keel-jira.ts</pre>
+<pre class="use"><span class="k">import</span> { client, emit, subjects } <span class="k">from</span> <span class="s">"./keel-jira"</span>;
+
+<span class="k">const</span> keel = client({ baseUrl, tenant: <span class="s">"spring"</span>, agent: <span class="s">"triage"</span> });
+
+<span class="k">await</span> keel.events([emit.issueStatusChanged({
+  tenant: <span class="s">"spring"</span>, subject: subjects.issue(<span class="s">"SPR-142"</span>),
+  occurredAt: <span class="k">new</span> Date(), source: <span class="s">"jira"</span>,
+  payload: { status: <span class="s">"Blocked"</span>, status_category: <span class="s">"blocked"</span> },
+})]);   <span class="err">// ✗ Type '"blocked"' is not assignable to
+        //   '"new" | "indeterminate" | "done" | null'</span>
+
+<span class="k">const</span> ctx = <span class="k">await</span> keel.context(subjects.issue(<span class="s">"SPR-142"</span>));
+ctx.evaluation.blocked;   <span class="c">// true</span></pre>
+        </div>
+        <div class="pane" id="sdk-py" role="tabpanel" aria-labelledby="sdk-t-py" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk python cartridges/jira -o app/keel_jira.py</pre>
+<pre class="use"><span class="k">from</span> app <span class="k">import</span> keel_jira <span class="k">as</span> kj
+
+keel = kj.client(<span class="s">"http://keel.internal:8000"</span>, <span class="s">"spring"</span>, secret=SECRET, agent=<span class="s">"triage"</span>)
+
+keel.events([kj.emit.issue_status_changed(
+    <span class="s">"spring"</span>, kj.subjects.issue(<span class="s">"SPR-142"</span>), datetime.now(timezone.utc), <span class="s">"jira"</span>,
+    {<span class="s">"status"</span>: <span class="s">"Blocked"</span>, <span class="s">"status_category"</span>: <span class="s">"indeterminate"</span>},
+)])   <span class="c"># payloads are TypedDicts: your editor checks the keys</span>
+
+keel.context(kj.subjects.issue(<span class="s">"SPR-142"</span>))[<span class="s">"evaluation"</span>][<span class="s">"blocked"</span>]   <span class="c"># True</span></pre>
+        </div>
+        <div class="pane" id="sdk-go" role="tabpanel" aria-labelledby="sdk-t-go" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk go cartridges/jira -o internal/keeljira/keel_jira.go --package keeljira</pre>
+<pre class="use">c := keeljira.NewClient(keel.Options{BaseURL: url, Tenant: <span class="s">"spring"</span>, Agent: <span class="s">"triage"</span>})
+
+cat := keeljira.IssueStatusChangedPayloadStatusCategoryIndeterminate
+env := keeljira.EmitIssueStatusChanged(<span class="s">"spring"</span>, keeljira.SubjectIssue(<span class="s">"SPR-142"</span>),
+    time.Now(), <span class="s">"jira"</span>,
+    keeljira.IssueStatusChangedPayload{Status: <span class="s">"Blocked"</span>, StatusCategory: &amp;cat})
+_, err := c.Events(ctx, []keel.Envelope{env})   <span class="c">// enums are typed constants</span>
+
+issue, err := c.Context(ctx, <span class="k">string</span>(keeljira.SubjectIssue(<span class="s">"SPR-142"</span>)), <span class="k">nil</span>)</pre>
+        </div>
+        <div class="pane" id="sdk-php" role="tabpanel" aria-labelledby="sdk-t-php" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk php cartridges/jira -o src/Keel/Jira.php --package 'App\Keel\Jira'</pre>
+<pre class="use"><span class="k">use</span> App\Keel\Jira\{Keel, Emit, Subjects, IssueStatusChangedPayload};
+
+$keel = Keel::client($url, <span class="s">'spring'</span>, $secret, <span class="s">'triage'</span>);
+
+$keel-&gt;events([Emit::issueStatusChanged(
+    <span class="s">'spring'</span>, Subjects::issue(<span class="s">'SPR-142'</span>), <span class="k">new</span> \DateTimeImmutable(), <span class="s">'jira'</span>,
+    <span class="k">new</span> IssueStatusChangedPayload(status: <span class="s">'Blocked'</span>),
+)]);   <span class="c">// payloads are readonly value objects, enums are PHP enums</span>
+
+$keel-&gt;context(Subjects::issue(<span class="s">'SPR-142'</span>));</pre>
+        </div>
       </div>
     </div>
   </div>
@@ -624,7 +706,7 @@ const ES = {
   "pb.at": "Con Keel", "pb.atag": "una capa", "pb.ap": "Una ingesta determinista. Todos los agentes leen el mismo grafo con las mismas cinco herramientas.",
   "how.h": "Cómo funciona",
   "how.1": "Envía tus eventos", "how.1p": "Desde CDC de Postgres, un outbox, Kafka, SQS, webhooks o el SDK.",
-  "how.2": "Declara un cartridge", "how.2p": "Tus entidades, eventos y reglas en YAML, más handlers de diez líneas.",
+  "how.2": "Declara un cartridge", "how.2p": "Tus entidades, eventos y reglas en YAML, más handlers de diez líneas. De ahí salen SDKs tipados.",
   "how.3": "Keel construye el grafo", "how.3p": "Un grafo bitemporal por tenant. Sin LLM en la ingesta; el replay da el mismo grafo.",
   "how.4": "Los agentes usan cinco herramientas", "how.4p": "context, history, search, related, annotate. Las reglas llegan evaluadas.",
   "f1.h": "Define \"bloqueado\" una vez. Cada agente recibe el veredicto.",
@@ -649,6 +731,11 @@ const ES = {
   "f3.l2": "<b>0 fugas</b> en 26.666 lecturas aleatorias entre tenants, alcances y agentes.",
   "f3.l3": "<b>Un grafo por tenant:</b> ninguna herramienta puede devolver hechos de otro tenant.",
   "f3.out": "lanza",
+  "f4.h": "Tu cartridge, como un cliente tipado en tu lenguaje",
+  "f4.p": "keel sdk escribe un archivo para el repo de tu producto, como hace protoc: un tipo por payload de evento, un constructor por evento, helpers de sujetos, las reglas y un cliente para las cinco herramientas. Tu compilador detecta un payload que se desvía del catálogo antes de que llegue a Keel.",
+  "f4.l1": "<b>TypeScript, Python, Go y PHP,</b> cada uno con un runtime pequeño publicado y probado de punta a punta contra keel serve.",
+  "f4.l2": "<b>--check en CI</b> rompe el build cuando el cartridge cambia y el archivo generado quedó viejo.",
+  "f4.l3": "<b>Un solo contrato:</b> el mismo cartridge define la ingesta, las herramientas y cada cliente.",
   "tools.h": "Cinco herramientas. Solo cinco.",
   "tools.p": "Los nombres y las firmas son parte del estándar público. Lo nuevo entra en estas cinco, nunca en una sexta, así los prompts de tus agentes no cambian cuando cambia Keel.",
   "bm.h": "Medido, con los resultados públicos",
@@ -750,7 +837,9 @@ function tablist(list, onSelect) {
     if (next == null) return; e.preventDefault(); select(all[(next + all.length) % all.length], true);
   });
 }
-tablist(document.querySelector(".panel .bar"), b => document.querySelectorAll(".panel .pane").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls")));
+tablist(document.querySelector(".panel .bar"), b => document.querySelectorAll(".panel > .pane").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls")));
+
+tablist(document.getElementById("sdk-tabs"), b => document.querySelectorAll(".sdk .pane").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls")));
 
 // Agent session: an illustrative run of one question against the tools.
 const CALLS = ['search(kind="issue", rule="blocked")', 'history("issue:SPR-142", predicate="status")', 'context("issue:SPR-142", as_of="2026-10-05", as_known_at="2026-10-05")'];
