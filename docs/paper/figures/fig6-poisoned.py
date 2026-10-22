@@ -10,12 +10,12 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import figstyle as S  # noqa: E402
+import figstyle as S
+import matplotlib
 
-import matplotlib  # noqa: E402
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.patches import Patch  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 S.apply()
 

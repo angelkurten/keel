@@ -9,15 +9,16 @@ import json
 import os
 import sys
 from decimal import ROUND_HALF_EVEN, Decimal
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import figstyle as S  # noqa: E402
+import figstyle as S
+import matplotlib
 
-import matplotlib  # noqa: E402
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.patches import Patch  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 S.apply()
 
@@ -26,7 +27,7 @@ MODELS = [("gpt-6-luna", "Luna"), ("claude-haiku-5.5", "Haiku"), ("claude-sonnet
 SYSTEMS = [("keel", "Keel", S.KEEL), ("api", "API", S.GREY_DARK),
            ("rag", "RAG", S.GREY_MID), ("closed", "Closed book", S.GREY_LIGHT)]
 
-rows = {(m, s): (n, mean, lo, hi) for m, s, n, mean, lo, hi in json.load(open(DATA))}
+rows = {(m, s): (n, mean, lo, hi) for m, s, n, mean, lo, hi in json.loads(Path(DATA).read_text())}
 
 fig, ax = plt.subplots(figsize=(S.WIDTH_IN, 2.9))
 ax.set_xlim(-0.55, len(MODELS) - 0.45)

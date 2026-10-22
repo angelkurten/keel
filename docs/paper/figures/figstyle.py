@@ -6,8 +6,8 @@ Fonts are embedded as TrueType (Type 42) so the PDFs stay text-searchable in LaT
 from __future__ import annotations
 
 import matplotlib as mpl
-from matplotlib.path import Path
 from matplotlib.patches import PathPatch
+from matplotlib.path import Path
 
 # Marks
 KEEL = "#2a78d6"        # accent, categorical slot 1

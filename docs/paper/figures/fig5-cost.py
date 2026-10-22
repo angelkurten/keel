@@ -9,21 +9,22 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import figstyle as S  # noqa: E402
+import figstyle as S
+import matplotlib
 
-import matplotlib  # noqa: E402
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from matplotlib.lines import Line2D  # noqa: E402
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 S.apply()
 
 DATA = os.path.join(HERE, "tenant-ci.json")
-acc = {(m, s): mean for m, s, n, mean, lo, hi in json.load(open(DATA))}
-nq = {(m, s): n for m, s, n, mean, lo, hi in json.load(open(DATA))}
+acc = {(m, s): mean for m, s, n, mean, lo, hi in json.loads(Path(DATA).read_text())}
+nq = {(m, s): n for m, s, n, mean, lo, hi in json.loads(Path(DATA).read_text())}
 
 # USD per correct answer, tenant-wide questions (full-run-results.md)
 COST = {
