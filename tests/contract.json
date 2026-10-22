@@ -1,0 +1,2946 @@
+{
+ "cartridge": {
+  "$defs": {
+   "agent": {
+    "description": "One declared agent or person.",
+    "properties": {
+     "description": {
+      "description": "What this agent does.",
+      "type": "string"
+     },
+     "kind": {
+      "description": "`human`: a person, whose annotations are signed human:<id>. Default agent.",
+      "enum": [
+       "agent",
+       "human"
+      ]
+     },
+     "reads": {
+      "description": "What it may see. Absent: everything.",
+      "properties": {
+       "kinds": {
+        "description": "Entity kinds it may read. Absent: every kind.",
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       "relations": {
+        "description": "Relations it may read. Absent: every relation.",
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "writes": {
+      "description": "Scopes it may annotate. Never global. Default [task, agent].",
+      "items": {
+       "enum": [
+        "tenant",
+        "task",
+        "agent"
+       ]
+      },
+      "type": "array"
+     }
+    },
+    "type": [
+     "object",
+     "null"
+    ]
+   },
+   "allOf": {
+    "additionalProperties": false,
+    "description": "True when every condition is; null propagates unless one is false.",
+    "properties": {
+     "all": {
+      "description": "Every condition holds.",
+      "items": {
+       "$ref": "#/$defs/condition"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "all"
+    ],
+    "type": "object"
+   },
+   "anyOf": {
+    "additionalProperties": false,
+    "description": "True when any condition is; null propagates unless one is true.",
+    "properties": {
+     "any": {
+      "description": "At least one condition holds.",
+      "items": {
+       "$ref": "#/$defs/condition"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "any"
+    ],
+    "type": "object"
+   },
+   "calendar": {
+    "description": "Business days for `open_for_business_days` and `held_for_business_days`.",
+    "properties": {
+     "holidays": {
+      "description": "ISO dates that are not business days.",
+      "examples": [
+       [
+        "2026-12-25"
+       ]
+      ],
+      "items": {
+       "format": "date",
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "weekend": {
+      "description": "Weekday names that are not business days. Default [saturday, sunday].",
+      "items": {
+       "anyOf": [
+        {
+         "enum": [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday"
+         ]
+        },
+        {
+         "pattern": "^([Mm][Oo][Nn][Dd][Aa][Yy]|[Tt][Uu][Ee][Ss][Dd][Aa][Yy]|[Ww][Ee][Dd][Nn][Ee][Ss][Dd][Aa][Yy]|[Tt][Hh][Uu][Rr][Ss][Dd][Aa][Yy]|[Ff][Rr][Ii][Dd][Aa][Yy]|[Ss][Aa][Tt][Uu][Rr][Dd][Aa][Yy]|[Ss][Uu][Nn][Dd][Aa][Yy])$",
+         "type": "string"
+        }
+       ]
+      },
+      "type": "array"
+     }
+    },
+    "type": "object"
+   },
+   "condition": {
+    "anyOf": [
+     {
+      "$ref": "#/$defs/leaf"
+     },
+     {
+      "$ref": "#/$defs/allOf"
+     },
+     {
+      "$ref": "#/$defs/anyOf"
+     },
+     {
+      "$ref": "#/$defs/notOf"
+     },
+     {
+      "$ref": "#/$defs/via"
+     }
+    ],
+    "description": "A condition: a leaf on one predicate, all/any/not, or via a relation."
+   },
+   "consolidation": {
+    "description": "One consolidation job: episodic facts reduced into one durable fact per subject.",
+    "properties": {
+     "applies_to": {
+      "description": "Only subjects of this kind.",
+      "type": "string"
+     },
+     "from": {
+      "description": "The episodic memory to read.",
+      "properties": {
+       "predicate": {
+        "description": "The predicate to consolidate.",
+        "type": "string"
+       },
+       "scopes": {
+        "description": "Scopes to read. Default [task]; agent memory only when listed.",
+        "items": {
+         "enum": [
+          "global",
+          "tenant",
+          "task",
+          "agent"
+         ]
+        },
+        "type": "array"
+       }
+      },
+      "required": [
+       "predicate"
+      ],
+      "type": "object"
+     },
+     "into": {
+      "description": "The durable fact to write.",
+      "properties": {
+       "predicate": {
+        "description": "The predicate to write. Differs from from.predicate.",
+        "type": "string"
+       },
+       "scope": {
+        "description": "The scope of the written fact. Default tenant.",
+        "enum": [
+         "global",
+         "tenant",
+         "task",
+         "agent"
+        ]
+       }
+      },
+      "required": [
+       "predicate"
+      ],
+      "type": "object"
+     },
+     "min_count": {
+      "description": "How many observations make a pattern. Default 2.",
+      "minimum": 1,
+      "type": "integer"
+     },
+     "reduce": {
+      "description": "How to reduce the facts. Default mode. `summary` asks a Summarizer adapter for one sentence; the rest are deterministic.",
+      "enum": [
+       "mode",
+       "latest",
+       "count",
+       "min",
+       "max",
+       "avg",
+       "distinct",
+       "summary"
+      ]
+     },
+     "within": {
+      "anyOf": [
+       {
+        "enum": [
+         "never",
+         "forever",
+         null
+        ]
+       },
+       {
+        "type": "number"
+       },
+       {
+        "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$",
+        "type": "string"
+       }
+      ],
+      "description": "Only memory whose valid_from falls in this window, e.g. `30d`.",
+      "examples": [
+       "14d",
+       "1d",
+       "12h",
+       "never"
+      ],
+      "markdownDescription": "Only memory whose `valid_from` falls in this window, e.g. `30d`."
+     }
+    },
+    "required": [
+     "from",
+     "into"
+    ],
+    "type": "object"
+   },
+   "context": {
+    "additionalProperties": false,
+    "description": "How much `context` carries: relations listed, and neighbours read with depth=1, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.",
+    "markdownDescription": "How much `context` carries: relations listed, and neighbours read with `depth=1`, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.\n\n```yaml\ncontext: { relations: 10, neighbors: 5 }\n```",
+    "properties": {
+     "neighbors": {
+      "description": "Neighbours read with depth=1 per relation and direction, the most recent ones. Default 5.",
+      "minimum": 1,
+      "type": "integer"
+     },
+     "relations": {
+      "description": "Relations listed per relation and direction, the most recent ones. Default 10.",
+      "minimum": 1,
+      "type": "integer"
+     }
+    },
+    "type": "object"
+   },
+   "entity": {
+    "description": "An entity kind.",
+    "properties": {
+     "description": {
+      "description": "What this kind is, in the product's words.",
+      "type": "string"
+     },
+     "ref": {
+      "description": "Where `ref` points in the system of record, e.g. `patients.id`. Keel holds pointers, not copies.",
+      "examples": [
+       "patients.id"
+      ],
+      "type": "string"
+     }
+    },
+    "type": [
+     "object",
+     "string",
+     "null"
+    ]
+   },
+   "event": {
+    "description": "One cataloged event type.",
+    "properties": {
+     "forgets": {
+      "description": "`tenant`: the event erases its tenant. `before`: it deletes what closed before it. Either way it takes no handler.",
+      "enum": [
+       "tenant",
+       "before",
+       null
+      ],
+      "markdownDescription": "- `tenant`: the event erases everything Keel stores for its tenant\n- `before`: it deletes the tenant's facts and relations that closed before `occurred_at`\n\nEither way the event takes no handler."
+     },
+     "owner": {
+      "description": "Who owns this event's shape. Recommended.",
+      "examples": [
+       "scheduling-team"
+      ],
+      "type": "string"
+     },
+     "payload": {
+      "additionalProperties": {
+       "$ref": "#/$defs/payloadHint"
+      },
+      "description": "The payload fields handlers need: field -> hint. Extra fields in a payload are allowed. A single hint string is accepted too.",
+      "examples": [
+       {
+        "amount": "number | null",
+        "id": "string",
+        "status": [
+         "pending",
+         "paid"
+        ]
+       }
+      ],
+      "markdownDescription": "The payload fields handlers need: field -> hint. Extra fields in a payload are allowed.\n\nA payload field's shape, in Keel's short notation:\n\n| Written as | Means |\n| --- | --- |\n| `string`, `int`, `number`, `bool`, `date`, `datetime`, `any` | a scalar |\n| `number \\| null` | optional and nullable |\n| `string[]` | array of scalars |\n| `[pending, paid]` | enum of literals |\n| `[new, done, null]` | optional enum |\n| `[ { id: string, qty: int } ]` | array of objects |\n| `{ source: string, score: number }` | nested object |\n\nAn unknown hint is an error, so a typo never passes as `any`. `[string]` is rejected: write `string[]`.",
+      "type": [
+       "object",
+       "string",
+       "null"
+      ]
+     },
+     "subject": {
+      "description": "The entity kind of event.subject.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "subject"
+    ],
+    "type": "object"
+   },
+   "leaf": {
+    "additionalProperties": false,
+    "description": "A leaf: operators on the subject's open fact for `predicate`.",
+    "properties": {
+     "ci": {
+      "description": "true compares strings case-insensitively.",
+      "examples": [
+       true
+      ]
+     },
+     "eq": {
+      "description": "The open fact's value equals this."
+     },
+     "gt": {
+      "description": "The open fact's value is greater than this."
+     },
+     "gte": {
+      "description": "The open fact's value is greater than or equal to this."
+     },
+     "held_for_business_days": {
+      "description": "Like `held_for_days`, in business days.",
+      "examples": [
+       {
+        "gte": 7
+       }
+      ],
+      "markdownDescription": "Like `held_for_days`, in business days.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+      "minProperties": 1,
+      "properties": {
+       "eq": {
+        "description": "Days eq this number."
+       },
+       "gt": {
+        "description": "Days gt this number."
+       },
+       "gte": {
+        "description": "Days gte this number."
+       },
+       "lt": {
+        "description": "Days lt this number."
+       },
+       "lte": {
+        "description": "Days lte this number."
+       }
+      },
+      "propertyNames": {
+       "enum": [
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "eq"
+       ]
+      },
+      "type": "object"
+     },
+     "held_for_days": {
+      "description": "How long the leaf's comparison has held across consecutive facts, in calendar days. Survives a change from one matching value to another.",
+      "examples": [
+       {
+        "gte": 7
+       }
+      ],
+      "markdownDescription": "How long the leaf's comparison has held across consecutive facts, in calendar days. Survives a change from one matching value to another.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+      "minProperties": 1,
+      "properties": {
+       "eq": {
+        "description": "Days eq this number."
+       },
+       "gt": {
+        "description": "Days gt this number."
+       },
+       "gte": {
+        "description": "Days gte this number."
+       },
+       "lt": {
+        "description": "Days lt this number."
+       },
+       "lte": {
+        "description": "Days lte this number."
+       }
+      },
+      "propertyNames": {
+       "enum": [
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "eq"
+       ]
+      },
+      "type": "object"
+     },
+     "in": {
+      "description": "The open fact's value is in this list.",
+      "examples": [
+       [
+        "On Hold",
+        "Blocked"
+       ]
+      ]
+     },
+     "lt": {
+      "description": "The open fact's value is less than this."
+     },
+     "lte": {
+      "description": "The open fact's value is less than or equal to this."
+     },
+     "ne": {
+      "description": "The open fact's value differs from this."
+     },
+     "open_for_business_days": {
+      "description": "How long the open fact has been open, in business days (skips `calendar` weekend and holidays).",
+      "examples": [
+       {
+        "gte": 7
+       }
+      ],
+      "markdownDescription": "How long the open fact has been open, in business days (skips `calendar` weekend and holidays).\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+      "minProperties": 1,
+      "properties": {
+       "eq": {
+        "description": "Days eq this number."
+       },
+       "gt": {
+        "description": "Days gt this number."
+       },
+       "gte": {
+        "description": "Days gte this number."
+       },
+       "lt": {
+        "description": "Days lt this number."
+       },
+       "lte": {
+        "description": "Days lte this number."
+       }
+      },
+      "propertyNames": {
+       "enum": [
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "eq"
+       ]
+      },
+      "type": "object"
+     },
+     "open_for_days": {
+      "description": "How long the open fact has been open, in calendar days.",
+      "examples": [
+       {
+        "gte": 7
+       }
+      ],
+      "markdownDescription": "How long the open fact has been open, in calendar days.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+      "minProperties": 1,
+      "properties": {
+       "eq": {
+        "description": "Days eq this number."
+       },
+       "gt": {
+        "description": "Days gt this number."
+       },
+       "gte": {
+        "description": "Days gte this number."
+       },
+       "lt": {
+        "description": "Days lt this number."
+       },
+       "lte": {
+        "description": "Days lte this number."
+       }
+      },
+      "propertyNames": {
+       "enum": [
+        "lt",
+        "lte",
+        "gt",
+        "gte",
+        "eq"
+       ]
+      },
+      "type": "object"
+     },
+     "predicate": {
+      "description": "The predicate whose open fact the operators test. No open fact makes the leaf null.",
+      "type": "string"
+     },
+     "within_days": {
+      "description": "A date value on or before as_of plus this many days. Dates already past count.",
+      "examples": [
+       15
+      ]
+     }
+    },
+    "required": [
+     "predicate"
+    ],
+    "type": "object"
+   },
+   "memory": {
+    "description": "Memory policy per scope. Defaults: global and tenant never expire and require evidence; task 14d; agent 1d.",
+    "properties": {
+     "evidence": {
+      "description": "What counts as evidence in those scopes: event (an event the tenant's log applied to the same subject) or a ref prefix such as photo: or human:. Absent: any non-empty string.",
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "requires_evidence": {
+      "description": "Scopes where annotate requires evidence. Default [global, tenant].",
+      "items": {
+       "enum": [
+        "global",
+        "tenant",
+        "task",
+        "agent"
+       ]
+      },
+      "type": "array"
+     },
+     "ttl": {
+      "additionalProperties": false,
+      "description": "Lifetime per scope.",
+      "properties": {
+       "agent": {
+        "anyOf": [
+         {
+          "enum": [
+           "never",
+           "forever",
+           null
+          ]
+         },
+         {
+          "type": "number"
+         },
+         {
+          "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$",
+          "type": "string"
+         }
+        ],
+        "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+        "examples": [
+         "14d",
+         "1d",
+         "12h",
+         "never"
+        ],
+        "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days"
+       },
+       "global": {
+        "anyOf": [
+         {
+          "enum": [
+           "never",
+           "forever",
+           null
+          ]
+         },
+         {
+          "type": "number"
+         },
+         {
+          "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$",
+          "type": "string"
+         }
+        ],
+        "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+        "examples": [
+         "14d",
+         "1d",
+         "12h",
+         "never"
+        ],
+        "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days"
+       },
+       "task": {
+        "anyOf": [
+         {
+          "enum": [
+           "never",
+           "forever",
+           null
+          ]
+         },
+         {
+          "type": "number"
+         },
+         {
+          "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$",
+          "type": "string"
+         }
+        ],
+        "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+        "examples": [
+         "14d",
+         "1d",
+         "12h",
+         "never"
+        ],
+        "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days"
+       },
+       "tenant": {
+        "anyOf": [
+         {
+          "enum": [
+           "never",
+           "forever",
+           null
+          ]
+         },
+         {
+          "type": "number"
+         },
+         {
+          "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$",
+          "type": "string"
+         }
+        ],
+        "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+        "examples": [
+         "14d",
+         "1d",
+         "12h",
+         "never"
+        ],
+        "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days"
+       }
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     }
+    },
+    "type": [
+     "object",
+     "null"
+    ]
+   },
+   "notOf": {
+    "additionalProperties": false,
+    "description": "The negation of one condition; null stays null.",
+    "properties": {
+     "not": {
+      "$ref": "#/$defs/condition",
+      "description": "The condition to negate."
+     }
+    },
+    "required": [
+     "not"
+    ],
+    "type": "object"
+   },
+   "payloadHint": {
+    "anyOf": [
+     {
+      "description": "A scalar hint, optionally `[]` (array) and `| null` (optional).",
+      "pattern": "^\\s*(null\\s*\\|\\s*)*(string|int|number|bool|date|datetime|any)(\\[\\])?(\\s*\\|\\s*null)*\\s*$",
+      "type": "string"
+     },
+     {
+      "contains": {
+       "type": [
+        "string",
+        "number",
+        "boolean"
+       ]
+      },
+      "description": "An enum of literals; `null` in the list makes it optional.",
+      "items": {
+       "type": [
+        "string",
+        "number",
+        "boolean",
+        "null"
+       ]
+      },
+      "minItems": 1,
+      "not": {
+       "items": {
+        "enum": [
+         "string",
+         "int",
+         "number",
+         "bool",
+         "date",
+         "datetime",
+         "any",
+         null
+        ]
+       }
+      },
+      "type": "array"
+     },
+     {
+      "description": "An array of objects: one mapping in a list.",
+      "items": {
+       "additionalProperties": {
+        "$ref": "#/$defs/payloadHint"
+       },
+       "type": "object"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "type": "array"
+     },
+     {
+      "additionalProperties": {
+       "$ref": "#/$defs/payloadHint"
+      },
+      "description": "A nested object: field -> hint.",
+      "type": "object"
+     }
+    ],
+    "description": "A payload field's shape: a scalar hint, `T | null`, `T[]`, a list of literals (enum), `[ {...} ]` or a nested mapping.",
+    "examples": [
+     "string",
+     "int",
+     "number | null",
+     "datetime",
+     "string[]",
+     [
+      "pending",
+      "paid"
+     ],
+     {
+      "source": "string"
+     }
+    ],
+    "markdownDescription": "A payload field's shape, in Keel's short notation:\n\n| Written as | Means |\n| --- | --- |\n| `string`, `int`, `number`, `bool`, `date`, `datetime`, `any` | a scalar |\n| `number \\| null` | optional and nullable |\n| `string[]` | array of scalars |\n| `[pending, paid]` | enum of literals |\n| `[new, done, null]` | optional enum |\n| `[ { id: string, qty: int } ]` | array of objects |\n| `{ source: string, score: number }` | nested object |\n\nAn unknown hint is an error, so a typo never passes as `any`. `[string]` is rejected: write `string[]`."
+   },
+   "predicate": {
+    "additionalProperties": false,
+    "description": "Write policy for one predicate.",
+    "properties": {
+     "description": {
+      "description": "What the predicate means.",
+      "type": "string"
+     },
+     "multi": {
+      "description": "One open value per author instead of last-writer-wins; context lists conflicts.",
+      "type": "boolean"
+     }
+    },
+    "type": "object"
+   },
+   "relation": {
+    "description": "A relation between two entity kinds.",
+    "properties": {
+     "from": {
+      "description": "The source entity kind.",
+      "type": "string"
+     },
+     "symmetric": {
+      "description": "Recorded from either end, shown once (direction `both`).",
+      "type": "boolean"
+     },
+     "to": {
+      "description": "The target entity kind.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "from",
+     "to"
+    ],
+    "type": "object"
+   },
+   "rule": {
+    "additionalProperties": true,
+    "description": "A semantic definition. The core reads `applies_to` and `when`; every other key is a parameter agents read.",
+    "markdownDescription": "A semantic definition. The core reads `applies_to` and `when`; every other key (`threshold_mm`, `days`) is a parameter agents read.\n\n```yaml\ntire_critical:\n  applies_to: tire\n  definition: A tire is critical when tread depth is below 3 mm.\n  threshold_mm: 3\n  when: { predicate: depth_mm, lt: 3 }\n```",
+    "properties": {
+     "applies_to": {
+      "description": "The entity kind the rule is about. Absent: every subject.",
+      "items": {
+       "type": "string"
+      },
+      "type": [
+       "string",
+       "array"
+      ]
+     },
+     "definition": {
+      "description": "The rule in words, for people and agents.",
+      "type": "string"
+     },
+     "when": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/condition"
+       },
+       {
+        "items": {
+         "$ref": "#/$defs/condition"
+        },
+        "type": "array"
+       },
+       {
+        "maxProperties": 0,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A condition the core evaluates in `context`: true, false or null. A list means all of them. Absent: the rule is a definition only.",
+      "markdownDescription": "A condition the core evaluates in `context`: true, false or null. A list means all of them. Absent: the rule is a definition only.\n\n```yaml\nwhen: { predicate: depth_mm, lt: 3 }\nwhen: [ { predicate: status, eq: pending }, { predicate: due_on, within_days: 5 } ]\nwhen: { via: mounted_on, direction: in, any: { predicate: depth_mm, lt: 3 } }\nwhen: { predicate: status, eq: open, open_for_days: { gte: 7 } }\n```"
+     }
+    },
+    "type": "object"
+   },
+   "semantic": {
+    "additionalProperties": false,
+    "description": "What `keel index` puts in each subject's document for semantic search.",
+    "not": {
+     "required": [
+      "predicates",
+      "exclude"
+     ]
+    },
+    "properties": {
+     "attrs": {
+      "description": "Entity attributes in the document: true (default), false, or a list of names.",
+      "items": {
+       "type": "string"
+      },
+      "type": [
+       "boolean",
+       "array"
+      ]
+     },
+     "exclude": {
+      "description": "Predicates to leave out. Use this or `predicates`, not both.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "kinds": {
+      "description": "Kinds to index. Absent: every kind.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "labels": {
+      "description": "Attributes that label the other side of a relation; the first present wins. Default: name, nombre, title, titulo, label, plate, model.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "lexical_weight": {
+      "description": "Hybrid search: weight of the lexical leg. 0 is dense only. Default 0.3.",
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+     },
+     "min_score": {
+      "description": "Drop results below this cosine. Model-specific: calibrate with evals.",
+      "type": "number"
+     },
+     "predicates": {
+      "description": "Predicates to include. Use this or `exclude`, not both.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "relations": {
+      "description": "Open relations to include: the other side's key and one label.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "split": {
+      "additionalProperties": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "description": "kind -> predicates: also one document per open fact of these predicates, and per element of a list value.",
+      "examples": [
+       {
+        "visual": [
+         "campo"
+        ]
+       }
+      ],
+      "type": "object"
+     }
+    },
+    "type": "object"
+   },
+   "via": {
+    "additionalProperties": false,
+    "description": "Follow a relation and test each neighbour. No neighbours: `any` is false, `all` is true.",
+    "oneOf": [
+     {
+      "required": [
+       "any"
+      ]
+     },
+     {
+      "required": [
+       "all"
+      ]
+     }
+    ],
+    "properties": {
+     "all": {
+      "$ref": "#/$defs/condition",
+      "description": "Every neighbour meets this condition."
+     },
+     "any": {
+      "$ref": "#/$defs/condition",
+      "description": "At least one neighbour meets this condition."
+     },
+     "direction": {
+      "description": "Which way to follow the relation. Default any; symmetric relations ignore it.",
+      "enum": [
+       "out",
+       "in",
+       "any"
+      ]
+     },
+     "via": {
+      "description": "A declared relation.",
+      "type": "string"
+     }
+    },
+    "required": [
+     "via"
+    ],
+    "type": "object"
+   }
+  },
+  "$id": "https://angelkurten.github.io/keel/cartridge.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "cartridge.yaml: the ontology, event catalog, rules, memory policy and agent registry of one domain. See docs/SPEC.md section 5.",
+  "properties": {
+   "agents": {
+    "additionalProperties": {
+     "$ref": "#/$defs/agent"
+    },
+    "description": "The agent registry: id -> spec. Absent means no registry: any caller, any scope with evidence. With it, every Tools instance is bound to a declared agent.",
+    "markdownDescription": "The agent registry: id -> spec. Absent means no registry: any caller, any scope with evidence. With it, every `Tools` instance is bound to a declared agent.\n\n```yaml\nagents:\n  tires-bot:\n    description: Reads tire depth, writes task memory.\n    writes: [task, agent]\n    reads: { kinds: [unit, tire], relations: [mounted_on] }\n  dispatcher:\n    kind: human\n    writes: [task, tenant]\n```",
+    "type": "object"
+   },
+   "calendar": {
+    "$ref": "#/$defs/calendar"
+   },
+   "consolidate": {
+    "additionalProperties": {
+     "$ref": "#/$defs/consolidation"
+    },
+    "description": "Episodic memory summarized into durable facts by `keel consolidate`: name -> job. A job, never part of ingest.",
+    "type": "object"
+   },
+   "context": {
+    "$ref": "#/$defs/context"
+   },
+   "entities": {
+    "additionalProperties": {
+     "$ref": "#/$defs/entity"
+    },
+    "description": "The kinds of things the product is about: kind -> spec. Subjects are written `<kind>:<id>`.",
+    "markdownDescription": "The kinds of things the product is about: kind -> spec. Subjects are written `<kind>:<id>`.\n\n```yaml\nentities:\n  patient: { description: A person treated at the clinic., ref: patients.id }\n```",
+    "type": "object"
+   },
+   "events": {
+    "additionalProperties": {
+     "$ref": "#/$defs/event"
+    },
+    "description": "The event catalog: dotted lowercase type -> spec. Every type has a handler in handlers.py, except one that forgets.",
+    "markdownDescription": "The event catalog: dotted lowercase type -> spec. Every type has a handler in `handlers.py`, except one that `forgets`.\n\n```yaml\nevents:\n  appointment.booked:\n    subject: appointment\n    owner: scheduling-team\n    payload: { patient_id: string, starts_at: datetime }\n```",
+    "type": "object"
+   },
+   "memory": {
+    "$ref": "#/$defs/memory"
+   },
+   "name": {
+    "description": "The cartridge's name, a slug. Defaults to the folder name.",
+    "examples": [
+     "clinics"
+    ],
+    "type": "string"
+   },
+   "predicates": {
+    "additionalProperties": {
+     "$ref": "#/$defs/predicate"
+    },
+    "description": "Write policy per predicate, for annotations: predicate -> {multi, description}.",
+    "type": "object"
+   },
+   "relations": {
+    "additionalProperties": {
+     "$ref": "#/$defs/relation"
+    },
+    "description": "How kinds relate: relation -> {from, to}. Both ends are declared entity kinds.",
+    "markdownDescription": "How kinds relate: relation -> `{from, to}`. Both ends are declared entity kinds.\n\n```yaml\nrelations:\n  booked_by: { from: appointment, to: patient }\n```",
+    "type": "object"
+   },
+   "rules": {
+    "additionalProperties": {
+     "$ref": "#/$defs/rule"
+    },
+    "description": "Semantic definitions, versioned with the cartridge: name -> rule. `context` returns them for the subject's kind and evaluates their `when`.",
+    "type": "object"
+   },
+   "semantic": {
+    "$ref": "#/$defs/semantic"
+   },
+   "version": {
+    "description": "The cartridge's own version. Recorded on every annotation with a hash of the rules.",
+    "examples": [
+     "0.1.0"
+    ],
+    "type": [
+     "string",
+     "number"
+    ]
+   }
+  },
+  "title": "Keel cartridge",
+  "type": "object"
+ },
+ "client": {
+  "annotate": {
+   "by": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "evidence": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "key": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "predicate": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "scope": {
+    "default": "'task'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "status": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "value": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "context": {
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "0",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "exclude": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "only": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "history": {
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "changed_since": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "50",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "predicate": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "scope": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "since": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "until": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "related": {
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "1",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "50",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "relation": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "search": {
+   "after": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "0",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'entity'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "exclude": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "kind": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "min_score": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "mode": {
+    "default": "'text'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "per_kind": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "related_to": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "rule": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "text": {
+    "default": "''",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "via": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "where": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  }
+ },
+ "envelope": {
+  "description": "A domain fact with time, from one of the SaaS's systems.",
+  "properties": {
+   "id": {
+    "default": "",
+    "description": "The source's own id when it has one; else a content hash, so replay yields the same ids.",
+    "title": "Id",
+    "type": "string"
+   },
+   "occurred_at": {
+    "description": "When it happened in the world (valid time).",
+    "format": "date-time",
+    "title": "Occurred At",
+    "type": "string"
+   },
+   "payload": {
+    "additionalProperties": true,
+    "title": "Payload",
+    "type": "object"
+   },
+   "recorded_at": {
+    "description": "When Keel learned it (transaction time).",
+    "format": "date-time",
+    "title": "Recorded At",
+    "type": "string"
+   },
+   "source": {
+    "description": "System of record, e.g. 'vec.inspections' or 'webhook:telematics'.",
+    "title": "Source",
+    "type": "string"
+   },
+   "subject": {
+    "description": "Entity reference '<kind>:<id>' the fact is about, e.g. 'unit:MXK-4821'.",
+    "title": "Subject",
+    "type": "string"
+   },
+   "tenant": {
+    "description": "The end-customer this fact belongs to (the tenant of the tenant).",
+    "title": "Tenant",
+    "type": "string"
+   },
+   "type": {
+    "description": "Dotted event type from the cartridge catalog, e.g. 'inspection.created'.",
+    "title": "Type",
+    "type": "string"
+   }
+  },
+  "required": [
+   "tenant",
+   "type",
+   "subject",
+   "occurred_at",
+   "source"
+  ],
+  "title": "Event",
+  "type": "object"
+ },
+ "exports": [
+  "Cartridge",
+  "Event",
+  "HandlerRegistry",
+  "Ingestor",
+  "MemoryStore",
+  "MysqlStore",
+  "Scope",
+  "SqliteStore",
+  "Tools",
+  "load_cartridge",
+  "running_from"
+ ],
+ "http": {
+  "paths": {
+   "/health": [
+    "get"
+   ],
+   "/v1/annotate": [
+    "post"
+   ],
+   "/v1/cartridge": [
+    "get"
+   ],
+   "/v1/context": [
+    "post"
+   ],
+   "/v1/events": [
+    "post"
+   ],
+   "/v1/events/check": [
+    "post"
+   ],
+   "/v1/events/recent": [
+    "get"
+   ],
+   "/v1/history": [
+    "post"
+   ],
+   "/v1/related": [
+    "post"
+   ],
+   "/v1/sdk/{language}": [
+    "get"
+   ],
+   "/v1/search": [
+    "post"
+   ]
+  },
+  "schemas": {
+   "AnnotateIn": {
+    "properties": {
+     "by": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "By"
+     },
+     "detail": {
+      "default": "ack",
+      "title": "Detail",
+      "type": "string"
+     },
+     "evidence": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Evidence"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key"
+     },
+     "predicate": {
+      "title": "Predicate",
+      "type": "string"
+     },
+     "scope": {
+      "default": "task",
+      "title": "Scope",
+      "type": "string"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "subject": {
+      "title": "Subject",
+      "type": "string"
+     },
+     "task": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Task"
+     },
+     "value": {
+      "title": "Value"
+     }
+    },
+    "required": [
+     "subject",
+     "predicate",
+     "value"
+    ],
+    "title": "AnnotateIn",
+    "type": "object"
+   },
+   "ContextIn": {
+    "properties": {
+     "as_known_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Known At"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Of"
+     },
+     "depth": {
+      "default": 0,
+      "title": "Depth",
+      "type": "integer"
+     },
+     "detail": {
+      "default": "brief",
+      "title": "Detail",
+      "type": "string"
+     },
+     "exclude": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exclude"
+     },
+     "only": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Only"
+     },
+     "subject": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ],
+      "title": "Subject"
+     },
+     "task": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Task"
+     }
+    },
+    "required": [
+     "subject"
+    ],
+    "title": "ContextIn",
+    "type": "object"
+   },
+   "Event": {
+    "description": "A domain fact with time, from one of the SaaS's systems.",
+    "properties": {
+     "id": {
+      "default": "",
+      "description": "The source's own id when it has one; else a content hash, so replay yields the same ids.",
+      "title": "Id",
+      "type": "string"
+     },
+     "occurred_at": {
+      "description": "When it happened in the world (valid time).",
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+     },
+     "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+     },
+     "recorded_at": {
+      "description": "When Keel learned it (transaction time).",
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+     },
+     "source": {
+      "description": "System of record, e.g. 'vec.inspections' or 'webhook:telematics'.",
+      "title": "Source",
+      "type": "string"
+     },
+     "subject": {
+      "description": "Entity reference '<kind>:<id>' the fact is about, e.g. 'unit:MXK-4821'.",
+      "title": "Subject",
+      "type": "string"
+     },
+     "tenant": {
+      "description": "The end-customer this fact belongs to (the tenant of the tenant).",
+      "title": "Tenant",
+      "type": "string"
+     },
+     "type": {
+      "description": "Dotted event type from the cartridge catalog, e.g. 'inspection.created'.",
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "tenant",
+     "type",
+     "subject",
+     "occurred_at",
+     "source"
+    ],
+    "title": "Event",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "HistoryIn": {
+    "properties": {
+     "as_known_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Known At"
+     },
+     "changed_since": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Changed Since"
+     },
+     "detail": {
+      "default": "concise",
+      "title": "Detail",
+      "type": "string"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": 50,
+      "title": "Limit"
+     },
+     "predicate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Predicate"
+     },
+     "scope": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Scope"
+     },
+     "since": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "subject": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Subject"
+     },
+     "task": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Task"
+     },
+     "until": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Until"
+     }
+    },
+    "title": "HistoryIn",
+    "type": "object"
+   },
+   "RelatedIn": {
+    "properties": {
+     "as_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Of"
+     },
+     "depth": {
+      "default": 1,
+      "title": "Depth",
+      "type": "integer"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": 50,
+      "title": "Limit"
+     },
+     "relation": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Relation"
+     },
+     "subject": {
+      "title": "Subject",
+      "type": "string"
+     }
+    },
+    "required": [
+     "subject"
+    ],
+    "title": "RelatedIn",
+    "type": "object"
+   },
+   "SearchIn": {
+    "properties": {
+     "after": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "After"
+     },
+     "as_known_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Known At"
+     },
+     "as_of": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "As Of"
+     },
+     "depth": {
+      "default": 0,
+      "title": "Depth",
+      "type": "integer"
+     },
+     "detail": {
+      "default": "entity",
+      "title": "Detail",
+      "type": "string"
+     },
+     "exclude": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exclude"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Limit"
+     },
+     "min_score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Min Score"
+     },
+     "mode": {
+      "default": "text",
+      "title": "Mode",
+      "type": "string"
+     },
+     "per_kind": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Per Kind"
+     },
+     "related_to": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Related To"
+     },
+     "rule": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rule"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ],
+      "default": "",
+      "title": "Text"
+     },
+     "via": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Via"
+     },
+     "where": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Where"
+     }
+    },
+    "title": "SearchIn",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
+  }
+ },
+ "mcp": {
+  "annotate": {
+   "annotations": {
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "readOnlyHint": false
+   },
+   "inputSchema": {
+    "properties": {
+     "by": {
+      "type": "string"
+     },
+     "detail": {
+      "default": "ack",
+      "enum": [
+       "ack",
+       "full"
+      ],
+      "type": "string"
+     },
+     "evidence": {
+      "type": "string"
+     },
+     "key": {
+      "type": "string"
+     },
+     "predicate": {
+      "type": "string"
+     },
+     "scope": {
+      "default": "task",
+      "enum": [
+       "agent",
+       "task",
+       "tenant",
+       "global"
+      ],
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "proposed",
+       "rejected"
+      ],
+      "type": "string"
+     },
+     "subject": {
+      "type": "string"
+     },
+     "task": {
+      "type": "string"
+     },
+     "value": {}
+    },
+    "required": [
+     "subject",
+     "predicate",
+     "value"
+    ],
+    "type": "object"
+   }
+  },
+  "context": {
+   "annotations": {
+    "readOnlyHint": true
+   },
+   "inputSchema": {
+    "properties": {
+     "as_known_at": {
+      "type": "string"
+     },
+     "as_of": {
+      "type": "string"
+     },
+     "depth": {
+      "default": 0,
+      "type": "integer"
+     },
+     "detail": {
+      "default": "brief",
+      "enum": [
+       "brief",
+       "concise",
+       "full",
+       "text"
+      ],
+      "type": "string"
+     },
+     "exclude": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "only": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "subject": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ]
+     },
+     "task": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "subject"
+    ],
+    "type": "object"
+   }
+  },
+  "history": {
+   "annotations": {
+    "readOnlyHint": true
+   },
+   "inputSchema": {
+    "properties": {
+     "as_known_at": {
+      "type": "string"
+     },
+     "changed_since": {
+      "type": "string"
+     },
+     "detail": {
+      "default": "concise",
+      "enum": [
+       "concise",
+       "full",
+       "text"
+      ],
+      "type": "string"
+     },
+     "limit": {
+      "default": 50,
+      "type": "integer"
+     },
+     "predicate": {
+      "type": "string"
+     },
+     "scope": {
+      "enum": [
+       "agent",
+       "task",
+       "tenant",
+       "global"
+      ],
+      "type": "string"
+     },
+     "since": {
+      "type": "string"
+     },
+     "subject": {
+      "type": "string"
+     },
+     "task": {
+      "type": "string"
+     },
+     "until": {
+      "type": "string"
+     }
+    },
+    "type": "object"
+   }
+  },
+  "related": {
+   "annotations": {
+    "readOnlyHint": true
+   },
+   "inputSchema": {
+    "properties": {
+     "as_of": {
+      "type": "string"
+     },
+     "depth": {
+      "default": 1,
+      "type": "integer"
+     },
+     "limit": {
+      "default": 50,
+      "type": "integer"
+     },
+     "relation": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ]
+     },
+     "subject": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "subject"
+    ],
+    "type": "object"
+   }
+  },
+  "search": {
+   "annotations": {
+    "readOnlyHint": true
+   },
+   "inputSchema": {
+    "properties": {
+     "after": {
+      "type": "string"
+     },
+     "as_known_at": {
+      "type": "string"
+     },
+     "as_of": {
+      "type": "string"
+     },
+     "depth": {
+      "default": 0,
+      "type": "integer"
+     },
+     "detail": {
+      "default": "entity",
+      "enum": [
+       "key",
+       "entity",
+       "brief",
+       "concise",
+       "full",
+       "count"
+      ],
+      "type": "string"
+     },
+     "exclude": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ]
+     },
+     "limit": {
+      "type": "integer"
+     },
+     "min_score": {
+      "type": "number"
+     },
+     "mode": {
+      "default": "text",
+      "enum": [
+       "text",
+       "semantic"
+      ],
+      "type": "string"
+     },
+     "per_kind": {
+      "type": "integer"
+     },
+     "related_to": {
+      "type": "string"
+     },
+     "rule": {
+      "type": "string"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       }
+      ],
+      "default": ""
+     },
+     "via": {
+      "type": "string"
+     },
+     "where": {
+      "type": "object"
+     }
+    },
+    "type": "object"
+   }
+  }
+ },
+ "store": {
+  "changes": {
+   "after": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "alive_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "close_fact": {
+   "predicate": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "recorded_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "scope": {
+    "default": "<Scope.TENANT: 'tenant'>",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "status": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "valid_to": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "value": {
+    "default": "Ellipsis",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "close_task": {
+   "now": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "task": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "dump": {
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "entities": {
+   "kind": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "entity": {
+   "key": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "expire": {
+   "now": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "facts": {
+   "at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "multi": {
+    "default": "()",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "since": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "until": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "link": {
+   "dst": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "recorded_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "rel": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "source": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "src": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "valid_from": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "open_fact": {
+   "kw": {
+    "kind": "VAR_KEYWORD",
+    "required": false
+   },
+   "predicate": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "valid_from": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "value": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "relations": {
+   "at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "key": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "rel": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "remember": {
+   "event_id": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "search": {
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "text": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "seen": {
+   "event_id": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "unlink": {
+   "dst": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "rel": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "src": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "valid_to": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "upsert_entity": {
+   "attrs": {
+    "kind": "VAR_KEYWORD",
+    "required": false
+   },
+   "id": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "kind": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "ref": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "tenant": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  }
+ },
+ "tools": {
+  "annotate": {
+   "by": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "evidence": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "key": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "predicate": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "scope": {
+    "default": "'task'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "status": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "value": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "context": {
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "0",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "exclude": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "only": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "history": {
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "changed_since": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'full'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "50",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "predicate": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "scope": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "since": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "task": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "until": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  },
+  "related": {
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "1",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "50",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "relation": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "subject": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
+  "search": {
+   "after": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_known_at": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "as_of": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "depth": {
+    "default": "0",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "detail": {
+    "default": "'entity'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "exclude": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "kind": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "limit": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "min_score": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "mode": {
+    "default": "'text'",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "per_kind": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "related_to": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "rule": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "text": {
+    "default": "''",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "via": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "where": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   }
+  }
+ }
+}

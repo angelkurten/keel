@@ -13,7 +13,7 @@ semantics, and earned memory. It never holds copies of those rows.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
@@ -122,7 +122,8 @@ class Store(Protocol):
     # reads
     def entity(self, tenant: str, key: str) -> Entity | None: ...
 
-    def facts(self, tenant: str, subject: str, at: datetime | None = None, since: datetime | None = None, until: datetime | None = None) -> list[Fact]: ...
+    def facts(self, tenant: str, subject: str, at: datetime | None = None, since: datetime | None = None, until: datetime | None = None,
+              known_at: datetime | None = None, multi: Iterable[str] = ()) -> list[Fact]: ...  # known_at, multi: optional, feature-detected
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]: ...
 
@@ -130,7 +131,7 @@ class Store(Protocol):
 
     def entities(self, tenant: str, kind: str | None = None) -> list[Entity]: ...  # Tools lists kinds with it
 
-    def changes(self, tenant: str, after: datetime) -> list[Fact]: ...  # written (changed_at) after a watermark
+    def changes(self, tenant: str, after: datetime, alive_at: datetime | None = None) -> list[Fact]: ...  # written (changed_at) after a watermark; alive_at optional
 
     # ingest bookkeeping (the Ingestor, never handlers): at-least-once delivery means duplicates arrive
     def seen(self, tenant: str, event_id: str) -> bool: ...  # was this event already applied?

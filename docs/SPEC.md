@@ -501,5 +501,8 @@ Over MCP, a result is one text block of compact JSON (no indentation, a list in 
 ## 11. Versioning
 
 - The envelope, the cartridge format and the five tool signatures are versioned together as the **Keel standard**; breaking changes bump the minor version while pre-1.0.
+- **The public contract** is what a caller builds on: the exports of `keel/__init__.py`, the envelope, the cartridge schema (`docs/cartridge.schema.json`), the five tools in Python, over MCP and over HTTP (names, parameters, defaults, enums, read-only annotations), the store protocol (`keel/store/base.py`) and the Python client. `tests/contract.json` freezes it and `tests/test_contract.py` fails on any difference, telling an addition from a break.
+- **Additions** (a new optional parameter, a new enum value, a new field in an answer) ship in any minor version.
+- **Breaks** (a removed or renamed parameter or tool, a changed default, a new required parameter, a removed enum value) need a deprecation first: the old form keeps working for at least one minor version, warns (`DeprecationWarning` in Python; a `{"note": ...}` element or field over MCP and HTTP) and is named in the release notes with its replacement; only then may a release remove it, with `--allow-breaking` when refreshing the snapshot. Pieces marked *experimental* (MCP `detail="text"`) may change without a deprecation, still named in the release notes.
 - A cartridge declares its own `version`; the core records which cartridge version built a tenant's graph (*planned*).
 - Store implementations are versioned independently; all MUST pass the conformance invariants (§9).

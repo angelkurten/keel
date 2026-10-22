@@ -1241,7 +1241,7 @@ class Tools:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?", "only?"], "doc": DESCRIPTIONS["context"]},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?", "detail?"], "doc": DESCRIPTIONS["history"]},
-            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?"], "doc": DESCRIPTIONS["search"]},
+            {"name": "search", "args": ["text?", "kind?", "rule?", "limit?", "after?", "mode?", "min_score?", "related_to?", "via?", "detail?", "depth?", "per_kind?", "exclude?", "as_of?", "where?", "as_known_at?"], "doc": DESCRIPTIONS["search"]},
             {"name": "annotate", "args": ["subject", "predicate", "value", "scope?", "evidence?", "by?", "task?", "key?", "status?", "detail?"], "doc": DESCRIPTIONS["annotate"]},
             {"name": "related", "args": ["subject", "relation?", "as_of?", "depth?", "limit?"], "doc": DESCRIPTIONS["related"]},
         ]

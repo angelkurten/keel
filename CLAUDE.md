@@ -51,7 +51,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 - Python 3.10+, `uv`, `pytest`, `ruff` (line length 100). Type hints everywhere; pydantic for the envelope only, dataclasses in the store.
 - Subject keys are `<kind>:<id>` strings. Event types are dotted lowercase: `inspection.created`.
 - Datetimes are timezone-aware UTC. Naive datetimes are rejected at the envelope.
-- Public surface: `keel/__init__.py` exports. Anything else is internal and may change.
+- Public surface: `keel/__init__.py` exports. Anything else is internal and may change. The whole public contract (exports, envelope, cartridge schema, the five tools over Python, MCP and HTTP, store protocol, Python client) is frozen in `tests/contract.json`: an addition refreshes it with `uv run python tests/test_contract.py --update`; a break needs a deprecation first (SPEC §11) and never `--allow-breaking` without the user's say.
 - All user-facing text (README, docs, CLI help, errors) is in English. Commit messages in English.
 - Tests: every core change adds or updates a test in `tests/`; example cartridge changes add events to `examples/<name>/events.jsonl` and assertions in `examples/<name>/test_<name>.py`.
 
