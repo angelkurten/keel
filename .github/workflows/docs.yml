@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - docs/**
+      - landing/**
       - mkdocs.yml
       - ROADMAP.md
       - CONTRIBUTING.md
@@ -24,4 +25,16 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra docs
-      - run: uv run mkdocs gh-deploy --force
+      # The landing page is the site's root; the docs live under /docs/. Old doc URLs redirect,
+      # and the cartridge schema stays at its published $id.
+      - run: |
+          uv run mkdocs build -d site/docs
+          cp -R landing/. site/
+          cp site/docs/cartridge.schema.json site/
+          for d in site/docs/*/; do
+            n=$(basename "$d")
+            [ -f "$d/index.html" ] && [ ! -e "site/$n" ] || continue
+            mkdir "site/$n"
+            printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=../docs/%s/"><link rel="canonical" href="../docs/%s/"><a href="../docs/%s/">Moved to docs/%s/</a>\n' "$n" "$n" "$n" "$n" > "site/$n/index.html"
+          done
+          uv run ghp-import -n -p -f site

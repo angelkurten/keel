@@ -6,7 +6,7 @@
 
 <!-- mcp-name: io.github.angelkurten/keel -->
 
-**[Live demo](https://demo.angelkurten.com)** · [Docs](https://angelkurten.github.io/keel/) · [Hosted console (beta)](https://keel.angelkurten.com) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
+**[Live demo](https://demo.angelkurten.com)** · [Docs](https://angelkurten.github.io/keel/docs/) · [Hosted console (beta)](https://keel.angelkurten.com) · Why: [We built four agents and four copies of our customer context](https://angelkurten.com/blog/keel-four-agents-four-copies-of-context)
 
 Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. Domain events from your product go in; a bitemporal context graph per tenant comes out, whatever your unit is (an end-customer, a household, a team); every agent you build reads and writes it through the same five tools, over MCP, HTTP or a typed SDK.
 
@@ -68,7 +68,7 @@ In your own product it is a library: `uv add keel-context` (or `pip install keel
 
 ## Pilot it with us
 
-Run Keel on your product's events with your agents, with our help: [your first pilot in a day](https://angelkurten.github.io/keel/pilot/) is the path, with a time budget per step. Open a [pilot request](https://github.com/angelkurten/keel/issues/new?template=pilot_request.yml), book 30 minutes at [calendar.app.google/3oKUSqXTQPYmjya56](https://calendar.app.google/3oKUSqXTQPYmjya56), or write to angel@angelkurten.com.
+Run Keel on your product's events with your agents, with our help: [your first pilot in a day](https://angelkurten.github.io/keel/docs/pilot/) is the path, with a time budget per step. Open a [pilot request](https://github.com/angelkurten/keel/issues/new?template=pilot_request.yml), book 30 minutes at [calendar.app.google/3oKUSqXTQPYmjya56](https://calendar.app.google/3oKUSqXTQPYmjya56), or write to angel@angelkurten.com.
 
 ## Connect a real event stream
 

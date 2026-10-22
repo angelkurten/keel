@@ -1,6 +1,6 @@
 site_name: Keel
 site_description: Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.
-site_url: https://angelkurten.github.io/keel/
+site_url: https://angelkurten.github.io/keel/docs/
 repo_url: https://github.com/angelkurten/keel
 repo_name: angelkurten/keel
 edit_uri: edit/master/docs/
