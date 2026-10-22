@@ -70,6 +70,7 @@ class Relation:
     recorded_at: datetime | None = None
     source: str | None = None
     changed_at: datetime | None = None  # ingest clock of the link or unlink: the cursor of relation_changes
+    closed_at: datetime | None = None  # transaction time of the unlink: when Keel learned valid_to (as_known_at)
 
 
 @dataclass
@@ -112,7 +113,7 @@ class Store(Protocol):
     # recorded_at: the transaction time to write (the Ingestor passes an event's declared one); None is now
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation: ...
 
-    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None: ...
+    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None: ...  # recorded_at: closed_at, optional
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...  # may raise DuplicateKey
 

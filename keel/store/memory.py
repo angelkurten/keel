@@ -15,7 +15,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
 
-from keel.envelope import utcnow
+from keel.envelope import aware, utcnow
 from keel.scopes import Scope, is_global
 from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relation
 
@@ -24,6 +24,8 @@ from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relatio
 
 def new_fact(tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
     now = utcnow()
+    valid_from = aware(valid_from)
+    kw = {**kw, **{k: aware(kw[k]) for k in ("recorded_at", "expires_at") if kw.get(k) is not None}}
     return Fact(
         tenant=tenant,
         subject=subject,
@@ -319,6 +321,7 @@ class MemoryStore:
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation:
+        valid_from, recorded_at = aware(valid_from), aware(recorded_at)
         for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 return r  # already open; idempotent
@@ -332,11 +335,13 @@ class MemoryStore:
         self._added(self._rels[tenant][src], *([self._rels[tenant][dst]] if dst != src else []), self._all_rels[tenant], item=r)
         return r
 
-    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
+    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
+        valid_to, recorded_at = aware(valid_to), aware(recorded_at)
         for r in self._rels[tenant][src]:
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 self._keep(r)
                 r.valid_to, r.changed_at = valid_to, utcnow()
+                r.closed_at = recorded_at or r.changed_at
                 self._mark(tenant, r.changed_at)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
@@ -365,7 +370,7 @@ class MemoryStore:
         # `scope` (tenant by default, what handlers write) keeps a handler from closing agent or task memory.
         # The close is kept as a mark in the predicate's history (place_close), so a fact that arrives
         # later still meets it. `scope=None` (every scope, a decision settling proposals) closes only what is open now.
-        now = utcnow()
+        now, valid_to, recorded_at = utcnow(), aware(valid_to), aware(recorded_at)
         facts = self._facts[tenant][subject]
         if scope is None:
             if value is not ANY:
@@ -472,8 +477,8 @@ class MemoryStore:
         """End a task: its memory expires now (reads stop seeing it; `expire` removes it later)."""
         now = now or utcnow()
         n = 0
-        for f in self._all_facts[tenant]:
-            if f.task == task and (f.expires_at is None or f.expires_at > now):
+        for f in self._all_facts[tenant]:  # task memory only: `task=` on another scope is provenance
+            if f.task == task and Scope(f.scope) == Scope.TASK and (f.expires_at is None or f.expires_at > now):
                 f.expires_at = now
                 n += 1
         return n

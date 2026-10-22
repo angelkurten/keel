@@ -24,7 +24,7 @@ class SqliteStore(SqlStore):
       PRIMARY KEY (tenant, kind, id));
     CREATE TABLE IF NOT EXISTS relations (
       seq INTEGER PRIMARY KEY, tenant TEXT NOT NULL, src TEXT NOT NULL, rel TEXT NOT NULL, dst TEXT NOT NULL,
-      valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT);
+      valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT, closed_at TEXT);
     CREATE INDEX IF NOT EXISTS relations_src ON relations (tenant, src);
     CREATE INDEX IF NOT EXISTS relations_dst ON relations (tenant, dst);
     CREATE TABLE IF NOT EXISTS facts (

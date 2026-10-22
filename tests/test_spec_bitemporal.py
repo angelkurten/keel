@@ -4,40 +4,21 @@ Facts are placed by valid_from whatever order events arrive in, and `as_known_at
 knew at a transaction time from the facts recorded by then and the closes learned by then.
 """
 
-import importlib
 import itertools
-import os
 import random
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from keel import Event, Ingestor, MemoryStore, SqliteStore, Tools, load_cartridge
+from keel import Event, Ingestor, Tools, load_cartridge
 
 FLEET, SUBJECT = "examples/fleet", "tire:T-9"
 UTC = timezone.utc
 
 
-EXTERNAL = os.environ.get("KEEL_STORE")
-MYSQL = os.environ.get("KEEL_MYSQL_URL")
 
 
-@pytest.fixture(params=["memory", "sqlite"] + (["mysql"] if MYSQL else []) + (["external"] if EXTERNAL else []))
-def store(request, tmp_path):
-    if request.param == "memory":
-        return MemoryStore()
-    if request.param == "sqlite":
-        return SqliteStore(tmp_path / "keel.db")
-    if request.param == "mysql":
-        from keel.store.mysql import MysqlStore
-
-        s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts"):
-            s._exec(f"DELETE FROM {table}")
-        return s
-    module, _, factory = EXTERNAL.partition(":")
-    return getattr(importlib.import_module(module), factory)()
 
 
 def d(month: int, day: int, hour: int = 0) -> datetime:

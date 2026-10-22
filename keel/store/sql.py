@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from keel.envelope import Event, utcnow
+from keel.envelope import Event, aware, utcnow
 from keel.scopes import Scope, is_global
 from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
@@ -71,6 +71,7 @@ def _relation(row: Any) -> Relation:
         recorded_at=_dt(row["recorded_at"]),
         source=row["source"],
         changed_at=_dt(row["changed_at"]),
+        closed_at=_dt(row["closed_at"]),
     )
 
 
@@ -115,7 +116,7 @@ def _once(rows: list[Any]) -> list[Any]:
 
 
 INSERT_FACT = f"INSERT INTO facts ({FACT_COLUMNS}) VALUES ({', '.join('?' for _ in range(19))})"
-INSERT_RELATION = "INSERT INTO relations (tenant, src, rel, dst, valid_from, valid_to, recorded_at, source, changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+INSERT_RELATION = "INSERT INTO relations (tenant, src, rel, dst, valid_from, valid_to, recorded_at, source, changed_at, closed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 
 def _fact_row(f: Fact) -> tuple[Any, ...]:
@@ -125,7 +126,7 @@ def _fact_row(f: Fact) -> tuple[Any, ...]:
 
 
 def _relation_row(r: Relation) -> tuple[Any, ...]:
-    return (r.tenant, r.src, r.rel, r.dst, _ts(r.valid_from), _ts(r.valid_to), _ts(r.recorded_at), r.source, _ts(r.changed_at))
+    return (r.tenant, r.src, r.rel, r.dst, _ts(r.valid_from), _ts(r.valid_to), _ts(r.recorded_at), r.source, _ts(r.changed_at), _ts(r.closed_at))
 
 
 class SqlStore:
@@ -165,6 +166,8 @@ class SqlStore:
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
                 self._ddl(index, lambda i=index: self._has_index("facts", re.search(r"INDEX (\w+)", i).group(1)))
         self._add_changed_at()
+        if "closed_at" not in self._columns("relations"):  # since 0.33: the transaction time of an unlink
+            self._ddl(f"ALTER TABLE relations ADD COLUMN closed_at {self.TIME}", lambda: "closed_at" in self._columns("relations"))
         if not self._has_index("relations", "relations_recorded"):  # transaction-time reads of links
             self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
         if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
@@ -288,9 +291,9 @@ class SqlStore:
 
     def _close_rows(self, table: str, closes: dict[int, tuple[datetime | None, datetime | None, datetime | None]], size: int = 500) -> None:
         """One UPDATE ... CASE per chunk: PyMySQL's executemany is a round trip per row for UPDATE.
-        `closes` maps seq -> (valid_to, closed_at, changed_at); relations have no closed_at column."""
+        `closes` maps seq -> (valid_to, closed_at, changed_at)."""
         items = list(closes.items())
-        columns = ("valid_to", "closed_at", "changed_at") if table == "facts" else ("valid_to", None, "changed_at")
+        columns = ("valid_to", "closed_at", "changed_at")
         for i in range(0, len(items), size):
             part = items[i : i + size]
             case = " ".join("WHEN ? THEN ?" for _ in part)
@@ -374,6 +377,7 @@ class SqlStore:
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation:
+        valid_from, recorded_at = aware(valid_from), aware(recorded_at)
         if self._bulk is not None:
             return self._bulk.link(tenant, src, rel, dst, valid_from, source, recorded_at)
         key = ("r", tenant, src, rel, dst)
@@ -392,13 +396,15 @@ class SqlStore:
             self._cache[key] = r
         return r
 
-    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
+    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
+        valid_to, recorded_at = aware(valid_to), aware(recorded_at)
         if self._bulk is not None:
-            self._bulk.unlink(tenant, src, rel, dst, valid_to)
+            self._bulk.unlink(tenant, src, rel, dst, valid_to, recorded_at)
             return
+        now = utcnow()
         self._exec(
-            "UPDATE relations SET valid_to = ?, changed_at = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
-            (_ts(valid_to), _ts(utcnow()), tenant, src, rel, dst),
+            "UPDATE relations SET valid_to = ?, changed_at = ?, closed_at = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
+            (_ts(valid_to), _ts(now), _ts(recorded_at or now), tenant, src, rel, dst),
         )
         if self._cache is not None:
             self._cache.pop(("r", tenant, src, rel, dst), None)
@@ -433,6 +439,7 @@ class SqlStore:
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
                    recorded_at: datetime | None = None, value: Any = ANY) -> None:
+        valid_to, recorded_at = aware(valid_to), aware(recorded_at)
         if self._bulk is not None:
             self._bulk.close_fact(tenant, subject, predicate, valid_to, status, scope, recorded_at, value)
             return
@@ -587,7 +594,7 @@ class SqlStore:
     def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int:
         """End a task: its memory expires now (reads stop seeing it; `expire` removes it later)."""
         n = _ts(now or utcnow())
-        return self._exec("UPDATE facts SET expires_at = ? WHERE tenant = ? AND task = ? AND (expires_at IS NULL OR expires_at > ?)", (n, tenant, task, n))
+        return self._exec("UPDATE facts SET expires_at = ? WHERE tenant = ? AND task = ? AND scope = ? AND (expires_at IS NULL OR expires_at > ?)", (n, tenant, task, Scope.TASK.value, n))
 
     def relations(self, tenant: str, key: str, rel: str | None = None, at: datetime | None = None) -> list[Relation]:
         if self._bulk is not None:
@@ -912,10 +919,11 @@ class _Bulk:
             self.rels_by[(tenant, dst)].append([r, None])
         return r
 
-    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime) -> None:
+    def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
         for r, seq in self._rels(tenant, src):
             if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
                 r.valid_to, r.changed_at = valid_to, utcnow()
+                r.closed_at = recorded_at or r.changed_at
                 if seq is not None:
                     self.closed_rels[seq] = r
 
@@ -978,7 +986,7 @@ class _Bulk:
         if self.new_rels:
             s._execmany(INSERT_RELATION, [_relation_row(r) for r in self.new_rels])
         if self.closed_rels:
-            s._close_rows("relations", {seq: (r.valid_to, None, r.changed_at) for seq, r in self.closed_rels.items()})
+            s._close_rows("relations", {seq: (r.valid_to, r.closed_at, r.changed_at) for seq, r in self.closed_rels.items()})
         if self.new_facts:
             s._execmany(INSERT_FACT, [_fact_row(f) for f in self.new_facts])
         if self.closed_facts:

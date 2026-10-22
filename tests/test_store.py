@@ -4,7 +4,6 @@ Run it against your own store with KEEL_STORE="your_pkg.module:factory", a zero-
 (or class) that returns a fresh, empty store:  KEEL_STORE=keel.store.sqlite:SqliteStore uv run pytest tests/test_store.py
 """
 
-import importlib
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -28,25 +27,9 @@ def _strip(o):  # recorded_at and as_of are transaction time: they differ betwee
     return o
 
 
-EXTERNAL = os.environ.get("KEEL_STORE")  # "pkg.module:factory"
 MYSQL = os.environ.get("KEEL_MYSQL_URL")  # mysql://root:keel@127.0.0.1:3306/keel, see CONTRIBUTING
 
 
-@pytest.fixture(params=["memory", "sqlite"] + (["mysql"] if MYSQL else []) + (["external"] if EXTERNAL else []))
-def store(request, tmp_path):
-    if request.param == "memory":
-        return MemoryStore()
-    if request.param == "sqlite":
-        return SqliteStore(tmp_path / "keel.db")
-    if request.param == "mysql":
-        from keel.store.mysql import MysqlStore
-
-        s = MysqlStore.from_url(MYSQL)
-        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts"):
-            s._exec(f"DELETE FROM {table}")  # a clean database per test
-        return s
-    module, _, factory = EXTERNAL.partition(":")
-    return getattr(importlib.import_module(module), factory)()
 
 
 def test_stores_answer_identically(store):
@@ -573,16 +556,22 @@ def test_old_databases_gain_the_new_columns(tmp_path):
         " scope TEXT NOT NULL, corrected_by TEXT, evidence TEXT, expires_at TEXT);"
         "INSERT INTO facts (tenant, subject, predicate, value, valid_from, recorded_at, scope) VALUES"
         " ('t', 'tire:T-1', 'depth_mm', '4.0', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00', 'tenant');"
+        "CREATE TABLE relations (seq INTEGER PRIMARY KEY, tenant TEXT NOT NULL, src TEXT NOT NULL, rel TEXT NOT NULL, dst TEXT NOT NULL,"
+        " valid_from TEXT NOT NULL, valid_to TEXT, recorded_at TEXT, source TEXT);"
+        "INSERT INTO relations (tenant, src, rel, dst, valid_from, recorded_at) VALUES"
+        " ('t', 'tire:T-1', 'mounted_on', 'unit:U1', '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00');"
     )
     conn.commit()
     conn.close()
     store = SqliteStore(path)  # a 0.8 database: the columns are added on open, rows kept
     assert {"task", "idempotency_key", "closed_at", "status", "trace", "changed_at"} <= store._columns("facts")
-    assert "changed_at" in store._columns("relations")
+    assert {"changed_at", "closed_at"} <= store._columns("relations")
     assert [f.value for f in store.facts("t", "tire:T-1")] == [4.0]
     # 0.32: changed_at, the change cursor, starts at the row's transaction time, so the watermark does not move
     assert store.watermark("t") == datetime(2026, 1, 1, tzinfo=UTC)
     assert [f.value for f in store.changes("t", datetime(2025, 12, 31, tzinfo=UTC))] == [4.0]
+    store.unlink("t", "tire:T-1", "mounted_on", "unit:U1", valid_to=datetime(2026, 2, 1, tzinfo=UTC), recorded_at=datetime(2026, 2, 2, tzinfo=UTC))
+    assert [r.closed_at for r in store.relations("t", "tire:T-1")] == [datetime(2026, 2, 2, tzinfo=UTC)]  # 0.33: the unlink's transaction time
 
 
 def test_time_arguments_accept_what_the_tools_return(store):

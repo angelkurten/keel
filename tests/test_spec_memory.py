@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from keel import Ingestor, MemoryStore, Scope, SqliteStore, Tools, load_cartridge
+from keel import Ingestor, MemoryStore, Scope, Tools, load_cartridge
 from keel.agents import parse_agents
 from keel.consolidate import consolidate_tenant
 from keel.envelope import Event
@@ -29,9 +29,6 @@ AGENTS = {
 }
 
 
-@pytest.fixture(params=["memory", "sqlite"])
-def store(request, tmp_path):
-    return MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "keel.db")
 
 
 def _events(tenant):

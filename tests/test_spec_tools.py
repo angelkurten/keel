@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from keel import MemoryStore, SqliteStore, Tools
+from keel import Tools
 from keel.cartridge import Cartridge
 from keel.rules import evaluate
 from keel.store.base import Fact
@@ -47,9 +47,6 @@ def cartridge() -> Cartridge:
     )
 
 
-@pytest.fixture(params=["memory", "sqlite"])
-def store(request, tmp_path):
-    return MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "keel.db")
 
 
 def fact(s, subject, predicate, value, since, **kw):

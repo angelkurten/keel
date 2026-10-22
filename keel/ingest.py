@@ -59,6 +59,24 @@ class IngestReport:
     retained: list[tuple[str, str, dict[str, int]]] = field(default_factory=list)  # (tenant, cutoff, what forget_before deleted)
     not_applied: dict[int, str] = field(default_factory=dict)  # position in this call's input -> duplicate, skipped, unhandled, or the error
 
+    def merge(self, other: IngestReport) -> None:
+        self.processed += other.processed
+        self.duplicates += other.duplicates
+        self.skipped += other.skipped
+        self.unhandled += other.unhandled
+        self.errors += other.errors
+        self.forgotten += other.forgotten
+        self.retained += other.retained
+        self.not_applied.update(other.not_applied)
+
+
+class _Failed(Exception):
+    """A handler failed outside strict mode: rolls its commit back (Ingestor._chunk)."""
+
+    def __init__(self, seq: int, event: Event, exc: Exception) -> None:
+        super().__init__(str(exc))
+        self.seq, self.event, self.error = seq, event, f"{type(exc).__name__}: {exc}"
+
 
 BATCH = 5000  # events per commit for a bulk load (a file, a replay): fewer prefetch statements per event
 
@@ -98,6 +116,10 @@ class _Recorded:
         kw.setdefault("recorded_at", self._at)
         return self._store.link(*args, **kw)
 
+    def unlink(self, *args: Any, **kw: Any) -> Any:
+        kw.setdefault("recorded_at", self._at)
+        return self._store.unlink(*args, **kw)
+
 
 class Ingestor:
     def __init__(self, cartridge: Cartridge, store: Store, keep_log: bool = False, meter: Any = None) -> None:
@@ -133,20 +155,35 @@ class Ingestor:
         if ack:
             source.manual_ack = True
         report = IngestReport()
-        seq = -1  # the position of the event in this call's input, for not_applied
-        tx = getattr(self.store, "transaction", None)
-        bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
+        seq = 0  # the position of the next event in this call's input, for not_applied
         forgotten = getattr(self.store, "forgotten", None)
         meter = (self.meter or getattr(self.store, "meter", None)) if metered else None  # keel/usage.py; a replay is not new usage
         for chunk in _chunks(events, max(1, batch)):
-            applied: Counter[str] = Counter()
-            erases = any(ev.type in self.forgets or ev.type in self.retains for ev in chunk)  # a batch overlay would write back what forget deleted
-            scope = bulk(chunk) if bulk and len(chunk) > 1 and not erases else (tx() if tx else nullcontext())
             # a tombstone is permanent, so only tenants not yet known to be forgotten are asked, once per chunk
             self._gone |= {t for t in {ev.tenant for ev in chunk} - self._gone if forgotten and forgotten(t)}
+            part, applied = self._chunk(chunk, strict, seq)
+            seq += len(chunk)
+            report.merge(part)
+            if meter and applied:  # after the commit: a crash in between undercounts, never bills twice
+                day = utcnow().date().isoformat()
+                meter([(t, day, "events", n) for t, n in applied.items()])
+            if ack:
+                ack()
+        return report
+
+    def _chunk(self, chunk: list[Event], strict: bool, first: int) -> tuple[IngestReport, Counter[str]]:
+        """One commit. An event is atomic: when its handler fails (not strict), the commit is rolled back
+        and the chunk applied again one event per commit, so the failed event leaves nothing behind, is not
+        remembered (a fixed handler applies it when it comes again) and the others land. A store without
+        transactions cannot roll back: there the failed event's writes stay, as before."""
+        tx = getattr(self.store, "transaction", None)
+        bulk = getattr(self.store, "bulk", None)  # SQL stores: a batch is read and written in a few statements
+        erases = any(ev.type in self.forgets or ev.type in self.retains for ev in chunk)  # a batch overlay would write back what forget deleted
+        scope = bulk(chunk) if bulk and len(chunk) > 1 and not erases else (tx() if tx else nullcontext())
+        report, applied, logged = IngestReport(), Counter[str](), len(self.log)
+        try:
             with scope:
-                for ev in chunk:
-                    seq += 1
+                for seq, ev in enumerate(chunk, first):
                     if ev.tenant in self._gone:
                         report.skipped += 1
                         report.not_applied[seq] = "skipped: the tenant was forgotten"
@@ -156,6 +193,14 @@ class Ingestor:
                         self._gone.add(ev.tenant)
                         report.processed += 1
                         applied[ev.tenant] += 1
+                        continue
+                    kind = (self.cartridge.events.get(ev.type) or {}).get("subject")
+                    if kind is not None and ev.subject_kind != kind:  # refused before it is remembered: a fixed event can come again
+                        problem = f"'{ev.type}' subject '{ev.subject}' is not a '{kind}'"
+                        if strict:
+                            raise ValueError(problem)
+                        report.errors.append((ev.id, f"ValueError: {problem}"))
+                        report.not_applied[seq] = f"error: ValueError: {problem}"
                         continue
                     if not self.store.remember(ev.tenant, ev.id):  # one statement; the transaction forgets it if the handler fails
                         report.duplicates += 1
@@ -167,29 +212,37 @@ class Ingestor:
                         report.retained.append((ev.tenant, ev.occurred_at.isoformat(), counts))
                         report.processed += 1
                         continue
-                    if self.keep_log:
-                        self.log.append(ev)
                     try:
                         # an event that does not declare recorded_at was learned now, as it is ingested
                         declared = "recorded_at" in ev.model_fields_set
                         self.cartridge.registry.dispatch(ev, _Recorded(self.store, ev.recorded_at) if declared else self.store)
                         report.processed += 1
+                        if self.keep_log:
+                            self.log.append(ev)
                     except UnhandledEvent:
                         report.unhandled.append(ev.type)
                         report.not_applied[seq] = f"unhandled: no handler for '{ev.type}'"
                         if strict:
                             raise
                     except Exception as exc:
-                        report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
-                        report.not_applied[seq] = f"error: {type(exc).__name__}: {exc}"
                         if strict:
                             raise
-            if meter and applied:  # after the commit: a crash in between undercounts, never bills twice
-                day = utcnow().date().isoformat()
-                meter([(t, day, "events", n) for t, n in applied.items()])
-            if ack:
-                ack()
-        return report
+                        if tx is None:  # nothing to roll back to
+                            report.errors.append((ev.id, f"{type(exc).__name__}: {exc}"))
+                            report.not_applied[seq] = f"error: {type(exc).__name__}: {exc}"
+                            continue
+                        raise _Failed(seq, ev, exc) from exc
+        except _Failed as failed:
+            del self.log[logged:]
+            if len(chunk) == 1:
+                report = IngestReport(errors=[(failed.event.id, failed.error)], not_applied={failed.seq: f"error: {failed.error}"})
+                return report, Counter()
+            report, applied = IngestReport(), Counter()
+            for seq, ev in enumerate(chunk, first):
+                part, got = self._chunk([ev], strict, seq)
+                report.merge(part)
+                applied.update(got)
+        return report, applied
 
     def replay(self, tenant: str, events: Iterable[Event] | None = None) -> IngestReport:
         """Recovery path: wipe the tenant's event-derived subgraph and rebuild it from the log. What

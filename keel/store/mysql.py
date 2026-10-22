@@ -41,7 +41,7 @@ class MysqlStore(SqlStore):
       ref TEXT, attrs JSON NOT NULL, UNIQUE KEY entities_key (tenant, kind, id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
     CREATE TABLE IF NOT EXISTS relations (
       seq BIGINT AUTO_INCREMENT PRIMARY KEY, tenant VARCHAR(191) NOT NULL, src VARCHAR(191) NOT NULL, rel VARCHAR(191) NOT NULL,
-      dst VARCHAR(191) NOT NULL, valid_from VARCHAR(40) NOT NULL, valid_to VARCHAR(40), recorded_at VARCHAR(40), source TEXT,
+      dst VARCHAR(191) NOT NULL, valid_from VARCHAR(40) NOT NULL, valid_to VARCHAR(40), recorded_at VARCHAR(40), source TEXT, closed_at VARCHAR(40),
       KEY relations_src (tenant, src), KEY relations_dst (tenant, dst)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
     CREATE TABLE IF NOT EXISTS facts (
       seq BIGINT AUTO_INCREMENT PRIMARY KEY, tenant VARCHAR(191) NOT NULL, subject VARCHAR(191) NOT NULL, predicate VARCHAR(191) NOT NULL,

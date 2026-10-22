@@ -21,6 +21,11 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def aware(d: datetime | None) -> datetime | None:
+    """A naive datetime is UTC, everywhere a time enters Keel (the envelope, the store primitives, the tools)."""
+    return d if d is None or d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
 def parse_iso(value: Any) -> datetime:
     """ISO 8601 date or datetime to an aware UTC datetime. Accepts a trailing Z on Python 3.10 too, and a trailing " UTC"."""
     if isinstance(value, datetime):

@@ -15,7 +15,7 @@ from __future__ import annotations
 import difflib
 import re
 from collections.abc import Callable, Iterable
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -36,7 +36,7 @@ from keel.semantic import (
     value_hash,
 )
 from keel.store.base import DuplicateKey, Entity, Fact, Relation, Store
-from keel.store.memory import changed_after, search_in
+from keel.store.memory import changed_after, filter_relations, search_in
 
 
 def _ser(o: Any) -> Any:
@@ -63,7 +63,7 @@ Instant = datetime | str | None  # every time argument: a datetime or ISO 8601 t
 
 def _t(v: Instant) -> datetime | None:
     """Accept what the tools hand out (ISO text: `watermark`, `as_of`, `recorded_at`) as readily as a datetime."""
-    return parse_iso(v) if isinstance(v, str) else v
+    return parse_iso(v) if isinstance(v, (str, datetime)) else v  # a naive datetime is UTC
 
 
 def _conflicts(facts: list[Fact]) -> dict[str, list[dict[str, Any]]]:
@@ -277,13 +277,20 @@ class _Graph:
         many = getattr(self.store, "relations_of", None)
         if not missing or many is None:
             return
-        for s, rels in many(self.tenant, missing, at=self.as_of).items():
+        for s, rels in many(self.tenant, missing, at=self.as_of if self.known_at is None else None).items():
             self._rels[s] = self._known(rels)
 
     def _known(self, rels: list[Relation]) -> list[Relation]:
-        if self.known_at is not None:
-            rels = [r for r in rels if r.recorded_at is None or r.recorded_at <= self.known_at]
-        return rels
+        """As known at `known_at`: links recorded by then, an unlink learned later still open; then at as_of.
+        Unlinks from before closed_at existed count as always known."""
+        if self.known_at is None:
+            return rels
+        out = []
+        for r in rels:
+            if r.recorded_at is not None and r.recorded_at > self.known_at:
+                continue
+            out.append(replace(r, valid_to=None, closed_at=None) if r.closed_at is not None and r.closed_at > self.known_at else r)
+        return filter_relations(out, None, self.as_of)
 
     def prime(self, subjects: Iterable[str]) -> None:
         """Read the facts of many subjects at once, ahead of `facts()`: a neighbourhood or a rule
@@ -320,7 +327,7 @@ class _Graph:
 
     def relations(self, subject: str, rel: str | None = None) -> list[Relation]:
         if subject not in self._rels:
-            self._rels[subject] = self._known(self.store.relations(self.tenant, subject, at=self.as_of))
+            self._rels[subject] = self._known(self.store.relations(self.tenant, subject, at=self.as_of if self.known_at is None else None))
         return [r for r in self._rels[subject] if rel is None or r.rel == rel]
 
     def neighbors(self, subject: str, rel: str, direction: str) -> list[str]:
@@ -700,13 +707,13 @@ class Tools:
         known = _t(as_known_at)
         graph = self._graph(_t(as_of) or known or self.now(), known)  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
-            return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph) for t in text]
-        return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph)
+            return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph, _t(as_of)) for t in text]
+        return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph, _t(as_of))
 
     def _search_one(
         self, text: str, kind: str | list[str] | None, rule: str | None, limit: int | None, after: str | None, mode: str,
         min_score: float | None, related_to: str | None, via: str | None, detail: str, depth: int, per_kind: int | None,
-        exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph,
+        exclude: list[str] | None, where: dict[str, Any] | None, graph: _Graph, at: datetime | None = None,
     ) -> list[Any]:
         if detail not in ("key", "entity", "concise", "brief", "full", "count"):
             raise ValueError("search detail is 'key', 'entity', 'concise', 'brief', 'full' or 'count'")
@@ -753,13 +760,13 @@ class Tools:
             else:
                 taken: dict[str, int] = {}
                 hits = []
-                for h in self._search(text, None, None, None, None, mode, min_score, related_to, via, graph, where, hide):
+                for h in self._search(text, None, None, None, None, mode, min_score, related_to, via, graph, where, hide, at=at):
                     k = h.get("kind") or _kind(h["subject"])
                     if taken.get(k, 0) < per_kind:
                         taken[k] = taken.get(k, 0) + 1
                         hits.append(h)
         else:
-            hits = self._search(text, kinds, rule, limit, after, mode, min_score, related_to, via, graph, where, hide)
+            hits = self._search(text, kinds, rule, limit, after, mode, min_score, related_to, via, graph, where, hide, at=at)
             if not hits and mode == "text" and kinds is None and rule is None and len(set(tokens(text))) > 1:
                 note, mode = "nothing contains the whole text: ranked by its words instead", "words"
                 hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
@@ -893,8 +900,10 @@ class Tools:
         where: dict[str, Any] | None = None,
         hide: set[str] | None = None,
         vector: list[float] | None = None,
+        at: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked."""
+        """The search itself, before `search` adds facts and neighbours. `graph` reads at the instant asked;
+        `at` is that instant when the caller named one (text fact hits must hold then)."""
         graph = graph or self._graph(self.now())
         hide = hide or set()
         if mode not in ("text", "semantic"):
@@ -915,6 +924,11 @@ class Tools:
                                                                  and (graph.known_at is None or h.recorded_at is None or h.recorded_at <= graph.known_at))]
             if self.agent:
                 hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
+            if at is not None:  # asked at an instant: a fact hit counts if it held then (as known then, with as_known_at)
+                graph.prime(h.subject for h in hits if isinstance(h, Fact))
+                held = lambda h: any((f.predicate, f.valid_from, f.value) == (h.predicate, h.valid_from, h.value)
+                                     for f in graph.facts(h.subject) + graph.proposals(h.subject))
+                hits = [h for h in hits if isinstance(h, Entity) or held(h)]
             if neighbours is not None:
                 hits = [h for h in hits if (h.key if isinstance(h, Entity) else h.subject) in neighbours]
             if where:
@@ -1142,7 +1156,7 @@ class Tools:
         part = self.glob if sc == Scope.GLOBAL else self.tenant  # every tenant reads global memory
 
         def replayed(f: Fact) -> dict[str, Any]:
-            if (f.predicate, f.value, f.task, f.status) != (predicate, value, task, status):
+            if (f.predicate, f.value, f.task, f.status, Scope(f.scope)) != (predicate, value, task, status, sc):
                 raise ValueError(f"idempotency key '{key}' was already used on {subject} with other arguments")
             return done(f)
 
