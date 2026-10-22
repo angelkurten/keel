@@ -6,8 +6,9 @@ Configuration, the container, and the jobs that run next to the server. Jobs run
 | --- | --- | --- |
 | [`keel expire --consolidate`](#consolidate-episodic-memory) | Consolidates episodic memory into durable facts, then drops expired `task` and `agent` memory. | Daily |
 | [`keel index`](serve.md#semantic-search) | Incremental indexing for semantic search. | Every few minutes |
-| `keel replay` | Rebuilds a tenant's graph from its log, keeping annotations. | After changing handlers |
-| [`keel export`](#export-the-audit-trail) | One tenant's audit trail as JSONL. | On demand |
+| `keel replay` | Rebuilds a tenant's graph from its log, keeping annotations; `--check` changes nothing and says whether a rebuild would give the same graph. | After changing handlers; `--check` on a schedule |
+| [`keel export`](#export-the-audit-trail) | One tenant's audit trail as JSONL, complete enough to restore. | On demand, or as a backup |
+| [`keel import`](#move-or-restore-a-tenant) | Restores a tenant from `keel export` into an empty tenant of any store. | To move or restore a tenant |
 | [`keel forget`](#erase-a-tenant) | Erases a tenant, or with `--before`, what closed before a date. | On demand, or scheduled for retention |
 | `keel usage` | Events ingested and calls per tool, read from the log. | For metering |
 
@@ -76,7 +77,24 @@ One tenant, everything Keel knows about it, as JSONL: entities, relations and fa
 uv run keel export acme-logistics --db keel.db --out acme-logistics.jsonl
 ```
 
-Each line is one record: `{"record": "fact", "subject": "tire:T-9001", "predicate": "depth_mm", "value": 5.2, "valid_from": ..., "valid_to": ..., "source": "tires.measurements", "evidence": "<event id>", ...}`. Another tenant's export never contains this one's rows.
+Each line is one record: `{"record": "fact", "subject": "tire:T-9001", "predicate": "depth_mm", "value": 5.2, "valid_from": ..., "valid_to": ..., "source": "tires.measurements", "evidence": "<event id>", ...}`. Another tenant's export never contains this one's rows. Besides `entity`, `relation` and `fact`, an export carries what a restore needs: `close` (an explicit close kept in a predicate's history, so a late event still meets it), `ingested` (an applied event id, so a redelivered event stays a duplicate) and `cutoff` (the retention cutoff). An audit reader can skip those.
+
+## Move or restore a tenant
+
+`keel import` writes an export back as it was, transaction times included, into a tenant that has no data (it refuses one that has), in any store: a SQLite file moves to MySQL this way.
+
+```bash
+uv run keel export acme-logistics --db keel.db --out acme-logistics.jsonl
+uv run keel import acme-logistics.jsonl acme-logistics --db mysql://user:pass@host:3306/keel
+```
+
+## Check that a rebuild gives the same graph
+
+`keel replay --check` rebuilds the tenant in memory from its log, around the annotations the db holds, and compares world time and provenance with the db, without writing. It prints `identical`, or what only the db has and what only a replay would have, and exits 1: state that no event explains (a hand edit, a handler that changed since) shows up before a real replay would drop it.
+
+```bash
+uv run keel replay cartridges/fleet events.jsonl acme-logistics --db keel.db --check
+```
 
 ## Erase a tenant
 

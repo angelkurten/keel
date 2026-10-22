@@ -112,7 +112,7 @@ def test_cli_export_is_the_audit_trail(tmp_path):
     records = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
     assert all(r["key"] == f"{r['kind']}:{r['id']}" for r in records if r["record"] == "entity")
     kinds = {r["record"] for r in records}
-    assert kinds == {"entity", "relation", "fact"}
+    assert kinds == {"entity", "relation", "fact", "ingested"}  # the applied event ids, for a restore (keel import)
     facts = [r for r in records if r["record"] == "fact"]
     assert all(r["tenant"] == TENANT and r["evidence"] for r in facts)  # provenance on every fact
     closed = [r for r in facts if r["predicate"] == "depth_mm" and r["valid_to"]]

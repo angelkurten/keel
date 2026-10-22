@@ -19,6 +19,7 @@ import threading
 import warnings
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
 
@@ -693,6 +694,33 @@ class SqlStore:
     def cutoff(self, tenant: str) -> datetime | None:
         row = self._one("SELECT cut FROM cutoffs WHERE tenant = ?", (tenant,))
         return _dt(row["cut"]) if row else None
+
+    def backup(self, tenant: str) -> dict[str, Any]:
+        """Everything a restore needs (Store protocol, optional), as MemoryStore.backup."""
+        # ponytail: the whole tenant in memory; stream it if a tenant outgrows a process
+        return {
+            "entities": [_entity(r) for r in self._rows(f"SELECT * FROM entities WHERE tenant = ? ORDER BY {self.ENTITY_ORDER}", (tenant,))],
+            "relations": [_relation(r) for r in self._rows("SELECT * FROM relations WHERE tenant = ? ORDER BY seq", (tenant,))],
+            "facts": [_fact(r) for r in self._rows("SELECT * FROM facts WHERE tenant = ? ORDER BY seq", (tenant,))],
+            "ingested": sorted(r["id"] for r in self._rows("SELECT id FROM ingested WHERE tenant = ?", (tenant,))),
+            "cutoff": self.cutoff(tenant),
+        }
+
+    def restore(self, tenant: str, backup: dict[str, Any]) -> None:
+        """Write a backup as it was into an empty tenant, in one transaction (Store protocol, optional)."""
+        with self.transaction():
+            if any(self._one(f"SELECT 1 AS one FROM {t} WHERE tenant = ? LIMIT 1", (tenant,)) for t in ("entities", "relations", "facts", "ingested")):
+                raise ValueError(f"tenant '{tenant}' is not empty: restore writes into an empty tenant only")
+            for sql, rows in ((self.UPSERT_ENTITY, [(tenant, e.kind, e.id, e.ref, json.dumps(e.attrs)) for e in backup["entities"]]),
+                              (INSERT_RELATION, [_relation_row(replace(r, tenant=tenant)) for r in backup["relations"]]),
+                              (INSERT_FACT, [_fact_row(replace(f, tenant=tenant)) for f in backup["facts"]]),
+                              (self.REMEMBER, [(tenant, i) for i in backup["ingested"]])):
+                if rows:
+                    self._execmany(sql, rows)
+            if backup.get("cutoff") is not None:
+                self._exec("INSERT INTO cutoffs (tenant, cut, at) VALUES (?, ?, ?)", (tenant, _ts(backup["cutoff"]), _ts(utcnow())))
+            if self._cache is not None:
+                self._cache.clear()
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return {r["tenant"]: _dt(r["at"]) for r in self._rows("SELECT tenant, at FROM forgotten")}

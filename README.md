@@ -96,7 +96,7 @@ Send your product's events from wherever they already are ([how, for each](docs/
 - **SQS or Kafka**: `keel consume --queue <url>`, or `KafkaAdapter` from Python; at-least-once, acknowledged after each commit.
 - **A `.jsonl` file**, for backfills and tests: `keel ingest <cartridge> events.jsonl --db keel.db`.
 
-`keel export <tenant> --db keel.db` writes one tenant's whole audit trail as JSONL, closed facts and provenance included.
+`keel export <tenant> --db keel.db` writes one tenant's whole audit trail as JSONL, closed facts and provenance included; `keel import` restores it, as it was, into an empty tenant of any store.
 
 ## Architecture
 

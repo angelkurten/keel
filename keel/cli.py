@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -436,11 +436,43 @@ def consume(
 
 
 @app.command()
-def replay(cartridge: Path, events: Path, tenant: str = TENANT, db: str | None = DB):
+def replay(cartridge: Path, events: Path, tenant: str = TENANT, db: str | None = DB,
+           check: bool = typer.Option(False, "--check", help="Change nothing: replay into memory, around the db's annotations, and compare with the db (exit 1 on a difference).")):
     """Rebuild one tenant's subgraph from the event log (recovery path). With --db, the file is wiped for that tenant first."""
+    if check:
+        return _replay_check(cartridge, events, tenant, db)
     _, _, ing, _ = _run(cartridge, None, db=db)
     report = ing.replay(tenant, events=JsonlAdapter(events))
     typer.echo(f"replayed tenant={tenant} processed={report.processed}")
+
+
+def _view(backup: dict[str, Any]) -> set[tuple[Any, ...]]:
+    """What a replay must rebuild: world time and provenance. Transaction times are left out: an event
+    that declares no recorded_at was learned when it was ingested, which a replay cannot repeat."""
+    return ({("entity", e.key, e.ref, json.dumps(e.attrs, sort_keys=True)) for e in backup["entities"]}
+            | {("relation", r.src, r.rel, r.dst, r.valid_from, r.valid_to, r.source) for r in backup["relations"]}
+            | {("fact", f.subject, f.predicate, json.dumps(f.value, sort_keys=True, default=str), f.valid_from, f.valid_to, f.scope.value, f.status,
+                f.source, f.evidence, f.task, f.corrected_by) for f in backup["facts"]})
+
+
+def _replay_check(cartridge: Path, events: Path, tenant: str, db: str | None) -> None:
+    from keel.store.memory import MemoryStore, is_annotation
+
+    live = _store(db).backup(tenant)
+    scratch = MemoryStore()
+    scratch.restore(tenant, {"entities": [], "relations": [], "facts": [f for f in live["facts"] if is_annotation(f)], "ingested": [], "cutoff": live["cutoff"]})
+    Ingestor(load_cartridge(cartridge), scratch).replay(tenant, events=JsonlAdapter(events))
+    got, want = _view(live), _view(scratch.backup(tenant))
+    if got == want:
+        typer.echo(f"identical: tenant={tenant} entities={len(live['entities'])} relations={len(live['relations'])} facts={len(live['facts'])}")
+        return
+    show = lambda rows: [" ".join("-" if x is None else str(x) for x in r) for r in sorted(rows, key=repr)[:20]]
+    for label, rows in (("only in the db", got - want), ("only in a replay", want - got)):
+        if rows:
+            typer.echo(f"{label} ({len(rows)}):")
+            for line in show(rows):
+                typer.echo(f"  {line}")
+    raise typer.Exit(1)
 
 
 @app.command()
@@ -487,19 +519,59 @@ def consolidate_cmd(
         _consolidate(c, store, t, summarizer)
 
 
+TIMES = ("valid_from", "valid_to", "recorded_at", "closed_at", "changed_at", "expires_at")
+
+
+def _records(store: Any, tenant: str) -> Iterator[dict[str, Any]]:
+    """A tenant as JSONL records: entity, relation, fact (the audit trail), and what a restore also needs:
+    close (an explicit close kept in a predicate's history), ingested (an applied event id), cutoff."""
+    from keel.store.memory import is_close
+    from keel.tools import _ser
+
+    b = store.backup(tenant)
+    yield from ({"record": "entity", **_ser(e)} for e in b["entities"])
+    for kind, rows in (("relation", b["relations"]), ("fact", b["facts"])):
+        for o in rows:
+            record = "close" if kind == "fact" and is_close(o) else kind
+            yield {"record": record, **_ser(o), "changed_at": o.changed_at.isoformat() if o.changed_at else None}
+    yield from ({"record": "ingested", "id": i} for i in b["ingested"])
+    if b["cutoff"] is not None:
+        yield {"record": "cutoff", "cut": b["cutoff"].isoformat()}
+
+
+def _backup(lines: Iterable[str]) -> dict[str, Any]:
+    """`_records` read back into a store backup."""
+    from keel.envelope import parse_iso
+    from keel.scopes import Scope
+    from keel.store.base import Entity, Fact, Relation
+
+    b: dict[str, Any] = {"entities": [], "relations": [], "facts": [], "ingested": [], "cutoff": None}
+    for line in lines:
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        kind = r.pop("record")
+        if kind == "entity":
+            r.pop("key", None)
+            b["entities"].append(Entity(**r))
+        elif kind in ("relation", "fact", "close"):
+            r = {k: (parse_iso(v) if k in TIMES and v is not None else v) for k, v in r.items()}
+            b["relations" if kind == "relation" else "facts"].append(Relation(**r) if kind == "relation" else Fact(**{**r, "scope": Scope(r["scope"])}))
+        elif kind == "ingested":
+            b["ingested"].append(r["id"])
+        elif kind == "cutoff":
+            b["cutoff"] = parse_iso(r["cut"])
+    return b
+
+
 @app.command()
 def export(
     tenant: str = TENANT,
     db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
     out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
 ):
-    """Audit trail for one tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what."""
-    from dataclasses import asdict
-
-    from keel.store.base import Entity, Fact
-    from keel.tools import _ser
-
-    lines = (json.dumps({"record": type(o).__name__.lower(), **(_ser(o) if isinstance(o, (Entity, Fact)) else _ser(asdict(o)))}, ensure_ascii=False) for o in _store(db).dump(tenant))  # entities carry their key, as everywhere
+    """One tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what (the audit trail), plus what `keel import` needs to restore it as it was: close marks, applied event ids and the retention cutoff."""
+    lines = (json.dumps(r, ensure_ascii=False) for r in _records(_store(db), tenant))
     if out:
         n = 0
         with out.open("w", encoding="utf-8") as fh:
@@ -510,6 +582,23 @@ def export(
     else:
         for line in lines:
             typer.echo(line)
+
+
+@app.command(name="import")
+def import_cmd(
+    file: Path = typer.Argument(..., help="A JSONL file written by `keel export`."),
+    tenant: str = TENANT,
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to import into: a SQLite file or a mysql:// URL."),
+):
+    """Restore a tenant from `keel export` into an empty tenant, as it was: transaction times, close marks and applied event ids included, so redelivered events stay duplicates. Moves a tenant between stores (SQLite to MySQL) or databases."""
+    with file.open(encoding="utf-8") as fh:
+        b = _backup(fh)
+    try:
+        _store(db).restore(tenant, b)
+    except ValueError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(1) from None
+    typer.echo(f"imported tenant={tenant} entities={len(b['entities'])} relations={len(b['relations'])} facts={len(b['facts'])} ingested={len(b['ingested'])}")
 
 
 @app.command(name="index")

@@ -164,3 +164,9 @@ class Store(Protocol):
 
     # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
     # def tenants(self) -> list[str]: ...
+
+    # backup (optional; `keel export`, `keel import`, `keel replay --check`): backup returns everything a restore
+    # needs, {"entities", "relations", "facts" (close marks included), "ingested" (event ids), "cutoff"}, rows as
+    # stored; restore writes one as it was into an empty tenant (raises ValueError otherwise), nothing recomputed.
+    # def backup(self, tenant: str) -> dict[str, Any]: ...
+    # def restore(self, tenant: str, backup: dict[str, Any]) -> None: ...

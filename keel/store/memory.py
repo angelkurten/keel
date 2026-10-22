@@ -527,6 +527,33 @@ class MemoryStore:
     def cutoff(self, tenant: str) -> datetime | None:
         return self._cutoffs.get(tenant)
 
+    def backup(self, tenant: str) -> dict[str, Any]:
+        """Everything a restore needs (Store protocol, optional): rows as stored, close marks included,
+        the applied event ids and the retention cutoff. Copies: the backup never aliases the store."""
+        return {"entities": [replace(e, attrs=dict(e.attrs)) for e in self._entities[tenant].values()],
+                "relations": [replace(r) for r in self._all_rels[tenant]], "facts": [replace(f) for f in self._all_facts[tenant]],
+                "ingested": sorted(self._seen[tenant]), "cutoff": self._cutoffs.get(tenant)}
+
+    def restore(self, tenant: str, backup: dict[str, Any]) -> None:
+        """Write a backup as it was into an empty tenant (Store protocol, optional): nothing recomputed."""
+        if self._entities[tenant] or self._all_rels[tenant] or self._all_facts[tenant] or self._seen[tenant]:
+            raise ValueError(f"tenant '{tenant}' is not empty: restore writes into an empty tenant only")
+        for e in backup["entities"]:
+            self._entities[tenant][e.key] = replace(e, tenant=tenant, attrs=dict(e.attrs))
+        for r in (replace(r, tenant=tenant) for r in backup["relations"]):
+            self._rels[tenant][r.src].append(r)
+            if r.dst != r.src:
+                self._rels[tenant][r.dst].append(r)
+            self._all_rels[tenant].append(r)
+            self._mark(tenant, r.changed_at)
+        for f in (replace(f, tenant=tenant) for f in backup["facts"]):
+            self._facts[tenant][f.subject].append(f)
+            self._all_facts[tenant].append(f)
+            self._mark(tenant, f.changed_at)
+        self._seen[tenant] |= set(backup["ingested"])
+        if backup.get("cutoff") is not None:
+            self._cutoffs[tenant] = backup["cutoff"]
+
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
         return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels)) - set(self._forgotten) if not is_global(t))
