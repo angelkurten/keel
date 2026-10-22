@@ -117,7 +117,7 @@ class Store(Protocol):
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact: ...  # may raise DuplicateKey
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
-                   recorded_at: datetime | None = None) -> None: ...  # scope None: every scope
+                   recorded_at: datetime | None = None, value: Any = ...) -> None: ...  # scope None: every scope; value: only that value
 
     # reads
     def entity(self, tenant: str, key: str) -> Entity | None: ...

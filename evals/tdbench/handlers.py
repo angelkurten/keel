@@ -13,7 +13,7 @@ def _term(event, store, **attrs):
     store.open_fact(event.tenant, event.subject, "holder", p["holder"], valid_from=event.occurred_at, source=event.source, evidence=event.id)
     if p["end"]:
         end = datetime.fromisoformat(p["end"]).replace(tzinfo=timezone.utc)
-        store.close_fact(event.tenant, event.subject, "holder", valid_to=end)
+        store.close_fact(event.tenant, event.subject, "holder", valid_to=end, value=p["holder"])  # this term, not a later one
 
 
 @registry.on("office.term")

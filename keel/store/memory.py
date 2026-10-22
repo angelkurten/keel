@@ -57,9 +57,56 @@ def is_annotation(f: Fact) -> bool:
     return bool(f.source) and f.source.startswith(("annotate:", "consolidate:"))
 
 
-def in_scope(f: Fact, scope: Scope | str | None) -> bool:
-    """close_fact's scope filter: None is every scope."""
-    return scope is None or Scope(f.scope) == Scope(scope)
+CLOSE = "keel:close"  # the source of a close mark: an explicit close_fact, kept in its predicate's history
+ANY: Any = type("Any", (), {"__repr__": lambda self: "ANY"})()  # close_fact(value=ANY): whatever value is current
+
+
+def is_close(f: Fact) -> bool:
+    """A close mark: where close_fact ended its predicate. Never a value: reads leave it out."""
+    return f.source == CLOSE
+
+
+def close_mark(tenant: str, subject: str, predicate: str, at: datetime, status: str | None, scope: Scope | str, recorded_at: datetime | None,
+               value: Any = ANY) -> Fact:
+    """close_fact as a row of the history, so a close meets the facts that arrive after it too. Its value
+    is None for any value, else `[value]`: the one value it ends."""
+    c = new_fact(tenant, subject, predicate, None if value is ANY else [value], at, source=CLOSE, status=status, scope=scope, recorded_at=recorded_at)
+    c.valid_to, c.closed_at = at, c.recorded_at  # empty: never current, and out of the open reads
+    return c
+
+
+def covers(c: Fact, f: Fact) -> bool:
+    """A close mark ends facts of its predicate, status and scope, whoever wrote them (as close_fact always
+    did), and with a value only facts of that value."""
+    return (not is_close(f) and f.subject == c.subject and f.predicate == c.predicate and f.status == c.status
+            and Scope(f.scope) == Scope(c.scope) and (c.value is None or f.value == c.value[0]))
+
+
+def before(f: Fact, c: Fact) -> bool:
+    """`f` starts before the close mark `c`, so `c` may end it. At one instant the close goes first, whatever
+    arrives first: closing a term and opening the next at one instant never ends the next one, even of the
+    same value. So a close never leaves an empty fact."""
+    return f.valid_from < c.valid_from
+
+
+def end_at(f: Fact, at: datetime, learned: datetime | None) -> bool:
+    """End `f` at `at`, learned at `learned`, unless it already ends earlier (or there, learned no later).
+    The earliest end wins whatever the order the ends arrive in. True if `f` changed."""
+    if f.valid_to is not None and (f.valid_to < at or (f.valid_to == at and (f.closed_at is None or learned is None or f.closed_at <= learned))):
+        return False
+    f.valid_to, f.closed_at = at, learned
+    return True
+
+
+def place_close(c: Fact, facts: Iterable[Fact]) -> list[Fact]:
+    """Slot a close mark: every fact it covers that started before it (`before`) ends at its instant, unless
+    it already ends earlier. Returns the facts closed."""
+    closed = []
+    for f in facts:
+        if covers(c, f) and before(f, c) and end_at(f, c.valid_from, _later(f.recorded_at, c.recorded_at)):
+            f.changed_at = c.changed_at
+            closed.append(f)
+    return closed
 
 
 def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> list[Fact]:
@@ -69,6 +116,8 @@ def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> lis
     leaves the narrower fact to its own lifetime. Task memory is per task; agent memory per agent."""
 
     def same(x: Fact) -> bool:
+        if is_close(x):  # a close mark is not a value: place_fact meets it through `closes`
+            return False
         if x.predicate != new.predicate or x.status != new.status or Scope(x.scope) != Scope(new.scope):
             return False
         if Scope(new.scope) == Scope.TASK and x.task != new.task:
@@ -80,9 +129,10 @@ def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> lis
     return [x for x in facts if same(x)]
 
 
-def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
+def place_fact(new: Fact, same: Iterable[Fact], closes: Iterable[Fact] = ()) -> Fact | None:
     """Slot `new` into the history of its predicate by valid_from, whatever order events arrive in:
-    the fact current at new.valid_from closes there, and `new` closes at the next fact's start.
+    the fact current at new.valid_from closes there, and `new` closes at the next fact's start, or at
+    the first close mark after its start (`closes`: the subject's facts; the marks among them count).
     Returns the fact that was closed, if any, so a durable store can persist that change."""
     at = succession(new)
     prev = max((f for f in same if f is not new and succession(f) <= at), key=succession, default=None)
@@ -104,6 +154,9 @@ def place_fact(new: Fact, same: Iterable[Fact]) -> Fact | None:
     if nxt is not None:
         new.valid_to = nxt.valid_from
         new.closed_at = _later(new.recorded_at, nxt.recorded_at)  # the next one may have been recorded later
+    for c in closes:  # a close that arrived before this fact still ends it
+        if is_close(c) and covers(c, new) and before(new, c):
+            end_at(new, c.valid_from, _later(new.recorded_at, c.recorded_at))
     return closed
 
 
@@ -130,9 +183,13 @@ def as_known_at(facts: Iterable[Fact], known_at: datetime, multi: Iterable[str] 
     proposals). Copies, so the stored facts are never touched."""
     multi = set(multi)
     slots: dict[tuple[Any, ...], list[Fact]] = defaultdict(list)
+    marks = []
     for f in facts:
         if f.recorded_at is None or f.recorded_at <= known_at:
-            slots[_slot(f, f.status is not None or f.predicate in multi)].append(f)
+            if is_close(f):
+                marks.append(f)
+            else:
+                slots[_slot(f, f.status is not None or f.predicate in multi)].append(f)
     out = []
     for group in slots.values():
         group.sort(key=succession)
@@ -140,7 +197,8 @@ def as_known_at(facts: Iterable[Fact], known_at: datetime, multi: Iterable[str] 
             ends = [(nxt.valid_from, _later(f.recorded_at, nxt.recorded_at))] if nxt is not None else []
             if f.valid_to is not None and (f.closed_at is None or f.closed_at <= known_at):  # a close learned by then
                 ends.append((f.valid_to, f.closed_at))
-            valid_to, closed_at = min(ends, key=lambda e: e[0], default=(None, None))
+            ends += [(c.valid_from, _later(f.recorded_at, c.recorded_at)) for c in marks if covers(c, f) and before(f, c)]
+            valid_to, closed_at = min(ends, key=lambda e: (e[0], e[1] or valid_never), default=(None, None))
             out.append(f if (valid_to, closed_at) == (f.valid_to, f.closed_at) else replace(f, valid_to=valid_to, closed_at=closed_at))
     return out
 
@@ -160,7 +218,7 @@ def changed_at(f: Fact | Relation) -> datetime | None:
 def changed_after(facts: Iterable[Fact], after: datetime) -> list[Fact]:
     """Facts written (opened or closed) after a watermark, oldest change first: an agent's "since my last run".
     By the ingest clock, not transaction time: an event declaring an old recorded_at still shows up as a change."""
-    out = [f for f in facts if (changed_at(f) or after) > after]
+    out = [f for f in facts if not is_close(f) and (changed_at(f) or after) > after]
     return sorted(out, key=changed_at)
 
 
@@ -172,7 +230,7 @@ def filter_facts(
     known_at: datetime | None = None,
     multi: Iterable[str] = (),
 ) -> list[Fact]:
-    out = as_known_at(facts, known_at, multi) if known_at is not None else list(facts)
+    out = as_known_at(facts, known_at, multi) if known_at is not None else [f for f in facts if not is_close(f)]
     if at is not None:
         out = [f for f in out if f.valid_from <= at and (f.valid_to is None or f.valid_to > at)]
     if since is not None:
@@ -200,6 +258,8 @@ def search_in(entities: Iterable[Entity], facts: Iterable[Fact], text: str) -> l
         if t in e.key.lower() or any(t in str(v).lower() for v in e.attrs.values()):
             hits.append(e)
     for f in facts:
+        if is_close(f):
+            continue
         if t in f.predicate.lower() or t in str(f.value).lower():
             hits.append(f)
     return hits
@@ -291,7 +351,7 @@ class MemoryStore:
         slot = same_slot(self._facts[tenant][subject], f, kw.get("per_source", False))
         for x in slot:  # place_fact may move a neighbour's close
             self._keep(x)
-        place_fact(f, slot)
+        place_fact(f, slot, self._facts[tenant][subject])
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
         self._added(self._facts[tenant][subject], self._all_facts[tenant], item=f)
@@ -299,16 +359,32 @@ class MemoryStore:
         return f
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
-                   recorded_at: datetime | None = None) -> None:
+                   recorded_at: datetime | None = None, value: Any = ANY) -> None:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone. `status` picks accepted facts (None) or proposals.
         # `scope` (tenant by default, what handlers write) keeps a handler from closing agent or task memory.
+        # The close is kept as a mark in the predicate's history (place_close), so a fact that arrives
+        # later still meets it. `scope=None` (every scope, a decision settling proposals) closes only what is open now.
         now = utcnow()
-        for f in self._facts[tenant][subject]:
-            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
+        facts = self._facts[tenant][subject]
+        if scope is None:
+            if value is not ANY:
+                raise ValueError("close_fact(scope=None) closes whatever is open; it takes no value")
+            for f in facts:
+                if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
+                    self._keep(f)
+                    f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
+                    self._mark(tenant, now)
+            return
+        c = close_mark(tenant, subject, predicate, valid_to, status, scope, recorded_at, value)
+        for f in facts:
+            if covers(c, f):
                 self._keep(f)
-                f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
-                self._mark(tenant, now)
+        place_close(c, facts)
+        facts.append(c)
+        self._all_facts[tenant].append(c)
+        self._added(facts, self._all_facts[tenant], item=c)
+        self._mark(tenant, c.changed_at)
 
     # ---- reads -------------------------------------------------------------------
 
@@ -406,7 +482,7 @@ class MemoryStore:
         """Everything about one tenant, closed facts included: the audit trail."""
         yield from self._entities[tenant].values()
         yield from self._all_rels[tenant]
-        yield from self._all_facts[tenant]
+        yield from (f for f in self._all_facts[tenant] if not is_close(f))
 
     def forget(self, tenant: str) -> dict[str, int]:
         """Erase the tenant and leave a tombstone (Store protocol). Idempotent."""

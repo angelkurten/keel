@@ -4,7 +4,9 @@ Facts are placed by valid_from whatever order events arrive in, and `as_known_at
 knew at a transaction time from the facts recorded by then and the closes learned by then.
 """
 
+import importlib
 import itertools
+import os
 import random
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
@@ -17,9 +19,25 @@ FLEET, SUBJECT = "examples/fleet", "tire:T-9"
 UTC = timezone.utc
 
 
-@pytest.fixture(params=["memory", "sqlite"])
+EXTERNAL = os.environ.get("KEEL_STORE")
+MYSQL = os.environ.get("KEEL_MYSQL_URL")
+
+
+@pytest.fixture(params=["memory", "sqlite"] + (["mysql"] if MYSQL else []) + (["external"] if EXTERNAL else []))
 def store(request, tmp_path):
-    return MemoryStore() if request.param == "memory" else SqliteStore(tmp_path / "keel.db")
+    if request.param == "memory":
+        return MemoryStore()
+    if request.param == "sqlite":
+        return SqliteStore(tmp_path / "keel.db")
+    if request.param == "mysql":
+        from keel.store.mysql import MysqlStore
+
+        s = MysqlStore.from_url(MYSQL)
+        for table in ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts"):
+            s._exec(f"DELETE FROM {table}")
+        return s
+    module, _, factory = EXTERNAL.partition(":")
+    return getattr(importlib.import_module(module), factory)()
 
 
 def d(month: int, day: int, hour: int = 0) -> datetime:
@@ -52,11 +70,11 @@ def values_at(store, tenant: str, at: datetime, known_at: datetime | None = None
     return [f.value for f in store.facts(tenant, SUBJECT, at=at, known_at=known_at) if f.predicate == "depth_mm"]
 
 
-def ingest(store, tenant: str, rows) -> None:
+def ingest(store, tenant: str, rows, batch: int = 1) -> None:
     """rows: (kind, eid, occurred, recorded[, depth]) in arrival order, each kind 'm' (measure) or 'x' (retire)."""
     c = cartridge()
     events = [measure(tenant, *r[1:]) if r[0] == "m" else retire(tenant, *r[1:]) for r in rows]
-    assert not Ingestor(c, store).ingest(events, strict=True).errors
+    assert not Ingestor(c, store).ingest(events, strict=True, batch=batch).errors
 
 
 def oracle(rows, at: datetime, known_at: datetime) -> list[float]:
@@ -139,7 +157,6 @@ def test_a_fact_after_an_explicit_close_starts_a_new_period_in_either_order(stor
     assert values_at(store, "fwd", d(10, 10)) == []
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: close_fact only touches facts open on arrival, so a late fact before the close stays open")
 def test_a_close_and_a_late_fact_before_it_give_one_history_in_every_order(store):
     """§9.9: A from Sep 1, a close on Oct 1, and a late B from Sep 15. Arriving A, close, B leaves B
     open; arriving A, B, close closes B on Oct 1. Any order must store the same facts."""
@@ -151,7 +168,6 @@ def test_a_close_and_a_late_fact_before_it_give_one_history_in_every_order(store
     assert all(s == stored[0] for s in stored), stored
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: a close between two stored facts is dropped (no fact is open at its instant)")
 def test_a_close_between_two_facts_gives_one_history_in_every_order(store):
     """§9.9: A from Sep 1, C from Oct 15, a close on Oct 1. Arriving A, close, C ends A on Oct 1;
     arriving A, C, close ends A on Oct 15 and drops the close. Any order must store the same facts."""
@@ -163,7 +179,6 @@ def test_a_close_between_two_facts_gives_one_history_in_every_order(store):
     assert all(s == stored[0] for s in stored), stored
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: a close that arrives before the fact it closes is a no-op")
 def test_a_close_arriving_before_its_fact_gives_one_history(store):
     """§9.9: a close on Oct 1 delivered before the Sep 1 measurement it ends (out-of-order adapter)."""
     rows = [("m", "a", d(9, 1), d(9, 1), 6.0), ("x", "x", d(10, 1), d(10, 1))]
@@ -172,12 +187,92 @@ def test_a_close_arriving_before_its_fact_gives_one_history(store):
     assert history(store, "rev") == history(store, "fwd")
 
 
-@pytest.mark.xfail(strict=True, reason="BUG: place_fact overwrites the closed_at of an explicit close, so as_known_at reopens the fact")
 def test_a_late_fact_never_reopens_a_close_already_learned(store):
     """§7.6: "a late fact that later moved a close never reopens the fact before it". A is closed on
     Oct 1 (learned Oct 2); B, from Sep 15, is learned Oct 10. Asked as known on Oct 5, A had ended."""
     ingest(store, "t", [("m", "a", d(9, 1), d(9, 1), 6.0), ("x", "x", d(10, 1), d(10, 2)), ("m", "b", d(9, 15), d(10, 10), 4.0)])
     assert values_at(store, "t", d(10, 3), known_at=d(10, 5)) == []
+
+
+def closing_oracle(rows, at: datetime, known_at: datetime) -> list[float]:
+    """`oracle` with closes: of the rows recorded by then that started by `at`, the last in succession,
+    a close sorting before the measurements of its instant; a close there means no value."""
+    known = sorted((r for r in rows if r[3] <= known_at), key=lambda r: (r[2], r[0] == "m", r[3], r[1]))
+    started = [r for r in known if r[2] <= at]
+    return [started[-1][4]] if started and started[-1][0] == "m" else []
+
+
+@pytest.mark.parametrize("batch", [1, 50])
+def test_random_histories_with_closes_are_order_independent_and_match_the_oracle(store, batch):
+    """§3.3/§9.9: measurements and explicit closes (close_fact) in any arrival order, one event at a time
+    or in a bulk batch, store one history and answer every (as_of, as_known_at) as the oracle does."""
+    rng = random.Random(20261023)
+    for h in range(25):
+        rows = random_history(rng)
+        for n in range(rng.randint(1, 2)):
+            valid = rng.choice([d(9, 5), d(9, 10), d(9, 25), d(10, 1)])
+            rows.append(("x", f"x{n}", valid, rng.choice([valid, valid + timedelta(days=rng.choice([1, 15]))])))
+        orders = [rows, rows[::-1]] + [rng.sample(rows, len(rows)) for _ in range(3)]
+        stored = []
+        for n, order in enumerate(orders):
+            tenant = f"c{h}-o{n}"
+            ingest(store, tenant, order, batch)
+            stored.append(history(store, tenant))
+            for at, known in itertools.product(PROBES, PROBES):
+                assert values_at(store, tenant, at, known) == closing_oracle(rows, at, known), (order, at, known)
+        assert all(s == stored[0] for s in stored), rows
+
+
+def test_a_close_and_a_fact_at_the_same_instant_leave_the_fact_open_in_either_order(store):
+    """A close sorts before the facts of its instant: closing the old value and opening the new one at
+    the same time ends the old one, whichever arrives first."""
+    rows = [("m", "a", d(9, 1), d(9, 1), 6.0), ("x", "x", d(10, 1), d(10, 1)), ("m", "b", d(10, 1), d(10, 1), 8.0)]
+    ingest(store, "fwd", rows)
+    ingest(store, "rev", rows[::-1])
+    assert history(store, "fwd") == history(store, "rev") == [(6.0, d(9, 1), d(10, 1), d(9, 1), d(10, 1)), (8.0, d(10, 1), None, d(10, 1), None)]
+
+
+@pytest.mark.parametrize("batch", [1, 50])
+def test_a_close_at_a_facts_own_start_never_ends_it(store, batch):
+    """Two terms of one holder back to back: the first closed (by value) at the instant the second opens.
+    The close goes first at its instant, so the second term stays open in either order."""
+    c = cartridge()
+
+    def term(e, s):
+        s.open_fact(e.tenant, e.subject, "depth_mm", e.payload["depth_mm"], valid_from=e.occurred_at, evidence=e.id)
+        if e.payload.get("end"):
+            s.close_fact(e.tenant, e.subject, "depth_mm", valid_to=e.payload["end"], value=e.payload["depth_mm"])
+
+    c.registry.register("tire.term", term)
+    evs = [Event(id="t1", tenant="t", type="tire.term", subject=SUBJECT, occurred_at=d(9, 1), source="b", payload={"depth_mm": 5.0, "end": d(10, 1)}),
+           Event(id="t2", tenant="t", type="tire.term", subject=SUBJECT, occurred_at=d(10, 1), source="b", payload={"depth_mm": 5.0})]
+    for tenant, order in (("fwd", evs), ("rev", evs[::-1])):
+        assert not Ingestor(c, store).ingest([e.model_copy(update={"tenant": tenant}) for e in order], strict=True, batch=batch).errors
+        assert [(f.valid_from, f.valid_to) for f in store.facts(tenant, SUBJECT) if f.predicate == "depth_mm"] == [(d(9, 1), d(10, 1)), (d(10, 1), None)]
+
+
+def test_a_close_with_a_value_ends_only_that_value_in_every_order(store):
+    """Overlapping terms: A from Sep 1 ends Oct 1, B started Sep 20. Closing A by value leaves B open,
+    whatever the order; a close of any value would end B, the value current on Oct 1."""
+    c = cartridge()
+    c.registry.register("tire.term_ended", lambda e, s: s.close_fact(e.tenant, e.subject, "depth_mm", valid_to=e.occurred_at, value=e.payload["depth_mm"]))
+    ended = Event(id="end", tenant="t", type="tire.term_ended", subject=SUBJECT, occurred_at=d(10, 1), source="b", payload={"depth_mm": 6.0})
+    evs = [measure("t", "a", d(9, 1), d(9, 1), 6.0), measure("t", "b", d(9, 20), d(9, 20), 4.0), ended]
+    got = []
+    for n, order in enumerate(itertools.permutations(evs)):
+        tenant = f"o{n}"
+        assert not Ingestor(c, store).ingest([e.model_copy(update={"tenant": tenant}) for e in order], strict=True).errors
+        got.append([(f.value, f.valid_from, f.valid_to) for f in store.facts(tenant, SUBJECT) if f.predicate == "depth_mm"])
+    assert all(g == [(6.0, d(9, 1), d(9, 20)), (4.0, d(9, 20), None)] for g in got), got
+
+
+def test_a_close_mark_is_never_read_as_a_fact(store):
+    """The close is kept in the history but is no value: facts, changes, search and dump leave it out."""
+    ingest(store, "t", [("m", "a", d(9, 1), d(9, 1), 6.0), ("x", "x", d(10, 1), d(10, 2))])
+    every = [*store.facts("t", SUBJECT), *store.facts("t", SUBJECT, known_at=d(12, 1)), *store.changes("t", d(1, 1)),
+             *store.search("t", "depth"), *store.dump("t")]
+    assert all(getattr(f, "source", None) != "keel:close" for f in every)
+    assert [f.value for f in store.facts("t", SUBJECT) if f.predicate == "depth_mm"] == [6.0]
 
 
 def test_history_windows_read_the_view_known_then(store):
