@@ -189,7 +189,8 @@ class Gateway:
 KEY_FILE = Path.home() / ".anthropic_key"
 # Anthropic's list prices (2026-10-06), per token: input, output. Haiku bills a prompt above 100K tokens at 5x; a cache
 # read costs 0.1x the input rate, a 5-minute cache write 1.25x.
-DIRECT_PRICES = {"anthropic/claude-haiku-5.5": (0.10e-6, 0.50e-6), "anthropic/claude-sonnet-5.5": (2.00e-6, 10.00e-6)}
+DIRECT_PRICES = {"anthropic/claude-haiku-5.5": (0.10e-6, 0.50e-6), "anthropic/claude-sonnet-5.5": (2.00e-6, 10.00e-6),
+                 "anthropic/claude-opus-5.5": (4.00e-6, 20.00e-6)}
 
 
 def direct_id(model: str) -> str:
@@ -203,7 +204,7 @@ def direct_cost(model: str, usage: dict[str, Any]) -> tuple[dict[str, int], floa
     pin, pout = DIRECT_PRICES[model]
     if "haiku" in model and fresh + read + write > 100_000:
         pin, pout = pin * 5, pout * 5
-    return {"input": fresh + read + write, "output": o}, fresh * pin + read * pin * 0.1 + write * pin * 1.25 + o * pout
+    return {"input": fresh + read + write, "output": o}, fresh * pin + read * pin * (0.05 if "opus" in model else 0.1) + write * pin * 1.25 + o * pout
 
 
 def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None, direct: bool = False) -> dict[str, Any]:
@@ -228,8 +229,9 @@ def to_anthropic(model: str, messages: list[dict[str, Any]], tools: list[dict[st
             out.append({"role": "assistant", "content": blocks})
         else:
             out.append({"role": "user", "content": m["content"]})
-    body: dict[str, Any] = {"model": model, "max_tokens": 8192, "thinking": {"type": "between_tools" if "sonnet" in model else "disabled"},
-                            "messages": out}
+    body: dict[str, Any] = {"model": model, "max_tokens": 8192, "messages": out}
+    if "opus" not in model:  # Opus 5.5 always thinks (a 400 on "disabled"); its effort defaults to medium
+        body["thinking"] = {"type": "between_tools" if "sonnet" in model else "disabled"}
     body |= {"cache_control": {"type": "ephemeral"}} if direct else {"temperature": 0}
     if system := "\n\n".join(m["content"] for m in messages if m["role"] == "system"):
         # its own breakpoint: the one at the end holds the question, so without this no two questions share a cache entry
