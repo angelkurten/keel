@@ -69,8 +69,11 @@ def _graph(store: SqliteStore) -> dict[str, list[tuple[Any, ...]]]:
     return {"entities": sorted(ents), "relations": sorted(rels, key=repr), "facts": sorted(facts, key=repr)}
 
 
+NOW = datetime.now(timezone.utc)  # one instant for every side: "now" (to the whole second) must not tick between them
+
+
 def _answers(store: SqliteStore) -> dict[str, Any]:
-    tools = Tools(make.load(), store, make.TENANT, agent=make.AGENT)  # the author of the agent-scope memory
+    tools = Tools(make.load(), store, make.TENANT, agent=make.AGENT, clock=lambda: NOW)  # the author of the agent-scope memory
     out: dict[str, Any] = {}
     for e in store.entities(make.TENANT):
         out[e.key] = {

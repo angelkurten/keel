@@ -49,8 +49,11 @@ def live(store):
     return c
 
 
+NOW = datetime.now(UTC)  # one instant for both sides: "now" (to the whole second) must not tick between them
+
+
 def answers(c, store):
-    t = Tools(c, store, TENANT)
+    t = Tools(c, store, TENANT, clock=lambda: NOW)
     subjects = sorted({e.key for e in store.entities(TENANT)} | {"tire:T-9"})
     return {s: (t.context(s, detail="full"), t.history(s, detail="full", limit=0), t.context(s, as_known_at=d(10, 1), detail="full")) for s in subjects}
 
