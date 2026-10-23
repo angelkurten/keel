@@ -33,6 +33,7 @@ from keel.store.memory import (
     close_mark,
     filter_facts,
     filter_relations,
+    in_scope,
     is_close,
     new_fact,
     place_close,
@@ -464,7 +465,7 @@ class SqlStore:
         # a close that predates a fact's start is about an earlier period and leaves this fact alone;
         # `status` picks accepted facts (None) or proposals
         now = utcnow()
-        if scope is not None:  # kept as a mark in the predicate's history, so later arrivals meet it (place_close)
+        if scope is not None and status is None:  # an accepted fact's close is a mark in its history, so later arrivals meet it (place_close)
             key = ("f", tenant, subject, predicate)
 
             def load() -> list[tuple[Fact, int]]:
@@ -480,17 +481,20 @@ class SqlStore:
                 self._exec("UPDATE facts SET valid_to = ?, closed_at = ?, changed_at = ? WHERE seq = ?", (_ts(f.valid_to), _ts(f.closed_at), _ts(f.changed_at), seqs[id(f)]))
             same.append((c, self._last_id))
             return
-        # every scope (a decision settling proposals): what is open now
+        # a decision (proposals, rejections) or every scope: what is open now (MemoryStore.close_fact)
         if value is not ANY:
-            raise ValueError("close_fact(scope=None) closes whatever is open; it takes no value")
+            raise ValueError("close_fact takes a value only to close an accepted fact of one scope")
         which = "status IS NULL" if status is None else "status = ?"
+        if scope is not None:
+            which += " AND scope = ?"
         self._exec(
             f"UPDATE facts SET valid_to = ?, closed_at = ?, changed_at = ? WHERE tenant = ? AND subject = ? AND predicate = ? AND {which} AND valid_to IS NULL AND valid_from <= ?",
-            (_ts(valid_to), _ts(recorded_at or now), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)), _ts(valid_to)),
+            (_ts(valid_to), _ts(recorded_at or now), _ts(now), tenant, subject, predicate, *(() if status is None else (status,)),
+             *(() if scope is None else (Scope(scope).value,)), _ts(valid_to)),
         )
         if self._cache is not None:
             for fact, _ in self._cache.get(("f", tenant, subject, predicate), []):
-                if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to:
+                if fact.status == status and fact.valid_to is None and fact.valid_from <= valid_to and in_scope(fact, scope):
                     fact.valid_to, fact.closed_at, fact.changed_at = valid_to, recorded_at or now, now
 
     # ---- reads -------------------------------------------------------------------
@@ -989,7 +993,7 @@ class _Bulk:
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
                    recorded_at: datetime | None = None, value: Any = ANY) -> None:
         now = utcnow()
-        if scope is not None:  # a mark in the history, as SqlStore.close_fact
+        if scope is not None and status is None:  # a mark in the history, as SqlStore.close_fact
             since = self.partial.get((tenant, subject))
             same = self._whole(tenant, subject) if since is not None and valid_to < since else self._facts(tenant, subject)
             c = close_mark(tenant, subject, predicate, valid_to, status, scope, recorded_at, value)
@@ -1001,9 +1005,9 @@ class _Bulk:
             self.new_facts.append(c)
             return
         if value is not ANY:
-            raise ValueError("close_fact(scope=None) closes whatever is open; it takes no value")
+            raise ValueError("close_fact takes a value only to close an accepted fact of one scope")
         for f, seq in self._facts(tenant, subject):
-            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
+            if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
                 f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
                 if seq is not None:
                     self.closed_facts[seq] = f

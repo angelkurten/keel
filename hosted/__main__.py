@@ -21,4 +21,4 @@ if __name__ == "__main__":
         sys.exit("--hash takes the output of hosted.app.hash_password")
     if open_store(os.environ["HOSTED_CONTROL_DB"])._exec("UPDATE hosted_accounts SET password = ? WHERE account = ?", (hashed, args[1])) != 1:
         sys.exit(f"no account '{args[1]}'")
-    print("password set")
+    print("password set (open sessions end at their next request)")

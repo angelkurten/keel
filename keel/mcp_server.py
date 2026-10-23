@@ -8,6 +8,7 @@ then sees context/history/search/annotate/related and nothing else.
 
 from __future__ import annotations
 
+import copy
 import functools
 import json
 from collections.abc import Callable
@@ -85,16 +86,20 @@ def as_text(result: Any) -> str:
     return "\n".join(lines)
 
 
-def instructions(cartridge: Any) -> str:
+def instructions(cartridge: Any, agent: Any = None) -> str:
     """What every call would otherwise repeat, said once per session: the kinds, the relations and what each rule means
-    (context's `evaluation` names them). Sorted, so the text, and the prompt cache behind it, never changes for a cartridge."""
-    rels = ", ".join(f"{r} ({s.get('from')}->{s.get('to')})" if isinstance(s, dict) else r for r, s in sorted(cartridge.relations.items()))
-    rules = "\n".join(f"- {r} ({s.get('applies_to', 'any')}): {s.get('definition', '').strip()}" for r, s in sorted(cartridge.rules.items()))
-    return (f"Subjects are '<kind>:<id>'. Kinds: {', '.join(sorted(cartridge.entities))}.\nRelations: {rels}.\n"
+    (context's `evaluation` names them), as far as `agent` (a registry entry) may read. Sorted, so the text, and the
+    prompt cache behind it, never changes for a cartridge and agent."""
+    kind = (lambda k: True) if agent is None else agent.sees_kind
+    seen = {r: s for r, s in cartridge.relations.items() if agent is None or (agent.sees_relation(r) and (not isinstance(s, dict) or (kind(s.get("from")) and kind(s.get("to")))))}
+    rels = ", ".join(f"{r} ({s.get('from')}->{s.get('to')})" if isinstance(s, dict) else r for r, s in sorted(seen.items()))
+    rules = "\n".join(f"- {r} ({s.get('applies_to', 'any')}): {s.get('definition', '').strip()}" for r, s in sorted(cartridge.rules.items())
+                      if s.get("applies_to") is None or kind(s.get("applies_to")))
+    return (f"Subjects are '<kind>:<id>'. Kinds: {', '.join(k for k in sorted(cartridge.entities) if kind(k))}.\nRelations: {rels}.\n"
             f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}")
 
 
-def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None):  # pragma: no cover - needs the optional mcp package
+def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None):  # pragma: no cover - needs the optional mcp package
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
     many tenants: the tenant and agent come from the request's key and headers, keel/http.py)."""
     try:
@@ -151,7 +156,8 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
 
     if isinstance(tools, Tools):
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))
-    mcp = Server(name or "keel", instructions=instructions(tools.cartridge) if isinstance(tools, Tools) else None)
+    known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
+    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None) if known is not None else None)
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     # no outputSchema: it would only say "an object" or "a list", in tokens a client may hand the model on every call;
     # structuredContent still carries the data
@@ -202,7 +208,7 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None)
         subject: str, predicate: str, value: str | int | float | bool | list[Any] | dict[str, Any] | None, scope: Literal["agent", "task", "tenant", "global"] = "task", evidence: str | None = None, by: str | None = None,  # noqa: PYI041
         task: str | None = None, key: str | None = None, status: Literal["proposed", "rejected"] | None = None, detail: Literal["ack", "full"] = "ack", ctx: Context | None = None,
     ) -> dict[str, Any]:
-        t = bound(ctx)
+        t = copy.copy(bound(ctx))  # a bound server shares one Tools across sessions: each call keeps its own trace
         t.trace = _trace(ctx)
         return t.annotate(subject, predicate, value, scope, evidence, by, task, key, status, detail)
 

@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --extra dev --extra mysql
-      - run: KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3306/keel uv run pytest -q tests/test_store.py tests/test_spec_*.py tests/test_backup.py  # the conformance suite, the SPEC battery, backup and restore
+      - run: KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3306/keel uv run pytest -q tests/test_store.py tests/test_spec_*.py tests/test_backup.py tests/test_security_tools.py  # conformance, the SPEC battery, backup and restore, tool security
 
   semantic-chroma:
     runs-on: ubuntu-latest

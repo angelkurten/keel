@@ -13,6 +13,7 @@ They are plain functions first, so any framework can call them directly;
 from __future__ import annotations
 
 import difflib
+import json
 import re
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, replace
@@ -56,6 +57,15 @@ def _ser(o: Any) -> Any:
     if isinstance(o, list):
         return [_ser(v) for v in o]
     return o
+
+
+LIST_MAX = 1000  # subjects or texts in one call when the deployment sets no ceiling
+VALUE_MAX = 64_000  # bytes of one annotate value, serialized
+
+
+def _counted(n: int | None, what: str) -> None:
+    if n is not None and n < 0:
+        raise ValueError(f"{what} is 0 or more")
 
 
 Instant = datetime | str | None  # every time argument: a datetime or ISO 8601 text, as the tools return it
@@ -348,9 +358,12 @@ class Tools:
     def __init__(
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
         embedder: Any = None, index: Any = None, reranker: Any = None, meter: Callable[[str, str], None] | None = None,
-        clock: Callable[[], datetime] | None = None, max_list: int | None = None,
+        clock: Callable[[], datetime] | None = None, max_list: int | None = None, writes_global: bool = True,
     ) -> None:
         self.cartridge = cartridge
+        # whether this caller may write global memory at all: a transport turns it off for a key that is not --global,
+        # so no transport (/v1, /mcp, bound or per request) can forget the check
+        self.writes_global = writes_global
         # a deployment's ceiling on one listing (search, related, history), asked for as "all" or more; None: no ceiling.
         # Off by default: a report or an export may want everything, and the operator decides who may (`keel serve --max-list`).
         self.max_list = max_list
@@ -374,7 +387,8 @@ class Tools:
 
     def _readable(self, subject: str) -> None:
         if not isinstance(subject, str) or ":" not in subject:
-            hint = [k for k in self.cartridge.entities if self.store.entity(self.tenant, f"{k}:{subject}")]
+            kinds = [k for k in self.cartridge.entities if self.agent is None or self.agent.sees_kind(k)]  # never confirm a hidden subject
+            hint = [k for k in kinds if self.store.entity(self.tenant, f"{k}:{subject}")]
             raise ValueError(f"'{subject}' is not a subject key: subjects are '<kind>:<id>'" + (f"; did you mean '{hint[0]}:{subject}'?" if hint else ""))
         self._known("kind", _kind(subject), self.cartridge.entities)
         if self.agent and not self.agent.sees_kind(_kind(subject)):
@@ -386,8 +400,15 @@ class Tools:
         other = r.dst if r.src == subject else r.src
         return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
 
+    def _listed(self, items: list[Any], what: str) -> None:
+        """A list argument (subjects, texts) holds at most the deployment's ceiling, or LIST_MAX without one."""
+        most = self.max_list or LIST_MAX
+        if len(items) > most:
+            raise ValueError(f"at most {most} {what} per call; this one has {len(items)}")
+
     def _ceiling(self, limit: int | None) -> int | None:
         """`limit` under the deployment's ceiling (max_list): "all" (None or 0) or more than it becomes it."""
+        _counted(limit, "limit")
         if self.max_list and (not limit or limit > self.max_list):
             return self.max_list
         return limit
@@ -500,6 +521,7 @@ class Tools:
         if only is not None and (not isinstance(only, list) or not only or not all(isinstance(p, str) for p in only)):
             raise ValueError("only is a non-empty list of predicates")
         subjects = subject if isinstance(subject, list) else [subject]
+        self._listed(subjects, "subjects")
         for s in subjects:
             self._readable(s)
         as_of, as_known_at = _t(as_of), _t(as_known_at)
@@ -707,6 +729,7 @@ class Tools:
         known = _t(as_known_at)
         graph = self._graph(_t(as_of) or known or self.now(), known)  # shared by every text of a list: each subject's facts are read once
         if isinstance(text, list):
+            self._listed(text, "texts")
             return [self._search_one(t, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph, _t(as_of)) for t in text]
         return self._search_one(text, kind, rule, limit, after, mode, min_score, related_to, via, detail, depth, per_kind, exclude, where, graph, _t(as_of))
 
@@ -726,7 +749,10 @@ class Tools:
                 raise ValueError("detail='count' counts every result: no after= or per_kind=")
             limit = 0  # count them all
         # a request for everything, or for more than the deployment's ceiling, gets the ceiling and a marker that says so
-        ceiling = self.max_list if self.max_list and detail != "count" and (limit == 0 or (limit or 0) > self.max_list) else None
+        _counted(limit, "limit")
+        _counted(per_kind, "per_kind")
+        # per_kind takes n of each kind: the ceiling holds on what they add up to, as on any listing
+        ceiling = self.max_list if self.max_list and detail != "count" and (limit == 0 or (limit or 0) > self.max_list or per_kind is not None) else None
         if ceiling:
             limit = 0
         hide = set(exclude or ())
@@ -1142,10 +1168,14 @@ class Tools:
         if status not in (None, "proposed", "rejected"):
             raise ValueError("status is None (accepted), 'proposed' or 'rejected'")
         sc = _scope(scope)
+        if len(json.dumps(value, default=str)) > VALUE_MAX:  # a value is for comparing or showing (SPEC §3.3), never a document
+            raise ValueError(f"value is larger than {VALUE_MAX // 1000} KB: keep a short label and point at the document with evidence")
         self._readable(subject)
         forgotten = getattr(self.store, "forgotten", None)
         if forgotten and (at := forgotten(self.tenant)) is not None:  # an erased tenant is not revived by a late write
             raise PermissionError(f"tenant '{self.tenant}' was forgotten at {at.isoformat()}; nothing more is written for it")
+        if sc == Scope.GLOBAL and not self.writes_global:
+            raise PermissionError("only the account's global key may write global memory (keel keys create --global)")
         if self.agent and sc == Scope.GLOBAL:  # a privileged process writes global, never an agent: not even a proposal
             raise PermissionError(f"agent '{self.agent.id}' may not write scope 'global': only a Tools bound to no registry agent does")
         if self.agent and status == "proposed" and not self.agent.writes:
@@ -1192,11 +1222,11 @@ class Tools:
             )
         except DuplicateKey as dup:  # a concurrent call with the same key wrote first
             return replayed(dup.fact)
-        every_scope = {"scope": None} if accepts(self.store.close_fact, "scope") else {}  # a decision settles proposals in any scope
-        if status != "proposed":  # a decision: the pending proposals on this predicate are settled
-            self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed", **every_scope)
+        its_scope = {"scope": sc} if accepts(self.store.close_fact, "scope") else {}
+        if status != "proposed":  # a decision settles the pending proposals of its own scope: a private note settles no tenant proposal
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="proposed", **its_scope)
         if status == "rejected":  # the rejection itself is recorded, closed at once: history only
-            self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected", **every_scope)
+            self.store.close_fact(part, subject, predicate, valid_to=now, status="rejected", **its_scope)
             f.valid_to = now
         return done(f)
 

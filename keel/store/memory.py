@@ -53,6 +53,13 @@ def author(f: Fact) -> str | None:
     return f.corrected_by or f.source
 
 
+def owner(f: Fact) -> tuple[str | None, str | None]:
+    """Whose slot a per-author fact takes (multi-valued predicates, proposals): the writer and the `by` it
+    named, together. Two people through one agent are two owners, and an agent naming a person by `by=`
+    never takes that person's own slot (their writer differs)."""
+    return f.source, f.corrected_by
+
+
 def is_annotation(f: Fact) -> bool:
     """Memory written through the tools (annotate) or a job over it (consolidate): not derived from
     events, so a replay keeps it instead of wiping it."""
@@ -61,6 +68,11 @@ def is_annotation(f: Fact) -> bool:
 
 CLOSE = "keel:close"  # the source of a close mark: an explicit close_fact, kept in its predicate's history
 ANY: Any = type("Any", (), {"__repr__": lambda self: "ANY"})()  # close_fact(value=ANY): whatever value is current
+
+
+def in_scope(f: Fact, scope: Scope | str | None) -> bool:
+    """close_fact's scope filter: None is every scope."""
+    return scope is None or Scope(f.scope) == Scope(scope)
 
 
 def is_close(f: Fact) -> bool:
@@ -126,7 +138,7 @@ def same_slot(facts: Iterable[Fact], new: Fact, per_source: bool = False) -> lis
             return False
         if Scope(new.scope) == Scope.AGENT and x.source != new.source:  # agent memory is its writer's
             return False
-        return not per_source or author(x) == author(new)
+        return not per_source or owner(x) == owner(new)
 
     return [x for x in facts if same(x)]
 
@@ -209,7 +221,7 @@ def _slot(f: Fact, per_source: bool) -> tuple[Any, ...]:
     """`same_slot` as a key: the facts that close each other."""
     scope = Scope(f.scope)
     return (f.tenant, f.subject, f.predicate, f.status, scope, f.task if scope == Scope.TASK else None,
-            f.source if scope == Scope.AGENT else None, author(f) if per_source else None)
+            f.source if scope == Scope.AGENT else None, owner(f) if per_source else None)
 
 
 def changed_at(f: Fact | Relation) -> datetime | None:
@@ -368,15 +380,16 @@ class MemoryStore:
         # a close that predates a fact's start would invert its interval: that close is about an
         # earlier period and leaves this fact alone. `status` picks accepted facts (None) or proposals.
         # `scope` (tenant by default, what handlers write) keeps a handler from closing agent or task memory.
-        # The close is kept as a mark in the predicate's history (place_close), so a fact that arrives
-        # later still meets it. `scope=None` (every scope, a decision settling proposals) closes only what is open now.
+        # The close of an accepted fact is kept as a mark in the predicate's history (place_close), so a fact that
+        # arrives later still meets it. A decision closing proposals or rejections (status), or any close of every
+        # scope (scope=None), closes what is open now: those are the tools' own writes, never late events.
         now, valid_to, recorded_at = utcnow(), aware(valid_to), aware(recorded_at)
         facts = self._facts[tenant][subject]
-        if scope is None:
+        if scope is None or status is not None:
             if value is not ANY:
-                raise ValueError("close_fact(scope=None) closes whatever is open; it takes no value")
+                raise ValueError("close_fact takes a value only to close an accepted fact of one scope")
             for f in facts:
-                if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to:
+                if f.predicate == predicate and f.status == status and f.valid_to is None and f.valid_from <= valid_to and in_scope(f, scope):
                     self._keep(f)
                     f.valid_to, f.closed_at, f.changed_at = valid_to, recorded_at or now, now
                     self._mark(tenant, now)

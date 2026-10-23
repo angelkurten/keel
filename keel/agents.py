@@ -69,6 +69,8 @@ def problems(agents: dict[str, AgentSpec], entities: dict[str, Any], relations: 
     valid = {s.value for s in Scope}
     out = []
     for a in agents.values():
+        if ":" in a.id:
+            out.append(f"agent id '{a.id}' has a ':': ids sign annotations as annotate:<id> and a person as human:<id>, so it would sign as someone else")
         if a.kind not in ("agent", "human"):
             out.append(f"agent '{a.id}' has kind '{a.kind}' (agent or human)")
         for s in sorted(a.writes - valid):
@@ -86,7 +88,7 @@ def resolve(agents: dict[str, AgentSpec], agent_id: str | None) -> AgentSpec | N
     """The spec a Tools instance is bound to. No registry: None, the open behaviour."""
     if not agents:
         return None
-    if agent_id in agents:
+    if agent_id in agents and ":" not in agent_id:  # 'human:ana' would sign as the person ana (problems() says so too)
         return agents[agent_id]
     raise PermissionError(
         f"agent {agent_id!r} is not declared in this cartridge (declared: {', '.join(sorted(agents))}); pass a declared agent id"

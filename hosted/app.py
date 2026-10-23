@@ -45,6 +45,8 @@ TABLES = (
   db TEXT NOT NULL, created_at VARCHAR(40) NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS hosted_sessions (
   token VARCHAR(64) NOT NULL PRIMARY KEY, email VARCHAR(191) NOT NULL, account VARCHAR(64) NOT NULL, expires_at VARCHAR(40) NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS hosted_invites (
+  code VARCHAR(191) NOT NULL PRIMARY KEY, account VARCHAR(64) NOT NULL, used_at VARCHAR(40) NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS hosted_agents (
   account VARCHAR(64) NOT NULL, name VARCHAR(100) NOT NULL, config TEXT NOT NULL, updated_at VARCHAR(40) NOT NULL,
   PRIMARY KEY (account, name))""",
@@ -52,6 +54,12 @@ TABLES = (
 # columns added after the first accounts existed (2026-10-18); ADD COLUMN fails harmlessly once they are there
 COLUMNS = ("password VARCHAR(200)", "status VARCHAR(16)", "error TEXT", "secret VARCHAR(100)", "cartridge TEXT", "example VARCHAR(32)",
            "handlers TEXT", "cdc_map TEXT", "notice TEXT", "semantic VARCHAR(8)")
+RESERVED = {"www", "admin", "api", "app", "mail", "smtp", "console", "mcp", "embed", "coolify", "keel", "status", "docs", "blog",
+            "static", "assets", "auth", "login", "signup", "billing", "support", "demo-admin", "root", "ns1", "ns2"}  # subdomains we keep
+SLUG = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?")  # a DNS label: it becomes <slug>.keel.angelkurten.com
+SDK_LANGUAGES = ("typescript", "python", "go", "php")
+FAILS, FAILS_WINDOW = 10, 900.0  # failed logins per email or address before 429, and the window in seconds
+DUMMY_HASH = "scrypt$" + "00" * 16 + "$" + "00" * 64  # checked for an unknown email, so it costs what a known one does
 PUBLIC_MAIL = {"gmail", "googlemail", "outlook", "hotmail", "live", "yahoo", "icloud", "me", "proton", "protonmail", "aol", "gmx", "yandex"}
 STEPS = (("database", "Database and container created"), ("container", "Keel starting"), ("example", "Example data loaded"), ("ready", "Ready"))
 STATUS_STEP = {"creating": 0, "starting": 1, "loading": 2, "ready": 4}
@@ -155,7 +163,10 @@ def static_check(files: dict[str, str], events: list[dict[str, Any]] | None = No
             return [f"cartridge.yaml: {exc}"]
     for etype in handled:
         c.registry.on(str(etype))(lambda _event, _store: None)
-    problems = c.validate()
+    try:
+        problems = c.validate()
+    except Exception as exc:  # noqa: BLE001 - a section of the wrong shape is the customer's to fix, never a 500
+        return [f"cartridge.yaml: {type(exc).__name__}: {exc}"]
     for i, raw in enumerate(events or []):
         try:
             problems += [f"event {i + 1}: {p}" for p in c.check_event(Event.model_validate({"tenant": "check", **raw}))]
@@ -206,6 +217,10 @@ class ControlPlane:
         for col in COLUMNS:
             with contextlib.suppress(Exception):  # already there
                 control._exec(f"ALTER TABLE hosted_accounts ADD COLUMN {col}")
+        with contextlib.suppress(Exception):  # the password a session was opened with: a reset ends it
+            control._exec("ALTER TABLE hosted_sessions ADD COLUMN pw VARCHAR(64)")
+        self._fails: dict[str, list[float]] = {}  # ponytail: per process; a shared table if the control plane ever runs twice
+        self._fails_lock = threading.Lock()
 
     def heal(self) -> None:
         """Complete accounts created before the console (no secret kept): their container's secret and cartridge are
@@ -231,6 +246,10 @@ class ControlPlane:
             check_account(account)
         except ValueError as exc:
             return str(exc)
+        if not SLUG.fullmatch(account):
+            return f"'{account}' is not a valid subdomain: letters, digits and inner hyphens, at most 32"
+        if account in RESERVED:
+            return f"'{account}' is reserved"
         if self._row(account) or self.control.account(account):
             return f"'{account}' is taken"
         return None
@@ -249,17 +268,21 @@ class ControlPlane:
 
     def signup(self, email: str, account: str, password: str, invite: str, example: str = "fleet") -> str:
         """Create the account, start its provisioning in the background, and return a session."""
-        if not invite or invite not in self.settings.invite_codes:
-            raise PermissionError("Keel is invite-only during the pilots: write to angel@angelkurten.com")
         email, account = _email(email), account.strip()
         if (why := self.available(account)) is not None:
             raise ValueError(why)
+        if not invite or invite not in self.settings.invite_codes or self.control._one("SELECT 1 AS one FROM hosted_invites WHERE code = ?", (invite,)):
+            raise PermissionError("Keel is invite-only during the pilots, and an invitation opens one account: write to angel@angelkurten.com")
         if self.control._one("SELECT account FROM hosted_accounts WHERE email = ?", (email,)):
             raise ValueError("this email already has an account: sign in")
         pw = hash_password(password)
         base = Path(self.settings.examples_dir) / example
         files = {n: (base / n).read_text(encoding="utf-8") for n in ("cartridge.yaml", "handlers.py")}
         check_cartridge(files)
+        try:  # the primary key makes an invitation one account, even for two sign-ups racing
+            self.control._exec("INSERT INTO hosted_invites (code, account, used_at) VALUES (?, ?, ?)", (invite, account, utcnow().isoformat()))
+        except Exception as exc:  # each driver has its own IntegrityError
+            raise PermissionError("Keel is invite-only during the pilots, and an invitation opens one account: write to angel@angelkurten.com") from exc
         self.control._exec("INSERT INTO hosted_accounts (account, email, password, db, created_at, status, cartridge, handlers, example) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                            (account, email, pw, "", utcnow().isoformat(), "creating", files["cartridge.yaml"], files["handlers.py"], example))
         threading.Thread(target=self._provision, args=(account, files, example), daemon=True).start()
@@ -269,6 +292,7 @@ class ControlPlane:
         self.control._exec("UPDATE hosted_accounts SET status = ?, error = ? WHERE account = ?", (status, error, account))
 
     def _provision(self, account: str, files: dict[str, str], example: str) -> None:
+        db = secret = None
         try:
             db = self.databases.create(account)
             try:
@@ -288,7 +312,11 @@ class ControlPlane:
             self._status(account, "ready")
         except Exception as exc:  # shown to the customer in the console
             log.exception("provisioning %s failed", account)
-            self._status(account, "failed", str(exc)[:500])
+            shown = str(exc)
+            for credential in (db, secret):  # a provider's error may echo the environment it was sent
+                if credential:
+                    shown = shown.replace(credential, "<hidden>")
+            self._status(account, "failed", shown[:500])
 
     def _wait_ready(self, app_id: str, endpoint: str, rev: set[str] | None = None) -> None:
         """Poll /health; a container that has not answered halfway through is restarted once (a first start
@@ -498,24 +526,46 @@ class ControlPlane:
 
     # ---- sign-in -----------------------------------------------------------------------------
 
-    def login(self, email: str, password: str) -> str:
-        row = self.control._one("SELECT account, password FROM hosted_accounts WHERE email = ?", (email.strip().lower(),))
-        if row is None or not check_password(password, row["password"]):
+    def throttle(self, *keys: str) -> None:
+        """Refuse (429) while any key (an email, an address) has FAILS failures within FAILS_WINDOW seconds."""
+        now = time.monotonic()
+        with self._fails_lock:
+            for k in keys:
+                recent = [t for t in self._fails.get(k, ()) if now - t < FAILS_WINDOW]
+                self._fails[k] = recent
+                if len(recent) >= FAILS:
+                    raise OverflowError("too many failed attempts: try again in 15 minutes")
+
+    def failed(self, *keys: str) -> None:
+        with self._fails_lock:
+            for k in keys:
+                self._fails.setdefault(k, []).append(time.monotonic())
+
+    def login(self, email: str, password: str, address: str = "") -> str:
+        email = email.strip().lower()
+        self.throttle(f"email:{email}", f"ip:{address}")
+        row = self.control._one("SELECT account, password FROM hosted_accounts WHERE email = ?", (email,))
+        if not check_password(password, row["password"] if row else DUMMY_HASH) or row is None:  # same cost either way
+            self.failed(f"email:{email}", f"ip:{address}")
             raise PermissionError("wrong email or password")
-        return self._session(email.strip().lower(), row["account"])
+        return self._session(email, row["account"])
 
     def _session(self, email: str, account: str) -> str:
         session = secrets.token_urlsafe(32)
         expires = utcnow() + timedelta(days=self.settings.session_days)
-        self.control._exec("INSERT INTO hosted_sessions (token, email, account, expires_at) VALUES (?, ?, ?, ?)",
-                           (_hash(session), email, account, expires.isoformat()))
+        row = self.control._one("SELECT password FROM hosted_accounts WHERE account = ?", (account,))
+        self.control._exec("INSERT INTO hosted_sessions (token, email, account, expires_at, pw) VALUES (?, ?, ?, ?, ?)",
+                           (_hash(session), email, account, expires.isoformat(), _hash(row["password"] or "") if row else None))
         return session
 
     def session(self, token: str | None) -> tuple[str, str] | None:
         if not token:
             return None
-        row = self.control._one("SELECT email, account, expires_at FROM hosted_sessions WHERE token = ?", (_hash(token),))
+        row = self.control._one("SELECT s.email, s.account, s.expires_at, s.pw, a.password FROM hosted_sessions s "
+                                "JOIN hosted_accounts a ON a.account = s.account WHERE s.token = ?", (_hash(token),))
         if row is None or parse_iso(row["expires_at"]) < utcnow():
+            return None
+        if row["pw"] is None or not secrets.compare_digest(row["pw"], _hash(row["password"] or "")):  # opened under another password
             return None
         return row["email"], row["account"]
 
@@ -571,6 +621,8 @@ class ControlPlane:
         return status, out
 
     def sdk(self, account: str, language: str) -> tuple[int, Any]:
+        if language not in SDK_LANGUAGES:
+            raise ValueError(f"an SDK language: {', '.join(SDK_LANGUAGES)}")
         return self._keel(account, "GET", f"/v1/sdk/{language}")
 
     def new_key(self, account: str, tenant: str | None = None, agent: str | None = None, glob: bool = False) -> dict[str, Any]:
@@ -663,6 +715,15 @@ def build_app(plane: ControlPlane) -> Any:
     app = FastAPI(title="keel-hosted", docs_url=None, redoc_url=None, openapi_url=None)
     secure = plane.settings.secure_cookies
 
+    @app.middleware("http")
+    async def same_origin(request: Request, call_next: Any) -> Any:
+        """A state change from a browser page on another origin (a customer's container on a sibling subdomain is
+        same-site, so SameSite=Lax lets its forms through) is refused. Requests without Origin are not browsers'."""
+        origin = request.headers.get("origin")
+        if request.method not in ("GET", "HEAD", "OPTIONS") and origin and origin != f"{request.url.scheme}://{request.headers.get('host', '')}":
+            return JSONResponse({"detail": "cross-origin request refused"}, status_code=403)
+        return await call_next(request)
+
     @app.exception_handler(PermissionError)
     def _forbidden(_r: Request, exc: PermissionError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=403)
@@ -727,13 +788,21 @@ def build_app(plane: ControlPlane) -> Any:
         why = plane.available(account)
         return {"account": account, "available": why is None, "error": why}
 
+    def address(request: Request) -> str:
+        return request.client.host if request.client else ""
+
     @app.post("/api/signup")
-    def signup(body: SignupIn) -> Any:
-        return signed_in(plane.signup(body.email, body.account, body.password, body.invite))
+    def signup(body: SignupIn, request: Request) -> Any:
+        plane.throttle(f"ip:{address(request)}")
+        try:
+            return signed_in(plane.signup(body.email, body.account, body.password, body.invite))
+        except PermissionError:  # a wrong invitation counts as a failed attempt: codes are not guessed online
+            plane.failed(f"ip:{address(request)}")
+            raise
 
     @app.post("/api/login")
-    def login(body: LoginIn) -> Any:
-        return signed_in(plane.login(body.email, body.password))
+    def login(body: LoginIn, request: Request) -> Any:
+        return signed_in(plane.login(body.email, body.password, address(request)))
 
     @app.post("/api/signout")
     def signout(request: Request) -> Any:
@@ -810,8 +879,11 @@ def build_app(plane: ControlPlane) -> Any:
         return {"ok": True, "problems": plane.replace_cartridge(who(request)[1], files, body.example)}
 
     @app.post("/api/cartridge/check")
-    def check(body: CartridgeIn) -> dict[str, Any]:
+    def check(body: CartridgeIn, request: Request) -> dict[str, Any]:
+        who(request)
         files = {"cartridge.yaml": body.cartridge_yaml or "", "handlers.py": body.handlers_py or ""}
+        if len(files["cartridge.yaml"]) + len(files["handlers.py"]) > 512_000:
+            raise ValueError("the cartridge is larger than 512 KB")
         return {"problems": static_check(files)}
 
     @app.post("/api/cartridge/generate")

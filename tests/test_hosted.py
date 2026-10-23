@@ -97,7 +97,7 @@ def plane(tmp_path, provisioner=None, keel=None, **settings):
 
     keel = keel or FakeKeel()
     http = httpx.Client(transport=httpx.MockTransport(keel.handler))
-    s = Settings(invite_codes={"pilot-1"}, examples_dir=str(ROOT / "examples"), ready_timeout=2, ofox_key="ofox-test", **settings)
+    s = Settings(invite_codes={"pilot-1", "pilot-2", "pilot-3"}, examples_dir=str(ROOT / "examples"), ready_timeout=2, ofox_key="ofox-test", **settings)
     p = ControlPlane(SqliteStore(tmp_path / "control.db"), FakeDatabases(tmp_path), provisioner or FakeProvisioner(), s, http)
     p.keel = keel  # the fake's record of calls, for the tests
     p.provisioner.keel = keel

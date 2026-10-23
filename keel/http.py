@@ -97,10 +97,10 @@ class _Auth:
         if scope["type"] == "http" and scope["path"] not in OPEN_PATHS and not scope["path"].startswith("/ui/"):
             from starlette.responses import JSONResponse
 
-            given = dict(scope["headers"]).get(b"authorization", b"").decode()
+            given = dict(scope["headers"]).get(b"authorization", b"").decode("latin-1")  # never fails: a garbled header is just a wrong one
             token = given.removeprefix("Bearer ") if given.startswith("Bearer ") else ""
             key = None
-            if self.secret and hmac.compare_digest(given, f"Bearer {self.secret}"):
+            if self.secret and hmac.compare_digest(given.encode("latin-1"), f"Bearer {self.secret}".encode()):
                 pass  # the operator
             elif token.startswith("kk_") and (key := resolve(self.store, token)) is not None:
                 if self.account is not None and key.account != self.account:  # one container per account (hosted)
@@ -169,8 +169,12 @@ def build_http_app(
             except HTTPException as exc:
                 raise PermissionError(exc.detail) from exc
 
-        bound = Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list) if tenant is not None else per_request
-        server = build_server(bound, name=f"keel:{cartridge.name}")
+        bound: Any = per_request
+        if tenant is not None:  # one Tools per right to write global: the operator and a --global key, or any other key
+            pinned = {g: Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock,
+                               max_list=max_list, writes_global=g) for g in (True, False)}
+            bound = lambda request: pinned[request is None or (k := key_of(request)) is None or k.glob]
+        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None)
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
@@ -242,7 +246,8 @@ def build_http_app(
         parts = [request.headers.get("traceparent")] + ([f"tool_call_id={request.headers['x-keel-tool-call']}"] if request.headers.get("x-keel-tool-call") else [])
         trace = "; ".join(p for p in parts if p) or None
         try:
-            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list)
+            return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list,
+                         writes_global=key is None or key.glob)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -325,7 +330,9 @@ def build_http_app(
 
     @app.get("/health")
     def health() -> dict[str, Any]:
-        return {"ok": True, "cartridge": cartridge.name, "revision": rev, "mcp": mcp_app is not None, **(health_extra or {})}  # e.g. serve --cdc's state
+        # unauthenticated: each component says only whether it is ok (serve --cdc's error names hosts, users and tables)
+        extra = {k: {"ok": bool(v.get("ok"))} if isinstance(v, dict) else v for k, v in (health_extra or {}).items()}
+        return {"ok": True, "cartridge": cartridge.name, "revision": rev, "mcp": mcp_app is not None, **extra}
 
     recent = recent if recent is not None else RecentEvents()
     remember = recent.add

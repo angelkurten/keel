@@ -117,3 +117,8 @@ Accounts, keys, metering and dated forget do not wait for the gate. They are sma
 - **Account names** are short slugs chosen at creation and never renamed, because they appear in every tenant key.
 - **The global memory of an account** is written only by a key created with `--global`, and only into `account/__global__`. The SaaS manages its own semantics; no other key of the account can touch them.
 - **Tool calls** are counted per account, tenant, day and tool, for quotas, abuse and real usage. Billing stays on events ingested.
+
+
+## Security review (2026-10-22)
+
+An adversarial review (`tests/test_security_hosted.py`) closed these: an invitation opens one account (`hosted_invites`, the code its primary key, so two racing sign-ups cannot share it); failed logins and failed invitations are throttled per email and address (10 in 15 minutes, then 429), and an unknown email costs the same scrypt as a known one; a session ends when the account's password changes (`python -m hosted password`), since it keeps a fingerprint of the password it was opened with; a state-changing request whose `Origin` is not the console's own is refused, because customer containers on sibling subdomains are same-site for `SameSite=Lax`; slugs are DNS labels and infrastructure names (`www`, `admin`, `api`, `mcp`, ...) are reserved; `/api/cartridge/check` needs a session and a size limit and reports a malformed section instead of failing; the SDK proxy accepts only the four languages; a provisioning error hides the database URL and secret it may echo. Accepted: per-process throttling (one control plane), counters checked before they are written (a burst can pass a daily cap by a little), and `/api/slug` telling which slugs are taken.
