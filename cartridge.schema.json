@@ -1,0 +1,1083 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://angelkurten.github.io/keel/cartridge.schema.json",
+  "title": "Keel cartridge",
+  "description": "cartridge.yaml: the ontology, event catalog, rules, memory policy and agent registry of one domain. See docs/SPEC.md section 5.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The cartridge's name, a slug. Defaults to the folder name.",
+      "examples": [
+        "clinics"
+      ]
+    },
+    "version": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "description": "The cartridge's own version. Recorded on every annotation with a hash of the rules.",
+      "examples": [
+        "0.1.0"
+      ]
+    },
+    "entities": {
+      "type": "object",
+      "description": "The kinds of things the product is about: kind -> spec. Subjects are written `<kind>:<id>`.",
+      "markdownDescription": "The kinds of things the product is about: kind -> spec. Subjects are written `<kind>:<id>`.\n\n```yaml\nentities:\n  patient: { description: A person treated at the clinic., ref: patients.id }\n```",
+      "additionalProperties": {
+        "$ref": "#/$defs/entity"
+      }
+    },
+    "relations": {
+      "type": "object",
+      "description": "How kinds relate: relation -> {from, to}. Both ends are declared entity kinds.",
+      "markdownDescription": "How kinds relate: relation -> `{from, to}`. Both ends are declared entity kinds.\n\n```yaml\nrelations:\n  booked_by: { from: appointment, to: patient }\n```",
+      "additionalProperties": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "events": {
+      "type": "object",
+      "description": "The event catalog: dotted lowercase type -> spec. Every type has a handler in handlers.py, except one that forgets.",
+      "markdownDescription": "The event catalog: dotted lowercase type -> spec. Every type has a handler in `handlers.py`, except one that `forgets`.\n\n```yaml\nevents:\n  appointment.booked:\n    subject: appointment\n    owner: scheduling-team\n    payload: { patient_id: string, starts_at: datetime }\n```",
+      "additionalProperties": {
+        "$ref": "#/$defs/event"
+      }
+    },
+    "rules": {
+      "type": "object",
+      "description": "Semantic definitions, versioned with the cartridge: name -> rule. `context` returns them for the subject's kind and evaluates their `when`.",
+      "additionalProperties": {
+        "$ref": "#/$defs/rule"
+      }
+    },
+    "predicates": {
+      "type": "object",
+      "description": "Write policy per predicate, for annotations: predicate -> {multi, description}.",
+      "additionalProperties": {
+        "$ref": "#/$defs/predicate"
+      }
+    },
+    "semantic": {
+      "$ref": "#/$defs/semantic"
+    },
+    "consolidate": {
+      "type": "object",
+      "description": "Episodic memory summarized into durable facts by `keel consolidate`: name -> job. A job, never part of ingest.",
+      "additionalProperties": {
+        "$ref": "#/$defs/consolidation"
+      }
+    },
+    "context": {
+      "$ref": "#/$defs/context"
+    },
+    "calendar": {
+      "$ref": "#/$defs/calendar"
+    },
+    "agents": {
+      "type": "object",
+      "description": "The agent registry: id -> spec. Absent means no registry: any caller, any scope with evidence. With it, every Tools instance is bound to a declared agent.",
+      "markdownDescription": "The agent registry: id -> spec. Absent means no registry: any caller, any scope with evidence. With it, every `Tools` instance is bound to a declared agent.\n\n```yaml\nagents:\n  tires-bot:\n    description: Reads tire depth, writes task memory.\n    writes: [task, agent]\n    reads: { kinds: [unit, tire], relations: [mounted_on] }\n  dispatcher:\n    kind: human\n    writes: [task, tenant]\n```",
+      "additionalProperties": {
+        "$ref": "#/$defs/agent"
+      }
+    },
+    "memory": {
+      "$ref": "#/$defs/memory"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "entity": {
+      "type": [
+        "object",
+        "string",
+        "null"
+      ],
+      "description": "An entity kind.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "What this kind is, in the product's words."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Where `ref` points in the system of record, e.g. `patients.id`. Keel holds pointers, not copies.",
+          "examples": [
+            "patients.id"
+          ]
+        }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "description": "A relation between two entity kinds.",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The source entity kind."
+        },
+        "to": {
+          "type": "string",
+          "description": "The target entity kind."
+        },
+        "symmetric": {
+          "type": "boolean",
+          "description": "Recorded from either end, shown once (direction `both`)."
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "description": "One cataloged event type.",
+      "required": [
+        "subject"
+      ],
+      "properties": {
+        "subject": {
+          "type": "string",
+          "description": "The entity kind of event.subject."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Who owns this event's shape. Recommended.",
+          "examples": [
+            "scheduling-team"
+          ]
+        },
+        "payload": {
+          "type": [
+            "object",
+            "string",
+            "null"
+          ],
+          "description": "The payload fields handlers need: field -> hint. Extra fields in a payload are allowed. A single hint string is accepted too.",
+          "markdownDescription": "The payload fields handlers need: field -> hint. Extra fields in a payload are allowed.\n\nA payload field's shape, in Keel's short notation:\n\n| Written as | Means |\n| --- | --- |\n| `string`, `int`, `number`, `bool`, `date`, `datetime`, `any` | a scalar |\n| `number \\| null` | optional and nullable |\n| `string[]` | array of scalars |\n| `[pending, paid]` | enum of literals |\n| `[new, done, null]` | optional enum |\n| `[ { id: string, qty: int } ]` | array of objects |\n| `{ source: string, score: number }` | nested object |\n\nAn unknown hint is an error, so a typo never passes as `any`. `[string]` is rejected: write `string[]`.",
+          "additionalProperties": {
+            "$ref": "#/$defs/payloadHint"
+          },
+          "examples": [
+            {
+              "id": "string",
+              "amount": "number | null",
+              "status": [
+                "pending",
+                "paid"
+              ]
+            }
+          ]
+        },
+        "forgets": {
+          "enum": [
+            "tenant",
+            "before",
+            null
+          ],
+          "description": "`tenant`: the event erases its tenant. `before`: it deletes what closed before it. Either way it takes no handler.",
+          "markdownDescription": "- `tenant`: the event erases everything Keel stores for its tenant\n- `before`: it deletes the tenant's facts and relations that closed before `occurred_at`\n\nEither way the event takes no handler."
+        }
+      }
+    },
+    "payloadHint": {
+      "description": "A payload field's shape: a scalar hint, `T | null`, `T[]`, a list of literals (enum), `[ {...} ]` or a nested mapping.",
+      "markdownDescription": "A payload field's shape, in Keel's short notation:\n\n| Written as | Means |\n| --- | --- |\n| `string`, `int`, `number`, `bool`, `date`, `datetime`, `any` | a scalar |\n| `number \\| null` | optional and nullable |\n| `string[]` | array of scalars |\n| `[pending, paid]` | enum of literals |\n| `[new, done, null]` | optional enum |\n| `[ { id: string, qty: int } ]` | array of objects |\n| `{ source: string, score: number }` | nested object |\n\nAn unknown hint is an error, so a typo never passes as `any`. `[string]` is rejected: write `string[]`.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^\\s*(null\\s*\\|\\s*)*(string|int|number|bool|date|datetime|any)(\\[\\])?(\\s*\\|\\s*null)*\\s*$",
+          "description": "A scalar hint, optionally `[]` (array) and `| null` (optional)."
+        },
+        {
+          "type": "array",
+          "description": "An enum of literals; `null` in the list makes it optional.",
+          "minItems": 1,
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "contains": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "not": {
+            "items": {
+              "enum": [
+                "string",
+                "int",
+                "number",
+                "bool",
+                "date",
+                "datetime",
+                "any",
+                null
+              ]
+            }
+          }
+        },
+        {
+          "type": "array",
+          "description": "An array of objects: one mapping in a list.",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/payloadHint"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "A nested object: field -> hint.",
+          "additionalProperties": {
+            "$ref": "#/$defs/payloadHint"
+          }
+        }
+      ],
+      "examples": [
+        "string",
+        "int",
+        "number | null",
+        "datetime",
+        "string[]",
+        [
+          "pending",
+          "paid"
+        ],
+        {
+          "source": "string"
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "description": "A semantic definition. The core reads `applies_to` and `when`; every other key is a parameter agents read.",
+      "markdownDescription": "A semantic definition. The core reads `applies_to` and `when`; every other key (`threshold_mm`, `days`) is a parameter agents read.\n\n```yaml\ntire_critical:\n  applies_to: tire\n  definition: A tire is critical when tread depth is below 3 mm.\n  threshold_mm: 3\n  when: { predicate: depth_mm, lt: 3 }\n```",
+      "properties": {
+        "applies_to": {
+          "type": [
+            "string",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The entity kind the rule is about. Absent: every subject."
+        },
+        "definition": {
+          "type": "string",
+          "description": "The rule in words, for people and agents."
+        },
+        "when": {
+          "description": "A condition the core evaluates in `context`: true, false or null. A list means all of them. Absent: the rule is a definition only.",
+          "markdownDescription": "A condition the core evaluates in `context`: true, false or null. A list means all of them. Absent: the rule is a definition only.\n\n```yaml\nwhen: { predicate: depth_mm, lt: 3 }\nwhen: [ { predicate: status, eq: pending }, { predicate: due_on, within_days: 5 } ]\nwhen: { via: mounted_on, direction: in, any: { predicate: depth_mm, lt: 3 } }\nwhen: { predicate: status, eq: open, open_for_days: { gte: 7 } }\n```",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/condition"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            },
+            {
+              "type": "object",
+              "maxProperties": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "condition": {
+      "description": "A condition: a leaf on one predicate, all/any/not, or via a relation.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/leaf"
+        },
+        {
+          "$ref": "#/$defs/allOf"
+        },
+        {
+          "$ref": "#/$defs/anyOf"
+        },
+        {
+          "$ref": "#/$defs/notOf"
+        },
+        {
+          "$ref": "#/$defs/via"
+        }
+      ]
+    },
+    "leaf": {
+      "type": "object",
+      "description": "A leaf: operators on the subject's open fact for `predicate`.",
+      "required": [
+        "predicate"
+      ],
+      "properties": {
+        "predicate": {
+          "type": "string",
+          "description": "The predicate whose open fact the operators test. No open fact makes the leaf null."
+        },
+        "ci": {
+          "description": "true compares strings case-insensitively.",
+          "examples": [
+            true
+          ]
+        },
+        "lt": {
+          "description": "The open fact's value is less than this."
+        },
+        "lte": {
+          "description": "The open fact's value is less than or equal to this."
+        },
+        "gt": {
+          "description": "The open fact's value is greater than this."
+        },
+        "gte": {
+          "description": "The open fact's value is greater than or equal to this."
+        },
+        "eq": {
+          "description": "The open fact's value equals this."
+        },
+        "ne": {
+          "description": "The open fact's value differs from this."
+        },
+        "in": {
+          "description": "The open fact's value is in this list.",
+          "examples": [
+            [
+              "On Hold",
+              "Blocked"
+            ]
+          ]
+        },
+        "within_days": {
+          "description": "A date value on or before as_of plus this many days. Dates already past count.",
+          "examples": [
+            15
+          ]
+        },
+        "open_for_days": {
+          "type": "object",
+          "description": "How long the open fact has been open, in calendar days.",
+          "markdownDescription": "How long the open fact has been open, in calendar days.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "eq"
+            ]
+          },
+          "properties": {
+            "lt": {
+              "description": "Days lt this number."
+            },
+            "lte": {
+              "description": "Days lte this number."
+            },
+            "gt": {
+              "description": "Days gt this number."
+            },
+            "gte": {
+              "description": "Days gte this number."
+            },
+            "eq": {
+              "description": "Days eq this number."
+            }
+          },
+          "examples": [
+            {
+              "gte": 7
+            }
+          ]
+        },
+        "open_for_business_days": {
+          "type": "object",
+          "description": "How long the open fact has been open, in business days (skips `calendar` weekend and holidays).",
+          "markdownDescription": "How long the open fact has been open, in business days (skips `calendar` weekend and holidays).\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "eq"
+            ]
+          },
+          "properties": {
+            "lt": {
+              "description": "Days lt this number."
+            },
+            "lte": {
+              "description": "Days lte this number."
+            },
+            "gt": {
+              "description": "Days gt this number."
+            },
+            "gte": {
+              "description": "Days gte this number."
+            },
+            "eq": {
+              "description": "Days eq this number."
+            }
+          },
+          "examples": [
+            {
+              "gte": 7
+            }
+          ]
+        },
+        "held_for_days": {
+          "type": "object",
+          "description": "How long the leaf's comparison has held across consecutive facts, in calendar days. Survives a change from one matching value to another.",
+          "markdownDescription": "How long the leaf's comparison has held across consecutive facts, in calendar days. Survives a change from one matching value to another.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "eq"
+            ]
+          },
+          "properties": {
+            "lt": {
+              "description": "Days lt this number."
+            },
+            "lte": {
+              "description": "Days lte this number."
+            },
+            "gt": {
+              "description": "Days gt this number."
+            },
+            "gte": {
+              "description": "Days gte this number."
+            },
+            "eq": {
+              "description": "Days eq this number."
+            }
+          },
+          "examples": [
+            {
+              "gte": 7
+            }
+          ]
+        },
+        "held_for_business_days": {
+          "type": "object",
+          "description": "Like `held_for_days`, in business days.",
+          "markdownDescription": "Like `held_for_days`, in business days.\n\nA comparison mapping, e.g. `{ gte: 7 }`.",
+          "minProperties": 1,
+          "propertyNames": {
+            "enum": [
+              "lt",
+              "lte",
+              "gt",
+              "gte",
+              "eq"
+            ]
+          },
+          "properties": {
+            "lt": {
+              "description": "Days lt this number."
+            },
+            "lte": {
+              "description": "Days lte this number."
+            },
+            "gt": {
+              "description": "Days gt this number."
+            },
+            "gte": {
+              "description": "Days gte this number."
+            },
+            "eq": {
+              "description": "Days eq this number."
+            }
+          },
+          "examples": [
+            {
+              "gte": 7
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "allOf": {
+      "type": "object",
+      "description": "True when every condition is; null propagates unless one is false.",
+      "required": [
+        "all"
+      ],
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          },
+          "description": "Every condition holds."
+        }
+      },
+      "additionalProperties": false
+    },
+    "anyOf": {
+      "type": "object",
+      "description": "True when any condition is; null propagates unless one is true.",
+      "required": [
+        "any"
+      ],
+      "properties": {
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          },
+          "description": "At least one condition holds."
+        }
+      },
+      "additionalProperties": false
+    },
+    "notOf": {
+      "type": "object",
+      "description": "The negation of one condition; null stays null.",
+      "required": [
+        "not"
+      ],
+      "properties": {
+        "not": {
+          "$ref": "#/$defs/condition",
+          "description": "The condition to negate."
+        }
+      },
+      "additionalProperties": false
+    },
+    "via": {
+      "type": "object",
+      "description": "Follow a relation and test each neighbour. No neighbours: `any` is false, `all` is true.",
+      "required": [
+        "via"
+      ],
+      "properties": {
+        "via": {
+          "type": "string",
+          "description": "A declared relation."
+        },
+        "direction": {
+          "enum": [
+            "out",
+            "in",
+            "any"
+          ],
+          "description": "Which way to follow the relation. Default any; symmetric relations ignore it."
+        },
+        "any": {
+          "$ref": "#/$defs/condition",
+          "description": "At least one neighbour meets this condition."
+        },
+        "all": {
+          "$ref": "#/$defs/condition",
+          "description": "Every neighbour meets this condition."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "any"
+          ]
+        },
+        {
+          "required": [
+            "all"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "predicate": {
+      "type": "object",
+      "description": "Write policy for one predicate.",
+      "properties": {
+        "multi": {
+          "type": "boolean",
+          "description": "One open value per author instead of last-writer-wins; context lists conflicts."
+        },
+        "description": {
+          "type": "string",
+          "description": "What the predicate means."
+        }
+      },
+      "additionalProperties": false
+    },
+    "semantic": {
+      "type": "object",
+      "description": "What `keel index` puts in each subject's document for semantic search.",
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Kinds to index. Absent: every kind."
+        },
+        "predicates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Predicates to include. Use this or `exclude`, not both."
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Predicates to leave out. Use this or `predicates`, not both."
+        },
+        "attrs": {
+          "type": [
+            "boolean",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Entity attributes in the document: true (default), false, or a list of names."
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Open relations to include: the other side's key and one label."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Attributes that label the other side of a relation; the first present wins. Default: name, nombre, title, titulo, label, plate, model."
+        },
+        "lexical_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Hybrid search: weight of the lexical leg. 0 is dense only. Default 0.3."
+        },
+        "min_score": {
+          "type": "number",
+          "description": "Drop results below this cosine. Model-specific: calibrate with evals."
+        },
+        "split": {
+          "type": "object",
+          "description": "kind -> predicates: also one document per open fact of these predicates, and per element of a list value.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "examples": [
+            {
+              "visual": [
+                "campo"
+              ]
+            }
+          ]
+        }
+      },
+      "not": {
+        "required": [
+          "predicates",
+          "exclude"
+        ]
+      },
+      "additionalProperties": false
+    },
+    "consolidation": {
+      "type": "object",
+      "description": "One consolidation job: episodic facts reduced into one durable fact per subject.",
+      "required": [
+        "from",
+        "into"
+      ],
+      "properties": {
+        "from": {
+          "type": "object",
+          "description": "The episodic memory to read.",
+          "required": [
+            "predicate"
+          ],
+          "properties": {
+            "predicate": {
+              "type": "string",
+              "description": "The predicate to consolidate."
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "global",
+                  "tenant",
+                  "task",
+                  "agent"
+                ]
+              },
+              "description": "Scopes to read. Default [task]; agent memory only when listed."
+            }
+          }
+        },
+        "applies_to": {
+          "type": "string",
+          "description": "Only subjects of this kind."
+        },
+        "within": {
+          "description": "Only memory whose valid_from falls in this window, e.g. `30d`.",
+          "markdownDescription": "Only memory whose `valid_from` falls in this window, e.g. `30d`.",
+          "anyOf": [
+            {
+              "enum": [
+                "never",
+                "forever",
+                null
+              ]
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$"
+            }
+          ],
+          "examples": [
+            "14d",
+            "1d",
+            "12h",
+            "never"
+          ]
+        },
+        "min_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many observations make a pattern. Default 2."
+        },
+        "reduce": {
+          "enum": [
+            "mode",
+            "latest",
+            "count",
+            "min",
+            "max",
+            "avg",
+            "distinct",
+            "summary"
+          ],
+          "description": "How to reduce the facts. Default mode. `summary` asks a Summarizer adapter for one sentence; the rest are deterministic."
+        },
+        "into": {
+          "type": "object",
+          "description": "The durable fact to write.",
+          "required": [
+            "predicate"
+          ],
+          "properties": {
+            "predicate": {
+              "type": "string",
+              "description": "The predicate to write. Differs from from.predicate."
+            },
+            "scope": {
+              "enum": [
+                "global",
+                "tenant",
+                "task",
+                "agent"
+              ],
+              "description": "The scope of the written fact. Default tenant."
+            }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "How much `context` carries: relations listed, and neighbours read with depth=1, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.",
+      "markdownDescription": "How much `context` carries: relations listed, and neighbours read with `depth=1`, per relation and direction. The rest is counted in `relations_more` and `neighbors_more`.\n\n```yaml\ncontext: { relations: 10, neighbors: 5 }\n```",
+      "properties": {
+        "relations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Relations listed per relation and direction, the most recent ones. Default 10."
+        },
+        "neighbors": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Neighbours read with depth=1 per relation and direction, the most recent ones. Default 5."
+        }
+      },
+      "additionalProperties": false
+    },
+    "calendar": {
+      "type": "object",
+      "description": "Business days for `open_for_business_days` and `held_for_business_days`.",
+      "properties": {
+        "weekend": {
+          "type": "array",
+          "description": "Weekday names that are not business days. Default [saturday, sunday].",
+          "items": {
+            "anyOf": [
+              {
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "string",
+                "pattern": "^([Mm][Oo][Nn][Dd][Aa][Yy]|[Tt][Uu][Ee][Ss][Dd][Aa][Yy]|[Ww][Ee][Dd][Nn][Ee][Ss][Dd][Aa][Yy]|[Tt][Hh][Uu][Rr][Ss][Dd][Aa][Yy]|[Ff][Rr][Ii][Dd][Aa][Yy]|[Ss][Aa][Tt][Uu][Rr][Dd][Aa][Yy]|[Ss][Uu][Nn][Dd][Aa][Yy])$"
+              }
+            ]
+          }
+        },
+        "holidays": {
+          "type": "array",
+          "description": "ISO dates that are not business days.",
+          "items": {
+            "type": "string",
+            "format": "date"
+          },
+          "examples": [
+            [
+              "2026-12-25"
+            ]
+          ]
+        }
+      }
+    },
+    "agent": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "One declared agent or person.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "What this agent does."
+        },
+        "kind": {
+          "enum": [
+            "agent",
+            "human"
+          ],
+          "description": "`human`: a person, whose annotations are signed human:<id>. Default agent."
+        },
+        "writes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "tenant",
+              "task",
+              "agent"
+            ]
+          },
+          "description": "Scopes it may annotate. Never global. Default [task, agent]."
+        },
+        "reads": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "What it may see. Absent: everything.",
+          "properties": {
+            "kinds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Entity kinds it may read. Absent: every kind."
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Relations it may read. Absent: every relation."
+            }
+          }
+        }
+      }
+    },
+    "memory": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Memory policy per scope. Defaults: global and tenant never expire and require evidence; task 14d; agent 1d.",
+      "properties": {
+        "ttl": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Lifetime per scope.",
+          "properties": {
+            "global": {
+              "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+              "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days",
+              "anyOf": [
+                {
+                  "enum": [
+                    "never",
+                    "forever",
+                    null
+                  ]
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$"
+                }
+              ],
+              "examples": [
+                "14d",
+                "1d",
+                "12h",
+                "never"
+              ]
+            },
+            "tenant": {
+              "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+              "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days",
+              "anyOf": [
+                {
+                  "enum": [
+                    "never",
+                    "forever",
+                    null
+                  ]
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$"
+                }
+              ],
+              "examples": [
+                "14d",
+                "1d",
+                "12h",
+                "never"
+              ]
+            },
+            "task": {
+              "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+              "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days",
+              "anyOf": [
+                {
+                  "enum": [
+                    "never",
+                    "forever",
+                    null
+                  ]
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$"
+                }
+              ],
+              "examples": [
+                "14d",
+                "1d",
+                "12h",
+                "never"
+              ]
+            },
+            "agent": {
+              "description": "How long memory in this scope lives: `never` (or `forever`), a number with a unit (`14d`, `12h`, `30m`), or a bare number of days.",
+              "markdownDescription": "How long memory in this scope lives.\n\n- `never` or `forever`: no expiry\n- `<n>d`, `<n>h`, `<n>m`: days, hours, minutes (`14d`, `12h`, `1.5d`)\n- a bare number: days",
+              "anyOf": [
+                {
+                  "enum": [
+                    "never",
+                    "forever",
+                    null
+                  ]
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)([eE][+-]?\\d+)?\\s*[dhm]\\s*$"
+                }
+              ],
+              "examples": [
+                "14d",
+                "1d",
+                "12h",
+                "never"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "requires_evidence": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "global",
+              "tenant",
+              "task",
+              "agent"
+            ]
+          },
+          "description": "Scopes where annotate requires evidence. Default [global, tenant]."
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "What counts as evidence in those scopes: event (an event the tenant's log applied to the same subject) or a ref prefix such as photo: or human:. Absent: any non-empty string."
+        }
+      }
+    }
+  }
+}
