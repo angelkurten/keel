@@ -246,6 +246,7 @@ def _kind(subject: str) -> str:
 NEIGHBOR_CAP = 50  # `context(depth=1)` stops here and says so; ask `related` for the full list
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 LIST_CAP = 50  # `related`, `history` and search listings return at most this many by default, the first entry saying what was cut
+_NONE = object()  # history: a fact that replaced nothing (a replaced value may be None)
 TEXT_CAP = 20  # a text search returns its first matches; the first entry says how many more there were
 RELATION_CAP = 10  # per relation and direction, `context` lists the most recent ones and counts the rest (relations_more)
 NEIGHBORS_PER_RELATION = 5  # `context(depth=1)` reads this many neighbours per relation and direction (neighbors_more counts the rest)
@@ -254,7 +255,7 @@ SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at 
 
 DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools.spec(): short, and fixed so prompt caches hold
     "context": """What is true about a subject ('<kind>:<id>', or a list of them) now or at as_of: facts, relations, each rule's evaluation. depth=1 adds the neighbours. detail: brief (default; facts as {predicate: value} with `since`), concise (relations one by one), full (an audit: transaction times and ids; costly). as_known_at: what Keel knew then. task: that task's memory. exclude/only: predicates to drop/keep. watermark: the cursor for history(changed_since=).""",
-    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject: with since/until, what changed in the world across the tenant in that window (with predicate: e.g. whose assignee changed); with changed_since (a watermark), what Keel recorded since your last run. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
+    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject: with since/until, what changed in the world across the tenant in that window (with predicate: e.g. whose assignee changed); with changed_since (a watermark), what Keel recorded since your last run. A fact that replaced a value says which in `was` (`was: null`: it was unset, so being set is a change); a first value has no `was`. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
     "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full, count ({"count": n}, nothing listed: how many, without reading them); depth=1 adds neighbours. as_of: rules, where and facts at that instant; as_known_at: as Keel knew them then. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
     "annotate": """Record what you learned (value: any JSON). Scopes tenant and global need evidence; task ties it to a job; key makes a retry return the first write; status="proposed" waits for a person or authorized agent. Returns a receipt (detail="full": the stored fact).""",
     "related": """Neighbours of a subject, by relation (one or a list), now or at as_of. depth 2 or 3 walks further (each entry says hops and via). At most limit (0: all); a cut list starts with {"more": ...} counting each relation.""",
@@ -612,7 +613,8 @@ class Tools:
         with no `subject` it spans the whole tenant, oldest change first: an agent's "since my last run".
         With no `subject` and `since`/`until` instead: the tenant's facts that started (valid_from) in that
         window, in world time, oldest first: "what changed this week", or with `predicate` "whose assignee
-        changed"; `evidence` says which event set each (its creation, or a later change).
+        changed". Each fact that replaced a value says which in `was` (null included); a first value
+        has no `was`, so "changed" is the facts with `was`.
         `limit` (default LIST_CAP, None or 0 for all) keeps the most recent; when it cuts, the first entry is
         {"more": {shown, total, omitted, next}}."""
         if self.meter:
@@ -654,9 +656,24 @@ class Tools:
             facts = facts[-limit:]
         out = _ser(facts)
         out = out if detail == "full" else [_lean(f, subject is None) for f in out]
+        for row, was in zip(out, self._replaced(facts, task, as_known_at), strict=True):
+            if was is not _NONE:
+                row["was"] = was  # after _lean: a replaced null is still a value
         if total > len(out):
             return [{"more": {"shown": len(out), "total": total, "omitted": "the oldest", "next": "narrow with predicate=, since=/until=, or raise limit"}}, *out]
         return out
+
+    def _replaced(self, facts: list[Fact], task: str | None, known_at: datetime | None) -> list[Any]:
+        """For each fact, the value that held its predicate until it started (`_NONE` for a first value): the
+        accepted fact of the same subject, predicate and scope that ended exactly then. Read from each subject's
+        whole history, so a window that leaves the replaced fact out still says what it replaced. Multi-valued
+        predicates have no single predecessor."""
+        kw = {"known_at": known_at} if known_at is not None else {}
+        pool = self._fetch_many(sorted({f.subject for f in facts}), task, **kw) if facts else {}
+        ends = {(g.subject, g.predicate, g.scope, g.valid_to): g.value for fs in pool.values() for g in fs
+                if g.status is None and g.valid_to is not None and g.valid_to > g.valid_from}
+        return [ends.get((f.subject, f.predicate, f.scope, f.valid_from), _NONE) if f.status is None and f.predicate not in self.multi else _NONE
+                for f in facts]
 
     def _tenant_history_known(self, known_at: datetime, changed_since: datetime | None, since: datetime | None, until: datetime | None, task: str | None) -> list[Fact]:
         """Tenant-wide history as Keel knew it at `known_at`: each subject that had something then is read
@@ -943,7 +960,8 @@ class Tools:
             return self._semantic(text, kind, rule, limit or 10, min_score, neighbours, graph, where, vector)
         if kind is None and rule is None:
             hits = self.store.search(self.tenant, text) + [h for h in self.store.search(self.glob, text) if isinstance(h, Fact) and h.scope == Scope.GLOBAL]
-            hits = [h for h in hits if isinstance(h, Entity) or self._sees(h, None)]
+            # an empty text matches every value: no fact is a hit, only the entities (where= then keeps some)
+            hits = [h for h in hits if isinstance(h, Entity) or (text and self._sees(h, None))]
             # a fact hit is read like any other: expired memory is gone (§6), and as known then only what was recorded by then
             alive_at = graph.known_at or utcnow()
             hits = [h for h in hits if isinstance(h, Entity) or ((h.expires_at is None or h.expires_at > alive_at)

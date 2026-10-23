@@ -237,6 +237,17 @@ def test_search_where_matches_attrs_and_facts_without_case(store):
     assert t.search(kind="issue", where={"status_category": "new"}, as_of=d(9, 5), detail="key") == ["issue:C", "issue:D", "issue:K"]
 
 
+def test_search_where_without_kind_or_text_returns_only_the_entities_that_match(store):
+    """Without a text nothing matched a fact: `where` alone answers with the entities it keeps, as with `kind`,
+    and their other facts are not hits (evals/jira: 8 issues came back with 48 fact hits and "total": 56)."""
+    t = tools(store)
+    expected = t.search(kind="issue", where={"status_category": "indeterminate"}, detail="key")
+    out = t.search(where={"status_category": "indeterminate"})
+    assert [h["key"] for h in out] == expected and all("predicate" not in h for h in out)
+    assert t.search(where={"status_category": "indeterminate"}, detail="count") == [{"count": len(expected)}]
+    assert [h["key"] for h in t.search(where={"status_category": "new"}, as_of=d(9, 5))] == ["issue:C", "issue:D", "issue:K"]
+
+
 def test_search_as_of_and_as_known_at(store):
     """`as_of` evaluates the rule at that instant; `as_known_at` reads what Keel knew then."""
     t = tools(store)
@@ -409,6 +420,27 @@ def test_history_tenant_window(store):
     assert [f["subject"] for f in t.history(since=d(9, 1), until=d(9, 1), predicate="priority")] == ["issue:A"]
     with pytest.raises(ValueError):
         t.history()
+
+
+def test_history_says_which_value_each_fact_replaced(store):
+    """`was` is the value that held the predicate until the fact started; a first value has no `was`. So "whose
+    status changed this week" needs no guess from evidence (evals/jira: creations counted as changes, changes
+    dropped as creations), even when the window or `since` leaves the replaced fact out, and a null is a value."""
+    t = tools(store)
+    fact(store, "issue:B", "assignee", None, d(10, 1))
+    fact(store, "issue:B", "assignee", "ana", d(10, 3))
+    for detail in ("full", "concise"):
+        h = t.history("issue:C", detail=detail)
+        assert "was" not in h[0] and h[1]["was"] == "new"
+        assert [f.get("was", "-") for f in t.history("issue:B", predicate="assignee", detail=detail)] == ["-", None]
+    late = t.history(since=d(9, 5), until=d(9, 10))  # C's "new" started before the window
+    assert [(f["subject"], f.get("was", "-")) for f in late] == [("issue:D", "-"), ("issue:W", "On Hold"), ("issue:C", "new")]
+    window = t.history(since=d(9, 2), until=d(9, 10))
+    assert [(f["subject"], f.get("was", "-")) for f in window] == [
+        ("issue:C", "-"), ("issue:K", "-"), ("issue:L", "-"), ("issue:D", "-"), ("issue:W", "On Hold"), ("issue:C", "new")]
+    assert "was" not in t.history("issue:H", as_known_at=d(10, 1)) and t.history("issue:W", as_known_at=NOW)[1]["was"] == "On Hold"
+    t.annotate("issue:A", "note", "first", scope="tenant", evidence="ev:issue:A:priority:2026-09-01")
+    assert "was" not in t.history("issue:A", predicate="note")[0]
 
 
 def test_history_predicate_and_scope_filters(store):
