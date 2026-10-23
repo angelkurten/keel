@@ -1,6 +1,6 @@
 #!/bin/sh
 # Smoke test of a Keel image: health, ingest over HTTP, a rule evaluated by context, auth enforced.
-#   deploy/smoke.sh ghcr.io/angelkurten/keel:0.32.0
+#   deploy/smoke.sh ghcr.io/angelkurten/keel:0.33.0
 set -eu
 IMAGE=${1:-keel:local}
 PORT=${PORT:-18000}

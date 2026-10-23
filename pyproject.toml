@@ -1,6 +1,6 @@
 [project]
 name = "keel-context"
-version = "0.32.0"
+version = "0.33.0"
 description = "Context layer for the AI agents in a product (a SaaS, a consumer app, an internal tool): domain events in, a per-tenant bitemporal context graph out, shared by every agent through five MCP tools."
 readme = "README.md"
 license = { text = "Apache-2.0" }
