@@ -16,6 +16,8 @@ happened and when it was recorded, corrections included), in its best ordinary f
 - graphiti, mem0: search over what their LLM extractor made of the log (evals/jira/memories.py; they ingest the
           subset the questions touch, and --subset gives every other system the same subset).
 - tgms:   TGMS 0.8.0's own tools over the log loaded into its bi-temporal graph (evals/jira/tgms_system.py).
+- tgms-pev: the same graph through TGMS's own agent layer (planner, plan verifier, executor with repairs) instead
+          of a tool loop, scored on the engine's answer as TGMS's harness scores it.
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -314,6 +316,8 @@ API_TOOLS = [{"type": "function", "function": f} for f in (
 
 def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rags: dict[str, Rag], apis: dict[str, Api], max_steps: int = 15) -> dict[str, Any]:
     tenant = q["tenant"]
+    if system == "tgms-pev":
+        return ask_pev(gw, data, model, q)
     instance, project = INSTANCES[tenant]
     fmt = FORMATS["value" if q["answer_type"] == "unknown" else q["answer_type"]]  # an abstention looks like any value question
     tools_text = TOOLS_TEXT[system]
@@ -391,6 +395,29 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             **({"keel_detail": KEEL_DETAIL} if system == "keel" and KEEL_DETAIL else {}), "route": gw.route(model),
             "tool_errors": errors, "turns": sum(m["role"] == "assistant" for m in messages), "tokens": used,
             "cost_usd": round(cost, 6), "ms": round((time.monotonic() - start) * 1000)}
+
+
+def ask_pev(gw: Gateway, data: Path, model: str, q: dict[str, Any]) -> dict[str, Any]:
+    """TGMS through its planner, plan verifier and executor (tgms_system.ask_pev) instead of a tool loop."""
+    from evals.jira import tgms_system
+
+    used, cost, start = {"input": 0, "output": 0}, [0.0], time.monotonic()
+
+    def chat(messages: list[dict[str, Any]]) -> str:
+        msg, u, c = gw.chat(model, messages, None)
+        used.update({k: used[k] + u[k] for k in used})
+        cost[0] += c
+        text = msg.get("content") or ""
+        # TGMS's planner parses the reply as bare JSON, as its guided decoding guarantees on the models it was built
+        # with; an API model may say a sentence first, so the plan object is cut out of the reply (nothing else changes)
+        a, b = text.find("{"), text.rfind("}")
+        return text[a : b + 1] if 0 <= a < b else text
+
+    answer, info = tgms_system.ask_pev(chat, data, model, q)
+    return {"id": q["id"], "tenant": q["tenant"], "type": q["type"], "system": "tgms-pev", "model": model, "gold": q["answer"],
+            "answer": answer, "parsed": answer is not None, "correct": answer is not None and grade(q, answer), "reply": json.dumps(info),
+            "calls": [{"tool": op} for op in info["plan_ops"] or []], "route": gw.route(model), "tool_errors": int(info["error"] is not None),
+            "turns": info["llm_calls"], "tokens": used, "cost_usd": round(cost[0], 6), "ms": round((time.monotonic() - start) * 1000)}
 
 
 # ---- grading --------------------------------------------------------------------------------

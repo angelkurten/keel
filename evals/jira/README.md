@@ -127,16 +127,30 @@ started. It is the code of 8bd6a6e without the `cited-subject` condition, which 
 `c4-subject.jsonl`. E5c's Mem0 conditions write to a copy of each tenant's store under `results/c4-mem0/`, which is not
 committed.
 
-## 6. TGMS (pilot only)
+## 6. TGMS
 
-TGMS 0.8.0 was measured on MariaDB's tenant questions with GPT-6 Luna, one repetition, and not run further for budget.
-Its 1.5 USD brake stopped it after 18 of the 24 questions (1.22M input tokens a question); the comparison with Keel uses
-those 18.
+TGMS 0.8.0, loaded by `evals/jira/tgms_system.py`, two ways on the 72 tenant-wide questions, one repetition:
+
+- `tgms`: the agent calls TGMS's fifteen tools in a tool loop (GPT-6 Luna, `full-tgms.jsonl`; the MariaDB pilot that
+  preceded it, stopped by its 1.5 USD brake after 18 of 24, is `pilot-mariadb-tenant-tgms.jsonl`).
+- `tgms-pev`: TGMS's own agent layer, as its harness runs it (`tgms.eval.harness.run_task_ours`): `Agent.ask` plans in
+  TGMS's operator IR, checks the plan statically, executes it with up to three repairs, and is scored on the engine's
+  answer (`trace.answer`, read with TGMS's `mechanical_answer` and `extract_pred`). The schema paragraph the tool-loop
+  agent gets is passed as a memory note. One adaptation: TGMS's planner parses the reply as bare JSON, as its guided
+  decoding guarantees on the models it was built with, so the plan object is cut out of an API model's reply. Each row
+  keeps the plan and, per step, its status, rows returned, completeness (`paginated` when cut at TGMS's default
+  limit) and error code. Haiku 5.5 on MariaDB only, Sonnet 5.5 and Opus 5.5 on all 72 (`full-tgms-pev.jsonl`; rows
+  marked dirty, measured at 1522b13 with the `tgms-pev` code uncommitted, the code of the commit that adds this file).
 
 ```bash
-$B --with tgms==0.8.0 --systems tgms --tenants mariadb --types tenant --models openai/gpt-6-luna --workers 1 --max-usd 1.5 \
-    --out $R/pilot-mariadb-tenant-tgms.jsonl
+$B --with tgms==0.8.0 --systems tgms --types tenant --models openai/gpt-6-luna --workers 1 --out $R/full-tgms.jsonl
+$B --with tgms==0.8.0 --systems tgms-pev --types tenant --models anthropic/claude-sonnet-5.5 --max-usd 4 --out $R/full-tgms-pev.jsonl
+$B --with tgms==0.8.0 --systems tgms-pev --types tenant --models anthropic/claude-opus-5.5 --max-usd 8 --out $R/full-tgms-pev.jsonl
+$B --with tgms==0.8.0 --systems tgms-pev --tenants mariadb --types tenant --models anthropic/claude-haiku-5.5 --out $R/full-tgms-pev.jsonl
 ```
+
+Two runs of the same command must not overlap: each builds TGMS's graph in `<data>/tgms/<tenant>`, and TGMS allows
+one writer per directory.
 
 ## Results files
 
@@ -145,6 +159,7 @@ $B --with tgms==0.8.0 --systems tgms --tenants mariadb --types tenant --models o
 | `full-{luna,haiku,sonnet,memories}.jsonl` | the full run |
 | `full-luna-keel-uncapped.jsonl`, `ablation-*.jsonl` | the ablations |
 | `c4*.jsonl` | governed memory: E5b (`c4-adversary`), E5c (`c4`, `c4-subject`), the E5c pilot (`c4-pilot`) |
+| `full-tgms.jsonl`, `full-tgms-pev.jsonl` | TGMS through its tools, and through its own planner, verifier and executor |
 | `pilot-*.jsonl` | the MariaDB pilot that shaped the full run, TGMS included |
 
 Each row holds the question id, system, model, repetition, gold and parsed answer, whether it was correct, every

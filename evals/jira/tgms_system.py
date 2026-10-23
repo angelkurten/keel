@@ -23,6 +23,7 @@ from collections import defaultdict
 from datetime import datetime
 from functools import cache
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 FIELDS = {"issue.status_changed": "status", "issue.resolution_changed": "resolution", "issue.assigned": "assignee",
@@ -107,15 +108,58 @@ def load(events: list[dict[str, Any]], path: Path) -> Any:
     return store
 
 
-@cache
-def router(data: Path, tenant: str) -> Any:
-    """One store and router per tenant, built once: TGMS's tools only read, so runs cannot leak into each other."""
-    from tgms.tools.server import ToolRouter
+_BUILD = Lock()
 
+
+@cache
+def _store(data: Path, tenant: str) -> Any:
     from evals.jira.bench import source
 
-    store = load(source(data, tenant), data / "tgms" / tenant)
-    return ToolRouter(store.adapter, tt_source=store)
+    return load(source(data, tenant), data / "tgms" / tenant)
+
+
+def store(data: Path, tenant: str) -> Any:
+    """One store per tenant, built once (under a lock: the bench's workers ask at once, and TGMS allows one writer
+    per directory). TGMS's tools and its agent only read, so runs cannot leak into each other."""
+    with _BUILD:
+        return _store(data, tenant)
+
+
+@cache
+def router(data: Path, tenant: str) -> Any:
+    from tgms.tools.server import ToolRouter
+
+    s = store(data, tenant)
+    return ToolRouter(s.adapter, tt_source=s)
+
+
+KINDS = {"set": "entity_set", "count": "count"}  # our answer types as TGMS's answer kinds; anything else is a value
+
+
+def ask_pev(chat: Any, data: Path, model: str, q: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
+    """TGMS's own agent layer, as its harness runs it (tgms.eval.harness.run_task_ours): `Agent.ask` plans in its
+    operator IR, checks the plan statically, executes it and repairs runtime errors (3 at most), and the answer is
+    the engine's (`trace.answer`), read with its own `mechanical_answer`/`extract_pred`. Its claim reporter and
+    verifier gate what is shown, not what is scored, so they do not run. `chat(messages)` is the bench's model call;
+    the schema paragraph the tool-loop agent gets goes in as a memory note."""
+    from tgms.agent.agent import Agent
+    from tgms.agent.reporter import mechanical_answer
+    from tgms.eval.metrics import extract_pred
+
+    out = Agent(store(data, q["tenant"]), model=model, llm_fn=lambda _m, messages, _t, _s, schema=None: chat(messages)).ask(
+        q["question"], memory_notes=[TOOLS_TEXT])
+    plan, trace = out["plan_result"].plan, out["trace"]
+    kind = KINDS.get(q["answer_type"], "value")
+    answer = extract_pred(kind, mechanical_answer(plan, trace)) if plan is not None and trace is not None and trace.answer_error is None else None
+    if kind == "entity_set" and answer is not None:
+        answer = [u for u in answer if u.startswith("issue:")]
+    steps = [{"op": st.get("op"), "status": st.get("status"), "rows": st.get("rows_returned"),
+              "complete": (st.get("tgir") or {}).get("completeness"), "error": (st.get("error") or {}).get("error")}
+             for st in (trace.steps if trace is not None else [])]
+    info = {"plan_ops": [st.op for st in plan.steps] if plan is not None else None, "plan": plan.to_json() if plan is not None else None,
+            "steps": steps, "llm_calls": len(out["plan_result"].calls),
+            "error": None if trace is not None and trace.ok else (trace.answer_error if trace is not None else "no admissible plan")}
+    return answer, info
 
 
 @cache
