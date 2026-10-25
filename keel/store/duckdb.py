@@ -20,6 +20,7 @@ from keel import sqlgen
 from keel.store.sql import SqlStore, _ts
 
 _DML = re.compile(r"^\s*(INSERT|UPDATE|DELETE)\b", re.IGNORECASE)
+_VALUES = re.compile(r"^(.*?)\s+VALUES\s*\(([^)]*)\)(.*)$", re.IGNORECASE | re.DOTALL)  # INSERT ... (cols) VALUES (?, ...) [ON CONFLICT ...]
 _INTO = re.compile(r"^\s*INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+(\w+)", re.IGNORECASE)
 # columns whose names DuckDB reserves: quoted wherever the shared SQL names them
 _RESERVED = [(re.compile(r"(?<![\w\"])at(?![\w\"(])"), '"at"'), (re.compile(r"(?<![\w\"])glob(?![\w\"(])"), '"glob"')]
@@ -92,6 +93,47 @@ class DuckdbStore(SqlStore):
             for pattern, quoted in _RESERVED:
                 sql = pattern.sub(quoted, sql)
         return sql
+
+    def _execmany(self, sql: str, rows: list[tuple[Any, ...]], size: int = 0) -> None:
+        """Multi-row writes (a bulk batch's flush) in one statement, column by column: DuckDB's executemany runs
+        a statement per row (~900 events/s). `VALUES (?, ...)` becomes `SELECT UNNEST(?), ...` over one list per
+        column; rows keep their order, so the sequence hands out seq as the batch wrote them. DuckDB's ON CONFLICT
+        does not keep that order, so the entity upsert updates the rows that exist and inserts the others."""
+        if not rows:
+            return
+        if sql == self.UPSERT_ENTITY:
+            with self._lock:
+                lists = [[r[i] for r in rows] for i in range(3)]
+                have = set(self.db.execute("SELECT e.tenant, e.kind, e.id FROM entities e JOIN (SELECT UNNEST(?) AS tenant, UNNEST(?) AS kind, "
+                                           "UNNEST(?) AS id) c USING (tenant, kind, id)", lists).fetchall())
+                old = [r for r in rows if tuple(r[:3]) in have]
+                if old:
+                    self.db.execute("UPDATE entities SET ref = c.ref, attrs = c.attrs FROM (SELECT UNNEST(?) AS tenant, UNNEST(?) AS kind, "
+                                    "UNNEST(?) AS id, UNNEST(?::VARCHAR[]) AS ref, UNNEST(?) AS attrs) c "
+                                    "WHERE entities.tenant = c.tenant AND entities.kind = c.kind AND entities.id = c.id",
+                                    [[r[i] for r in old] for i in range(5)])
+                rows = [r for r in rows if tuple(r[:3]) not in have]
+                sql = "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?)"
+            if not rows:
+                return
+        head, values, tail = _VALUES.match(sql).groups()
+        if "ON CONFLICT" in tail.upper():  # metering: a few rows; row by row keeps its order
+            return super()._execmany(sql, rows)
+        n = values.count("?")
+        cols = [[r[i] for r in rows] for i in range(n)]
+        with self._lock:
+            self.db.execute(self._sql(f"{head} SELECT {', '.join('UNNEST(?)' for _ in range(n))}{tail}"), cols)
+
+    def _close_rows(self, table: str, closes: dict[int, tuple[datetime | None, datetime | None, datetime | None]], size: int = 0) -> None:
+        """A batch's closes in one UPDATE joined to its lists (seq, valid_to, closed_at, changed_at)."""
+        if not closes:
+            return
+        seqs = list(closes)
+        cols = [seqs] + [[_ts(closes[s][i]) for s in seqs] for i in range(3)]
+        with self._lock:
+            self.db.execute(f"UPDATE {table} SET valid_to = c.valid_to, closed_at = c.closed_at, changed_at = c.changed_at FROM "
+                            "(SELECT UNNEST(?::BIGINT[]) AS seq, UNNEST(?::VARCHAR[]) AS valid_to, UNNEST(?::VARCHAR[]) AS closed_at, "
+                            f"UNNEST(?::VARCHAR[]) AS changed_at) AS c WHERE {table}.seq = c.seq", cols)
 
     def _columns(self, table: str) -> set[str]:
         return {r["name"] for r in self._rows("SELECT column_name AS name FROM information_schema.columns WHERE table_name = ?", (table,))}
