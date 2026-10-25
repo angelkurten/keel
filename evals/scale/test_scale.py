@@ -245,3 +245,30 @@ def test_summary_renders_every_section(tmp_path):
     for heading in ("Ingest throughput", "Per-tool latency", "DuckDB baseline", "Determinism", "Transport", "Where it stopped"):
         assert heading in text
     assert "syn:100" in text and "timeout" in text
+
+
+# ---- push-down stores: the SQLite build's rows copied into DuckDB / Postgres ------------------------------
+
+
+@pytest.mark.parametrize("target", ["duckdb"] + (["postgres"] if __import__("os").environ.get("KEEL_POSTGRES_URL") else []))
+def test_rows_copied_from_a_sqlite_build_answer_the_tenant_ops_alike(target, tmp_path):
+    """`one --load-from`: the rows Keel's SqliteStore ingest wrote, copied as stored, give the same graph and the
+    same tenant-wide answers (push-down on the target, Python path on SQLite with its capabilities hidden)."""
+    pytest.importorskip("duckdb")
+    log = tmp_path / "log.jsonl"
+    gen.write(log, gen.generate(6000, seed=11))
+    src = SqliteStore(tmp_path / "src.db")
+    report = Ingestor(load_cartridge(JIRA), src).ingest(harness.read_events(log), batch=1000)
+    assert not report.errors
+    dst = harness._open(target, tmp_path / "dst.duckdb")
+    rows = harness.copy_rows(tmp_path / "src.db", dst)
+    assert rows["facts"] == src._one("SELECT COUNT(*) AS n FROM facts")["n"] > 0
+    assert harness.graph_hash(dst, "syn0") == harness.graph_hash(src, "syn0")
+    sample = harness.Sample.of(harness.read_events(log))
+    c = load_cartridge(JIRA)
+    from tests.test_pushdown import Plain
+
+    a, b = Tools(c, dst, sample.tenant), Tools(c, Plain(src), sample.tenant)
+    for op in harness.ops(sample, random.Random(1), 0, 4):
+        assert harness.call(a, dst, op) == harness.call(b, src, op), op
+

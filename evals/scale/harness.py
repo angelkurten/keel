@@ -343,13 +343,96 @@ def emit(out: Path, row: dict[str, Any]) -> None:
 # ---- one log into one store ------------------------------------------------------------------------
 
 
-def _open(kind: str, db: Path | None) -> Any:
+STORES = ("memory", "sqlite", "duckdb", "postgres")
+PG_URL = os.environ.get("KEEL_POSTGRES_URL")  # postgresql://postgres:keel@127.0.0.1:5499/keel for --store postgres
+PG_TABLES = ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts")
+
+
+def _open(kind: str, db: Path | None, fresh: bool = True) -> Any:
+    """A store to measure. `fresh`: empty (files deleted, Postgres tables truncated); else reopen what is there."""
     if kind == "memory":
         return MemoryStore()
+    if kind == "postgres":
+        from keel.store.postgres import PostgresStore
+
+        assert PG_URL, "--store postgres needs KEEL_POSTGRES_URL"
+        store = PostgresStore.from_url(PG_URL)
+        if fresh:
+            store._exec("TRUNCATE " + ", ".join(PG_TABLES))
+        return store
     assert db is not None
-    for p in (db, Path(f"{db}-wal"), Path(f"{db}-shm")):
-        p.unlink(missing_ok=True)
+    if fresh:
+        for p in (db, Path(f"{db}-wal"), Path(f"{db}-shm"), Path(f"{db}.wal")):
+            p.unlink(missing_ok=True)
+    if kind == "duckdb":
+        from keel.store.duckdb import DuckdbStore
+
+        return DuckdbStore(db)
     return SqliteStore(db)
+
+
+# ---- loading a push-down store from a SqliteStore build -------------------------------------------------
+# DuckdbStore and PostgresStore ingest through the generic SqlStore path (DuckDB: ~600 events/s), too slow for
+# 10^6-10^7 events. The rows Keel's own SqliteStore ingest wrote are the graph, stored identically in every SQL
+# store (ISO text instants, json.dumps values), so they are copied as stored: the same graph, loaded fast.
+
+COPIED = {
+    "entities": ("tenant", "kind", "id", "ref", "attrs"),
+    "relations": ("seq", "tenant", "src", "rel", "dst", "valid_from", "valid_to", "recorded_at", "source", "closed_at", "changed_at"),
+    "facts": ("seq", "tenant", "subject", "predicate", "value", "valid_from", "valid_to", "recorded_at", "source", "scope", "corrected_by",
+              "evidence", "expires_at", "task", "idempotency_key", "closed_at", "status", "trace", "cartridge", "changed_at"),
+    "ingested": ("tenant", "id"),
+}
+NULL = "\\N"
+
+
+def _source_rows(src: Path, table: str, cols: tuple[str, ...]) -> Iterator[tuple[Any, ...]]:
+    con = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
+    order = "seq" if "seq" in cols else "rowid"
+    cur = con.execute(f"SELECT {', '.join(cols)} FROM {table} ORDER BY {order}")
+    while batch := cur.fetchmany(50_000):
+        yield from batch
+    con.close()
+
+
+def copy_rows(src: Path, dst: Any) -> dict[str, int]:
+    """Copy entities, relations, facts and applied event ids, as stored, from a SqliteStore file into an empty
+    DuckdbStore (through CSV and read_csv) or PostgresStore (COPY). Returns rows per table."""
+    import csv
+    import tempfile
+
+    counts = {}
+    if type(dst).__name__ == "PostgresStore":
+        for table, cols in COPIED.items():
+            n = 0
+            with dst._lock:
+                cur = dst.db.cursor()
+                with cur.copy(f"COPY {table} ({', '.join(cols)}) FROM STDIN") as cp:
+                    for row in _source_rows(src, table, cols):
+                        cp.write_row(row)
+                        n += 1
+                if "seq" in cols or table == "entities":
+                    cur.execute(f"SELECT setval(pg_get_serial_sequence('{table}', 'seq'), (SELECT max(seq) FROM {table}))")
+            counts[table] = n
+        dst._exec("ANALYZE")
+        return counts
+    tmp = Path(tempfile.mkdtemp(prefix="keel-copy-", dir=DATA if DATA.exists() else None))
+    for table, cols in COPIED.items():
+        path, n = tmp / f"{table}.csv", 0
+        with path.open("w", newline="") as fh:
+            w = csv.writer(fh)
+            for row in _source_rows(src, table, cols):
+                w.writerow([NULL if v is None else v for v in row])
+                n += 1
+        types = ", ".join(f"'{c}': '{'BIGINT' if c == 'seq' else 'VARCHAR'}'" for c in cols)
+        with dst._lock:  # the raw connection: the store's cursor would ask the sequence for the id it did not hand out
+            dst.db.execute(f"INSERT INTO {table} ({', '.join(cols)}) SELECT {', '.join(cols)} FROM read_csv('{path}', header = false, auto_detect = false, "
+                           f"columns = {{{types}}}, nullstr = '{NULL}', quote = '\"', escape = '\"')")
+        path.unlink()
+        counts[table] = n
+    dst._exec("CHECKPOINT")  # ponytail: DuckDB sequences are not moved past the copied seq; the copy is measured, never written to
+    tmp.rmdir()
+    return counts
 
 
 def _size(kind: str, store: Any, db: Path | None) -> dict[str, Any]:
@@ -368,10 +451,40 @@ def _counts(store: Any, tenants: set[str]) -> dict[str, int]:
     return {}
 
 
+def prepared(store_kind: str, events: Path, out: Path, base: dict[str, Any], db: Path | None, load_from: Path | None, reuse: bool,
+             seed: int) -> tuple[Any, Sample, int]:
+    """A store already holding the log's graph, without ingesting it here: rows copied from a SqliteStore build
+    (`load_from`), or an existing SqliteStore file reopened (`reuse`). The query sample is read from the log."""
+    t0 = time.perf_counter()
+    store = _open(store_kind, db, fresh=load_from is not None)
+    opened = time.perf_counter() - t0  # reopening runs the store's migrations (a new index on an old file)
+    sampler = SampleBuilder(seed)
+    n = sum(1 for _ in sampler.tap(read_events(events)))
+    row = {**base, "phase": "load", "events": n, "open_s": opened, "machine": machine()}
+    if load_from is not None:
+        t0 = time.perf_counter()
+        row.update(rows=copy_rows(load_from, store), load_s=time.perf_counter() - t0, loaded_from=str(load_from))
+    else:
+        row["reused"] = str(db)
+    emit(out, row)
+    return store, sampler.sample(), n
+
+
 def one(store_kind: str, events: Path, out: Path, label: str, db: Path | None = None, per_op: int = 200, tenant_per_op: int = 10,
-        budget_s: float = 60.0, replay: bool = True, queries: bool = True, seed: int = 1) -> None:
+        budget_s: float = 60.0, replay: bool = True, queries: bool = True, seed: int = 1, load_from: Path | None = None,
+        reuse: bool = False) -> None:
     cartridge = load_cartridge(JIRA)
     base = {"kind": "one", "label": label, "store": store_kind, "events_file": str(events)}
+    if load_from is not None or reuse:  # the graph is there already: measure the queries only
+        store, sample, n = prepared(store_kind, events, out, base, db, load_from, reuse, seed)
+        tools = Tools(cartridge, store, sample.tenant)
+        todo = ops(sample, random.Random(seed), per_op, tenant_per_op)
+        random.Random(seed).shuffle(todo)
+        t0 = time.perf_counter()
+        lat = run_ops(tools, store, todo, budget_s)
+        emit(out, {**base, "phase": "queries", "events": n, "tenant": sample.tenant, "tenant_events": sample.count, "latency": lat,
+                   "mix_mean_ms": mix_latency(lat), "wall_s": time.perf_counter() - t0})
+        return
     gc.collect()
     rss0 = rss()
     store = _open(store_kind, db)
@@ -549,7 +662,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     o = sub.add_parser("one")
-    o.add_argument("--store", choices=["memory", "sqlite"], required=True)
+    o.add_argument("--store", choices=list(STORES), required=True)
+    o.add_argument("--load-from", type=Path, help="copy the rows of this SqliteStore file (built from --events) instead of ingesting")
+    o.add_argument("--reuse", action="store_true", help="reopen the SqliteStore file --db (built from --events) instead of ingesting")
     o.add_argument("--events", type=Path, required=True)
     o.add_argument("--label", required=True)
     o.add_argument("--db", type=Path)
@@ -583,7 +698,8 @@ def main() -> None:
         p.add_argument("--out", type=Path, default=RESULTS / "scale.jsonl")
     args = ap.parse_args()
     if args.cmd == "one":
-        one(args.store, args.events, args.out, args.label, args.db, args.per_op, args.tenant_per_op, args.budget, not args.no_replay, not args.no_queries)
+        one(args.store, args.events, args.out, args.label, args.db, args.per_op, args.tenant_per_op, args.budget, not args.no_replay, not args.no_queries,
+            load_from=args.load_from, reuse=args.reuse)
     elif args.cmd == "determinism":
         determinism(args.events, args.out, args.label, args.stores.split(","), DATA)
     elif args.cmd == "duck":
