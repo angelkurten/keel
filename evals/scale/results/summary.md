@@ -307,6 +307,28 @@ Weighted benchmark mix, mean: memory: 20.50 ms, sqlite: 128.58 ms.
 
 Weighted benchmark mix, mean: memory: 56.66 ms, sqlite: 235.96 ms.
 
+## Tenant-wide reads pushed down to the store (ms): p50 / p95
+
+The same seeded tenant-wide ops, answered by the store's optional capabilities (facts_between, subjects_where, rule_subjects) instead of Tools' Python sweep; tests/test_pushdown.py and evals/jira/test_pushdown.py check the outputs are identical. SqliteStore: plain indexed SQL, rules still in Python. DuckdbStore and PostgresStore hold the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`). Copied in: pushdown:syn:1000000 DuckdbStore: 11.0 s; pushdown:syn:1000000 PostgresStore: 30.7 s; pushdown:syn:1000000 PostgresStore: 20.6 s; pushdown:syn:10000000 DuckdbStore: 143.2 s; pushdown:syn:10000000 PostgresStore: 233.6 s; pushdown:syn:1000000 PostgresStore: 22.1 s.
+
+### syn:1000000
+
+| op | MemoryStore, Python | SqliteStore, Python | SqliteStore, push-down | DuckdbStore, push-down | PostgresStore, push-down |
+| --- | --- | --- | --- | --- | --- |
+| history_tenant_window | 979.2 / 1,049 | 12,366 / 12,683 (n=5) | 11.4 / 15.4 | 25.8 / 28.8 | 13.5 / 16.8 |
+| search_rule_count | 1,678 / 2,172 | 8,136 / 9,485 (n=8) | 6,528 / 9,391 (n=9) | 48.5 / 63.5 | 2,260 / 3,604 |
+| search_status_at | 926.8 / 1,531 | 7,787 / 8,605 (n=8) | 194.0 / 362.6 | 26.3 / 32.4 | 223.1 / 372.6 |
+| search_known_at_count | 3,197 / 5,133 | 11,636 / 13,393 (n=5) | 791.7 / 1,550 | 60.8 / 98.3 | 434.5 / 786.1 |
+
+### syn:10000000
+
+| op | MemoryStore, Python | SqliteStore, Python | SqliteStore, push-down | DuckdbStore, push-down | PostgresStore, push-down |
+| --- | --- | --- | --- | --- | --- |
+| history_tenant_window | 15,019 / 16,664 (n=3) | 232,525 / 232,525 (n=1) | 114.8 / 381.9 | 138.1 / 186.6 | 114.3 / 189.7 |
+| search_rule_count | 18,481 / 18,657 (n=3) | 101,007 / 101,007 (n=1) | 117,049 / 117,049 (n=1) | 425.5 / 574.2 | 34,013 / 41,021 (n=2) |
+| search_status_at | 15,054 / 39,333 (n=3) | 129,582 / 129,582 (n=1) | 16,695 / 28,144 (n=4) | 161.8 / 243.0 | 2,719 / 6,662 |
+| search_known_at_count | 37,103 / 44,941 (n=2) | 141,230 / 141,230 (n=1) | 22,829 / 43,829 (n=3) | 438.3 / 815.2 | 13,133 / 18,180 (n=5) |
+
 ## DuckDB baseline: load and size
 
 DuckDB reads the .jsonl, derives valid_to/closed_at with one window function and indexes (tenant, subject); facts only, no links, no rules, no dedupe, no incremental maintenance.

@@ -77,3 +77,26 @@ was slowed ~2.8x by contention and was rerun (both runs are in `scale.jsonl`; th
   10^6, and replay rebuilds the same facts. Relations do not: 0.6% of relation rows differ under shuffle (link and
   unlink are applied in arrival order, not placed by valid time as facts are).
 - **HTTP** (`keel serve`, loopback) adds ~0.6–0.7 ms per call.
+
+## Tenant-wide reads pushed down to the store (label `pushdown:syn:*`)
+
+Stores may answer the tenant-wide reads themselves through optional capabilities Tools feature-detects:
+`facts_between` (history's window by valid_from), `subjects_where` (a kind's `where` listing at an instant, as known
+then) and `rule_subjects` (a rule's compiled macro). Without them Tools sweeps in Python; with them the outputs are
+the same bytes (`tests/test_pushdown.py` on every example cartridge, `evals/jira/test_pushdown.py` on the tool calls
+behind all 387 benchmark questions, on SQLite, DuckDB and Postgres). SqliteStore answers the first two in plain SQL
+(rules stay in Python: no compiled rules on SQLite); DuckdbStore and PostgresStore answer all three. DuckdbStore ingests
+through the generic SQL path at ~600 events/s, so `one --load-from <sqlite file>` copies the rows Keel's SqliteStore
+ingest wrote, as stored. Postgres 16 ran in Docker (6 vCPU, 12 GB, default settings, JIT off in Keel's sessions).
+
+p50 in ms, one 10^7-event tenant (before: the Python path on the same ops):
+
+| op | MemoryStore, Python | SqliteStore, Python | SqliteStore | DuckdbStore | PostgresStore |
+| --- | --- | --- | --- | --- | --- |
+| history window | 15,019 | 232,525 | 115 | 138 | 114 |
+| search status listing at an instant | 15,054 | 129,582 | 16,695 | 162 | 2,719 |
+| search count as known at | 37,103 | 141,230 | 22,829 | 438 | 13,133 |
+| rule count | 18,481 | 101,007 | 117,049 (Python) | 426 | 34,013 |
+
+The (tenant, valid_from) index costs SqliteStore ingest ~20% (10^6: 18.1k -> 14.5k events/s; 10^7: 16.0k -> 13.6k)
+and ~20% on disk. See `results/summary.md` for 10^6 and p95.
