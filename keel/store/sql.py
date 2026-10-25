@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from keel.envelope import Event, aware, utcnow
-from keel.scopes import Scope, is_global
+from keel.scopes import Scope, global_of, is_global
 from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relation
 from keel.store.memory import (
     ANY,
@@ -159,6 +159,11 @@ class SqlStore:
     TIME = "TEXT"  # the dialect's type for a timestamp column
     INDEX_IF_NOT_EXISTS = False  # the dialect can rerun its index statements safely
     PER_THREAD_READS = False  # a networked database: each thread reads on its own connection, never queued behind the lock
+    JSON_TEXT = True  # values are stored as json.dumps text (ASCII): subjects_where may compare that text; MySQL's JSON column is not
+    # attribute access for subjects_where (SQLite's JSON1): the type of attrs at a path, its text, whether a text is ASCII
+    JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "json_type({0}, {1})", "json_extract({0}, {1})", "'text'", "'array'"
+    ASCII = "(length({0}) = length(CAST({0} AS BLOB)))"
+    INSTR = "instr({0}, {1})"
 
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
         """`prefix` names the tables `<prefix>entities`, `<prefix>facts`... for a database shared with an application."""
@@ -678,6 +683,70 @@ class SqlStore:
         params.append(_ts(alive_at or utcnow()))
         return [_fact(r) for r in self._rows(sql, tuple(params))]
 
+    def subjects_where(self, tenant: str, cartridge: Any, kinds: list[str], where: dict[str, Any], as_of: datetime, known_at: datetime | None = None,
+                       author: str | None = None, task: str | None = None) -> dict[str, bool] | None:
+        """Optional capability (Tools feature-detects it): the entities of `kinds` that `where` may hold for at `as_of`
+        (as known at `known_at`), each entry an attribute or a current fact (accepted, visible to `author` and `task`
+        as Tools reads them, the global partition's global facts included) equal to a text without case. Key -> True
+        when certain, False when the store cannot compare exactly (a list, non-ASCII text) and Tools must check it.
+        None when the filter is not one the store compares (a want that is not ASCII text): Tools sweeps in Python."""
+        plan = where_plan(where)
+        if plan is None or not self.JSON_TEXT:
+            return None
+        cur, params = self._where_state(tenant, cartridge, [n for n, _ in plan], as_of, known_at, author, task)
+        # a list, or a non-ASCII text (json.dumps escapes it as \uXXXX): the store cannot say, Tools checks it
+        uncertain = f"(value LIKE '[%' OR {self.INSTR.format('value', '?')} > 0)"
+        cols, fparams = [], []
+        for i, (name, want) in enumerate(plan):
+            cols.append(f"max(CASE WHEN predicate = ? THEN CASE WHEN lower(value) = ? THEN 2 WHEN {uncertain} THEN 1 ELSE 0 END ELSE 0 END) AS f{i}")
+            fparams += [name, json.dumps(want).lower(), "\\u"]
+        attrs, aparams, sel = [], [], []
+        jt, js = self.JSON_TYPE.format("e.attrs", "?"), self.JSON_STR.format("e.attrs", "?")
+        for i, (name, want) in enumerate(plan):
+            path = f'$."{name}"'
+            attrs.append(f"CASE WHEN {jt} = {self.JT_TEXT} AND {self.ASCII.format(js)} AND lower({js}) = ? THEN 2 "
+                         f"WHEN {jt} = {self.JT_ARRAY} OR ({jt} = {self.JT_TEXT} AND NOT {self.ASCII.format(js)}) THEN 1 ELSE 0 END AS a{i}")
+            aparams += [path, path, path, path, want.lower(), path, path, path, path]
+            sel.append(f"(a{i} > 0 OR f{i} > 0)")
+        mention = " OR ".join(f"{self.INSTR.format('e.attrs', '?')} > 0" for _ in plan)
+        sql = (f"WITH cur AS ({cur}), g AS (SELECT subject, {', '.join(cols)} FROM cur GROUP BY subject) "
+               f"SELECT * FROM (SELECT e.kind AS kind, e.id AS id, {', '.join(attrs)}, "
+               f"{', '.join(f'coalesce(g.f{i}, 0) AS f{i}' for i in range(len(plan)))} "
+               f"FROM entities e LEFT JOIN g ON g.subject = e.kind || ':' || e.id "
+               f"WHERE e.tenant = ? AND e.kind IN ({_in(len(kinds))}) AND (g.subject IS NOT NULL OR {mention})) x WHERE {' AND '.join(sel)}")
+        rows = self._rows(sql, (*params, *fparams, *aparams, tenant, *kinds, *(json.dumps(n) for n, _ in plan)))
+        return {f"{r['kind']}:{r['id']}": all(max(r[f"a{i}"], r[f"f{i}"]) == 2 for i in range(len(plan))) for r in rows}
+
+    def _where_state(self, tenant: str, cartridge: Any, predicates: list[str], as_of: datetime, known_at: datetime | None,
+                     author: str | None, task: str | None) -> tuple[str, tuple[Any, ...]]:
+        """SQL for the current facts of some predicates (subject, predicate, value) as Tools reads them for one
+        caller (keel/tools.py _fetch): accepted, the tenant's and the global partition's global facts, agent memory
+        only its author's, task memory only untasked or `task`'s, alive at known_at (else now). As stored; with
+        `known_at`, closes rebuilt as Keel knew them (keel/store/memory.py as_known_at): per slot, the last fact
+        recorded by then starting by `as_of`, unless a close it knew by then (its own, or a close mark) ended it."""
+        t, alive = _ts(as_of), _ts(known_at or utcnow())
+        seen = (f"tenant IN (?, ?) AND predicate IN ({_in(len(predicates))}) AND valid_from <= ? AND status IS NULL AND {NOT_CLOSE} "
+                f"AND (tenant = ? OR scope = '{Scope.GLOBAL.value}') AND (scope <> '{Scope.AGENT.value}' OR source = ?) "
+                f"AND (scope <> '{Scope.TASK.value}' OR task IS NULL OR task = ?)")
+        params: tuple[Any, ...] = (tenant, global_of(tenant), *predicates, t, CLOSE, tenant, f"annotate:{author}" if author else None, task)
+        if known_at is None:
+            return (f"SELECT subject, predicate, value FROM facts WHERE {seen} AND (valid_to IS NULL OR valid_to > ?) "
+                    f"AND (expires_at IS NULL OR expires_at > ?)"), (*params, t, alive)
+        k = _ts(known_at)
+        multi = sorted(p for p, spec in (getattr(cartridge, "predicates", None) or {}).items() if isinstance(spec, dict) and spec.get("multi"))
+        per = f"predicate IN ({_in(len(multi))})" if multi else "1 = 0"
+        slot = (f"tenant, subject, predicate, scope, CASE WHEN scope = '{Scope.TASK.value}' THEN task END, "
+                f"CASE WHEN scope = '{Scope.AGENT.value}' THEN source END, CASE WHEN {per} THEN source END, CASE WHEN {per} THEN corrected_by END")
+        last = (f"SELECT *, row_number() OVER (PARTITION BY {slot} ORDER BY valid_from DESC, coalesce(recorded_at, '') DESC, "
+                f"coalesce(evidence, '') DESC, value DESC, seq DESC) AS rn FROM facts WHERE {seen} AND (recorded_at IS NULL OR recorded_at <= ?)")
+        mark = ("SELECT 1 FROM facts c WHERE c.tenant = x.tenant AND c.subject = x.subject AND c.predicate = x.predicate AND c.source = ? "
+                "AND c.status IS NULL AND c.scope = x.scope AND (c.recorded_at IS NULL OR c.recorded_at <= ?) AND c.valid_from > x.valid_from "
+                "AND c.valid_from <= ? AND (c.value = 'null' OR c.value = '[' || x.value || ']')")
+        sql = (f"SELECT subject, predicate, value FROM ({last}) x WHERE rn = 1 "
+               f"AND NOT (valid_to IS NOT NULL AND valid_to <= ? AND (closed_at IS NULL OR closed_at <= ?)) "
+               f"AND (expires_at IS NULL OR expires_at > ?) AND NOT EXISTS ({mark})")
+        return sql, (*multi, *multi, *params, k, t, k, alive, CLOSE, k, t)
+
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
         """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
         return [_relation(r) for r in self._rows(f"SELECT * FROM relations WHERE tenant = ? AND changed_at > ? AND NOT {REL_MARK} ORDER BY seq", (tenant, _ts(after)))]
@@ -890,6 +959,18 @@ def _account(row: Any) -> Account:
 def _key(row: Any) -> ApiKey:
     return ApiKey(id=row["id"], hash=row["hash"], account=row["account"], created_at=_dt(row["created_at"]), tenant=row["tenant"],
                   agent=row["agent"], glob=bool(row["glob"]), revoked_at=_dt(row["revoked_at"]))
+
+
+def where_plan(where: dict[str, Any]) -> list[tuple[str, str]] | None:
+    """`search(where=)` entries a store compares in SQL: ASCII text wanted, under a plain ASCII name (a JSON path
+    needs no quoting). Anything else (a number, a list, None, non-ASCII text) is compared in Python."""
+    plan = []
+    for name, want in where.items():
+        if not (isinstance(want, str) and want.isascii() and isinstance(name, str) and name.isascii() and name.isprintable()
+                and '"' not in name and "\\" not in name):
+            return None
+        plan.append((name, want))
+    return plan or None
 
 
 def _in(n: int) -> str:

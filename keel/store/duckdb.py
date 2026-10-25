@@ -111,6 +111,23 @@ class DuckdbStore(SqlStore):
             self.db.execute(sqlgen.macros(cartridge or empty))
             self._installed = ident
 
+    # subjects_where on DuckDB's JSON: attrs read with its json functions, the state from the generated macro
+    JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "json_type({0}, {1})", "json_extract_string({0}, {1})", "'VARCHAR'", "'ARRAY'"
+    ASCII = "(strlen({0}) = length({0}))"
+
+    def _where_state(self, tenant: str, cartridge: Any, predicates: list[str], as_of: datetime, known_at: datetime | None,
+                     author: str | None, task: str | None) -> tuple[str, tuple[Any, ...]]:
+        """The current facts of some predicates by the generated `state_known_at` macro: what rules and agents read."""
+        from keel.envelope import utcnow
+
+        self.install(cartridge)
+        lit = sqlgen.DuckDB().lit
+        # literals, not parameters: DuckDB plans the macro with them, so the `k IS NULL` branch is pruned
+        sql = (f"SELECT subject, predicate, value FROM state_known_at({lit(tenant)}, {lit(_ts(as_of))}, k := {lit(_ts(known_at))}, "
+               f"alive := {lit(_ts(known_at or utcnow()))}, as_author := {lit(author)}, as_task := {lit(task)}) "
+               f"WHERE predicate IN ({', '.join(lit(p) for p in predicates)})")
+        return sql, ()
+
     def rule_subjects(self, tenant: str, cartridge: Any, rule: str, as_of: datetime, known_at: datetime | None = None,
                       author: str | None = None, task: str | None = None) -> set[str]:
         """The entities `rule` holds for at `as_of` (as known at `known_at`), by its compiled macro: what

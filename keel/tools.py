@@ -857,6 +857,7 @@ class Tools:
         if detail == "key":  # a listing's keys, each once (a fact hit gives its subject)
             out: list[Any] = list(dict.fromkeys(h.get("key") or h["subject"] for h in hits))
         else:
+            hits = self._hydrate(hits)
             self._explain(hits, text, mode, hide, graph)
             out = self._enrich(hits, detail, depth, hide, graph)
         out = [{"more": {"shown": len(hits), "total": total, "next": hint}}, *out] if cap and total > cap else out
@@ -1022,6 +1023,9 @@ class Tools:
             after = f"{kinds[0]}:{after}"  # an id alone: the listing has one kind, so the key is unambiguous
         elif after is not None and _kind(after) not in kinds:
             raise ValueError(f"`after` is a key of kind {' or '.join(map(repr, kinds))} (the last key received), got '{after}'")
+        pushed = self._pushed(text, kinds, rule, spec, where, neighbours, after, limit, graph)
+        if pushed is not None:
+            return pushed
         if neighbours is not None:  # walk the neighbours, not the whole kind
             entities = sorted((e for e in self._entities(sorted(k for k in neighbours if _kind(k) in kinds)).values() if e), key=lambda e: e.key)
         elif len(kinds) == 1:
@@ -1029,12 +1033,6 @@ class Tools:
         else:
             entities = sorted((e for k in kinds for e in self.store.entities(self.tenant, k)), key=lambda e: e.key)
         candidates = [e for e in entities if after is None or e.key > after]
-        pushdown = getattr(self.store, "rule_subjects", None)  # optional: a store with the cartridge compiled to SQL
-        if spec and pushdown and not text and not where and neighbours is None and kinds == [spec.get("applies_to")]:
-            # the rule's compiled macro over the whole kind at once, with the reads the Python sweep would make
-            holds = pushdown(self.tenant, self.cartridge, rule, graph.as_of, graph.known_at, self.author, graph.task)
-            found = [e for e in candidates if e.key in holds]
-            return _ser(found[:limit] if limit else found)
         t = text.lower()
         # ponytail: text or where over a kind reads every candidate's facts, a chunk at a time; an index on
         # fact values (or the semantic index) if a kind grows past what a sweep reads in time
@@ -1056,6 +1054,43 @@ class Tools:
                 if limit and len(found) >= limit:
                     return _ser(found)
         return _ser(found)
+
+    def _pushed(self, text: str, kinds: list[str], rule: str | None, spec: dict[str, Any] | None, where: dict[str, Any] | None,
+                neighbours: set[str] | None, after: str | None, limit: int | None, graph: _Graph) -> list[dict[str, Any]] | None:
+        """A kind listing answered by the store (optional capabilities, feature-detected) instead of a sweep of every entity
+        of the kind in Python: `rule_subjects` (the rule's compiled macro) or `subjects_where` (the `where` filter at the
+        graph's instant). The same entities in the same order (by key, as `entities` lists them), returned as bare keys
+        ({"key", "_bare"}): `_search_one` reads the entities only of those it shows. None: no capability applies."""
+        if text or neighbours is not None:
+            return None
+        if spec is not None:
+            holds = getattr(self.store, "rule_subjects", None)
+            if holds is None or where or kinds != [spec.get("applies_to")]:
+                return None
+            # the macro lists entities of the rule's kind it holds for, with the reads the Python sweep would make
+            keys = sorted(holds(self.tenant, self.cartridge, rule, graph.as_of, graph.known_at, self.author, graph.task))
+        else:
+            matching = getattr(self.store, "subjects_where", None)
+            found = matching(self.tenant, self.cartridge, kinds, where, graph.as_of, graph.known_at, self.author, graph.task) if matching and where else None
+            if found is None:
+                return None
+            keys = sorted(k for k in found if after is None or k > after)
+            unsure = [k for k in keys if not found[k]]  # what the store could not compare exactly: Python's `where` decides
+            ents = self._entities(unsure) if unsure else {}
+            for i in range(0, len(unsure), SWEEP_CHUNK):
+                graph.prime(unsure[i : i + SWEEP_CHUNK])
+            out = {k for k in unsure if not self._where(graph, k, ents[k], where)}
+            keys = [k for k in keys if k not in out]
+        keys = [k for k in keys if after is None or k > after]
+        return [{"key": k, "_bare": True} for k in (keys[:limit] if limit else keys)]
+
+    def _hydrate(self, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Bare keys from a pushed-down listing, as the entities a sweep would have returned."""
+        bare = [h["key"] for h in hits if h.get("_bare")]
+        if not bare:
+            return hits
+        ents = self._entities(bare)
+        return [_ser(ents[h["key"]]) if h.get("_bare") else h for h in hits]
 
     def _known(self, what: str, name: str, declared: Iterable[str]) -> None:
         """A name the cartridge does not declare is the caller's typo, not an empty answer: say so, and what exists."""
