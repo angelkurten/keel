@@ -28,10 +28,11 @@ http2 = ["fastapi>=0.110", "hypercorn>=0.17", "mcp>=1.2"]
 kafka = ["confluent-kafka>=2.3"]
 sqs = ["boto3>=1.34"]
 mysql = ["pymysql>=1.1"]
+duckdb = ["duckdb>=1.1"]
 chroma = ["chromadb>=1.0; python_version >= '3.11'"]
 weaviate = ["weaviate-client>=4.16"]
 docs = ["mkdocs-material>=9.5", "mkdocs<2"]
-dev = ["pytest>=8.0", "ruff>=0.5", "mcp>=1.2", "fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.27", "hypercorn>=0.17", "jsonschema>=4"]
+dev = ["pytest>=8.0", "ruff>=0.5", "mcp>=1.2", "fastapi>=0.110", "httpx>=0.27", "uvicorn>=0.27", "hypercorn>=0.17", "jsonschema>=4", "duckdb>=1.1"]
 
 [project.scripts]
 keel = "keel.cli:app"
