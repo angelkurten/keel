@@ -485,7 +485,8 @@ def test_history_concise_is_lean(store):
     [f] = t.history("issue:B", detail="concise")
     assert not {"tenant", "recorded_at", "closed_at", "subject", "scope", "valid_to"} & set(f)
     assert {"predicate", "value", "valid_from", "source", "evidence"} <= set(f)
-    assert all("subject" in f for f in t.history(since=d(10, 1), detail="concise"))
+    rows = [f for f in t.history(since=d(9, 2), detail="concise") if not {"initial", "more"} & set(f)]  # past the counts
+    assert rows and all("subject" in f for f in rows)
 
 
 # ---- context (§7.1) --------------------------------------------------------------------------------------
@@ -676,3 +677,19 @@ def test_mcp_annotate_takes_any_json_value(store):
     """`annotate`'s value is any JSON over MCP, null included, as in Python and over HTTP."""
     call = _mcp(store)
     assert call("annotate", subject="issue:A", predicate="assignee", value=None, scope="task")["predicate"] == "assignee"
+
+
+def test_history_tenant_window_marks_first_values_and_concise_leaves_them_out(store):
+    """A window over the tenant lists what started in it; a first value (nothing held the predicate right before
+    it: an issue created in the window) is marked `initial`, and the concise form, what an agent reads to answer
+    "whose status changed", leaves those out and says how many (evals/jira: up to 121 creations around 9 changes,
+    counted as changes or burying them). A subject's own history is unchanged."""
+    t = tools(store)
+    full = t.history(since=d(9, 2), until=d(9, 10))
+    assert [(f["subject"], f.get("initial", False)) for f in full] == [
+        ("issue:C", True), ("issue:K", True), ("issue:L", True), ("issue:D", True), ("issue:W", False), ("issue:C", False)]
+    concise = t.history(since=d(9, 2), until=d(9, 10), detail="concise")
+    assert concise[0] == {"initial": {"omitted": 4, "list": "detail='full' lists them, marked initial"}}
+    assert [(f["subject"], f["was"]) for f in concise[1:]] == [("issue:W", "On Hold"), ("issue:C", "new")]
+    assert [f["subject"] for f in t.history(since=d(9, 6), until=d(9, 10), detail="concise")] == ["issue:W", "issue:C"]  # none to omit
+    assert "initial" not in t.history("issue:C")[0]

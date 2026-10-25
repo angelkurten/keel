@@ -614,7 +614,9 @@ class Tools:
         With no `subject` and `since`/`until` instead: the tenant's facts that started (valid_from) in that
         window, in world time, oldest first: "what changed this week", or with `predicate` "whose assignee
         changed". Each fact that replaced a value says which in `was` (null included); a first value
-        has no `was`, so "changed" is the facts with `was`.
+        has no `was`, so "changed" is the facts with `was`. In a window, a first value (nothing held the
+        predicate right before it: an entity created in the window) is marked `initial`, and `concise` leaves
+        those out, counted in a first entry {"initial": {"omitted"}}: what is left is what changed.
         `limit` (default LIST_CAP, None or 0 for all) keeps the most recent; when it cuts, the first entry is
         {"more": {shown, total, omitted, next}}."""
         if self.meter:
@@ -650,18 +652,31 @@ class Tools:
             facts = [f for f in facts if f.scope == _scope(scope)]
         if task:  # only what that task wrote
             facts = [f for f in facts if f.task == task]
+        window = subject is None and changed_since is None
+        first = lambda f, was: window and was is _NONE and f.status is None and f.predicate not in self.multi
+        head: list[dict[str, Any]] = []
+        replaced = None
+        if window and detail == "concise":  # leave the first values out before counting and capping
+            replaced = self._replaced(facts, task, as_known_at)
+            kept = [(f, was) for f, was in zip(facts, replaced, strict=True) if not first(f, was)]
+            if len(kept) < len(facts):
+                head.append({"initial": {"omitted": len(facts) - len(kept), "list": "detail='full' lists them, marked initial"}})
+            facts, replaced = [f for f, _ in kept], [was for _, was in kept]
         total = len(facts)
         limit = self._ceiling(limit)
         if limit:  # the most recent `limit`, still oldest first
             facts = facts[-limit:]
+            replaced = replaced[-limit:] if replaced is not None else None
         out = _ser(facts)
         out = out if detail == "full" else [_lean(f, subject is None) for f in out]
-        for row, was in zip(out, self._replaced(facts, task, as_known_at), strict=True):
+        for row, f, was in zip(out, facts, replaced if replaced is not None else self._replaced(facts, task, as_known_at), strict=True):
             if was is not _NONE:
                 row["was"] = was  # after _lean: a replaced null is still a value
+            elif first(f, was):
+                row["initial"] = True
         if total > len(out):
-            return [{"more": {"shown": len(out), "total": total, "omitted": "the oldest", "next": "narrow with predicate=, since=/until=, or raise limit"}}, *out]
-        return out
+            head.append({"more": {"shown": len(out), "total": total, "omitted": "the oldest", "next": "narrow with predicate=, since=/until=, or raise limit"}})
+        return [*head, *out]
 
     def _replaced(self, facts: list[Fact], task: str | None, known_at: datetime | None) -> list[Any]:
         """For each fact, the value that held its predicate until it started (`_NONE` for a first value): the
