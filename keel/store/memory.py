@@ -8,6 +8,7 @@ stores answer every query identically.
 from __future__ import annotations
 
 import json
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
@@ -217,6 +218,12 @@ def as_known_at(facts: Iterable[Fact], known_at: datetime, multi: Iterable[str] 
     return out
 
 
+def _base_slot(f: Fact) -> tuple[Any, ...]:
+    """`same_slot` without the author: the index key of a subject's history (MemoryStore._index)."""
+    scope = Scope(f.scope)
+    return (f.predicate, f.status, scope, f.task if scope == Scope.TASK else None, f.source if scope == Scope.AGENT else None)
+
+
 def _slot(f: Fact, per_source: bool) -> tuple[Any, ...]:
     """`same_slot` as a key: the facts that close each other."""
     scope = Scope(f.scope)
@@ -289,6 +296,9 @@ class MemoryStore:
         self._facts: dict[str, dict[str, list[Fact]]] = defaultdict(lambda: defaultdict(list))  # tenant -> subject -> facts
         self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
+        # tenant -> subject -> (slot -> (succession keys, facts) sorted, close marks): built on first write to a
+        # subject, dropped whenever its fact lists are rewritten, so a late fact finds its neighbours by bisection
+        self._slots: dict[str, dict[str, tuple[dict[tuple[Any, ...], tuple[list[Any], list[Fact]]], list[Fact]]]] = defaultdict(dict)
         self._tx: list[Callable[[], None]] | None = None  # inside transaction(): how to undo each write, in order
         self._watermark: dict[str, datetime] = {}  # tenant -> latest changed_at (ingest clock)
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
@@ -303,6 +313,22 @@ class MemoryStore:
                 old = self._watermark.get(tenant)
                 self._tx.append(lambda: self._watermark.pop(tenant, None) if old is None else self._watermark.__setitem__(tenant, old))
             self._watermark[tenant] = t
+
+    def _index(self, tenant: str, subject: str) -> tuple[dict[tuple[Any, ...], tuple[list[Any], list[Fact]]], list[Fact]]:
+        idx = self._slots[tenant].get(subject)
+        if idx is None:
+            groups: dict[tuple[Any, ...], list[Fact]] = defaultdict(list)
+            marks = []
+            for x in self._facts[tenant][subject]:
+                (marks.append(x) if is_close(x) else groups[_base_slot(x)].append(x))
+            slots = {}
+            for k, g in groups.items():
+                g.sort(key=succession)
+                slots[k] = ([succession(x) for x in g], g)
+            idx = self._slots[tenant][subject] = (slots, marks)
+            if self._tx is not None:  # a rollback restores the lists; rebuild from them
+                self._tx.append(lambda: self._slots[tenant].pop(subject, None))
+        return idx
 
     def _keep(self, obj: Entity | Relation | Fact) -> None:
         """Inside a transaction, remember an object's fields before a write changes them in place."""
@@ -365,10 +391,24 @@ class MemoryStore:
                 if x.idempotency_key == key:
                     raise DuplicateKey(x)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        slot = same_slot(self._facts[tenant][subject], f, kw.get("per_source", False))
-        for x in slot:  # place_fact may move a neighbour's close
+        slots, marks = self._index(tenant, subject)
+        keys, history = slots.setdefault(_base_slot(f), ([], []))
+        at = succession(f)
+        i = bisect_right(keys, at)
+        if kw.get("per_source", False):  # one slot per author inside the history: its own neighbours
+            mine = [x for x in history if owner(x) == owner(f)]
+            neighbours = [max((x for x in mine if succession(x) <= at), key=succession, default=None),
+                          min((x for x in mine if succession(x) > at), key=succession, default=None)]
+        else:
+            neighbours = [history[i - 1] if i else None, history[i] if i < len(history) else None]
+        neighbours = [x for x in neighbours if x is not None]
+        for x in neighbours:  # place_fact may move a neighbour's close
             self._keep(x)
-        place_fact(f, slot, self._facts[tenant][subject])
+        place_fact(f, neighbours, marks)
+        keys.insert(i, at)
+        history.insert(i, f)
+        if self._tx is not None:
+            self._tx.append(lambda: self._slots[tenant].pop(subject, None))
         self._facts[tenant][subject].append(f)
         self._all_facts[tenant].append(f)
         self._added(self._facts[tenant][subject], self._all_facts[tenant], item=f)
@@ -399,6 +439,7 @@ class MemoryStore:
             if covers(c, f):
                 self._keep(f)
         place_close(c, facts)
+        self._index(tenant, subject)[1].append(c)
         facts.append(c)
         self._all_facts[tenant].append(c)
         self._added(facts, self._all_facts[tenant], item=c)
@@ -484,6 +525,7 @@ class MemoryStore:
         self._all_facts[tenant] = [f for f in self._all_facts[tenant] if f.expires_at is None or f.expires_at > now]
         for subject, facts in self._facts[tenant].items():
             self._facts[tenant][subject] = [f for f in facts if f.expires_at is None or f.expires_at > now]
+        self._slots.pop(tenant, None)
         return before - len(self._all_facts[tenant])
 
     def close_task(self, tenant: str, task: str, now: datetime | None = None) -> int:
@@ -529,6 +571,7 @@ class MemoryStore:
             self._all_facts[tenant] = [f for f in self._all_facts[tenant] if not old(f)]
             for subject, facts in self._facts[tenant].items():
                 self._facts[tenant][subject] = [f for f in facts if not old(f)]
+            self._slots.pop(tenant, None)
         if rels:
             self._all_rels[tenant] = [r for r in self._all_rels[tenant] if not old(r)]
             for key, touching in self._rels[tenant].items():
@@ -559,6 +602,7 @@ class MemoryStore:
                 self._rels[tenant][r.dst].append(r)
             self._all_rels[tenant].append(r)
             self._mark(tenant, r.changed_at)
+        self._slots.pop(tenant, None)
         for f in (replace(f, tenant=tenant) for f in backup["facts"]):
             self._facts[tenant][f.subject].append(f)
             self._all_facts[tenant].append(f)
@@ -614,7 +658,7 @@ class MemoryStore:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With
         `keep_annotations`, what agents and people wrote (and consolidated) stays, closed history included."""
         kept = [f for f in self._all_facts.get(tenant, []) if is_annotation(f)] if keep_annotations else []
-        for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen, self._watermark):
+        for d in (self._entities, self._rels, self._all_rels, self._facts, self._all_facts, self._seen, self._watermark, self._slots):
             d.pop(tenant, None)
         for f in kept:
             self._facts[tenant][f.subject].append(f)
