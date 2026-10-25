@@ -163,6 +163,7 @@ class SqlStore:
     # attribute access for subjects_where (SQLite's JSON1): the type of attrs at a path, its text, whether a text is ASCII
     JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "json_type({0}, {1})", "json_extract({0}, {1})", "'text'", "'array'"
     ASCII = "(length({0}) = length(CAST({0} AS BLOB)))"
+    JSON_PATH = "$.\"{}\""  # an attribute as the JSON functions name it
     INSTR = "instr({0}, {1})"
 
     def __init__(self, connect: Callable[[], Any], prefix: str = "") -> None:
@@ -695,15 +696,15 @@ class SqlStore:
             return None
         cur, params = self._where_state(tenant, cartridge, [n for n, _ in plan], as_of, known_at, author, task)
         # a list, or a non-ASCII text (json.dumps escapes it as \uXXXX): the store cannot say, Tools checks it
-        uncertain = f"(value LIKE '[%' OR {self.INSTR.format('value', '?')} > 0)"
+        uncertain = f"(value LIKE ? OR {self.INSTR.format('value', '?')} > 0)"
         cols, fparams = [], []
         for i, (name, want) in enumerate(plan):
             cols.append(f"max(CASE WHEN predicate = ? THEN CASE WHEN lower(value) = ? THEN 2 WHEN {uncertain} THEN 1 ELSE 0 END ELSE 0 END) AS f{i}")
-            fparams += [name, json.dumps(want).lower(), "\\u"]
+            fparams += [name, json.dumps(want).lower(), "[%", "\\u"]
         attrs, aparams, sel = [], [], []
         jt, js = self.JSON_TYPE.format("e.attrs", "?"), self.JSON_STR.format("e.attrs", "?")
         for i, (name, want) in enumerate(plan):
-            path = f'$."{name}"'
+            path = self.JSON_PATH.format(name)
             attrs.append(f"CASE WHEN {jt} = {self.JT_TEXT} AND {self.ASCII.format(js)} AND lower({js}) = ? THEN 2 "
                          f"WHEN {jt} = {self.JT_ARRAY} OR ({jt} = {self.JT_TEXT} AND NOT {self.ASCII.format(js)}) THEN 1 ELSE 0 END AS a{i}")
             aparams += [path, path, path, path, want.lower(), path, path, path, path]
