@@ -200,7 +200,8 @@ FROM (SELECT f.* RENAME (valid_to AS stored_to), lead(f.valid_from) OVER (PARTIT
         d.table_macro("state_at", "tnt, t", "SELECT * FROM state_known_at(tnt, t)"),
         d.table_macro("relations_known_at", "tnt, t, k := NULL", """SELECT src, rel, dst, valid_from, valid_to, recorded_at, source FROM (
   SELECT * EXCLUDE (valid_to), CASE WHEN k IS NOT NULL AND closed_at IS NOT NULL AND closed_at > keel_iso(k) THEN NULL ELSE valid_to END AS valid_to
-  FROM relations WHERE tenant = tnt AND (k IS NULL OR recorded_at IS NULL OR recorded_at <= keel_iso(k)))
+  FROM relations WHERE tenant = tnt AND NOT (valid_to IS NOT NULL AND valid_to = valid_from)
+    AND (k IS NULL OR recorded_at IS NULL OR recorded_at <= keel_iso(k)))
 WHERE valid_from <= keel_iso(t) AND (valid_to IS NULL OR valid_to > keel_iso(t))"""),
         d.table_macro("relations_at", "tnt, t", "SELECT * FROM relations_known_at(tnt, t)"),
     ])

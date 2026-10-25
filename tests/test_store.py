@@ -1583,3 +1583,61 @@ def test_as_known_at_keeps_every_author_of_a_multi_valued_predicate(store):
     later = datetime.now(UTC) + timedelta(seconds=5)
     ctx = Tools(c, store, TENANT).context("unit:MXK-4821", task="r1", as_known_at=later)
     assert sorted(f["value"] for f in ctx["facts"] if f["predicate"] == "recommendation") == ["renew policy", "replace tire"]
+
+
+# ---- relations: the same history in every arrival order -----------------------------------------
+REL_OPS = [("link", 1), ("unlink", 3), ("link", 5), ("link", 6), ("unlink", 7), ("link", 9)]  # link@6: redundant, already open
+REL_EXPECTED = {(1, 3), (5, 7), (9, None)}
+
+
+def _rel_orders(n: int = 40) -> list[list[tuple[str, int]]]:
+    import random
+
+    rng, orders = random.Random(11), [list(REL_OPS), list(reversed(REL_OPS))]
+    while len(orders) < n:
+        o = list(REL_OPS)
+        rng.shuffle(o)
+        orders.append(o)
+    return orders
+
+
+def _apply_rel(store, tenant: str, order: list[tuple[str, int]]) -> None:
+    d = lambda h: datetime(2026, 1, 1, tzinfo=UTC) + timedelta(hours=h)
+    for op, h in order:
+        if op == "link":
+            store.link(tenant, "a:1", "r", "b:1", d(h), source=f"s{h}", recorded_at=d(h) + timedelta(minutes=10))
+        else:
+            store.unlink(tenant, "a:1", "r", "b:1", d(h), recorded_at=d(h) + timedelta(minutes=10))
+
+
+def _rel_history(store, tenant: str) -> set[tuple[int, int | None]]:
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    h = lambda t: None if t is None else int((t - t0).total_seconds() // 3600)
+    return {(h(r.valid_from), h(r.valid_to)) for r in store.relations(tenant, "a:1", rel="r")}
+
+
+def test_links_and_unlinks_build_the_same_relation_history_in_every_arrival_order(store):
+    """An unlink that arrives before its link must still end it, and a link that arrives while the relation
+    is open (or before an earlier unlink) must still open its own period: the history is a function of the
+    events, never of their order. Reads at an instant agree too, from either end of the relation."""
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    for n, order in enumerate(_rel_orders()):
+        tenant = f"rel-{n}"
+        _apply_rel(store, tenant, order)
+        assert _rel_history(store, tenant) == REL_EXPECTED, order
+        for h, open_ in [(0, False), (2, True), (4, False), (6, True), (8, False), (10, True)]:
+            at = t0 + timedelta(hours=h, minutes=30)
+            assert bool(store.relations(tenant, "a:1", rel="r", at=at)) == open_, (order, h)
+            assert bool(store.relations(tenant, "b:1", rel="r", at=at)) == open_, (order, h)
+
+
+def test_a_bulk_batch_builds_the_same_relation_history_in_every_arrival_order():
+    from keel import Event
+
+    for n, order in enumerate(_rel_orders(12)):
+        s, tenant = SqliteStore(), f"rel-{n}"
+        events = [Event(id=f"e{i}", tenant=tenant, type="x", subject="a:1", occurred_at=datetime(2026, 1, 1, tzinfo=UTC), source="b", payload={})
+                  for i in range(2)]
+        with s.bulk(events):
+            _apply_rel(s, tenant, order)
+        assert _rel_history(s, tenant) == REL_EXPECTED, order

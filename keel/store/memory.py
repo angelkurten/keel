@@ -305,8 +305,82 @@ def filter_facts(
     return sorted(out, key=lambda f: f.valid_from)
 
 
+def is_relation_mark(r: Relation) -> bool:
+    """A link or unlink kept as a row of the relation's history only so that a later arrival still meets it (a
+    link while the relation was open, an unlink while it was closed): an empty period, never read as a link."""
+    return r.valid_to is not None and r.valid_to == r.valid_from
+
+
+def _rel_event(t: datetime, unlink: bool, recorded: datetime | None, source: str | None) -> tuple[Any, ...]:
+    """The order of a relation's events: by valid time, an unlink before a link at one instant (as a close mark
+    goes first among facts), then by when it was recorded and its source. A total order on what events carry."""
+    return (t, 0 if unlink else 1, recorded or valid_never, source or "")
+
+
+def relation_history(rows: Iterable[Relation], new: Relation, unlink: bool) -> list[Relation]:
+    """The rows of one relation (src, rel, dst) once a link (`unlink` False: opens at new.valid_from) or an
+    unlink (True: ends at it) joins its events, whatever order the events arrived in. The events are read back
+    from the rows: a period is its link and, when it ended, its unlink; a mark is its own event. Replayed in
+    `_rel_event` order, a link opens the relation if it is closed, an unlink ends it if it is open, and every
+    other event stays as a mark. Returns detached rows; the caller keeps the stored rows whose start event
+    matches (`rel_start`) and writes the rest."""
+    events = []
+    for r in rows:
+        if is_relation_mark(r):
+            events.append(_rel_event(r.valid_from, r.source == CLOSE, r.recorded_at, r.source))
+        else:
+            events.append(_rel_event(r.valid_from, False, r.recorded_at, r.source))
+            if r.valid_to is not None:
+                events.append(_rel_event(r.valid_to, True, r.closed_at, CLOSE))
+    events.append(_rel_event(new.valid_from, unlink, new.recorded_at, CLOSE if unlink else new.source))
+    out: list[Relation] = []
+    open_: Relation | None = None
+    mk = lambda t, rec, src, to=None, closed=None: Relation(tenant=new.tenant, src=new.src, rel=new.rel, dst=new.dst, valid_from=t, valid_to=to,
+                                                             recorded_at=None if rec is valid_never else rec, source=src or None, closed_at=closed)
+    for t, kind, rec, src in sorted(events):
+        rec_ = None if rec is valid_never else rec
+        if kind == 1 and open_ is None:
+            open_ = mk(t, rec, src)
+        elif kind == 1:  # already open: a mark, in case an earlier unlink arrives later
+            out.append(mk(t, rec, src, to=t))
+        elif open_ is not None:
+            open_.valid_to, open_.closed_at = t, rec_
+            out.append(open_)
+            open_ = None
+        else:  # nothing open to end: a mark, in case an earlier link arrives later
+            out.append(mk(t, rec, CLOSE, to=t, closed=rec_))
+    return out + ([open_] if open_ is not None else [])
+
+
+def rel_last(rows: Iterable[Relation]) -> datetime | None:
+    """The latest instant any event of these rows happened at: a later event only extends the history."""
+    return max((t for r in rows for t in (r.valid_from, r.valid_to) if t is not None), default=None)
+
+
+def relation_tail(rows: list[Relation], new: Relation, unlink: bool) -> list[Relation] | None:
+    """relation_history when `new` happened after every event of `rows` (the usual, in-order case): the
+    detached rows the result differs by (the open period, now ended, or the new row), without replaying the
+    history. None when `new` is not that late; then replay."""
+    last = rel_last(rows)
+    if last is not None and new.valid_from <= last:
+        return None
+    open_ = next((r for r in rows if r.valid_to is None), None)
+    rec = new.recorded_at
+    if unlink and open_ is not None:
+        return [replace(open_, valid_to=new.valid_from, closed_at=rec)]
+    mk = lambda **kw: Relation(tenant=new.tenant, src=new.src, rel=new.rel, dst=new.dst, valid_from=new.valid_from, recorded_at=rec, **kw)
+    if unlink:
+        return [mk(valid_to=new.valid_from, source=CLOSE, closed_at=rec)]
+    return [mk(valid_to=new.valid_from, source=new.source)] if open_ is not None else [mk(source=new.source)]
+
+
+def rel_start(r: Relation) -> tuple[Any, ...]:
+    """The event a row starts with: what identifies it across recomputations of its relation's history."""
+    return _rel_event(r.valid_from, is_relation_mark(r) and r.source == CLOSE, r.recorded_at, r.source)
+
+
 def filter_relations(rels: Iterable[Relation], rel: str | None = None, at: datetime | None = None) -> list[Relation]:
-    out = list(rels)
+    out = [r for r in rels if not is_relation_mark(r)]
     if rel:
         out = [r for r in out if r.rel == rel]
     if at is not None:
@@ -394,27 +468,57 @@ class MemoryStore:
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None = None, recorded_at: datetime | None = None) -> Relation:
         valid_from, recorded_at = aware(valid_from), aware(recorded_at)
-        for r in self._rels[tenant][src]:
-            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
-                return r  # already open; idempotent
-        now = utcnow()
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
-        self._mark(tenant, now)
-        self._rels[tenant][src].append(r)
-        if dst != src:
-            self._rels[tenant][dst].append(r)
-        self._all_rels[tenant].append(r)
-        self._added(self._rels[tenant][src], *([self._rels[tenant][dst]] if dst != src else []), self._all_rels[tenant], item=r)
-        return r
+        new = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or utcnow(), source=source)
+        return self._relate(new, unlink=False)
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
         valid_to, recorded_at = aware(valid_to), aware(recorded_at)
-        for r in self._rels[tenant][src]:
-            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
+        self._relate(Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_to, recorded_at=recorded_at or utcnow()), unlink=True)
+
+    def _relate(self, new: Relation, unlink: bool) -> Relation:
+        """Place a link or unlink in its relation's history (relation_history) and write what changed: a stored
+        row keeps its identity when its start event survives, and only its end moves."""
+        tenant, src, dst = new.tenant, new.src, new.dst
+        # ponytail: reads the src's relations to find this one's rows, as link always did; a (src, rel, dst) index if a key gets thousands
+        rows = [r for r in self._rels[tenant][src] if r.src == src and r.rel == new.rel and r.dst == dst]
+        tail = relation_tail(rows, new, unlink)  # in order: only the open period or a new row changes
+        # ponytail: a late event replays the relation's history, O(k log k) for k events of this one relation; the state
+        # after an event is its own kind (a link opens, an unlink closes), so a late event changes only itself and the
+        # next one: a local update if one relation ever gets thousands of late events
+        specs = tail if tail is not None else relation_history(rows, new, unlink)
+        wanted = {rel_start(spec) for spec in specs}
+        held: dict[tuple[Any, ...], list[Relation]] = defaultdict(list)
+        for r in rows:
+            if tail is None or (k := rel_start(r)) in wanted:
+                held[rel_start(r) if tail is None else k].append(r)
+        now, changed, final = utcnow(), False, [] if tail is None else list(rows)
+        for spec in specs:
+            bucket = held.get(rel_start(spec))
+            r = bucket.pop() if bucket else None
+            if r is None:
+                r, changed = spec, True
+                r.changed_at = now
+                lists = [self._rels[tenant][src], *([self._rels[tenant][dst]] if dst != src else []), self._all_rels[tenant]]
+                for lst in lists:
+                    lst.append(r)
+                self._added(*lists, item=r)
+            elif (r.valid_to, r.closed_at) != (spec.valid_to, spec.closed_at):
                 self._keep(r)
-                r.valid_to, r.changed_at = valid_to, utcnow()
-                r.closed_at = recorded_at or r.changed_at
-                self._mark(tenant, r.changed_at)
+                r.valid_to, r.closed_at, r.changed_at, changed = spec.valid_to, spec.closed_at, now, True
+            if not any(x is r for x in final):
+                final.append(r)
+        for gone in (r for bucket in held.values() for r in bucket) if tail is None else ():  # a mark whose event now opens or ends a period
+            # ponytail: list.remove scans the tenant's relations; only an out-of-order event that matches a mark gets here
+            for lst in [self._rels[tenant][src], *([self._rels[tenant][dst]] if dst != src else []), self._all_rels[tenant]]:
+                lst.remove(gone)
+                if self._tx is not None:
+                    self._tx.append(lambda lst=lst, gone=gone: lst.append(gone))
+            changed = True
+        if changed:
+            self._mark(tenant, now)
+        t = new.valid_from
+        covering = [r for r in final if not is_relation_mark(r) and r.valid_from <= t and (r.valid_to is None or r.valid_to > t)]
+        return covering[0] if covering else next((r for r in final if rel_start(r) == rel_start(new)), new)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
         # the old value keeps its history, it is never overwritten; and the new fact takes its
@@ -497,7 +601,7 @@ class MemoryStore:
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
         """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
-        return [r for r in self._all_rels[tenant] if (changed_at(r) or after) > after]
+        return [r for r in self._all_rels[tenant] if (changed_at(r) or after) > after and not is_relation_mark(r)]
 
     def watermark(self, tenant: str) -> datetime | None:
         """The latest write in the tenant (ingest clock): a cursor for `changes`."""
@@ -574,7 +678,7 @@ class MemoryStore:
             raise ValueError("the global partition is every tenant's; it cannot be forgotten")
         facts = self._all_facts.get(tenant, [])
         ann = sum(1 for f in facts if is_annotation(f))
-        counts = {"entities": len(self._entities.get(tenant, {})), "relations": len(self._all_rels.get(tenant, [])),
+        counts = {"entities": len(self._entities.get(tenant, {})), "relations": sum(1 for r in self._all_rels.get(tenant, []) if not is_relation_mark(r)),
                   "facts": len(facts) - ann, "annotations": ann, "ingested": len(self._seen.get(tenant, ()))}
         self.reset(tenant)
         self._forgotten.setdefault(tenant, utcnow())
@@ -590,13 +694,14 @@ class MemoryStore:
         old = lambda x: x.valid_to is not None and x.valid_to <= before
         gone = [f for f in self._all_facts.get(tenant, []) if old(f)]
         ann = sum(1 for f in gone if is_annotation(f))
-        rels = sum(1 for r in self._all_rels.get(tenant, []) if old(r))
+        old_rels = sum(1 for r in self._all_rels.get(tenant, []) if old(r))
+        rels = sum(1 for r in self._all_rels.get(tenant, []) if old(r) and not is_relation_mark(r))  # marks go, uncounted
         if gone:
             self._all_facts[tenant] = [f for f in self._all_facts[tenant] if not old(f)]
             for subject, facts in self._facts[tenant].items():
                 self._facts[tenant][subject] = [f for f in facts if not old(f)]
             self._slots.pop(tenant, None)
-        if rels:
+        if old_rels:
             self._all_rels[tenant] = [r for r in self._all_rels[tenant] if not old(r)]
             for key, touching in self._rels[tenant].items():
                 self._rels[tenant][key] = [r for r in touching if not old(r)]

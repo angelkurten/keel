@@ -36,9 +36,13 @@ from keel.store.memory import (
     filter_relations,
     in_scope,
     is_close,
+    is_relation_mark,
     new_fact,
     place_close,
     place_fact,
+    rel_start,
+    relation_history,
+    relation_tail,
     same_slot,
     search_in,
 )
@@ -61,6 +65,13 @@ def _json(v: Any) -> Any:
 
 def _entity(row: Any) -> Entity:
     return Entity(tenant=row["tenant"], kind=row["kind"], id=row["id"], ref=row["ref"], attrs=_json(row["attrs"]))
+
+
+def _covering(rows: list[Relation], new: Relation) -> Relation:
+    """What link returns: the period holding at its instant, else the row its own event became."""
+    t = new.valid_from
+    held = [r for r in rows if not is_relation_mark(r) and r.valid_from <= t and (r.valid_to is None or r.valid_to > t)]
+    return held[0] if held else next((r for r in rows if rel_start(r) == rel_start(new)), new)
 
 
 def _relation(row: Any) -> Relation:
@@ -108,6 +119,7 @@ FACT_COLUMNS = (
 )
 # Two indexed branches, never `a = ? OR b = ?`: without table statistics SQLite plans that OR on the
 # tenant prefix alone and scans the whole tenant, so each read (and ingest) grew with the tenant.
+REL_MARK = "(valid_to IS NOT NULL AND valid_to = valid_from)"  # is_relation_mark in SQL
 RELATIONS_OF = "SELECT * FROM relations WHERE tenant = ? AND src = ? UNION ALL SELECT * FROM relations WHERE tenant = ? AND dst = ? ORDER BY seq"
 CHANGES = "SELECT * FROM facts WHERE tenant = ? AND changed_at > ? ORDER BY seq"
 
@@ -402,34 +414,46 @@ class SqlStore:
         valid_from, recorded_at = aware(valid_from), aware(recorded_at)
         if self._bulk is not None:
             return self._bulk.link(tenant, src, rel, dst, valid_from, source, recorded_at)
-        key = ("r", tenant, src, rel, dst)
-
-        def load() -> Relation | None:
-            row = self._one("SELECT * FROM relations WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL", (tenant, src, rel, dst))
-            return _relation(row) if row else None
-
-        existing = self._cached(key, load)
-        if existing is not None:
-            return existing  # already open; idempotent
-        now = utcnow()
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
-        self._exec(INSERT_RELATION, _relation_row(r))
-        if self._cache is not None:
-            self._cache[key] = r
-        return r
+        new = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or utcnow(), source=source)
+        return self._relate(new, unlink=False)
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
         valid_to, recorded_at = aware(valid_to), aware(recorded_at)
         if self._bulk is not None:
             self._bulk.unlink(tenant, src, rel, dst, valid_to, recorded_at)
             return
-        now = utcnow()
-        self._exec(
-            "UPDATE relations SET valid_to = ?, changed_at = ?, closed_at = ? WHERE tenant = ? AND src = ? AND rel = ? AND dst = ? AND valid_to IS NULL",
-            (_ts(valid_to), _ts(now), _ts(recorded_at or now), tenant, src, rel, dst),
-        )
-        if self._cache is not None:
-            self._cache.pop(("r", tenant, src, rel, dst), None)
+        self._relate(Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_to, recorded_at=recorded_at or utcnow()), unlink=True)
+
+    def _relate(self, new: Relation, unlink: bool) -> Relation:
+        """MemoryStore._relate over the relation's rows: insert the new ones, move the ends that changed, delete
+        the marks whose event now opens or ends a period."""
+        triple = (new.tenant, new.src, new.rel, new.dst)
+        last = self._one("SELECT MAX(valid_from) AS f, MAX(valid_to) AS t FROM relations WHERE tenant = ? AND src = ? AND rel = ? AND dst = ?", triple)
+        late = last is not None and any(x is not None and x >= _ts(new.valid_from) for x in (last["f"], last["t"]))
+        # in order (the usual case) only the open period matters; a late event reads the relation's whole history
+        which = "" if late else " AND valid_to IS NULL"
+        rows = [(_relation(r), r["seq"]) for r in self._rows(f"SELECT * FROM relations WHERE tenant = ? AND src = ? AND rel = ? AND dst = ?{which}", triple)]
+        tail = None if late else relation_tail([r for r, _ in rows], new, unlink)
+        held: dict[tuple[Any, ...], list[tuple[Relation, int]]] = {}
+        for r, seq in rows:
+            held.setdefault(rel_start(r), []).append((r, seq))
+        now, final = utcnow(), [r for r, _ in rows] if tail is not None else []
+        for spec in tail if tail is not None else relation_history([r for r, _ in rows], new, unlink):
+            bucket = held.get(rel_start(spec))
+            if not bucket:
+                spec.changed_at = now
+                self._exec(INSERT_RELATION, _relation_row(spec))
+                final.append(spec)
+                continue
+            r, seq = bucket.pop()
+            if (r.valid_to, r.closed_at) != (spec.valid_to, spec.closed_at):
+                r.valid_to, r.closed_at, r.changed_at = spec.valid_to, spec.closed_at, now
+                self._exec("UPDATE relations SET valid_to = ?, closed_at = ?, changed_at = ? WHERE seq = ?", (_ts(r.valid_to), _ts(r.closed_at), _ts(now), seq))
+            if not any(x is r for x in final):
+                final.append(r)
+        for _, seq in (x for bucket in held.values() for x in bucket) if tail is None else ():
+            self._exec("DELETE FROM relations WHERE seq = ?", (seq,))
+        return _covering(final, new)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, **kw: Any) -> Fact:
         if self._bulk is not None:
@@ -635,7 +659,7 @@ class SqlStore:
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
         """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
-        return [_relation(r) for r in self._rows("SELECT * FROM relations WHERE tenant = ? AND changed_at > ? ORDER BY seq", (tenant, _ts(after)))]
+        return [_relation(r) for r in self._rows(f"SELECT * FROM relations WHERE tenant = ? AND changed_at > ? AND NOT {REL_MARK} ORDER BY seq", (tenant, _ts(after)))]
 
     def watermark(self, tenant: str) -> datetime | None:
         """The latest write in the tenant (facts and links, ingest clock): a cursor for `changes`."""
@@ -700,7 +724,8 @@ class SqlStore:
         with self.transaction():
             counts = {
                 "entities": self._exec("DELETE FROM entities WHERE tenant = ?", (tenant,)),
-                "relations": self._exec("DELETE FROM relations WHERE tenant = ?", (tenant,)),
+                "relations": self._exec(f"DELETE FROM relations WHERE tenant = ? AND NOT {REL_MARK}", (tenant,)),
+                "relation marks": self._exec("DELETE FROM relations WHERE tenant = ?", (tenant,)),  # what is left: marks, uncounted
                 "annotations": self._exec("DELETE FROM facts WHERE tenant = ? AND (source LIKE ? OR source LIKE ?)", (tenant, "annotate:%", "consolidate:%")),
                 "facts": self._exec("DELETE FROM facts WHERE tenant = ?", (tenant,)),
                 "ingested": self._exec("DELETE FROM ingested WHERE tenant = ?", (tenant,)),
@@ -732,7 +757,8 @@ class SqlStore:
             counts = {
                 "annotations": self._exec(f"DELETE FROM facts WHERE {closed} AND (source LIKE ? OR source LIKE ?)", (tenant, cut, "annotate:%", "consolidate:%")),
                 "facts": self._exec(f"DELETE FROM facts WHERE {closed}", (tenant, cut)),
-                "relations": self._exec(f"DELETE FROM relations WHERE {closed}", (tenant, cut)),
+                "relations": self._exec(f"DELETE FROM relations WHERE {closed} AND NOT {REL_MARK}", (tenant, cut)),
+                "relation marks": self._exec(f"DELETE FROM relations WHERE {closed}", (tenant, cut)),  # what is left: marks, uncounted
             }
             row = self._one("SELECT cut FROM cutoffs WHERE tenant = ?", (tenant,))
             if row is None:
@@ -874,6 +900,7 @@ class _Bulk:
         self.rels_by: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, key) -> [[Relation, seq|None], ...]
         self.new_rels: list[Relation] = []
         self.closed_rels: dict[int, Relation] = {}
+        self.gone_rels: set[int] = set()  # saved relation marks whose event now opens or ends a period
         self.seen: dict[str, set[str]] = {}
         self.known_ids: dict[str, set[str]] = {}  # ids whose presence we checked
         self.new_ids: list[tuple[str, str]] = []
@@ -1002,24 +1029,52 @@ class _Bulk:
         return ent
 
     def link(self, tenant: str, src: str, rel: str, dst: str, valid_from: datetime, source: str | None, recorded_at: datetime | None = None) -> Relation:
-        for r, _ in self._rels(tenant, src):
-            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
-                return r
-        now = utcnow()
-        r = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or now, source=source, changed_at=now)
-        self.new_rels.append(r)
-        self._rels(tenant, src).append([r, None])
-        if dst != src and (tenant, dst) in self.rels_by:
-            self.rels_by[(tenant, dst)].append([r, None])
-        return r
+        new = Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_from, recorded_at=recorded_at or utcnow(), source=source)
+        return self._relate(new, unlink=False)
 
     def unlink(self, tenant: str, src: str, rel: str, dst: str, valid_to: datetime, recorded_at: datetime | None = None) -> None:
-        for r, seq in self._rels(tenant, src):
-            if r.src == src and r.rel == rel and r.dst == dst and r.valid_to is None:
-                r.valid_to, r.changed_at = valid_to, utcnow()
-                r.closed_at = recorded_at or r.changed_at
+        self._relate(Relation(tenant=tenant, src=src, rel=rel, dst=dst, valid_from=valid_to, recorded_at=recorded_at or utcnow()), unlink=True)
+
+    def _relate(self, new: Relation, unlink: bool) -> Relation:
+        """SqlStore._relate in the batch overlay: new rows join new_rels, moved ends of saved rows go to
+        closed_rels, saved marks that now open or end a period to gone_rels."""
+        tenant, src, dst = new.tenant, new.src, new.dst
+        entries = [e for e in self._rels(tenant, src) if e[0].src == src and e[0].rel == new.rel and e[0].dst == dst]
+        tail = relation_tail([e[0] for e in entries], new, unlink)  # in order: only the open period or a new row changes
+        specs = tail if tail is not None else relation_history([e[0] for e in entries], new, unlink)
+        wanted = {rel_start(spec) for spec in specs}
+        held: dict[tuple[Any, ...], list[list[Any]]] = {}
+        for e in entries:
+            if tail is None or rel_start(e[0]) in wanted:
+                held.setdefault(rel_start(e[0]), []).append(e)
+        now, final = utcnow(), [e[0] for e in entries] if tail is not None else []
+        for spec in specs:
+            bucket = held.get(rel_start(spec))
+            if not bucket:
+                spec.changed_at = now
+                self.new_rels.append(spec)
+                self._rels(tenant, src).append([spec, None])
+                if dst != src and (tenant, dst) in self.rels_by:
+                    self.rels_by[(tenant, dst)].append([spec, None])
+                final.append(spec)
+                continue
+            r, seq = bucket.pop()
+            if (r.valid_to, r.closed_at) != (spec.valid_to, spec.closed_at):
+                r.valid_to, r.closed_at, r.changed_at = spec.valid_to, spec.closed_at, now
                 if seq is not None:
-                    self.closed_rels[seq] = r
+                    self.closed_rels[seq] = r  # an unsaved one carries its new end into its own INSERT
+            if not any(x is r for x in final):
+                final.append(r)
+        for r, seq in (x for bucket in held.values() for x in bucket) if tail is None else ():
+            for k in ((tenant, src), (tenant, dst)):
+                if k in self.rels_by:
+                    self.rels_by[k] = [x for x in self.rels_by[k] if x[0] is not r]
+            if seq is None:
+                self.new_rels = [x for x in self.new_rels if x is not r]
+            else:
+                self.closed_rels.pop(seq, None)
+                self.gone_rels.add(seq)
+        return _covering(final, new)
 
     def open_fact(self, tenant: str, subject: str, predicate: str, value: Any, valid_from: datetime, kw: dict[str, Any]) -> Fact:
         since = self.partial.get((tenant, subject))
@@ -1083,6 +1138,11 @@ class _Bulk:
             s._execmany(INSERT_RELATION, [_relation_row(r) for r in self.new_rels])
         if self.closed_rels:
             s._close_rows("relations", {seq: (r.valid_to, r.closed_at, r.changed_at) for seq, r in self.closed_rels.items()})
+        if self.gone_rels:
+            gone = sorted(self.gone_rels)
+            for i in range(0, len(gone), 500):
+                part = gone[i : i + 500]
+                s._exec(f"DELETE FROM relations WHERE seq IN ({_in(len(part))})", tuple(part))
         if self.new_facts:
             s._execmany(INSERT_FACT, [_fact_row(f) for f in self.new_facts])
         if self.closed_facts:

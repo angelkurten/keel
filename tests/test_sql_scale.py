@@ -41,10 +41,24 @@ def test_one_event_at_a_time_a_late_fact_reads_its_neighbours_not_the_history():
 
 def test_a_bulk_batch_places_a_long_history_by_bisection():
     s = SqliteStore()
+    events = [Event(id=f"e{i}", tenant="t", type="x", subject="issue:1", occurred_at=T0, source="b", payload={}) for i in range(2)]
+    start = time.perf_counter()
+    with s.bulk(events):
+        for i in shuffled(N):
+            s.open_fact("t", "issue:1", "status", f"s{i % 5}", T0 + timedelta(hours=i),
+                        recorded_at=T0 + timedelta(hours=i, minutes=5), evidence=f"e{i}")
+    assert time.perf_counter() - start < 1.5  # a scan per insert takes ~5 s here
+    check_history(s.facts("t", "issue:1"), N)
+
+
+def test_a_relation_linked_again_by_every_event_stays_cheap_in_order():
+    """A handler that links on every event (a tire's mounted_on, on each measurement) keeps each link as a mark
+    of the relation's history; in order, each costs the open period, not a replay of the history."""
     events = [Event(id=f"e{i}", tenant="t", type="tire.depth_measured", subject="tire:T-9", occurred_at=T0 + timedelta(hours=i),
                     recorded_at=T0 + timedelta(hours=i, minutes=5), source="b",
-                    payload={"unit_id": "U1", "position": "P1", "depth_mm": 3 + (i % 50) / 10}) for i in shuffled(N)]
+                    payload={"unit_id": "U1", "position": "P1", "depth_mm": 3 + (i % 50) / 10}) for i in range(N)]
+    s = SqliteStore()
     start = time.perf_counter()
     Ingestor(load_cartridge(FLEET), s).ingest(events, strict=True, batch=5000)
-    assert time.perf_counter() - start < 1.5  # a scan per insert takes ~5 s here
-    check_history([f for f in s.facts("t", "tire:T-9") if f.predicate == "depth_mm"], N)
+    assert time.perf_counter() - start < 3.0
+    assert [(r.valid_from, r.valid_to) for r in s.relations("t", "tire:T-9", rel="mounted_on")] == [(T0, None)]
