@@ -1068,7 +1068,10 @@ class Tools:
             if holds is None or where or kinds != [spec.get("applies_to")]:
                 return None
             # the macro lists entities of the rule's kind it holds for, with the reads the Python sweep would make
-            keys = sorted(holds(self.tenant, self.cartridge, rule, graph.as_of, graph.known_at, self.author, graph.task))
+            held = holds(self.tenant, self.cartridge, rule, graph.as_of, graph.known_at, self.author, graph.task)
+            if held is None:  # a rule the store cannot compile: the sweep evaluates it
+                return None
+            keys = sorted(held)
         else:
             matching = getattr(self.store, "subjects_where", None)
             found = matching(self.tenant, self.cartridge, kinds, where, graph.as_of, graph.known_at, self.author, graph.task) if matching and where else None

@@ -99,4 +99,4 @@ def test_every_question_reads_the_same_with_and_without_push_down(kind, tenant, 
             compared += 1
     assert len(questions) == 129 and compared >= 129
     assert spy.calls["facts_between"] and spy.calls["subjects_where"]
-    assert spy.calls["rule_subjects"] or kind == "sqlite"
+    assert spy.calls["rule_subjects"]

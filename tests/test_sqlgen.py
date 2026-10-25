@@ -28,7 +28,7 @@ UTC = timezone.utc
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES = ["fleet", "crm", "finance", "clinics", "relay"]
 POSTGRES = os.environ.get("KEEL_POSTGRES_URL")  # postgresql://postgres:keel@127.0.0.1:5499/keel
-BACKENDS = ["duckdb"] + (["postgres"] if POSTGRES else [])
+BACKENDS = ["duckdb", "sqlite"] + (["postgres"] if POSTGRES else [])
 
 
 # ---- helpers: Keel on one side, the generated schema on the other ------------------------------------------
@@ -47,12 +47,44 @@ class PgCon:
         return self.cur
 
 
+class SqliteCon:
+    """A SqliteStore's connection with DuckDB's call shape: SQLite has no table macros, so a query that calls the
+    generated ones has its `?` bound as literals and the calls expanded by the store's compiled cartridge."""
+
+    def __init__(self, store: Any, cartridge: Any = None) -> None:
+        self.store = store
+        if cartridge is not None:
+            store.install(cartridge)
+
+    def execute(self, sql: str, params: Any = None) -> Any:
+        if sql.lstrip().upper().startswith("INSERT"):
+            rows = self.store.db.execute(sql, tuple(params or ())).fetchall()
+        else:
+            lit = sqlgen.SQLite().lit
+            for p in params or ():
+                sql = sql.replace("?", lit(p), 1)
+            rows = self.store.db.execute(self.store.compiled.expand(sql)).fetchall()
+        return _Rows([tuple(r) for r in rows])
+
+
+class _Rows(list):
+    def fetchall(self) -> list[tuple[Any, ...]]:
+        return list(self)
+
+    def fetchone(self) -> tuple[Any, ...] | None:
+        return self[0] if self else None
+
+
 def connect(cartridge: Any, backend: str = "duckdb") -> Any:
-    """An empty generated schema: DuckDB in memory, or a fresh Postgres schema."""
+    """An empty generated schema: DuckDB in memory, a SqliteStore in memory, or a fresh Postgres schema."""
     if backend == "duckdb":
         con = duckdb.connect()
         con.execute(sqlgen.generate(cartridge))
         return con
+    if backend == "sqlite":
+        from keel import SqliteStore
+
+        return SqliteCon(SqliteStore(), cartridge)
     import psycopg
 
     conn = psycopg.connect(POSTGRES, autocommit=True)
@@ -64,6 +96,8 @@ def connect(cartridge: Any, backend: str = "duckdb") -> Any:
 
 def con_of(store: Any) -> Any:
     """The connection a store's generated functions answer on, in DuckDB's call shape."""
+    if type(store).__name__ == "SqliteStore":
+        return SqliteCon(store)
     return store.db if type(store).__name__ == "DuckdbStore" else PgCon(store.db)
 
 
@@ -332,6 +366,10 @@ def both_stores(name: str, events: list[Event], cartridge: Any = None, backend: 
     c = cartridge or load_cartridge(ROOT / "examples" / name)
     if backend == "duckdb":
         ref, duck = MemoryStore(), DuckdbStore()
+    elif backend == "sqlite":
+        from keel import SqliteStore
+
+        ref, duck = MemoryStore(), SqliteStore()
     else:
         from conftest import postgres_store
 

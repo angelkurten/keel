@@ -276,7 +276,7 @@ def test_search_where_pushes_down_with_the_same_output(kind, name, tmp_path):
 
 
 @pytest.mark.parametrize("name", NAMES)
-@pytest.mark.parametrize("kind", [s for s in STORES if s != "sqlite"])
+@pytest.mark.parametrize("kind", STORES)
 def test_search_rule_pushes_down_with_counts_pages_and_memory(kind, name, tmp_path):
     sc = Scenario(kind, name, tmp_path)
     spy = Spy(sc.store)
@@ -314,3 +314,26 @@ def test_a_store_whose_values_are_not_json_text_declines_where(tmp_path):
     assert MysqlStore.JSON_TEXT is False
     fleet = load_cartridge(ROOT / "examples" / "fleet")
     assert Normalizing(tmp_path / "k.db").subjects_where("t", fleet, ["tire"], {"status": "x"}, datetime.now(UTC)) is None
+
+
+def test_a_rule_sqlite_cannot_compile_is_evaluated_in_python(tmp_path):
+    """SqliteStore compiles rules per rule: one it cannot compile (an `eq` with a list) declines (None) and Tools
+    evaluates it in Python; the others still push down."""
+    sc = Scenario("sqlite", "fleet", tmp_path)
+    sc.c.rules = {**sc.c.rules, "odd": {"applies_to": "tire", "when": {"predicate": "depth_mm", "eq": [1, 2]}}}
+    assert sc.store.rule_subjects(sc.tenant, sc.c, "odd", datetime.now(UTC)) is None
+    spy = Spy(sc.store)
+    for rule in ("odd", "tire_critical"):
+        both(sc, lambda x: x.search(rule=rule, detail="key", limit=0), spy=spy)
+    assert spy.calls["rule_subjects"] == 2
+
+
+def test_sqlite_declines_rules_with_a_table_prefix_or_an_old_library(tmp_path, monkeypatch):
+    """The expanded SQL names the unprefixed tables and needs SQLite 3.39: otherwise Tools evaluates rules in Python."""
+    import keel.store.sqlite as mod
+
+    assert SqliteStore(tmp_path / "p.db", prefix="keel_").rule_subjects is None
+    monkeypatch.setattr(mod.sqlite3, "sqlite_version_info", (3, 31, 1))
+    assert SqliteStore(tmp_path / "o.db").rule_subjects is None
+    monkeypatch.undo()
+    assert SqliteStore(tmp_path / "n.db").rule_subjects is not None
