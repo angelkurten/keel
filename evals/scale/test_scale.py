@@ -272,3 +272,30 @@ def test_rows_copied_from_a_sqlite_build_answer_the_tenant_ops_alike(target, tmp
     for op in harness.ops(sample, random.Random(1), 0, 4):
         assert harness.call(a, dst, op) == harness.call(b, src, op), op
 
+
+
+@pytest.mark.skipif(not __import__("os").environ.get("KEEL_POSTGRES_URL"), reason="KEEL_POSTGRES_URL not set")
+def test_rule_push_down_on_postgres_is_not_quadratic(tmp_path):
+    """Postgres runs a correlated lookup of a CTE as a scan of it: a rule over a few thousand issues must still
+    answer in a moment (and as SQLite's Python path does)."""
+    import time
+
+    log = tmp_path / "log.jsonl"
+    gen.write(log, gen.generate(40000, seed=12))
+    src = SqliteStore(tmp_path / "src.db")
+    assert not Ingestor(load_cartridge(JIRA), src).ingest(harness.read_events(log), batch=5000).errors
+    dst = harness._open("postgres", None)
+    harness.copy_rows(tmp_path / "src.db", dst)
+    c = load_cartridge(JIRA)
+    from tests.test_pushdown import Plain
+
+    sample = harness.Sample.of(harness.read_events(log))
+    at = sample.lo + (sample.hi - sample.lo) * 0.6
+    a, b = Tools(c, dst, sample.tenant), Tools(c, Plain(src), sample.tenant)
+    for rule in harness.RULES:
+        a.search(rule=rule, as_of=at, detail="count")  # the functions installed, the plan cached
+        t0 = time.perf_counter()
+        got = a.search(rule=rule, as_of=at, detail="count")
+        took = time.perf_counter() - t0
+        assert got == b.search(rule=rule, as_of=at, detail="count"), rule
+        assert took < 3.0, (rule, took)

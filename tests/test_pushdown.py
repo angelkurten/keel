@@ -302,3 +302,15 @@ def test_a_where_the_store_cannot_compare_exactly_falls_back(kind, tmp_path):
     for where in ({"label": 1}, {"label": "straße"}, {"label": None}, {"label": ["x"]}):
         assert s.subjects_where(sc.tenant, sc.c, sorted(sc.c.entities), where, datetime.now(UTC)) is None, where
     assert s.subjects_where(sc.tenant, sc.c, sorted(sc.c.entities), {"label": "plain"}, datetime.now(UTC)) is not None
+
+
+def test_a_store_whose_values_are_not_json_text_declines_where(tmp_path):
+    """MySQL's JSON column hands values back in its own form, so text comparisons in SQL would not be exact."""
+    from keel.store.mysql import MysqlStore
+
+    class Normalizing(SqliteStore):
+        JSON_TEXT = False
+
+    assert MysqlStore.JSON_TEXT is False
+    fleet = load_cartridge(ROOT / "examples" / "fleet")
+    assert Normalizing(tmp_path / "k.db").subjects_where("t", fleet, ["tire"], {"status": "x"}, datetime.now(UTC)) is None

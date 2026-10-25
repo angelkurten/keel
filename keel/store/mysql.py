@@ -33,6 +33,7 @@ class MysqlStore(SqlStore):
     PLACEHOLDER = "%s"
     ENTITY_ORDER = "seq"
     PER_THREAD_READS = True
+    JSON_TEXT = False  # a JSON column hands values back in MySQL's own form: subjects_where declines, Tools sweeps in Python
     # keys compare exactly: under the server default (`utf8mb4_0900_ai_ci`) `pagina/RENDIMIENTO` and
     # `pagina/Rendimiento` were one entity, and Número one with Numero
     SCHEMA = """

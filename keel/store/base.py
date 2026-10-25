@@ -162,6 +162,19 @@ class Store(Protocol):
     # def forget_before(self, tenant: str, before: datetime) -> dict[str, int]: ...
     # def cutoff(self, tenant: str) -> datetime | None: ...
 
+    # push-down (optional, feature-detected by Tools; without them Tools reads the tenant in Python, same answers):
+    # facts_between: the tenant's facts (no close marks) with valid_from in [since, until], as stored, in write order;
+    # optionally one predicate, only those recorded by `recorded_by`, memory expired by `alive_at` (now) left out.
+    # subjects_where: the entities of `kinds` a `where` of ASCII texts may hold for at `as_of` (as known at `known_at`),
+    # as Tools reads facts for (author, task); key -> True when certain, False when Tools must check; None to decline.
+    # rule_subjects: the entities a cartridge rule holds for at `as_of` (as known at `known_at`), for (author, task).
+    # def facts_between(self, tenant: str, since: datetime, until: datetime, predicate: str | None = None,
+    #                   recorded_by: datetime | None = None, alive_at: datetime | None = None) -> list[Fact]: ...
+    # def subjects_where(self, tenant: str, cartridge: Any, kinds: list[str], where: dict[str, Any], as_of: datetime,
+    #                    known_at: datetime | None = None, author: str | None = None, task: str | None = None) -> dict[str, bool] | None: ...
+    # def rule_subjects(self, tenant: str, cartridge: Any, rule: str, as_of: datetime, known_at: datetime | None = None,
+    #                   author: str | None = None, task: str | None = None) -> set[str]: ...
+
     # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
     # def tenants(self) -> list[str]: ...
 

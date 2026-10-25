@@ -99,6 +99,11 @@ CREATE OR REPLACE MACRO keel_days(a, b) AS
     def table_macro(self, name: str, params: str, body: str, returns: str = "") -> str:
         return f"CREATE OR REPLACE MACRO {name}({params}) AS TABLE\n{body};\n"
 
+    def rule_verdicts(self, name: str, params: str, ctes: list[tuple[str, bool, str, list[str]]], select: str) -> str:
+        """A rule's verdicts: its intermediate results as CTEs of one statement (DuckDB decorrelates the lookups)."""
+        body = ",\n".join(f"{n} AS MATERIALIZED ({b})" if mat else f"{n} AS ({b})" for n, mat, b, _ in ctes)
+        return self.table_macro(name, params, f"WITH {body}\n{select}", "subject text, verdict boolean")
+
     # the bodies that lean on DuckDB's star expressions (EXCLUDE, RENAME, UNION ALL BY NAME)
     def facts_star(self) -> str:
         return "*"
@@ -229,6 +234,26 @@ END $keel$;
         # DROP first: CREATE OR REPLACE cannot change a function's result columns
         return (f"DROP FUNCTION IF EXISTS {name}({', '.join('text' for _ in args)});\n"
                 f"CREATE FUNCTION {name}({decl}) RETURNS TABLE({returns}) LANGUAGE sql STABLE AS $keel$\n{body}\n$keel$;\n")
+
+    def rule_verdicts(self, name: str, params: str, ctes: list[tuple[str, bool, str, list[str]]], select: str) -> str:
+        """A rule's verdicts as a plpgsql function: Postgres runs each lookup of a CTE (a correlated subquery per
+        subject) as a scan of it, quadratic in the tenant, so every intermediate result becomes a temp table with
+        an index on what the lookups go by, then the verdicts are one query over them."""
+        args = [p.split(" := ")[0] for p in params.split(", ")]
+        decl = ", ".join(f"{p.split(' := ')[0]} text" + (" DEFAULT NULL" if " := " in p else "") for p in params.split(", "))
+        steps = []
+        for n, _, b, keys in ctes:
+            steps.append(f"  DROP TABLE IF EXISTS pg_temp.{n};\n  CREATE TEMP TABLE {n} AS {b};")
+            # the temp columns carry the default collation (the functions return plain text) while a subject from the
+            # tables compares in "C": an index under each, or the planner cannot probe it from both kinds of lookup
+            for cols in keys:
+                first, _, rest = cols.partition(",")
+                steps += [f"  CREATE INDEX ON {n} ({cols});", f'  CREATE INDEX ON {n} ({first} COLLATE "C"{"," + rest if rest else ""});']
+            steps.append(f"  ANALYZE {n};")
+        return (f"DROP FUNCTION IF EXISTS {name}({', '.join('text' for _ in args)});\n"
+                f"CREATE FUNCTION {name}({decl}) RETURNS TABLE(subject text, verdict boolean) LANGUAGE plpgsql VOLATILE AS $keel$\n"
+                f"#variable_conflict use_column\nBEGIN\n  PERFORM set_config('client_min_messages', 'warning', true);\n"
+                + "\n".join(steps) + f"\n  RETURN QUERY {select};\nEND $keel$;\n")
 
     def facts_star(self) -> str:
         return ", ".join(FACT_COLUMNS)
@@ -365,7 +390,7 @@ class _Rule:
 
     def __init__(self, d: Any, calendar: Calendar, symmetric: set[str]) -> None:
         self.d, self.calendar, self.symmetric = d, calendar, symmetric
-        self.ctes: list[str] = []
+        self.ctes: list[tuple[str, bool, str, list[str]]] = []  # (name, materialized, body, the columns a lookup goes by)
         self.predicates: set[str] = set()
         self.n = 0
 
@@ -378,23 +403,24 @@ class _Rule:
         params = "tnt, t, k := NULL, alive := NULL, as_author := NULL, as_task := NULL"
         of_kind = f"kind = {d.lit(kind)}" if kind else "TRUE"
         subject_kind = f"split_part(subject, ':', 1) = {d.lit(kind)}" if kind else "TRUE"
-        ctes = ",\n".join([
-            (f"vis AS MATERIALIZED (SELECT * FROM keel_visible(tnt, k := k, alive := alive, as_author := as_author, as_task := as_task) "
-            f"WHERE predicate IN ({preds}) AND valid_from <= {self.T})"),
-            (f"cur AS MATERIALIZED (SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY subject, predicate "
-            f"ORDER BY valid_from DESC, (tenant <> tnt) DESC, seq DESC) AS rn FROM vis WHERE valid_to IS NULL OR valid_to > {self.T}) WHERE rn = 1)"),
-            "nbr AS MATERIALIZED (SELECT * FROM relations_known_at(tnt, t, k := k))",
+        ctes = [
+            ("vis", True, (f"SELECT * FROM keel_visible(tnt, k := k, alive := alive, as_author := as_author, as_task := as_task) "
+                           f"WHERE predicate IN ({preds}) AND valid_from <= {self.T}"), ["subject, predicate"]),
+            ("cur", True, (f"SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY subject, predicate "
+                           f"ORDER BY valid_from DESC, (tenant <> tnt) DESC, seq DESC) AS rn FROM vis WHERE valid_to IS NULL OR valid_to > {self.T}) WHERE rn = 1"),
+             ["subject, predicate"]),
+            ("nbr", True, "SELECT * FROM relations_known_at(tnt, t, k := k)", ["src, rel", "dst, rel"]),
             *self.ctes,
-        ])
+        ]
         # every subject Keel knows of that kind: an entity, a fact's subject, a relation's end
-        body = (f"WITH {ctes}\nSELECT s.subject, {expr} AS verdict FROM (\n"
-                f"  SELECT kind || ':' || id AS subject FROM entities WHERE tenant = tnt AND {of_kind}\n"
-                f"  UNION SELECT subject FROM facts WHERE tenant = tnt AND {subject_kind}\n"
-                f"  UNION SELECT src FROM relations WHERE tenant = tnt AND {subject_kind.replace('subject', 'src')}\n"
-                f"  UNION SELECT dst FROM relations WHERE tenant = tnt AND {subject_kind.replace('subject', 'dst')}) s")
+        select = (f"SELECT s.subject, {expr} AS verdict FROM (\n"
+                  f"  SELECT kind || ':' || id AS subject FROM entities WHERE tenant = tnt AND {of_kind}\n"
+                  f"  UNION SELECT subject FROM facts WHERE tenant = tnt AND {subject_kind}\n"
+                  f"  UNION SELECT src FROM relations WHERE tenant = tnt AND {subject_kind.replace('subject', 'src')}\n"
+                  f"  UNION SELECT dst FROM relations WHERE tenant = tnt AND {subject_kind.replace('subject', 'dst')}) s")
         at = f"SELECT v.subject FROM {m}_verdicts(tnt, t, k := k, alive := alive, as_author := as_author, as_task := as_task) v " \
              f"JOIN entities e ON e.tenant = tnt AND e.kind || ':' || e.id = v.subject WHERE v.verdict"
-        return d.table_macro(f"{m}_verdicts", params, body, "subject text, verdict boolean") + d.table_macro(f"{m}_at", params, at, "subject text")
+        return d.rule_verdicts(f"{m}_verdicts", params, ctes, select) + d.table_macro(f"{m}_at", params, at, "subject text")
 
     def alias(self, prefix: str) -> str:
         self.n += 1
@@ -512,7 +538,7 @@ class _Rule:
         checks = [self.comparison(op, arg, "h", ci) for op, arg in c.items() if op in _SYM or op in ("ne", "in", "within_days")]
         m = ("CASE " + " ".join(f"WHEN ({x}) IS NULL THEN NULL WHEN NOT ({x}) THEN FALSE" for x in checks) + " ELSE TRUE END") if checks else "TRUE"
         nxt = "coalesce(lead(h.valid_from) OVER w, cc.valid_from)"
-        self.ctes.append(f"""{h} AS (SELECT subject,
+        self.ctes.append((h, False, f"""SELECT subject,
     {self.d.first_of("status", "rn", "status <> 'ok'")} = 'e' AS err,
     coalesce({self.d.first_of("nxt", "rn", "status <> 'ok'")}, min(valid_from)) AS since
   FROM (SELECT h.subject, h.valid_from, row_number() OVER w AS rn, {nxt} AS nxt,
@@ -520,7 +546,7 @@ class _Rule:
         FROM vis h JOIN cur cc ON cc.subject = h.subject AND cc.predicate = h.predicate
         WHERE h.predicate = {self.d.lit(p)} AND h.valid_from < cc.valid_from
         WINDOW w AS (PARTITION BY h.subject ORDER BY h.valid_from, h.seq))
-  GROUP BY subject)""")
+  GROUP BY subject""", ["subject"]))
         return h
 
     def business_days(self, start: str, end: str) -> str:
