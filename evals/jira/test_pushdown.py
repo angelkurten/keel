@@ -28,7 +28,7 @@ DATA = Path(os.environ.get("KEEL_JIRA_DATA", Path.home() / "datasets" / "public-
 TENANTS = ("hyperledger", "mariadb", "spring")
 PG = os.environ.get("KEEL_POSTGRES_URL")
 sys.path.insert(0, str(HERE.parent.parent / "tests"))
-from test_pushdown import Plain, Spy, ask  # noqa: E402
+from test_pushdown import Plain, Spy, ask
 
 pytestmark = pytest.mark.skipif(not all((DATA / f"{t}.questions.json").exists() for t in TENANTS), reason="Public Jira Dataset export not found")
 
