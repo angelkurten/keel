@@ -101,6 +101,8 @@ class PostgresStore(SqlStore):
     def _prepare(self, conn: Any) -> None:
         conn.autocommit = True
         conn.execute("SET TimeZone = 'UTC'")
+        # Keel's statements are many and short: compiling one (JIT, on above a cost estimate) took 80-200 ms, more than running it
+        conn.execute("SET jit = off")
 
     def _cursor(self, conn: Any) -> _Cursor:
         return _Cursor(conn.cursor())
@@ -137,25 +139,14 @@ class PostgresStore(SqlStore):
                 self._exec("SELECT pg_advisory_unlock(7413)")
             self._installed = ident
 
-    # subjects_where on Postgres: attrs read as jsonb by key, the state from the generated state_known_at function
+    # subjects_where on Postgres: attrs read as jsonb by key
     JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "jsonb_typeof(({0})::jsonb -> {1}::text)", "(({0})::jsonb ->> {1}::text)", "'string'", "'array'"
     ASCII = "(octet_length({0}) = length({0}))"
     JSON_PATH = "{}"
     INSTR = "strpos({0}, {1})"
 
-    def _where_state(self, tenant: str, cartridge: Any, predicates: list[str], as_of: datetime, known_at: datetime | None,
-                     author: str | None, task: str | None) -> tuple[str, tuple[Any, ...]]:
-        """The current facts of some predicates by the generated `state_known_at` function (a prefixed store: plain SQL)."""
-        from keel.envelope import utcnow
-
-        if self.prefix:  # the generated functions read the unprefixed tables
-            return super()._where_state(tenant, cartridge, predicates, as_of, known_at, author, task)
-        self.install(cartridge)
-        lit = sqlgen.Postgres().lit
-        sql = (f"SELECT subject, predicate, value FROM state_known_at({lit(tenant)}, {lit(_ts(as_of))}, k => {lit(_ts(known_at))}, "
-               f"alive => {lit(_ts(known_at or utcnow()))}, as_author => {lit(author)}, as_task => {lit(task)}) "
-               f"WHERE predicate IN ({', '.join(lit(p) for p in predicates)})")
-        return sql, ()
+    # the state itself is SqlStore's plain SQL: on Postgres it beats the generated state_known_at function, which
+    # rebuilds every predicate's closes before filtering (10^6 events: 204 vs 426 ms stored, 469 vs 1,046 ms as known at)
 
     def rule_subjects(self, tenant: str, cartridge: Any, rule: str, as_of: datetime, known_at: datetime | None = None,
                       author: str | None = None, task: str | None = None) -> set[str]:

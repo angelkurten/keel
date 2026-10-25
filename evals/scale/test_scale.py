@@ -299,3 +299,21 @@ def test_rule_push_down_on_postgres_is_not_quadratic(tmp_path):
         took = time.perf_counter() - t0
         assert got == b.search(rule=rule, as_of=at, detail="count"), rule
         assert took < 3.0, (rule, took)
+
+
+def test_summary_puts_the_pushed_down_reads_beside_the_python_path(tmp_path):
+    from evals.scale import summary
+
+    lat = lambda ms: {op: {**harness.percentiles([ms / 1000] * 3), "errors": 0, "skipped": 0} for op in harness.TENANT_OPS}
+    rows = [
+        {"kind": "one", "label": "syn:1000", "store": "sqlite", "phase": "queries", "latency": lat(9000.0), "machine": harness.machine()},
+        {"kind": "one", "label": "pushdown:syn:1000", "store": "sqlite", "phase": "queries", "latency": lat(12.0)},
+        {"kind": "one", "label": "pushdown:syn:1000", "store": "postgres", "phase": "load", "load_s": 3.0, "rows": {"facts": 5}},
+        {"kind": "one", "label": "pushdown:syn:1000", "store": "postgres", "phase": "queries", "latency": lat(40.0)},
+    ]
+    res = tmp_path / "r.jsonl"
+    res.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    text = summary.write(res, tmp_path / "s.md")
+    assert "Tenant-wide reads pushed down" in text
+    section = text.split("Tenant-wide reads pushed down", 1)[1]
+    assert "syn:1000" in section and "9,000" in section and "12.0" in section and "40.0" in section and "PostgresStore" in section

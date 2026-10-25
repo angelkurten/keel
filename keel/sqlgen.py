@@ -249,7 +249,8 @@ END $keel$;
             for cols in keys:
                 first, _, rest = cols.partition(",")
                 steps += [f"  CREATE INDEX ON {n} ({cols});", f'  CREATE INDEX ON {n} ({first} COLLATE "C"{"," + rest if rest else ""});']
-            steps.append(f"  ANALYZE {n};")
+            if keys:
+                steps.append(f"  ANALYZE {n};")
         return (f"DROP FUNCTION IF EXISTS {name}({', '.join('text' for _ in args)});\n"
                 f"CREATE FUNCTION {name}({decl}) RETURNS TABLE(subject text, verdict boolean) LANGUAGE plpgsql VOLATILE AS $keel$\n"
                 f"#variable_conflict use_column\nBEGIN\n  PERFORM set_config('client_min_messages', 'warning', true);\n"
@@ -405,7 +406,7 @@ class _Rule:
         subject_kind = f"split_part(subject, ':', 1) = {d.lit(kind)}" if kind else "TRUE"
         ctes = [
             ("vis", True, (f"SELECT * FROM keel_visible(tnt, k := k, alive := alive, as_author := as_author, as_task := as_task) "
-                           f"WHERE predicate IN ({preds}) AND valid_from <= {self.T}"), ["subject, predicate"]),
+                           f"WHERE predicate IN ({preds}) AND valid_from <= {self.T}"), []),  # joined, never probed
             ("cur", True, (f"SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY subject, predicate "
                            f"ORDER BY valid_from DESC, (tenant <> tnt) DESC, seq DESC) AS rn FROM vis WHERE valid_to IS NULL OR valid_to > {self.T}) WHERE rn = 1"),
              ["subject, predicate"]),

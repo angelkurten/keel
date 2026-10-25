@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from evals.scale.harness import OPS
+from evals.scale.harness import OPS, TENANT_OPS
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:
@@ -102,6 +102,26 @@ def write(results: Path, md: Path) -> str:
         mix = [f"{s}: {_f(q[s].get('mix_mean_ms'), 2)} ms" for s in ("memory", "sqlite") if q[s]]
         parts += [f"### {label}", "", _table(["op", "MemoryStore", "SqliteStore", "DuckDB"], body), "",
                   f"Weighted benchmark mix, mean: {', '.join(mix)}." if mix else "", ""]
+    # tenant-wide reads pushed down to the store, beside the Python path they replace
+    names = {"memory": "MemoryStore", "sqlite": "SqliteStore", "duckdb": "DuckdbStore", "postgres": "PostgresStore"}
+    tables = []
+    for label in _labels(rows, "pushdown:"):
+        base = label.removeprefix("pushdown:")
+        cols = [(f"{names[s]}, Python", _last(rows, kind="one", label=base, store=s, phase="queries")) for s in ("memory", "sqlite")]
+        cols += [(f"{names[s]}, push-down", _last(rows, kind="one", label=label, store=s, phase="queries")) for s in ("sqlite", "duckdb", "postgres")]
+        cols = [(name, r["latency"]) for name, r in cols if r]
+        body = [[op, *(" / ".join(_ms(lat.get(op), k) for k in ("p50_ms", "p95_ms"))
+                       + (f" (n={lat[op]['n']})" if lat.get(op) and lat[op].get("n", 10) < 10 else "") for _, lat in cols)] for op in TENANT_OPS]
+        tables += [f"### {base}", "", _table(["op", *(name for name, _ in cols)], body), ""]
+    if tables:
+        loads = [f"{r['label']} {names.get(r['store'], r['store'])}: {_f(r.get('load_s'), 1)} s" for r in rows
+                 if str(r.get("label", "")).startswith("pushdown:") and r.get("phase") == "load" and r.get("load_s") is not None]
+        parts += ["## Tenant-wide reads pushed down to the store (ms): p50 / p95", "",
+                  ("The same seeded tenant-wide ops, answered by the store's optional capabilities (facts_between, subjects_where, "
+                   "rule_subjects) instead of Tools' Python sweep; tests/test_pushdown.py and evals/jira/test_pushdown.py check the "
+                   "outputs are identical. SqliteStore: plain indexed SQL, rules still in Python. DuckdbStore and PostgresStore hold "
+                   "the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`)."
+                   + (" Copied in: " + "; ".join(loads) + "." if loads else "")), "", *tables]
     # duckdb load
     body = []
     for label in _labels(rows, "real:") + _labels(rows, "syn:"):
