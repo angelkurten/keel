@@ -29,6 +29,7 @@ from keel.store.base import Account, ApiKey, DuplicateKey, Entity, Fact, Relatio
 from keel.store.memory import (
     ANY,
     CLOSE,
+    SlotIndex,
     changed_after,
     close_mark,
     filter_facts,
@@ -139,7 +140,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     TIME = "TEXT"  # the dialect's type for a timestamp column
@@ -173,6 +174,8 @@ class SqlStore:
             self._mark_old_closes()  # a database from <= 0.32 (no relations.closed_at) never wrote a close mark
         if not self._has_index("relations", "relations_recorded"):  # transaction-time reads of links
             self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
+        if not self._has_index("facts", "facts_slot"):  # a late fact reads its neighbours, not its history
+            self._ddl("CREATE INDEX facts_slot ON facts (tenant, subject, predicate, valid_from)", lambda: self._has_index("facts", "facts_slot"))
         if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
             self._ddl("CREATE INDEX facts_open ON facts (tenant, subject, valid_to)", lambda: self._has_index("facts", "facts_open"))
         if not self._has_index("facts", "facts_key"):  # annotate(key=) stays one write even across processes
@@ -438,9 +441,16 @@ class SqlStore:
             rows = self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? AND predicate = ?", (tenant, subject, predicate))
             return [(_fact(r), r["seq"]) for r in rows]
 
-        same = self._cached(key, load)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        closed = place_fact(f, same_slot((fact for fact, _ in same), f, kw.get("per_source", False)), (fact for fact, _ in same))
+        same = self._cache.get(key) if self._cache is not None else None
+        if same is not None:  # this transaction already read the history: place against it
+            closed = place_fact(f, same_slot((fact for fact, _ in same), f, kw.get("per_source", False)), (fact for fact, _ in same))
+            near = same
+        else:  # only the two neighbours and the close marks, never the whole history (it keeps growing)
+            near = self._neighbours(f, kw.get("per_source", False))
+            marks = [_fact(r) for r in self._rows("SELECT * FROM facts WHERE tenant = ? AND subject = ? AND predicate = ? AND source = ?",
+                                                  (tenant, subject, predicate, CLOSE))]
+            closed = place_fact(f, [fact for fact, _ in near], marks)
         try:  # insert before closing the previous fact: a refused insert leaves nothing half done
             self._insert(INSERT_FACT, _fact_row(f))
         except Exception as exc:  # each driver has its own IntegrityError; the key decides if it is ours
@@ -451,10 +461,31 @@ class SqlStore:
                 raise
             raise DuplicateKey(_fact(row)) from exc
         if closed is not None:
-            seq = next(s for fact, s in same if fact is closed)
+            seq = next(s for fact, s in near if fact is closed)
             self._exec("UPDATE facts SET valid_to = ?, closed_at = ?, changed_at = ? WHERE seq = ?", (_ts(closed.valid_to), _ts(closed.closed_at), _ts(closed.changed_at), seq))
-        same.append((f, self._last_id))
+        if same is not None:
+            same.append((f, self._last_id))
         return f
+
+    def _neighbours(self, f: Fact, per_source: bool) -> list[tuple[Fact, int]]:
+        """The rows of `f`'s slot (same_slot) at the valid_from just before it, at its own and just after it:
+        the facts that succession places right before and after `f` are among them, whatever the ties."""
+        scope = Scope(f.scope)
+        where, args = ["tenant = ?", "subject = ?", "predicate = ?", "(source IS NULL OR source <> ?)", "scope = ?"], [f.tenant, f.subject, f.predicate, CLOSE, scope.value]
+        pairs = [("status", f.status)]
+        if scope == Scope.TASK:
+            pairs.append(("task", f.task))
+        if scope == Scope.AGENT or per_source:
+            pairs.append(("source", f.source))
+        if per_source:
+            pairs.append(("corrected_by", f.corrected_by))
+        for col, v in pairs:
+            where.append(f"{col} IS NULL" if v is None else f"{col} = ?")
+            args += [] if v is None else [v]
+        w, at = " AND ".join(where), _ts(f.valid_from)
+        rows = self._rows(f"SELECT * FROM facts WHERE {w} AND valid_from IN (?, (SELECT MAX(valid_from) FROM facts WHERE {w} AND valid_from < ?), "
+                          f"(SELECT MIN(valid_from) FROM facts WHERE {w} AND valid_from > ?))", (*args, at, *args, at, *args, at))
+        return [(_fact(r), r["seq"]) for r in rows]
 
     def close_fact(self, tenant: str, subject: str, predicate: str, valid_to: datetime, status: str | None = None, scope: Scope | str | None = Scope.TENANT,
                    recorded_at: datetime | None = None, value: Any = ANY) -> None:
@@ -837,6 +868,7 @@ class _Bulk:
         self.entities: dict[tuple[str, str], Entity | None] = {}
         self.dirty_entities: set[tuple[str, str]] = set()
         self.facts_by: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, subject) -> [[Fact, seq|None], ...]
+        self.slots: dict[tuple[str, str], tuple[list[list[Any]], int, SlotIndex]] = {}  # facts_by's list, its length, its index
         self.new_facts: list[Fact] = []
         self.closed_facts: dict[int, Fact] = {}
         self.rels_by: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, key) -> [[Relation, seq|None], ...]
@@ -931,6 +963,19 @@ class _Bulk:
     def facts(self, tenant: str, subject: str) -> list[Fact]:
         return [f for f, _ in self._whole(tenant, subject)]
 
+    def _slots(self, tenant: str, subject: str, same: list[list[Any]]) -> SlotIndex:
+        """`same`'s SlotIndex, rebuilt when the list was replaced (_whole) or grew behind it."""
+        held = self.slots.get((tenant, subject))
+        if held is None or held[0] is not same or held[1] != len(same):
+            held = self.slots[(tenant, subject)] = (same, len(same), SlotIndex(same, fact=lambda e: e[0]))
+        return held[2]
+
+    def _append(self, tenant: str, subject: str, same: list[list[Any]], entry: list[Any]) -> None:
+        idx = self._slots(tenant, subject, same)
+        same.append(entry)
+        idx.add(entry)
+        self.slots[(tenant, subject)] = (same, len(same), idx)
+
     def _rels(self, tenant: str, key: str) -> list[list[Any]]:
         k = (tenant, key)
         if k not in self.rels_by:
@@ -981,12 +1026,14 @@ class _Bulk:
         # a fact that closed before `since` can neither hold nor follow a later one: only an earlier write needs it
         same = self._whole(tenant, subject) if since is not None and valid_from < since else self._facts(tenant, subject)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        closed = place_fact(f, same_slot((x for x, _ in same), f, kw.get("per_source", False)), (x for x, _ in same))
+        idx = self._slots(tenant, subject, same)
+        near = idx.neighbours(f, kw.get("per_source", False))
+        closed = place_fact(f, [x for x, _ in near], idx.marks)
         if closed is not None:
-            seq = next(s for x, s in same if x is closed)
+            seq = next(s for x, s in near if x is closed)
             if seq is not None:
                 self.closed_facts[seq] = closed  # an unsaved one carries its valid_to into its own INSERT
-        same.append([f, None])
+        self._append(tenant, subject, same, [f, None])
         self.new_facts.append(f)
         return f
 
@@ -1001,7 +1048,7 @@ class _Bulk:
             for f in place_close(c, (x for x, _ in same)):
                 if seqs[id(f)] is not None:
                     self.closed_facts[seqs[id(f)]] = f
-            same.append([c, None])
+            self._append(tenant, subject, same, [c, None])
             self.new_facts.append(c)
             return
         if value is not ANY:

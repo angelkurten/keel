@@ -224,6 +224,48 @@ def _base_slot(f: Fact) -> tuple[Any, ...]:
     return (f.predicate, f.status, scope, f.task if scope == Scope.TASK else None, f.source if scope == Scope.AGENT else None)
 
 
+class SlotIndex:
+    """A subject's history by slot (`same_slot` without the author), each sorted by `succession`, plus its close
+    marks: a late fact finds its two neighbours by bisection instead of a scan of the subject. Holds items that
+    `fact` maps to a Fact (the facts themselves, or a SQL batch's [fact, seq] entries)."""
+
+    def __init__(self, items: Iterable[Any] = (), fact: Callable[[Any], Fact] = lambda x: x) -> None:
+        self.fact = fact
+        self.slots: dict[tuple[Any, ...], tuple[list[Any], list[Any]]] = {}
+        self.marks: list[Fact] = []
+        groups: dict[tuple[Any, ...], list[Any]] = defaultdict(list)
+        for it in items:
+            f = fact(it)
+            (self.marks.append(f) if is_close(f) else groups[_base_slot(f)].append(it))
+        for k, g in groups.items():
+            g.sort(key=lambda it: succession(fact(it)))
+            self.slots[k] = ([succession(fact(it)) for it in g], g)
+
+    def neighbours(self, f: Fact, per_source: bool = False) -> list[Any]:
+        """The items just before and after `f` in its slot: all place_fact needs of the history."""
+        keys, items = self.slots.get(_base_slot(f), ([], []))
+        at = succession(f)
+        if per_source:  # one slot per author inside the history (multi-valued predicates, proposals): short
+            mine = [it for it in items if owner(self.fact(it)) == owner(f)]
+            near = [max((it for it in mine if succession(self.fact(it)) <= at), key=lambda it: succession(self.fact(it)), default=None),
+                    min((it for it in mine if succession(self.fact(it)) > at), key=lambda it: succession(self.fact(it)), default=None)]
+        else:
+            i = bisect_right(keys, at)
+            near = [items[i - 1] if i else None, items[i] if i < len(items) else None]
+        return [it for it in near if it is not None]
+
+    def add(self, item: Any) -> None:
+        f = self.fact(item)
+        if is_close(f):
+            self.marks.append(f)
+            return
+        keys, items = self.slots.setdefault(_base_slot(f), ([], []))
+        at = succession(f)
+        i = bisect_right(keys, at)
+        keys.insert(i, at)
+        items.insert(i, item)
+
+
 def _slot(f: Fact, per_source: bool) -> tuple[Any, ...]:
     """`same_slot` as a key: the facts that close each other."""
     scope = Scope(f.scope)
@@ -296,9 +338,9 @@ class MemoryStore:
         self._facts: dict[str, dict[str, list[Fact]]] = defaultdict(lambda: defaultdict(list))  # tenant -> subject -> facts
         self._all_facts: dict[str, list[Fact]] = defaultdict(list)
         self._seen: dict[str, set[str]] = defaultdict(set)  # applied event ids, per tenant
-        # tenant -> subject -> (slot -> (succession keys, facts) sorted, close marks): built on first write to a
-        # subject, dropped whenever its fact lists are rewritten, so a late fact finds its neighbours by bisection
-        self._slots: dict[str, dict[str, tuple[dict[tuple[Any, ...], tuple[list[Any], list[Fact]]], list[Fact]]]] = defaultdict(dict)
+        # tenant -> subject -> its SlotIndex: built on first write to a subject, dropped whenever its fact lists
+        # are rewritten, so a late fact finds its neighbours by bisection
+        self._slots: dict[str, dict[str, SlotIndex]] = defaultdict(dict)
         self._tx: list[Callable[[], None]] | None = None  # inside transaction(): how to undo each write, in order
         self._watermark: dict[str, datetime] = {}  # tenant -> latest changed_at (ingest clock)
         self._forgotten: dict[str, datetime] = {}  # tenant -> when it was erased (Store protocol: forget)
@@ -314,18 +356,10 @@ class MemoryStore:
                 self._tx.append(lambda: self._watermark.pop(tenant, None) if old is None else self._watermark.__setitem__(tenant, old))
             self._watermark[tenant] = t
 
-    def _index(self, tenant: str, subject: str) -> tuple[dict[tuple[Any, ...], tuple[list[Any], list[Fact]]], list[Fact]]:
+    def _index(self, tenant: str, subject: str) -> SlotIndex:
         idx = self._slots[tenant].get(subject)
         if idx is None:
-            groups: dict[tuple[Any, ...], list[Fact]] = defaultdict(list)
-            marks = []
-            for x in self._facts[tenant][subject]:
-                (marks.append(x) if is_close(x) else groups[_base_slot(x)].append(x))
-            slots = {}
-            for k, g in groups.items():
-                g.sort(key=succession)
-                slots[k] = ([succession(x) for x in g], g)
-            idx = self._slots[tenant][subject] = (slots, marks)
+            idx = self._slots[tenant][subject] = SlotIndex(self._facts[tenant][subject])
             if self._tx is not None:  # a rollback restores the lists; rebuild from them
                 self._tx.append(lambda: self._slots[tenant].pop(subject, None))
         return idx
@@ -391,22 +425,12 @@ class MemoryStore:
                 if x.idempotency_key == key:
                     raise DuplicateKey(x)
         f = new_fact(tenant, subject, predicate, value, valid_from, **kw)
-        slots, marks = self._index(tenant, subject)
-        keys, history = slots.setdefault(_base_slot(f), ([], []))
-        at = succession(f)
-        i = bisect_right(keys, at)
-        if kw.get("per_source", False):  # one slot per author inside the history: its own neighbours
-            mine = [x for x in history if owner(x) == owner(f)]
-            neighbours = [max((x for x in mine if succession(x) <= at), key=succession, default=None),
-                          min((x for x in mine if succession(x) > at), key=succession, default=None)]
-        else:
-            neighbours = [history[i - 1] if i else None, history[i] if i < len(history) else None]
-        neighbours = [x for x in neighbours if x is not None]
+        idx = self._index(tenant, subject)
+        neighbours = idx.neighbours(f, kw.get("per_source", False))
         for x in neighbours:  # place_fact may move a neighbour's close
             self._keep(x)
-        place_fact(f, neighbours, marks)
-        keys.insert(i, at)
-        history.insert(i, f)
+        place_fact(f, neighbours, idx.marks)
+        idx.add(f)
         if self._tx is not None:
             self._tx.append(lambda: self._slots[tenant].pop(subject, None))
         self._facts[tenant][subject].append(f)
@@ -439,7 +463,7 @@ class MemoryStore:
             if covers(c, f):
                 self._keep(f)
         place_close(c, facts)
-        self._index(tenant, subject)[1].append(c)
+        self._index(tenant, subject).add(c)
         facts.append(c)
         self._all_facts[tenant].append(c)
         self._added(facts, self._all_facts[tenant], item=c)
