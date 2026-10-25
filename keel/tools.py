@@ -627,13 +627,15 @@ class Tools:
         if subject is None:
             if changed_since is None and since is None and until is None:
                 raise ValueError("history needs a subject, or for the whole tenant changed_since (a watermark) or since/until (world time)")
+            between = getattr(self.store, "facts_between", None)  # optional: the store reads the window, not the tenant
+            lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
             if as_known_at is not None:
-                facts = self._tenant_history_known(as_known_at, changed_since, since, until, task)
+                facts = self._tenant_history_known(as_known_at, changed_since, since, until, task, predicate)
             elif changed_since is not None:
                 facts = changed_after(self.store.changes(self.tenant, changed_since) + [f for f in self.store.changes(self.glob, changed_since) if f.scope == Scope.GLOBAL], changed_since)
-            else:  # what started in the world in that window, across the tenant
-                # ponytail: reads every fact of the tenant (changes since the epoch); a store query on valid_from if tenants grow past ~1M facts
-                lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
+            elif between is not None:  # the same facts as below, in the same order: by change, then by world time and subject
+                facts = sorted(changed_after(between(self.tenant, lo, hi, predicate), EPOCH), key=lambda f: (f.valid_from, f.subject))
+            else:  # what started in the world in that window, across the tenant: every fact of the tenant, read in Python
                 facts = sorted((f for f in self.store.changes(self.tenant, EPOCH) if lo <= f.valid_from <= hi), key=lambda f: (f.valid_from, f.subject))
             facts = [f for f in facts if self._sees(f, task)]
             if self.agent:
@@ -690,17 +692,24 @@ class Tools:
         return [ends.get((f.subject, f.predicate, f.scope, f.valid_from), _NONE) if f.status is None and f.predicate not in self.multi else _NONE
                 for f in facts]
 
-    def _tenant_history_known(self, known_at: datetime, changed_since: datetime | None, since: datetime | None, until: datetime | None, task: str | None) -> list[Fact]:
+    def _tenant_history_known(self, known_at: datetime, changed_since: datetime | None, since: datetime | None, until: datetime | None, task: str | None,
+                              predicate: str | None = None) -> list[Fact]:
         """Tenant-wide history as Keel knew it at `known_at`: each subject that had something then is read
         whole as known then (closes rebuilt, memory alive then), and only then windowed. Windowing first
         would hide the successor that closes a fact when it starts outside the window."""
-        alive = {"alive_at": known_at} if accepts(self.store.changes, "alive_at") else {}
-        pool = self.store.changes(self.tenant, changed_since or EPOCH, **alive) + [f for f in self.store.changes(self.glob, changed_since or EPOCH, **alive) if f.scope == Scope.GLOBAL]
+        lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
+        between = getattr(self.store, "facts_between", None)
+        if between is not None and changed_since is None:
+            # only the subjects with a fact in the window (recorded by then, alive then): as known then a fact keeps its
+            # valid_from, so the other subjects add nothing to the window; each is still read whole, as below
+            pool = between(self.tenant, lo, hi, predicate, known_at, known_at) + [f for f in between(self.glob, lo, hi, predicate, known_at, known_at) if f.scope == Scope.GLOBAL]
+        else:
+            alive = {"alive_at": known_at} if accepts(self.store.changes, "alive_at") else {}
+            pool = self.store.changes(self.tenant, changed_since or EPOCH, **alive) + [f for f in self.store.changes(self.glob, changed_since or EPOCH, **alive) if f.scope == Scope.GLOBAL]
         subjects = sorted({f.subject for f in pool if f.recorded_at is None or f.recorded_at <= known_at})
         facts = [f for s, fs in self._fetch_many(subjects, task, known_at=known_at).items() for f in fs]
         if changed_since is not None:
             return changed_after(facts, changed_since)
-        lo, hi = since or EPOCH, until or datetime.max.replace(tzinfo=timezone.utc)
         return sorted((f for f in facts if lo <= f.valid_from <= hi), key=lambda f: (f.valid_from, f.subject))
 
     def search(

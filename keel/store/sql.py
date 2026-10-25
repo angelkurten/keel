@@ -122,6 +122,7 @@ FACT_COLUMNS = (
 REL_MARK = "(valid_to IS NOT NULL AND valid_to = valid_from)"  # is_relation_mark in SQL
 RELATIONS_OF = "SELECT * FROM relations WHERE tenant = ? AND src = ? UNION ALL SELECT * FROM relations WHERE tenant = ? AND dst = ? ORDER BY seq"
 CHANGES = "SELECT * FROM facts WHERE tenant = ? AND changed_at > ? ORDER BY seq"
+NOT_CLOSE = "(source IS NULL OR source <> ?)"  # not a close mark (is_close in SQL), with CLOSE as its parameter
 
 
 def _once(rows: list[Any]) -> list[Any]:
@@ -152,7 +153,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_from|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     TIME = "TEXT"  # the dialect's type for a timestamp column
@@ -188,6 +189,8 @@ class SqlStore:
             self._ddl("CREATE INDEX relations_recorded ON relations (tenant, recorded_at)", lambda: self._has_index("relations", "relations_recorded"))
         if not self._has_index("facts", "facts_slot"):  # a late fact reads its neighbours, not its history
             self._ddl("CREATE INDEX facts_slot ON facts (tenant, subject, predicate, valid_from)", lambda: self._has_index("facts", "facts_slot"))
+        if not self._has_index("facts", "facts_from"):  # a tenant's history window (facts_between) reads its window, not the tenant
+            self._ddl("CREATE INDEX facts_from ON facts (tenant, valid_from)", lambda: self._has_index("facts", "facts_from"))
         if not self._has_index("facts", "facts_open"):  # a bulk batch prefetches only what it can still change
             self._ddl("CREATE INDEX facts_open ON facts (tenant, subject, valid_to)", lambda: self._has_index("facts", "facts_open"))
         if not self._has_index("facts", "facts_key"):  # annotate(key=) stays one write even across processes
@@ -656,6 +659,24 @@ class SqlStore:
         rows = self._rows(CHANGES, (tenant, _ts(after)))
         now = alive_at or utcnow()
         return [f for f in changed_after((_fact(r) for r in rows), after) if f.expires_at is None or f.expires_at > now]
+
+    def facts_between(self, tenant: str, since: datetime, until: datetime, predicate: str | None = None, recorded_by: datetime | None = None,
+                      alive_at: datetime | None = None) -> list[Fact]:
+        """Optional capability (Tools feature-detects it): the tenant's facts whose valid_from falls in [since, until],
+        as stored, in write order (seq), close marks left out: one predicate when given, only those recorded by
+        `recorded_by` when given, memory expired by `alive_at` (now by default) left out. `history`'s tenant window
+        reads this instead of every fact of the tenant."""
+        sql = f"SELECT * FROM facts WHERE tenant = ? AND valid_from >= ? AND valid_from <= ? AND {NOT_CLOSE}"
+        params: list[Any] = [tenant, _ts(since), _ts(until), CLOSE]
+        if predicate is not None:
+            sql += " AND predicate = ?"
+            params.append(predicate)
+        if recorded_by is not None:
+            sql += " AND (recorded_at IS NULL OR recorded_at <= ?)"
+            params.append(_ts(recorded_by))
+        sql += " AND (expires_at IS NULL OR expires_at > ?) ORDER BY seq"
+        params.append(_ts(alive_at or utcnow()))
+        return [_fact(r) for r in self._rows(sql, tuple(params))]
 
     def relation_changes(self, tenant: str, after: datetime) -> list[Relation]:
         """Relations linked or unlinked after a watermark (by the ingest clock, like changes)."""
