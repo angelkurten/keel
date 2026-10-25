@@ -1187,7 +1187,7 @@ def test_reads_on_a_networked_store_never_queue_behind_a_transaction(store):
     """PER_THREAD_READS: a server thread reads on its own connection while another thread holds a transaction."""
     import threading
 
-    if type(store).__name__ != "MysqlStore":
+    if type(store).__name__ not in ("MysqlStore", "PostgresStore"):
         pytest.skip("a networked store")
     store.upsert_entity(TENANT, "unit", "U1")
     got = {}
@@ -1641,3 +1641,35 @@ def test_a_bulk_batch_builds_the_same_relation_history_in_every_arrival_order():
         with s.bulk(events):
             _apply_rel(s, tenant, order)
         assert _rel_history(s, tenant) == REL_EXPECTED, order
+
+
+def test_open_store_takes_a_postgres_url(monkeypatch):
+    """`--db postgresql://...` (or postgres://) opens a PostgresStore, as mysql:// opens a MysqlStore."""
+    from keel.store import open_store
+    from keel.store.postgres import PostgresStore
+
+    opened = []
+    monkeypatch.setattr(PostgresStore, "from_url", classmethod(lambda cls, url, prefix=None: opened.append(url) or "pg"))
+    assert open_store("postgresql://u:p@h:5432/keel") == "pg" and open_store("postgres://u:p@h/keel") == "pg"
+    assert opened == ["postgresql://u:p@h:5432/keel", "postgres://u:p@h/keel"]
+
+
+def test_a_prefixed_postgres_store_evaluates_rules_in_python():
+    """The generated functions read the unprefixed tables: a prefixed PostgresStore offers no push-down, and
+    search(rule=) answers from its own tables, as SQLite does."""
+    url = os.environ.get("KEEL_POSTGRES_URL")
+    if not url:
+        pytest.skip("set KEEL_POSTGRES_URL")
+    from keel.store.postgres import PostgresStore
+
+    store = PostgresStore.from_url(url + "?prefix=keel_pfx_")
+    for table in ("entities", "relations", "facts", "ingested"):
+        store._exec(f"DELETE FROM {table}")
+    assert getattr(store, "rule_subjects", None) is None
+    c = load_cartridge(FLEET)
+    ref = MemoryStore()
+    events = list(JsonlAdapter(EVENTS))
+    for s in (ref, store):
+        Ingestor(c, s).ingest(events)
+    rules = [r for r, spec in c.rules.items() if spec.get("when") and spec.get("applies_to")]
+    assert [Tools(c, store, TENANT).search(rule=r, detail="key") for r in rules] == [Tools(c, ref, TENANT).search(rule=r, detail="key") for r in rules]
