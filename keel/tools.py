@@ -1005,6 +1005,12 @@ class Tools:
         else:
             entities = sorted((e for k in kinds for e in self.store.entities(self.tenant, k)), key=lambda e: e.key)
         candidates = [e for e in entities if after is None or e.key > after]
+        pushdown = getattr(self.store, "rule_subjects", None)  # optional: a store with the cartridge compiled to SQL
+        if spec and pushdown and not text and not where and neighbours is None and kinds == [spec.get("applies_to")]:
+            # the rule's compiled macro over the whole kind at once, with the reads the Python sweep would make
+            holds = pushdown(self.tenant, self.cartridge, rule, graph.as_of, graph.known_at, self.author, graph.task)
+            found = [e for e in candidates if e.key in holds]
+            return _ser(found[:limit] if limit else found)
         t = text.lower()
         # ponytail: text or where over a kind reads every candidate's facts, a chunk at a time; an index on
         # fact values (or the semantic index) if a kind grows past what a sweep reads in time

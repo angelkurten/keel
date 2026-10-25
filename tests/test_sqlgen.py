@@ -285,3 +285,94 @@ def test_rule_language_constructs_answer_like_keel():
         con = connect(c)
         copy(con, store, tenant_of(events))
         agree(c, store, con, tenant_of(events), n_world=30, n_tx=8)
+
+
+# ---- option A: the DuckDB store, ingesting through Keel, and search(rule=) pushed down to the rule macro ----------
+
+
+def both_stores(name: str, events: list[Event], cartridge: Any = None) -> tuple[Any, MemoryStore, Any]:
+    """The same log (with declared transaction times, so both stores hold the same instants) in Keel's reference
+    store and in the DuckDB store."""
+    from keel.store.duckdb import DuckdbStore
+
+    c = cartridge or load_cartridge(ROOT / "examples" / name)
+    ref, duck = MemoryStore(), DuckdbStore()
+    for s in (ref, duck):
+        assert not Ingestor(c, s).ingest(events, strict=True).errors
+    return c, ref, duck
+
+
+@pytest.mark.parametrize("name", EXAMPLES)
+def test_the_duckdb_store_ingests_into_the_generated_schema(name):
+    """Ingested straight into the DuckDB store (no copy), the generated macros still answer like Keel."""
+    c, ref, duck = both_stores(name, late(events_of(name)))
+    duck.install(c)
+    relay = name == "relay"
+    assert agree(c, ref, duck.db, tenant_of(events_of(name)), n_world=6 if relay else 10, n_tx=2 if relay else 4, n_subjects=40 if relay else 200) > 0
+
+
+def sweep(tools: Tools, cartridge: Any, t: datetime, k: datetime | None) -> dict[str, Any]:
+    """Every way search(rule=) lists: all of it, a page, the page after, the count, with entities."""
+    out = {}
+    for name, spec in cartridge.rules.items():
+        if spec.get("when") and spec.get("applies_to"):
+            keys = tools.search(rule=name, as_of=t, as_known_at=k, detail="key", limit=0)
+            out[name] = (keys, tools.search(rule=name, as_of=t, as_known_at=k, limit=2),
+                         tools.search(rule=name, as_of=t, as_known_at=k, detail="key", limit=2, after=keys[0] if keys else None),
+                         tools.search(rule=name, as_of=t, as_known_at=k, detail="count"))
+    return out
+
+
+@pytest.mark.parametrize("name", EXAMPLES + ["jira"])
+def test_search_by_rule_pushes_down_to_the_rule_macro_with_the_same_results(name, monkeypatch):
+    from keel.store.duckdb import DuckdbStore
+
+    if name == "jira":
+        c, ref, duck = both_stores(name, jira_log(), load_cartridge(JIRA))
+        tenant = "t"
+    else:
+        events = late(events_of(name))
+        c, ref, duck = both_stores(name, events)
+        tenant = tenant_of(events)
+    pushed: list[str] = []
+    real = DuckdbStore.rule_subjects
+    monkeypatch.setattr(DuckdbStore, "rule_subjects", lambda self, *a, **kw: pushed.append(a[2]) or real(self, *a, **kw))
+    a, b = Tools(c, ref, tenant), Tools(c, duck, tenant)
+    world, tx = instants(ref, tenant)
+    for t in thin(world, 10):
+        for k in [None, *thin(tx, 4)]:
+            assert _strip(sweep(a, c, t, k)) == _strip(sweep(b, c, t, k)), (t, k)
+    assert pushed or not any(spec.get("when") and spec.get("applies_to") for spec in c.rules.values())
+
+
+def test_search_by_rule_falls_back_to_python_when_it_cannot_push_down(monkeypatch):
+    """A text or `where` filter: evaluated in Python, as before, with the same answer."""
+    from keel.store.duckdb import DuckdbStore
+
+    c, ref, duck = both_stores("fleet", late(events_of("fleet")))
+    monkeypatch.setattr(DuckdbStore, "rule_subjects", lambda *a, **kw: pytest.fail("pushed down"))
+    a, b = Tools(c, ref, "acme-logistics"), Tools(c, duck, "acme-logistics")
+    for kw in ({"rule": "tire_critical", "text": "T-9"}, {"rule": "tire_critical", "where": {"position": "P1"}}):
+        assert _strip(a.search(**kw)) == _strip(b.search(**kw))
+
+
+def test_push_down_sees_memory_as_the_caller_does():
+    """A rule reads agent memory only for its author and task memory only for its task, pushed down or not."""
+    c = load_cartridge(ROOT / "examples" / "fleet")
+    c.rules = {**c.rules, "flagged": {"applies_to": "tire", "when": {"predicate": "flag", "eq": "yes"}}}
+    c, ref, duck = both_stores("fleet", late(events_of("fleet")), c)
+    for s in (ref, duck):
+        Tools(c, s, "acme-logistics", agent="bot-a").annotate("tire:T-9001", "flag", "yes", scope="agent")
+        Tools(c, s, "acme-logistics", agent="bot-b").annotate("tire:T-9002", "flag", "yes", scope="task", task="job-1")
+    for agent in (None, "bot-a", "bot-b"):
+        got = [Tools(c, s, "acme-logistics", agent=agent).search(rule="flagged", detail="key") for s in (ref, duck)]
+        assert got[0] == got[1], (agent, got)
+    assert Tools(c, duck, "acme-logistics", agent="bot-a").search(rule="flagged", detail="key") == ["tire:T-9001"]
+
+
+def _strip(o: Any) -> Any:  # the ingest clock (changed_at, watermark) differs between the two stores
+    if isinstance(o, dict):
+        return {k: _strip(v) for k, v in o.items() if k not in ("changed_at", "watermark")}
+    if isinstance(o, (list, tuple)):
+        return [_strip(v) for v in o]
+    return o
