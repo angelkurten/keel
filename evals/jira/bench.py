@@ -18,6 +18,11 @@ happened and when it was recorded, corrections included), in its best ordinary f
 - tgms:   TGMS 0.8.0's own tools over the log loaded into its bi-temporal graph (evals/jira/tgms_system.py).
 - tgms-pev: the same graph through TGMS's own agent layer (planner, plan verifier, executor with repairs) instead
           of a tool loop, scored on the engine's answer as TGMS's harness scores it.
+- sql:    the log in bitemporal DuckDB tables as a database engineer would model them (field versions and links with
+          valid and transaction intervals), the rules as table macros by instant, and one tool, sql_query
+          (evals/jira/sql_system.py; run with `--with duckdb==2.0.0`).
+- sql-tables: the same tables, prompt and tool without the macros or ready-made predicates (an ablation): the agent
+          writes the bitemporal conditions itself, and gets the rules as the cartridge's definitions in words.
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -74,6 +79,8 @@ TOOLS_TEXT = {
     "graphiti": "The project's history is in a temporal knowledge graph (Graphiti), searchable through search_memory: facts with when they became and stopped being true.",
     "mem0": "The project's history is in a memory store (Mem0), searchable through search_memory: memories with when the change happened and when it was recorded.",
     "tgms": "",  # filled from evals.jira.tgms_system on first use
+    "sql": "",  # filled from evals.jira.sql_system on first use
+    "sql-tables": "",
 }
 MEMORY_TOOLS = [{"type": "function", "function": {
     "name": "search_memory", "description": "Search the project's memory for facts relevant to a query.",
@@ -330,8 +337,17 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
 
         tools_text = tgms_system.TOOLS_TEXT
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
+    if system in ("sql", "sql-tables"):
+        from evals.jira import sql_system
+
+        db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
+        text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
+        prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
-             "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None}[system]
+             "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
+             "sql": None, "sql-tables": None}[system]
+    if system in ("sql", "sql-tables"):
+        tools = sql_system.TOOLS
     if system == "tgms":
         tools = tgms_system.tools()
     messages: list[dict[str, Any]] = [{"role": "system", "content": prompt}, {"role": "user", "content": q["question"]}]
@@ -367,6 +383,11 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                         text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
                     elif system == "tgms":
                         text = tgms_system.call(data, tenant, name, args)
+                    elif system in ("sql", "sql-tables"):
+                        if name != "sql_query":
+                            raise ValueError(f"unknown tool {name}")
+                        text = sql_system.query(db, str(args.get("sql", "")))
+                        error = text.startswith('{"error"')
                     elif system in ("graphiti", "mem0"):
                         from evals.jira import memories
 

@@ -152,6 +152,31 @@ $B --with tgms==0.8.0 --systems tgms-pev --tenants mariadb --types tenant --mode
 Two runs of the same command must not overlap: each builds TGMS's graph in `<data>/tgms/<tenant>`, and TGMS allows
 one writer per directory.
 
+## 7. Bitemporal SQL baseline
+
+`sql` (`evals/jira/sql_system.py`): the same log loaded deterministically into DuckDB as a database engineer would model
+it, and an agent with one tool, `sql_query` (read-only, no file or network access, 200 rows per result with the cut
+said, 30 s per query). Tables: `issues`, `field_versions` and `links` (each row a value over valid time
+`[valid_from, valid_to)` as believed over transaction time `[recorded_at, superseded_at)`; a later record closes the
+rows it changes and adds new ones), `statuses` and the raw `events`. Table macros by instant: `issue_state_at(t)`,
+`issue_state_known_at(t, k)`, `links_at(t)` and the cartridge's three rules, `blocked_at(t)`, `stalled_at(t)`,
+`urgent_unassigned_at(t)`. The schema and macros are the tool paragraph of the system prompt. Each tenant's database
+is built once and cached next to the data (`<tenant>.sql-<digest>.duckdb`). `evals/jira/test_sql.py` checks the
+tables on a small log and answers all 387 questions with one SQL query each against the gold (the ceiling).
+
+```bash
+uv run --extra mcp --with duckdb==2.0.0 --with numpy pytest evals/jira/test_sql.py
+$B --with duckdb==2.0.0 --with numpy --systems sql --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 --reps 3 --max-usd 10 --out $R/full-sql.jsonl
+```
+
+`sql-tables`, an ablation: the same tables, row cap and prompt without the macros and without the ready-made
+predicates (the column semantics stay), so the agent writes the bitemporal conditions itself; the rules are the
+cartridge's definitions in words, as Keel's tool paragraph gives them. One repetition:
+
+```bash
+$B --with duckdb==2.0.0 --with numpy --systems sql-tables --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 --reps 1 --max-usd 3 --out $R/full-sql-tables.jsonl
+```
+
 ## Results files
 
 | File | What |
@@ -160,6 +185,8 @@ one writer per directory.
 | `full-luna-keel-uncapped.jsonl`, `ablation-*.jsonl` | the ablations |
 | `c4*.jsonl` | governed memory: E5b (`c4-adversary`), E5c (`c4`, `c4-subject`), the E5c pilot (`c4-pilot`) |
 | `full-tgms.jsonl`, `full-tgms-pev.jsonl` | TGMS through its tools, and through its own planner, verifier and executor |
+| `full-sql.jsonl` | the bitemporal SQL baseline (DuckDB tables and rule macros, `sql_query`) |
+| `full-sql-tables.jsonl` | the same tables without macros or ready-made predicates (ablation) |
 | `pilot-*.jsonl` | the MariaDB pilot that shaped the full run, TGMS included |
 
 Each row holds the question id, system, model, repetition, gold and parsed answer, whether it was correct, every
