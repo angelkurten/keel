@@ -60,7 +60,7 @@ def write(results: Path, md: Path) -> str:
     body = []
     for prefix in ("real:", "syn:", "tenants:", "per_subject:"):
         for label in _labels(rows, prefix):
-            for store in ("memory", "sqlite"):
+            for store in ("memory", "sqlite", "duckdb"):
                 ing = _last(rows, kind="one", label=label, store=store, phase="ingest")
                 rep = _last(rows, kind="one", label=label, store=store, phase="replay")
                 stop = _last(rows, kind="one", label=label, store=store, phase="timeout") or _last(rows, kind="one", label=label, store=store, phase="not_run") \
@@ -78,7 +78,7 @@ def write(results: Path, md: Path) -> str:
     parts += ["## Ingest throughput, replay time, store size", "",
               ("Ingest: the log read from .jsonl and applied in batches of 5,000 (`keel ingest`'s path), parsing included. Replay: "
               "`Ingestor.replay` of the measured tenant over the built graph (wipe, then rebuild). Disk: the SQLite file after a WAL "
-              "checkpoint. RSS: resident memory after ingest minus before (the whole process: store, interpreter caches)."), "",
+              "checkpoint (DuckdbStore: its file after CHECKPOINT). RSS: resident memory after ingest minus before (the whole process: store, interpreter caches)."), "",
               _table(["log", "store", "events", "ingest s", "events/s", "replay s", "replay ev/s", "disk B/event", "RSS B/event", "peak RSS GiB", "note"], body), ""]
     # latency
     parts += ["## Per-tool latency (ms): p50 / p95 / p99", "",

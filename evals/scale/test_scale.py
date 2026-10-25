@@ -234,6 +234,8 @@ def test_summary_renders_every_section(tmp_path):
         {"kind": "one", "label": "syn:10", "store": "memory", "phase": "queries", "latency": lat, "mix_mean_ms": 1.5},
         {"kind": "one", "label": "syn:10", "store": "memory", "phase": "replay", "replay_s": 0.1, "replay_events_per_s": 100.0},
         {"kind": "one", "label": "syn:100", "store": "sqlite", "phase": "timeout", "wall_s": 1800.0},
+        {"kind": "one", "label": "syn:10", "store": "duckdb", "phase": "ingest", "events": 10, "ingest_s": 0.2, "events_per_s": 50.0,
+         "bytes_per_event_disk": 123.0},
         {"kind": "duck", "label": "syn:10", "events": 10, "load_s": 0.01, "rows": 20, "db_bytes": 1000, "latency": lat},
         {"kind": "determinism", "label": "syn:10", "same": {"facts": True}, "replay_same_facts": True,
          "hashes": {"memory/written": {"n_facts": 1, "n_relations": 1, "facts": "a" * 64, "relations": "b" * 64, "ingest_s": 0.1}}},
@@ -245,6 +247,7 @@ def test_summary_renders_every_section(tmp_path):
     for heading in ("Ingest throughput", "Per-tool latency", "DuckDB baseline", "Determinism", "Transport", "Where it stopped"):
         assert heading in text
     assert "syn:100" in text and "timeout" in text
+    assert "| syn:10 | duckdb | 10 | 0.2 | 50 |" in text  # DuckdbStore ingests through Keel too
 
 
 # ---- push-down stores: the SQLite build's rows copied into DuckDB / Postgres ------------------------------
@@ -317,3 +320,15 @@ def test_summary_puts_the_pushed_down_reads_beside_the_python_path(tmp_path):
     assert "Tenant-wide reads pushed down" in text
     section = text.split("Tenant-wide reads pushed down", 1)[1]
     assert "syn:1000" in section and "9,000" in section and "12.0" in section and "40.0" in section and "PostgresStore" in section
+
+
+def test_a_duckdb_ingest_reports_its_file_size_and_rows(tmp_path):
+    """DuckdbStore now ingests through Keel's bulk path: the ingest row carries its size on disk, as SQLite's does."""
+    pytest.importorskip("duckdb")
+    log = tmp_path / "log.jsonl"
+    gen.write(log, gen.generate(2000, seed=4))
+    out = tmp_path / "out.jsonl"
+    harness.one("duckdb", log, out, "t", db=tmp_path / "k.duckdb", queries=False, replay=False)
+    row = json.loads(out.read_text().splitlines()[0])
+    assert row["db_bytes"] > 0 and row["bytes_per_event_disk"] > 0
+    assert row["rows"]["ingested"] == 2000 and row["rows"]["facts"] > 2000

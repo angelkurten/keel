@@ -436,10 +436,10 @@ def copy_rows(src: Path, dst: Any) -> dict[str, int]:
 
 
 def _size(kind: str, store: Any, db: Path | None) -> dict[str, Any]:
-    if kind != "sqlite":
+    if kind not in ("sqlite", "duckdb"):
         return {}
-    store._exec("PRAGMA wal_checkpoint(TRUNCATE)")
-    files = {p.name: p.stat().st_size for p in (db, Path(f"{db}-wal")) if p.exists()}
+    store._exec("PRAGMA wal_checkpoint(TRUNCATE)" if kind == "sqlite" else "CHECKPOINT")
+    files = {p.name: p.stat().st_size for p in (db, Path(f"{db}-wal"), Path(f"{db}.wal")) if p.exists()}
     counts = {t: store._one(f"SELECT COUNT(*) AS n FROM {t}")["n"] for t in ("entities", "relations", "facts", "ingested")}
     return {"db_bytes": sum(files.values()), "rows": counts}
 
@@ -507,7 +507,7 @@ def one(store_kind: str, events: Path, out: Path, label: str, db: Path | None = 
            "bytes_per_event_rss": (rss1 - rss0) / max(n, 1), **_size(store_kind, store, db)}
     if store_kind == "memory":
         row["rows"] = _counts(store, tenants)
-    if store_kind == "sqlite":
+    if store_kind in ("sqlite", "duckdb"):
         row["bytes_per_event_disk"] = row["db_bytes"] / max(n, 1)
     if report.errors:
         row["first_error"] = report.errors[0]
