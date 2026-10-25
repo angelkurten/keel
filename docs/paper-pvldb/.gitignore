@@ -1,0 +1,7 @@
+main.pdf
+supplement.pdf
+*.aux
+*.log
+*.out
+figures/*.png
+figures/__pycache__/
