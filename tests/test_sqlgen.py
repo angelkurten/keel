@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 import random
 import re
 from datetime import datetime, timedelta, timezone
@@ -26,15 +27,44 @@ from keel.store.sql import INSERT_FACT, INSERT_RELATION, _fact_row, _relation_ro
 UTC = timezone.utc
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES = ["fleet", "crm", "finance", "clinics", "relay"]
+POSTGRES = os.environ.get("KEEL_POSTGRES_URL")  # postgresql://postgres:keel@127.0.0.1:5499/keel
+BACKENDS = ["duckdb"] + (["postgres"] if POSTGRES else [])
 
 
 # ---- helpers: Keel on one side, the generated schema on the other ------------------------------------------
 
 
-def connect(cartridge: Any) -> Any:
-    con = duckdb.connect()
-    con.execute(sqlgen.generate(cartridge))
-    return con
+class PgCon:
+    """A psycopg connection with DuckDB's call shape: `?` parameters, tuples back."""
+
+    def __init__(self, conn: Any) -> None:
+        from psycopg.rows import tuple_row
+
+        self.cur = conn.cursor(row_factory=tuple_row)
+
+    def execute(self, sql: str, params: Any = None) -> Any:
+        self.cur.execute(sql.replace("?", "%s"), params) if params is not None else self.cur.execute(sql)
+        return self.cur
+
+
+def connect(cartridge: Any, backend: str = "duckdb") -> Any:
+    """An empty generated schema: DuckDB in memory, or a fresh Postgres schema."""
+    if backend == "duckdb":
+        con = duckdb.connect()
+        con.execute(sqlgen.generate(cartridge))
+        return con
+    import psycopg
+
+    conn = psycopg.connect(POSTGRES, autocommit=True)
+    for stmt in ("DROP SCHEMA IF EXISTS keel_sqlgen CASCADE", "CREATE SCHEMA keel_sqlgen", "SET search_path TO keel_sqlgen"):
+        conn.execute(stmt)
+    conn.execute(sqlgen.generate(cartridge, "postgres"))
+    return PgCon(conn)
+
+
+def con_of(store: Any) -> Any:
+    """The connection a store's generated functions answer on, in DuckDB's call shape."""
+    return store.db if type(store).__name__ == "DuckdbStore" else PgCon(store.db)
 
 
 def copy(con: Any, store: MemoryStore, tenant: str) -> None:
@@ -177,9 +207,10 @@ def test_an_uncompilable_construct_is_named():
 # ---- correctness against Keel ---------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("name", EXAMPLES)
 @pytest.mark.parametrize("timing", ["as_ingested", "late"])
-def test_generated_macros_answer_like_keel(name, timing):
+def test_generated_macros_answer_like_keel(name, timing, backend):
     c = load_cartridge(ROOT / "examples" / name)
     events = events_of(name)
     if timing == "late":
@@ -187,13 +218,14 @@ def test_generated_macros_answer_like_keel(name, timing):
     store = MemoryStore()
     assert not Ingestor(c, store).ingest(events, strict=True).errors
     tenant = tenant_of(events)
-    con = connect(c)
+    con = connect(c, backend)
     copy(con, store, tenant)
     relay = name == "relay"  # two thousand events: a sample of subjects and instants
     assert agree(c, store, con, tenant, n_world=8 if relay else 14, n_tx=3 if relay else 6, n_subjects=60 if relay else 200) > 0
 
 
-def test_late_arrival_in_every_arrival_order():
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_late_arrival_in_every_arrival_order(backend):
     """tests/test_store.py's late arrival: A from Sep 1, B from Oct 15 (learned Oct 16), C from Oct 1 learned Oct 20."""
     c = load_cartridge(ROOT / "examples" / "fleet")
     d = lambda month, day, hour=0: datetime(2026, month, day, hour, tzinfo=UTC)
@@ -204,7 +236,7 @@ def test_late_arrival_in_every_arrival_order():
         tenant = f"order-{n}"
         store = MemoryStore()
         Ingestor(c, store).ingest([ev(tenant, *r) for r in order], strict=True)
-        con = connect(c)
+        con = connect(c, backend)
         copy(con, store, tenant)
         for known in (d(10, 17, 12), d(10, 18, 12), d(10, 21, 12), None):
             for at in (d(9, 15), d(10, 10), d(10, 17, 12)):
@@ -244,11 +276,12 @@ def jira_log() -> list[Event]:
     return sorted(log, key=lambda e: (e.recorded_at, e.id))
 
 
-def test_jira_cartridge_macros_answer_like_keel():
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_jira_cartridge_macros_answer_like_keel(backend):
     c = load_cartridge(JIRA)
     store = MemoryStore()
     assert not Ingestor(c, store).ingest(jira_log(), strict=True).errors
-    con = connect(c)
+    con = connect(c, backend)
     copy(con, store, "t")
     assert agree(c, store, con, "t", n_world=40, n_tx=12) > 0
     # the rules as the hand-written baseline states them
@@ -261,7 +294,8 @@ def test_jira_cartridge_macros_answer_like_keel():
     assert sql_rule(con, "urgent_unassigned", "t", at("2020-02-15"), None) == []
 
 
-def test_rule_language_constructs_answer_like_keel():
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_rule_language_constructs_answer_like_keel(backend):
     """Constructs no example uses: ci, in, ne, ordering on strings, not, nested via with all, held_for and
     business days with holidays, a missing predicate (null), a type mismatch (null)."""
     c = load_cartridge(ROOT / "examples" / "fleet")
@@ -282,7 +316,7 @@ def test_rule_language_constructs_answer_like_keel():
         events = events_of("fleet") if timing == "as_ingested" else late(events_of("fleet"), every=2, days=3)
         store = MemoryStore()
         Ingestor(c, store).ingest(events, strict=True)
-        con = connect(c)
+        con = connect(c, backend)
         copy(con, store, tenant_of(events))
         agree(c, store, con, tenant_of(events), n_world=30, n_tx=8)
 
@@ -290,25 +324,31 @@ def test_rule_language_constructs_answer_like_keel():
 # ---- option A: the DuckDB store, ingesting through Keel, and search(rule=) pushed down to the rule macro ----------
 
 
-def both_stores(name: str, events: list[Event], cartridge: Any = None) -> tuple[Any, MemoryStore, Any]:
+def both_stores(name: str, events: list[Event], cartridge: Any = None, backend: str = "duckdb") -> tuple[Any, MemoryStore, Any]:
     """The same log (with declared transaction times, so both stores hold the same instants) in Keel's reference
-    store and in the DuckDB store."""
+    store and in the DuckDB (or Postgres) store."""
     from keel.store.duckdb import DuckdbStore
 
     c = cartridge or load_cartridge(ROOT / "examples" / name)
-    ref, duck = MemoryStore(), DuckdbStore()
+    if backend == "duckdb":
+        ref, duck = MemoryStore(), DuckdbStore()
+    else:
+        from conftest import postgres_store
+
+        ref, duck = MemoryStore(), postgres_store()
     for s in (ref, duck):
         assert not Ingestor(c, s).ingest(events, strict=True).errors
     return c, ref, duck
 
 
+@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("name", EXAMPLES)
-def test_the_duckdb_store_ingests_into_the_generated_schema(name):
-    """Ingested straight into the DuckDB store (no copy), the generated macros still answer like Keel."""
-    c, ref, duck = both_stores(name, late(events_of(name)))
+def test_the_duckdb_store_ingests_into_the_generated_schema(name, backend):
+    """Ingested straight into the DuckDB (or Postgres) store (no copy), the generated macros still answer like Keel."""
+    c, ref, duck = both_stores(name, late(events_of(name)), backend=backend)
     duck.install(c)
     relay = name == "relay"
-    assert agree(c, ref, duck.db, tenant_of(events_of(name)), n_world=6 if relay else 10, n_tx=2 if relay else 4, n_subjects=40 if relay else 200) > 0
+    assert agree(c, ref, con_of(duck), tenant_of(events_of(name)), n_world=6 if relay else 10, n_tx=2 if relay else 4, n_subjects=40 if relay else 200) > 0
 
 
 def sweep(tools: Tools, cartridge: Any, t: datetime, k: datetime | None) -> dict[str, Any]:
@@ -323,20 +363,19 @@ def sweep(tools: Tools, cartridge: Any, t: datetime, k: datetime | None) -> dict
     return out
 
 
+@pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("name", EXAMPLES + ["jira"])
-def test_search_by_rule_pushes_down_to_the_rule_macro_with_the_same_results(name, monkeypatch):
-    from keel.store.duckdb import DuckdbStore
-
+def test_search_by_rule_pushes_down_to_the_rule_macro_with_the_same_results(name, backend, monkeypatch):
     if name == "jira":
-        c, ref, duck = both_stores(name, jira_log(), load_cartridge(JIRA))
+        c, ref, duck = both_stores(name, jira_log(), load_cartridge(JIRA), backend)
         tenant = "t"
     else:
         events = late(events_of(name))
-        c, ref, duck = both_stores(name, events)
+        c, ref, duck = both_stores(name, events, backend=backend)
         tenant = tenant_of(events)
     pushed: list[str] = []
-    real = DuckdbStore.rule_subjects
-    monkeypatch.setattr(DuckdbStore, "rule_subjects", lambda self, *a, **kw: pushed.append(a[2]) or real(self, *a, **kw))
+    real = type(duck).rule_subjects
+    monkeypatch.setattr(type(duck), "rule_subjects", lambda self, *a, **kw: pushed.append(a[2]) or real(self, *a, **kw))
     a, b = Tools(c, ref, tenant), Tools(c, duck, tenant)
     world, tx = instants(ref, tenant)
     for t in thin(world, 10):
@@ -345,22 +384,22 @@ def test_search_by_rule_pushes_down_to_the_rule_macro_with_the_same_results(name
     assert pushed or not any(spec.get("when") and spec.get("applies_to") for spec in c.rules.values())
 
 
-def test_search_by_rule_falls_back_to_python_when_it_cannot_push_down(monkeypatch):
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_search_by_rule_falls_back_to_python_when_it_cannot_push_down(backend, monkeypatch):
     """A text or `where` filter: evaluated in Python, as before, with the same answer."""
-    from keel.store.duckdb import DuckdbStore
-
-    c, ref, duck = both_stores("fleet", late(events_of("fleet")))
-    monkeypatch.setattr(DuckdbStore, "rule_subjects", lambda *a, **kw: pytest.fail("pushed down"))
+    c, ref, duck = both_stores("fleet", late(events_of("fleet")), backend=backend)
+    monkeypatch.setattr(type(duck), "rule_subjects", lambda *a, **kw: pytest.fail("pushed down"))
     a, b = Tools(c, ref, "acme-logistics"), Tools(c, duck, "acme-logistics")
     for kw in ({"rule": "tire_critical", "text": "T-9"}, {"rule": "tire_critical", "where": {"position": "P1"}}):
         assert _strip(a.search(**kw)) == _strip(b.search(**kw))
 
 
-def test_push_down_sees_memory_as_the_caller_does():
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_push_down_sees_memory_as_the_caller_does(backend):
     """A rule reads agent memory only for its author and task memory only for its task, pushed down or not."""
     c = load_cartridge(ROOT / "examples" / "fleet")
     c.rules = {**c.rules, "flagged": {"applies_to": "tire", "when": {"predicate": "flag", "eq": "yes"}}}
-    c, ref, duck = both_stores("fleet", late(events_of("fleet")), c)
+    c, ref, duck = both_stores("fleet", late(events_of("fleet")), c, backend)
     for s in (ref, duck):
         Tools(c, s, "acme-logistics", agent="bot-a").annotate("tire:T-9001", "flag", "yes", scope="agent")
         Tools(c, s, "acme-logistics", agent="bot-b").annotate("tire:T-9002", "flag", "yes", scope="task", task="job-1")

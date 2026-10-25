@@ -40,6 +40,12 @@ from keel.store.memory import CLOSE
 RESERVED = {"facts", "state", "relations", "entities", "keel"}
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _SYM = {"lt": "<", "lte": "<=", "gt": ">", "gte": ">=", "eq": "="}
+# what the point-in-time functions return (a dialect that needs declared result columns reads these)
+FACT_COLUMNS = ("seq", "tenant", "subject", "predicate", "value", "valid_from", "valid_to", "recorded_at", "source", "scope", "corrected_by",
+                "evidence", "expires_at", "task", "idempotency_key", "closed_at", "status", "trace", "cartridge", "changed_at")
+FACTS = ", ".join(f"{c} {'bigint' if c == 'seq' else 'text'}" for c in FACT_COLUMNS)
+VISIBLE = FACTS + ", jt text, vs text, vn double precision"
+RELATIONS = "src text, rel text, dst text, valid_from text, valid_to text, recorded_at text, source text"
 
 
 class DuckDB:
@@ -88,8 +94,38 @@ CREATE OR REPLACE MACRO keel_days(a, b) AS
   (date_diff('microsecond', CAST(a AS TIMESTAMPTZ), CAST(b AS TIMESTAMPTZ)) / 1000000.0) / 86400.0;
 """
 
-    def table_macro(self, name: str, params: str, body: str) -> str:
+    JT_STR, JT_NULL = "'VARCHAR'", "'NULL'"  # json_type's names for a string and a null
+
+    def table_macro(self, name: str, params: str, body: str, returns: str = "") -> str:
         return f"CREATE OR REPLACE MACRO {name}({params}) AS TABLE\n{body};\n"
+
+    # the bodies that lean on DuckDB's star expressions (EXCLUDE, RENAME, UNION ALL BY NAME)
+    def facts_star(self) -> str:
+        return "*"
+
+    def facts_known(self, valid_to: str, inner: str) -> str:
+        return f"""SELECT * EXCLUDE (stored_to, next_from, mark_at),
+  {valid_to} AS valid_to
+FROM (SELECT f.* RENAME (valid_to AS stored_to), {inner}"""
+
+    def facts_either(self) -> str:
+        return "SELECT * FROM keel_facts_now(tnt) WHERE k IS NULL UNION ALL BY NAME SELECT * FROM keel_facts_known(tnt, k) WHERE k IS NOT NULL"
+
+    def visible_facts(self) -> str:
+        return "* EXCLUDE (jt, vs, vn)"
+
+    def relations_known(self) -> str:
+        return "SELECT * EXCLUDE (valid_to), CASE"
+
+    def first_of(self, x: str, order: str, keep: str) -> str:
+        """The value of x on the row with the largest `order` among those that `keep`."""
+        return f"arg_max({x}, {order}) FILTER (WHERE {keep})"
+
+    def date_diff_days(self, a: str, b: str) -> str:
+        return f"date_diff('day', {a}, {b})"
+
+    def idiv(self, a: str, b: str) -> str:
+        return f"{a} // {b}"
 
     def lit(self, v: Any) -> str:
         if v is None:
@@ -129,7 +165,118 @@ CREATE OR REPLACE MACRO keel_days(a, b) AS
         return f"lower({x})"
 
 
-DIALECTS = {"duckdb": DuckDB}
+class Postgres(DuckDB):
+    """The Postgres dialect (12+; 16+ for subqueries without an alias): instants are text (ISO 8601, UTC) and
+    values text holding JSON, as SQLite stores them, every text column `COLLATE "C"` (code-point order, as Python).
+    Table macros become set-returning SQL functions (LANGUAGE sql, STABLE: the planner inlines them), named
+    arguments keep `name := value`, which Postgres accepts beside `name => value`."""
+
+    name = "postgres"
+    JT_STR, JT_NULL = "'string'", "'null'"  # jsonb_typeof's names
+
+    def schema(self) -> str:
+        t = 'TEXT COLLATE "C"'
+        return f"""
+CREATE TABLE IF NOT EXISTS entities (
+  seq BIGSERIAL PRIMARY KEY, tenant {t} NOT NULL, kind {t} NOT NULL, id {t} NOT NULL, ref {t}, attrs {t} NOT NULL DEFAULT '{{}}',
+  UNIQUE (tenant, kind, id));
+CREATE TABLE IF NOT EXISTS relations (
+  seq BIGSERIAL PRIMARY KEY, tenant {t} NOT NULL, src {t} NOT NULL, rel {t} NOT NULL, dst {t} NOT NULL,
+  valid_from {t} NOT NULL, valid_to {t}, recorded_at {t}, source {t}, closed_at {t}, changed_at {t});
+CREATE INDEX IF NOT EXISTS relations_src ON relations (tenant, src);
+CREATE INDEX IF NOT EXISTS relations_dst ON relations (tenant, dst);
+CREATE TABLE IF NOT EXISTS facts (
+  seq BIGSERIAL PRIMARY KEY, tenant {t} NOT NULL, subject {t} NOT NULL, predicate {t} NOT NULL,
+  value {t} NOT NULL, valid_from {t} NOT NULL, valid_to {t}, recorded_at {t}, source {t},
+  scope {t} NOT NULL, corrected_by {t}, evidence {t}, expires_at {t},
+  task {t}, idempotency_key {t}, closed_at {t}, status {t}, trace {t}, cartridge {t}, changed_at {t});
+CREATE INDEX IF NOT EXISTS facts_subject ON facts (tenant, subject);
+CREATE INDEX IF NOT EXISTS facts_recorded ON facts (tenant, recorded_at);
+CREATE TABLE IF NOT EXISTS ingested (tenant {t} NOT NULL, id {t} NOT NULL, PRIMARY KEY (tenant, id));
+CREATE TABLE IF NOT EXISTS forgotten (tenant {t} NOT NULL PRIMARY KEY, at {t} NOT NULL);
+CREATE TABLE IF NOT EXISTS api_keys (
+  id {t} NOT NULL PRIMARY KEY, hash {t} NOT NULL UNIQUE, account {t} NOT NULL, tenant {t}, agent {t},
+  glob INTEGER NOT NULL DEFAULT 0, created_at {t} NOT NULL, revoked_at {t});
+CREATE TABLE IF NOT EXISTS metering (
+  tenant {t} NOT NULL, day {t} NOT NULL, item {t} NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (tenant, day, item));
+CREATE TABLE IF NOT EXISTS cutoffs (tenant {t} NOT NULL PRIMARY KEY, cut {t} NOT NULL, at {t} NOT NULL);
+CREATE TABLE IF NOT EXISTS accounts (id {t} NOT NULL PRIMARY KEY, rps INTEGER, events_month BIGINT, store {t}, retention {t})
+"""
+
+    def prelude(self) -> str:
+        iso = "to_char(CAST(x AS timestamptz) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS{}') || '+00:00'"
+        return f"""
+SET TimeZone = 'UTC';
+CREATE OR REPLACE FUNCTION keel_iso(x text) RETURNS text LANGUAGE sql IMMUTABLE AS $keel$
+  SELECT CASE WHEN x IS NULL THEN NULL WHEN to_char(CAST(x AS timestamptz), 'US') = '000000' THEN {iso.format('')}
+  ELSE {iso.format('.US')} END $keel$;
+CREATE OR REPLACE FUNCTION keel_now() RETURNS text LANGUAGE sql STABLE AS $keel$ SELECT keel_iso(CAST(now() AS text)) $keel$;
+CREATE OR REPLACE FUNCTION keel_global(tnt text) RETURNS text LANGUAGE sql IMMUTABLE AS $keel$
+  SELECT CASE WHEN strpos(tnt, '/') > 0 THEN split_part(tnt, '/', 1) || '/{GLOBAL_TENANT}' ELSE '{GLOBAL_TENANT}' END $keel$;
+CREATE OR REPLACE FUNCTION keel_days(a text, b text) RETURNS double precision LANGUAGE sql IMMUTABLE AS $keel$
+  SELECT CAST(EXTRACT(epoch FROM (CAST(b AS timestamptz) - CAST(a AS timestamptz))) AS double precision) / 86400.0 $keel$;
+CREATE OR REPLACE FUNCTION keel_try_ts(x text) RETURNS timestamptz LANGUAGE plpgsql IMMUTABLE AS $keel$
+BEGIN
+  IF x IS NULL OR x !~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}' THEN RETURN NULL; END IF;  -- an ISO date first, as parse_iso wants
+  RETURN CAST(x AS timestamptz);
+EXCEPTION WHEN others THEN RETURN NULL;
+END $keel$;
+"""
+
+    def table_macro(self, name: str, params: str, body: str, returns: str = "") -> str:
+        args = [p.split(" := ")[0] for p in params.split(", ")]
+        decl = ", ".join(f"{p.split(' := ')[0]} text" + (" DEFAULT NULL" if " := " in p else "") for p in params.split(", "))
+        # DROP first: CREATE OR REPLACE cannot change a function's result columns
+        return (f"DROP FUNCTION IF EXISTS {name}({', '.join('text' for _ in args)});\n"
+                f"CREATE FUNCTION {name}({decl}) RETURNS TABLE({returns}) LANGUAGE sql STABLE AS $keel$\n{body}\n$keel$;\n")
+
+    def facts_star(self) -> str:
+        return ", ".join(FACT_COLUMNS)
+
+    def facts_known(self, valid_to: str, inner: str) -> str:
+        cols = ", ".join(f"{valid_to} AS valid_to" if c == "valid_to" else c for c in FACT_COLUMNS)
+        stored = ", ".join("f.valid_to AS stored_to" if c == "valid_to" else f"f.{c}" for c in FACT_COLUMNS)
+        return f"SELECT {cols}\nFROM (SELECT {stored}, {inner} known"
+
+    def facts_either(self) -> str:
+        return "SELECT * FROM keel_facts_now(tnt) WHERE k IS NULL UNION ALL SELECT * FROM keel_facts_known(tnt, k) WHERE k IS NOT NULL"
+
+    def visible_facts(self) -> str:
+        return ", ".join(FACT_COLUMNS)
+
+    def relations_known(self) -> str:
+        return "SELECT src, rel, dst, valid_from, recorded_at, source, CASE"
+
+    def first_of(self, x: str, order: str, keep: str) -> str:
+        return f"(array_agg({x} ORDER BY {order} DESC) FILTER (WHERE {keep}))[1]"
+
+    def date_diff_days(self, a: str, b: str) -> str:
+        return f"({b} - {a})"
+
+    def idiv(self, a: str, b: str) -> str:
+        return f"div({a}, {b})"
+
+    def json_type(self, v: str) -> str:
+        return f"jsonb_typeof(CAST({v} AS jsonb))"
+
+    def json_str(self, v: str) -> str:
+        return f"((CAST({v} AS jsonb) #>> '{{}}') COLLATE \"C\")"
+
+    def json_num(self, v: str, jt: str) -> str:
+        return (f"CASE WHEN {jt} = 'number' THEN CAST(CAST({v} AS jsonb) #>> '{{}}' AS double precision) "
+                f"WHEN {jt} = 'boolean' THEN CASE WHEN {v} = 'true' THEN 1.0 ELSE 0.0 END END")
+
+    def json_eq(self, a: str, b: str) -> str:
+        return f"(CAST({a} AS jsonb) -> 0) = CAST({b} AS jsonb)"
+
+    def epoch(self, x: str) -> str:
+        return f"EXTRACT(epoch FROM keel_try_ts({x}))"
+
+    def weekday(self, d: str) -> str:
+        return f"(CAST(EXTRACT(isodow FROM {d}) AS integer) - 1)"
+
+
+DIALECTS = {"duckdb": DuckDB, "postgres": Postgres}
 
 
 def rule_macro(name: str) -> str:
@@ -179,31 +326,30 @@ def _state(d: Any, multi: list[str]) -> str:
     jt = d.json_type("value")
     return "".join([
         # every value fact of the tenant and its global partition, ended as known at k (k NULL: as stored)
-        d.table_macro("keel_facts_now", "tnt", f"SELECT * FROM facts WHERE tenant IN (tnt, keel_global(tnt)) AND source IS DISTINCT FROM {close}"),
-        d.table_macro("keel_facts_known", "tnt, k", f"""SELECT * EXCLUDE (stored_to, next_from, mark_at),
-  least(next_from, CASE WHEN stored_to IS NOT NULL AND (closed_at IS NULL OR closed_at <= keel_iso(k)) THEN stored_to END, mark_at) AS valid_to
-FROM (SELECT f.* RENAME (valid_to AS stored_to), lead(f.valid_from) OVER (PARTITION BY {slot} ORDER BY {succession}) AS next_from,
+        d.table_macro("keel_facts_now", "tnt", f"SELECT {d.facts_star()} FROM facts WHERE tenant IN (tnt, keel_global(tnt)) AND source IS DISTINCT FROM {close}", FACTS),
+        d.table_macro("keel_facts_known", "tnt, k", d.facts_known(
+            "least(next_from, CASE WHEN stored_to IS NOT NULL AND (closed_at IS NULL OR closed_at <= keel_iso(k)) THEN stored_to END, mark_at)",
+            f"""lead(f.valid_from) OVER (PARTITION BY {slot} ORDER BY {succession}) AS next_from,
              ({marks}) AS mark_at
       FROM facts f
       WHERE f.tenant IN (tnt, keel_global(tnt)) AND f.source IS DISTINCT FROM {close}
-        AND (f.recorded_at IS NULL OR f.recorded_at <= keel_iso(k)))"""),
-        d.table_macro("keel_facts", "tnt, k := NULL",
-                      "SELECT * FROM keel_facts_now(tnt) WHERE k IS NULL UNION ALL BY NAME SELECT * FROM keel_facts_known(tnt, k) WHERE k IS NOT NULL"),
+        AND (f.recorded_at IS NULL OR f.recorded_at <= keel_iso(k)))"""), FACTS),
+        d.table_macro("keel_facts", "tnt, k := NULL", d.facts_either(), FACTS),
         d.table_macro("facts_known_at", "tnt, t, k := NULL, alive := NULL",
-                      f"SELECT * FROM keel_facts(tnt, k := k) WHERE tenant = tnt AND {at} AND {alive}"),
+                      f"SELECT * FROM keel_facts(tnt, k := k) WHERE tenant = tnt AND {at} AND {alive}", FACTS),
         # what rules (and agents) read: accepted facts the caller may see, with their JSON decoded once
         d.table_macro("keel_visible", "tnt, k := NULL, alive := NULL, as_author := NULL, as_task := NULL",
-                      f"SELECT *, {jt} AS jt, CASE WHEN {jt} = 'VARCHAR' THEN {d.json_str('value')} END AS vs, {d.json_num('value', jt)} AS vn "
-                      f"FROM keel_facts(tnt, k := k) WHERE {visible} AND {alive}"),
+                      f"SELECT *, {jt} AS jt, CASE WHEN {jt} = {d.JT_STR} THEN {d.json_str('value')} END AS vs, {d.json_num('value', jt)} AS vn "
+                      f"FROM keel_facts(tnt, k := k) WHERE {visible} AND {alive}", VISIBLE),
         d.table_macro("state_known_at", "tnt, t, k := NULL, alive := NULL, as_author := NULL, as_task := NULL",
-                      f"SELECT * EXCLUDE (jt, vs, vn) FROM keel_visible(tnt, k := k, alive := alive, as_author := as_author, as_task := as_task) WHERE {at}"),
-        d.table_macro("state_at", "tnt, t", "SELECT * FROM state_known_at(tnt, t)"),
-        d.table_macro("relations_known_at", "tnt, t, k := NULL", """SELECT src, rel, dst, valid_from, valid_to, recorded_at, source FROM (
-  SELECT * EXCLUDE (valid_to), CASE WHEN k IS NOT NULL AND closed_at IS NOT NULL AND closed_at > keel_iso(k) THEN NULL ELSE valid_to END AS valid_to
+                      f"SELECT {d.visible_facts()} FROM keel_visible(tnt, k := k, alive := alive, as_author := as_author, as_task := as_task) WHERE {at}", FACTS),
+        d.table_macro("state_at", "tnt, t", "SELECT * FROM state_known_at(tnt, t)", FACTS),
+        d.table_macro("relations_known_at", "tnt, t, k := NULL", f"""SELECT src, rel, dst, valid_from, valid_to, recorded_at, source FROM (
+  {d.relations_known()} WHEN k IS NOT NULL AND closed_at IS NOT NULL AND closed_at > keel_iso(k) THEN NULL ELSE valid_to END AS valid_to
   FROM relations WHERE tenant = tnt AND NOT (valid_to IS NOT NULL AND valid_to = valid_from)
     AND (k IS NULL OR recorded_at IS NULL OR recorded_at <= keel_iso(k)))
-WHERE valid_from <= keel_iso(t) AND (valid_to IS NULL OR valid_to > keel_iso(t))"""),
-        d.table_macro("relations_at", "tnt, t", "SELECT * FROM relations_known_at(tnt, t)"),
+WHERE valid_from <= keel_iso(t) AND (valid_to IS NULL OR valid_to > keel_iso(t))""", RELATIONS),
+        d.table_macro("relations_at", "tnt, t", "SELECT * FROM relations_known_at(tnt, t)", RELATIONS),
     ])
 
 
@@ -248,7 +394,7 @@ class _Rule:
                 f"  UNION SELECT dst FROM relations WHERE tenant = tnt AND {subject_kind.replace('subject', 'dst')}) s")
         at = f"SELECT v.subject FROM {m}_verdicts(tnt, t, k := k, alive := alive, as_author := as_author, as_task := as_task) v " \
              f"JOIN entities e ON e.tenant = tnt AND e.kind || ':' || e.id = v.subject WHERE v.verdict"
-        return d.table_macro(f"{m}_verdicts", params, body) + d.table_macro(f"{m}_at", params, at)
+        return d.table_macro(f"{m}_verdicts", params, body, "subject text, verdict boolean") + d.table_macro(f"{m}_at", params, at, "subject text")
 
     def alias(self, prefix: str) -> str:
         self.n += 1
@@ -333,7 +479,7 @@ class _Rule:
             if isinstance(arg, bool) or not isinstance(arg, (int, float)):
                 return "NULL"
             value = self.d.lower(f"{a}.vs") if ci else f"{a}.vs"
-            return f"(CASE WHEN {a}.jt = 'VARCHAR' THEN {self.d.epoch(value)} <= {self.d.epoch(self.T)} + {float(arg) * 86400!r} END)"
+            return f"(CASE WHEN {a}.jt = {self.d.JT_STR} THEN {self.d.epoch(value)} <= {self.d.epoch(self.T)} + {float(arg) * 86400!r} END)"
         sym = _SYM[op]
         if isinstance(arg, (bool, int, float)):
             return f"({a}.vn {sym} {self.d.lit(arg)})"
@@ -348,7 +494,7 @@ class _Rule:
     def eq(self, arg: Any, a: str, ci: bool) -> str:
         """Python's ==, never NULL."""
         if arg is None:
-            return f"({a}.jt = 'NULL')"
+            return f"({a}.jt = {self.d.JT_NULL})"
         if isinstance(arg, (bool, int, float)):
             return f"coalesce({a}.vn = {self.d.lit(arg)}, FALSE)"
         if isinstance(arg, str):
@@ -367,8 +513,8 @@ class _Rule:
         m = ("CASE " + " ".join(f"WHEN ({x}) IS NULL THEN NULL WHEN NOT ({x}) THEN FALSE" for x in checks) + " ELSE TRUE END") if checks else "TRUE"
         nxt = "coalesce(lead(h.valid_from) OVER w, cc.valid_from)"
         self.ctes.append(f"""{h} AS (SELECT subject,
-    arg_max(status, rn) FILTER (WHERE status <> 'ok') = 'e' AS err,
-    coalesce(arg_max(nxt, rn) FILTER (WHERE status <> 'ok'), min(valid_from)) AS since
+    {self.d.first_of("status", "rn", "status <> 'ok'")} = 'e' AS err,
+    coalesce({self.d.first_of("nxt", "rn", "status <> 'ok'")}, min(valid_from)) AS since
   FROM (SELECT h.subject, h.valid_from, row_number() OVER w AS rn, {nxt} AS nxt,
                CASE WHEN h.valid_to IS DISTINCT FROM {nxt} THEN 'b' WHEN ({m}) IS NULL THEN 'e' WHEN NOT ({m}) THEN 'b' ELSE 'ok' END AS status
         FROM vis h JOIN cur cc ON cc.subject = h.subject AND cc.predicate = h.predicate
@@ -382,8 +528,8 @@ class _Rule:
         the weekend, minus the holidays in range that fall on a working day."""
         d = self.d
         a, b = d.day(start), d.day(end)
-        n = f"greatest(date_diff('day', {a}, {b}), 0)"
-        per_day = [f"({n} // 7 + CASE WHEN (({w} - {d.weekday(a)}) % 7 + 7) % 7 < {n} % 7 THEN 1 ELSE 0 END)"
+        n = f"greatest({d.date_diff_days(a, b)}, 0)"
+        per_day = [f"({d.idiv(n, '7')} + CASE WHEN (({w} - {d.weekday(a)}) % 7 + 7) % 7 < {n} % 7 THEN 1 ELSE 0 END)"
                    for w in range(7) if w not in self.calendar.weekend]
         holidays = [f"CASE WHEN {a} <= DATE '{h.isoformat()}' AND DATE '{h.isoformat()}' < {b} THEN 1 ELSE 0 END"
                     for h in sorted(self.calendar.holidays) if h.weekday() not in self.calendar.weekend]
