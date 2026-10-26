@@ -3,6 +3,7 @@ annotate), in every store and over the transports. Memory-scope policy is tested
 
 import asyncio
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -677,6 +678,82 @@ def test_mcp_annotate_takes_any_json_value(store):
     """`annotate`'s value is any JSON over MCP, null included, as in Python and over HTTP."""
     call = _mcp(store)
     assert call("annotate", subject="issue:A", predicate="assignee", value=None, scope="task")["predicate"] == "assignee"
+
+
+def test_pack_writes_times_short_and_lists_of_records_as_tables():
+    """The compact text form (`build_server(compact=True)`): UTC times without `+00:00` or zero seconds, and a list of
+    records as one table, `all` holding what every record shares, nested maps as `a.b` columns, a record's own
+    fields in a trailing object, and the list's leading markers kept."""
+    from keel.mcp_server import pack
+
+    assert pack("2026-10-03T08:00:00+00:00") == "2026-10-03T08:00Z"
+    assert pack("2026-10-03T08:00:13+00:00") == "2026-10-03T08:00:13Z"
+    assert pack("2026-10-26T00:46:49.050634+00:00") == "2026-10-26T00:46:49.050634Z"  # a watermark keeps every digit
+    assert pack("2026-10-03T08:00:00-05:00") == "2026-10-03T08:00:00-05:00" and pack("since 2026-10-03T08:00:00+00:00") == "since 2026-10-03T08:00:00+00:00"
+    history = [
+        {"more": {"shown": 2, "total": 3}},
+        {"predicate": "status", "value": "New", "valid_from": "2026-09-01T00:00:00+00:00", "valid_to": "2026-09-02T10:00:00+00:00", "source": "jira"},
+        {"predicate": "status", "value": "Done", "valid_from": "2026-09-02T10:00:00+00:00", "source": "jira", "was": "New"},
+    ]
+    assert pack(history) == {
+        "more": {"shown": 2, "total": 3},
+        "all": {"predicate": "status", "source": "jira"},
+        "cols": ["value", "valid_from"],
+        "rows": [["New", "2026-09-01T00:00Z", {"valid_to": "2026-09-02T10:00Z"}], ["Done", "2026-09-02T10:00Z", {"was": "New"}]],
+    }
+    hits = [{"key": "issue:A", "attrs": {"title": "Login"}, "facts": {"status": "open", "owner": None}},
+            {"key": "issue:B", "attrs": {"title": "Release"}, "facts": {"owner": "ana", "status": "open", "due": "2026-10-01"}}]
+    assert pack(hits) == {"all": {"facts.status": "open"}, "cols": ["key", "attrs.title", "facts.owner"],
+                          "rows": [["issue:A", "Login", None], ["issue:B", "Release", "ana", {"facts.due": "2026-10-01"}]]}
+    assert pack(["issue:A", "issue:B"]) == ["issue:A", "issue:B"] and pack([{"count": 3}]) == [{"count": 3}]  # nothing to share
+
+
+def test_unpack_restores_what_pack_wrote():
+    """The compact form is lossless: every field, null or absent (a first value has no `was`; `was: null` was unset),
+    nesting, order of records and markers comes back; only the times are written short (the same instants)."""
+    from keel.envelope import parse_iso
+    from keel.mcp_server import pack, unpack
+
+    cases = [
+        [{"predicate": "p", "value": None, "valid_from": "2026-09-01T00:00:00+00:00"}, {"predicate": "p", "value": 1, "valid_from": "2026-09-02T00:00:00+00:00", "was": None}],
+        [{"initial": {"omitted": 4}}, {"subject": "a:1", "was": "x"}, {"subject": "a:2", "was": "y", "value": [{"k": 1}, {"k": 2}]}],
+        [{"key": "project:P", "attrs": {}}, {"key": "issue:A", "attrs": {"title": "x"}}],
+        [[{"a": 1}, {"a": 2}], []],
+        {"subject": "issue:A", "relations": [{"relation": "blocks", "direction": "out", "subject": "issue:B"}, {"relation": "blocks", "direction": "in", "subject": "issue:C"}]},
+        [{"cols": [1], "rows": [2]}, {"~": 1}, {"x.y": 1}],  # data that looks like the form's own keys stays data
+        [{"a": {"x.y": 1}}, {"a": {"x.y": 2}}],
+        [{"a": 1, "b": 2}, {"a": 1, "b": 2}],  # every field shared: rows of nothing
+        {"facts": {"due": "2026-10-03T08:00:00+00:00"}, "watermark": "2026-10-26T00:46:49.050634+00:00"},
+    ]
+    for case in cases:
+        packed = json.loads(json.dumps(pack(case)))
+        assert unpack(packed) == json.loads(json.dumps(case).replace("T00:00:00+00:00", "T00:00Z").replace("T08:00:00+00:00", "T08:00Z")
+                                            .replace(".050634+00:00", ".050634Z")), case
+    assert parse_iso(pack("2026-10-03T08:00:00+00:00")) == parse_iso("2026-10-03T08:00:00+00:00")
+
+
+def test_mcp_compact_text_carries_the_same_answer_in_fewer_tokens(store):
+    """`build_server(tools, compact=True)`: what the model reads is packed (unpack gives the answer back);
+    structuredContent, what programs read, is the JSON as ever; without it nothing changes."""
+    pytest.importorskip("mcp")
+    from keel.mcp_server import build_server, instructions, unpack
+
+    t = Tools(cartridge(), seed(store), T, clock=lambda: NOW)
+    plain, packed = build_server(t), build_server(t, compact=True)
+    at = "2026-10-02T00:00:00+00:00"
+    reads = [("context", {"subject": "issue:B", "as_of": at, "depth": 1}), ("context", {"subject": "issue:B", "detail": "full"}),
+             ("history", {"subject": "issue:W"}), ("history", {"subject": "issue:W", "detail": "full"}),
+             ("search", {"kind": "issue", "detail": "brief"}), ("search", {"kind": "issue", "detail": "full", "limit": 3}),
+             ("related", {"subject": "issue:A", "depth": 2}), ("search", {"rule": "blocked", "detail": "count"})]
+    for tool, args in reads:
+        a, b = asyncio.run(plain.call_tool(tool, args)), asyncio.run(packed.call_tool(tool, args))
+        want = json.loads(a.content[0].text)
+        sc = lambda r: getattr(r, "structured_content", None) or getattr(r, "structuredContent", None)  # mcp 2.x / 1.x
+        assert sc(b) == sc(a), tool
+        got = unpack(json.loads(b.content[0].text))
+        assert json.dumps(got, sort_keys=True) == re.sub(r'(T\d\d:\d\d:\d\d(\.\d+)?)\+00:00"', r'\1Z"', re.sub(r'T(\d\d:\d\d):00\+00:00"', r'T\1Z"', json.dumps(want, sort_keys=True))), (tool, args)
+        assert len(b.content[0].text) <= len(a.content[0].text), (tool, args)
+    assert "cols" in instructions(cartridge(), compact=True) and "cols" not in instructions(cartridge())
 
 
 def test_history_tenant_window_marks_first_values_and_concise_leaves_them_out(store):

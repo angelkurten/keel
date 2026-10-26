@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import functools
 import json
+import re
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
@@ -51,6 +52,85 @@ def compact(schema: Any) -> Any:
     return out
 
 
+_compact_schema = compact  # build_server's `compact` flag shadows the name there
+
+_UTC = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d)(:\d\d)?(\.\d+)?\+00:00")
+MARKERS = ("more", "note", "initial")  # the elements a list leads with to say what it left out, never records
+ESCAPE = "~"  # an object of data whose keys would read as a table (cols and rows) travels as {"~": object}
+
+
+def _short(m: re.Match) -> str:
+    sec = "" if m.group(2) == ":00" and not m.group(3) else (m.group(2) or "")
+    return f"{m.group(1)}{sec}{m.group(3) or ''}Z"
+
+
+def _table(items: list[Any]) -> Any:
+    """A list of records as {all, cols, rows}, or the list as it is when no field is shared or it holds no records."""
+    lead = 0
+    while lead < len(items) and isinstance(items[lead], dict) and len(items[lead]) == 1 and next(iter(items[lead])) in MARKERS:
+        lead += 1
+    recs = items[lead:]
+    if len(recs) < 2 or not all(isinstance(r, dict) for r in recs) or any("." in k for r in recs for k in r):
+        return items
+    flat = []
+    for r in recs:  # a map every record has, with keys they all share, becomes `map.key` fields
+        out: dict[str, Any] = {}
+        for k, v in r.items():
+            shared = isinstance(v, dict) and all(isinstance(o.get(k), dict) for o in recs) and set(v).intersection(*(o[k] for o in recs))
+            out.update({f"{k}.{kk}": vv for kk, vv in v.items()} if shared else {k: v})
+        flat.append(out)
+    common = [k for k in flat[0] if all(k in f for f in flat)]
+    if not common:
+        return items
+    same = {k: flat[0][k] for k in common if all(f[k] == flat[0][k] for f in flat)}
+    cols = [k for k in common if k not in same]
+    rows = [[f[k] for k in cols] + ([extra] if (extra := {k: v for k, v in f.items() if k not in common}) else []) for f in flat]
+    out = {k: v for m in items[:lead] for k, v in m.items()}
+    return out | ({"all": same} if same else {}) | {"cols": cols, "rows": rows}
+
+
+def pack(value: Any) -> Any:
+    """The compact text form a model reads (`build_server(compact=True)`): the same data in fewer tokens, lossless
+    (`unpack` gives it back). UTC times are written `2026-10-03T08:00Z` (seconds when not zero, every fraction kept);
+    a list of two or more records is one table, `{"all": {fields every record shares}, "cols": [...], "rows": [[...]]}`,
+    a row in the order of cols ending with an object of that record's other fields when it has some, a map the
+    records share written as `map.key` fields, and the list's leading markers (`more`, `note`, `initial`) as keys."""
+    if isinstance(value, str):
+        return _UTC.sub(_short, value) if _UTC.fullmatch(value) else value
+    if isinstance(value, dict):
+        out = {k: pack(v) for k, v in value.items()}
+        return {ESCAPE: out} if ("cols" in out and "rows" in out) or list(out) == [ESCAPE] else out
+    if isinstance(value, list):
+        return _table([pack(v) for v in value])
+    return value
+
+
+def unpack(value: Any) -> Any:
+    """`pack`'s inverse: tables back to lists of records (times stay short: the same instants)."""
+    if isinstance(value, list):
+        return [unpack(v) for v in value]
+    if not isinstance(value, dict):
+        return value
+    if list(value) == [ESCAPE]:
+        inner = value[ESCAPE]
+        return {k: unpack(v) for k, v in inner.items()} if isinstance(inner, dict) else unpack(inner)
+    if "cols" not in value or "rows" not in value:
+        return {k: unpack(v) for k, v in value.items()}
+    out: list[Any] = [{k: value[k]} for k in value if k in MARKERS]
+    cols = value["cols"]
+    for row in value["rows"]:
+        rec: dict[str, Any] = {}
+        extra = row[len(cols)] if len(row) > len(cols) else {}
+        for name, v in [*value.get("all", {}).items(), *zip(cols, row), *extra.items()]:
+            if "." in name:
+                parent, key = name.split(".", 1)
+                rec.setdefault(parent, {})[key] = v
+            else:
+                rec[name] = v
+        out.append(unpack(rec))
+    return out
+
+
 def _v(value: Any) -> str:
     return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
 
@@ -86,7 +166,12 @@ def as_text(result: Any) -> str:
     return "\n".join(lines)
 
 
-def instructions(cartridge: Any, agent: Any = None) -> str:
+TABLES = ('Lists of records come as tables: {"all": {fields every record shares}, "cols": [...], "rows": [[...]]}, a row holding '
+          "a record's values in the order of cols, and a last object with its other fields when it has some; `a.b` is field b of a. "
+          "Times are UTC.")
+
+
+def instructions(cartridge: Any, agent: Any = None, compact: bool = False) -> str:
     """What every call would otherwise repeat, said once per session: the kinds, the relations and what each rule means
     (context's `evaluation` names them), as far as `agent` (a registry entry) may read. Sorted, so the text, and the
     prompt cache behind it, never changes for a cartridge and agent."""
@@ -96,12 +181,13 @@ def instructions(cartridge: Any, agent: Any = None) -> str:
     rules = "\n".join(f"- {r} ({s.get('applies_to', 'any')}): {s.get('definition', '').strip()}" for r, s in sorted(cartridge.rules.items())
                       if s.get("applies_to") is None or kind(s.get("applies_to")))
     return (f"Subjects are '<kind>:<id>'. Kinds: {', '.join(k for k in sorted(cartridge.entities) if kind(k))}.\nRelations: {rels}.\n"
-            f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}")
+            f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}" + (f"\n{TABLES}" if compact else ""))
 
 
-def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None):  # pragma: no cover - needs the optional mcp package
+def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = False):  # pragma: no cover - needs the optional mcp package
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
-    many tenants: the tenant and agent come from the request's key and headers, keel/http.py)."""
+    many tenants: the tenant and agent come from the request's key and headers, keel/http.py). `compact`: the text a
+    model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged."""
     try:
         from mcp.server.mcpserver import MCPServer as Server  # mcp >= 2
     except ImportError:
@@ -142,7 +228,9 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
                 result = fn(*args, **kwargs)
             except (PermissionError, ValueError) as exc:
                 raise ToolError(str(exc)) from exc
-            text = json.dumps(result, ensure_ascii=False, separators=(",", ":"), default=str)
+            if compact:  # through JSON first: the same values the plain text would carry (datetimes as ISO text)
+                result_text = pack(json.loads(json.dumps(result, ensure_ascii=False, default=str)))
+            text = json.dumps(result_text if compact else result, ensure_ascii=False, separators=(",", ":"), default=str)
             if kwargs.get("detail") == "text":  # the same data as lines for the model; structuredContent keeps the JSON
                 text = as_text(result)
             return CallToolResult.model_validate({"content": [{"type": "text", "text": text}], "structuredContent": {"result": result} if wrap else result})
@@ -157,7 +245,7 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
     if isinstance(tools, Tools):
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))
     known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
-    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None) if known is not None else None)
+    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None, compact) if known is not None else None)
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     # no outputSchema: it would only say "an object" or "a list", in tokens a client may hand the model on every call;
     # structuredContent still carries the data
@@ -219,5 +307,5 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
 
     manager = getattr(mcp, "_tool_manager", None)  # ponytail: the mcp package's own attribute; a public hook if it offers one
     for t in manager.list_tools() if manager else []:
-        t.parameters = compact(t.parameters)
+        t.parameters = _compact_schema(t.parameters)
     return mcp
