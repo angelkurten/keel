@@ -38,10 +38,10 @@ Everything below the summary is that script's output, unedited.
 ## Summary
 
 **Applied since** (section 5; the rest of this note describes the A/B as it ran): the five descriptions are shorter
-(553 -> 325 o200k) and an agent that never writes can be served without `annotate` (`keel serve --read-only`, bench
-`--keel-read-only`, or an agent declared `writes: []`). The fixed part per request goes from **1,672 to 1,452 o200k**
-with five tools and to **1,285** read-only (Luna 1,419 -> 1,090 provider tokens, Haiku 2,894 -> 2,223): at the logged
-number of requests, -11% of Luna's and -14% of Haiku's input per run. The instructions grew 10 tokens (the tenant's
+(553 -> 346 o200k) and an agent that never writes can be served without `annotate` (`keel serve --read-only`, bench
+`--keel-read-only`, or an agent declared `writes: []`). The fixed part per request goes from **1,672 to 1,473 o200k**
+with five tools and to **1,306** read-only (Luna 1,419 -> 1,108 provider tokens, Haiku 2,894 -> 2,260): at the logged
+number of requests, -11% of Luna's and -13% of Haiku's input per run. The instructions grew 10 tokens (the tenant's
 project named, search(rule=) in the rules line): they aim at the requests, evals/jira/requests.md. SQL's fixed part
 is 946.
 
@@ -91,7 +91,7 @@ definitions tighter than o200k counts them (~0.78x); Claude counts everything he
 | 2 | Fewer requests: every run in at most 2 (upper bound) | **3,600 (43%)** | 360 | **3,261 (28%)** | 33 | agent behaviour, steered by descriptions / richer one-call answers for tenant-wide questions (e.g. `search(detail="count")`, `where` at `as_of`) | high if forced; the realistic target is the tenant-type tail |
 | 3 | Compact text as default (measured; in progress in parallel) | 990 (12%) | 85 | 1,153 (10%) | 95 | core default flip; no schema change | measured on par |
 | 4 | All four tool-list trims together (5, 6, 7 and 10: 542 o200k per request) | 1,298 (16%) | 130 | 2,310 (20%) | 23 | core; breaking parts need a deprecation | low-medium |
-| 5 | Shorter tool descriptions (applied: 553 -> 325 o200k) | 553 (7%) | 55 | 984 (8%) | 10 | core `DESCRIPTIONS`; **no contract change** (prose is not in contract.json) | low-medium |
+| 5 | Shorter tool descriptions (applied: 553 -> 346 o200k) | 478 (6%) | 48 | 851 (7%) | 9 | core `DESCRIPTIONS`; **no contract change** (prose is not in contract.json) | low-medium |
 | 6 | Hide annotate from a read-only agent's tool list (applied: --read-only, or `writes: []`) | 465 (6%) | 47 | 827 (7%) | 8 | core `mcp_server`; no contract change (default lists all five) | none here (never called) |
 | 7 | Drop never-used parameters (context.task/exclude, history.task/changed_since, search.mode/min_score/depth/per_kind/exclude) | 227 (3%) | 23 | 405 (3%) | 4 | core signatures; **breaking: deprecation first** (SPEC §11) | none here; other agents lose features |
 | 8 | Drop the rules from the instructions | 199 (2%) | 20 | 354 (3%) | 4 | core instructions; prose | high (rule questions) |
@@ -318,12 +318,12 @@ Per run, on the compact arm (the one becoming the default). Tokens: o200k saved 
 
 | option | o200k saved per request | Luna input tokens saved per run | Luna $ saved per run (micro$) | Haiku input tokens saved per run | Haiku $ saved per run (micro$) | where | contract | accuracy risk |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| Fixed: shorter tool descriptions (applied: keel/tools.py DESCRIPTIONS now) | 231 | 553 (6.7%) | 55.3 | 984 (8.4%) | 9.8 | core (keel/tools.py DESCRIPTIONS) | none: prose, outside contract.json | low-medium: the dropped clauses are the ones the agents rarely need, but each was added after a misuse |
+| Fixed: shorter tool descriptions (applied: keel/tools.py DESCRIPTIONS now) | 210 | 503 (6.1%) | 50.3 | 895 (7.6%) | 8.9 | core (keel/tools.py DESCRIPTIONS) | none: prose, outside contract.json | low-medium: the dropped clauses are the ones the agents rarely need, but each was added after a misuse |
 | Fixed: drop never-used parameters from the schemas (context.task, context.exclude, history.task, history.changed_since, search.mode, search.min_score, search.depth, search.per_kind, search.exclude) | 95 | 227 (2.7%) | 22.7 | 405 (3.4%) | 4.0 | core (signatures) | breaking: deprecation first (SPEC §11) | none on this eval; other agents lose those features |
 | Fixed: hide annotate from a read-only agent's tool list (applied: --read-only, or an agent declared writes: []) | 194 | 465 (5.6%) | 46.5 | 827 (7.0%) | 8.3 | core (mcp_server lists tools per agent) | none: the default lists all five, the contract is unchanged | none on this eval (never called) |
 | Fixed: drop schema defaults (they repeat the descriptions) | 48 | 115 (1.4%) | 11.5 | 205 (1.7%) | 2.0 | core (_compact_schema) | breaking for the MCP inputSchema snapshot (default removed) | low |
-| Fixed: the four tool-list trims above together (overlaps counted once) | 525 | 1,257 (15.2%) | 125.7 | 2,237 (19.1%) | 22.4 | core | breaking (parameters, defaults): deprecation first | low-medium |
-| Fixed: the two non-breaking ones together (short descriptions + no annotate for a read-only agent) | 398 | 953 (11.5%) | 95.3 | 1,696 (14.4%) | 17.0 | core | none | low-medium |
+| Fixed: the four tool-list trims above together (overlaps counted once) | 504 | 1,207 (14.6%) | 120.7 | 2,148 (18.3%) | 21.5 | core | breaking (parameters, defaults): deprecation first | low-medium |
+| Fixed: the two non-breaking ones together (short descriptions + no annotate for a read-only agent) | 377 | 903 (10.9%) | 90.3 | 1,607 (13.7%) | 16.1 | core | none | low-medium |
 | Fixed: drop the TABLES note (compact only) | 69 | 165 (2.0%) | 16.5 | 294 (2.5%) | 2.9 | core (instructions) | none: prose | medium-high: it is how the agent reads tables; moving it into a tool description saves nothing |
 | Fixed: drop the rules from the instructions (context's evaluation names them) | 83 | 199 (2.4%) | 19.9 | 354 (3.0%) | 3.5 | core (instructions) | none: prose | high: rule questions need the definitions to pick the rule; the SQL prompt carries them too |
 | Fixed: drop the relations line | 49 | 117 (1.4%) | 11.7 | 209 (1.8%) | 2.1 | core (instructions) | none: prose | high on links questions |
@@ -336,7 +336,7 @@ Per run, on the compact arm (the one becoming the default). Tokens: o200k saved 
 
 For scale, on the compact arm: Luna 8,279 input tokens and 961 micro$ per run; Haiku 11,740 and 691. SQL: Luna 2,235 and 306; Haiku 5,026 and 433.
 
-Descriptions as logged -> now (o200k): context 116 -> 67, history 149 -> 80, search 172 -> 106, annotate 59 -> 33, related 57 -> 39; all five 553 -> 325.
+Descriptions as logged -> now (o200k): context 116 -> 67, history 149 -> 80, search 172 -> 127, annotate 59 -> 33, related 57 -> 39; all five 553 -> 346.
 
 ## 5. The fixed part this code sends (the new arm)
 
@@ -345,12 +345,12 @@ Built as bench now builds it: the current descriptions, the instructions the bou
 | fixed part | descriptions | tool definitions | MCP instructions | total (o200k) | Luna tokens | Haiku tokens |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | as logged (A/B compact arm) | 553 | 1,257 | 215 | 1,672 | 1,419 | 2,894 |
-| now, five tools | 325 | 1,026 | 225 | 1,452 | 1,232 | 2,512 |
-| now, --keel-read-only | 292 | 859 | 225 | 1,285 | 1,090 | 2,223 |
+| now, five tools | 346 | 1,047 | 225 | 1,473 | 1,250 | 2,549 |
+| now, --keel-read-only | 313 | 880 | 225 | 1,306 | 1,108 | 2,260 |
 
 | against the logged arm | o200k saved per request | Luna input tokens saved per run | Luna $ saved per run (micro$) | Haiku input tokens saved per run | Haiku $ saved per run (micro$) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| now, five tools | 221 | 528 (6.4%) | 52.8 | 940 (8.0%) | 9.4 |
-| now, --keel-read-only | 388 | 928 (11.2%) | 92.8 | 1,652 (14.1%) | 16.5 |
+| now, five tools | 200 | 478 (5.8%) | 47.8 | 851 (7.2%) | 8.5 |
+| now, --keel-read-only | 367 | 878 (10.6%) | 87.8 | 1,563 (13.3%) | 15.6 |
 
 SQL's fixed part, for scale: 946 o200k.

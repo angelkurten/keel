@@ -21,13 +21,13 @@ Everything below the summary is that script's output, unedited.
 
 | class | calls (Luna / Haiku) | result tokens (Luna / Haiku) | what the agent did | what this code changes |
 | --- | ---: | ---: | --- | --- |
-| scope lookup | 115 / 58 | 79,769 / 11,621 | looked the project up (`search kind=project text=INDY`), tried `where={"project": "INDY"}` (empty), listed the project's 1,000+ issues (`related project:INDY in_project`) or checked each hit's project | the bound server's instructions name the subjects of a kind with at most three: `Kinds: issue, project (project:INDY).`; an empty `where` on a kind or relation name answers with a note naming `related_to='project:INDY', via='in_project'` |
-| whole-kind listing | 29 / 28 | 243,337 / 168,590 | read every issue (`search kind=issue detail=brief limit=0`, 6-9k tokens) to filter by eye | descriptions: `where`, `count` and `key` up front; brief/concise "facts included" |
-| per-subject check | 137 / 88 | 72,657 / 22,009 | after a listing that already answered: `context` per hit to confirm the status at T, or `history` per hit to measure "30 days in a status" (idle) | `where` hits carry `since` (when each filtered fact took its value): idle is one search; descriptions say brief/concise results need no `context` call; the instructions say `search(rule=)` lists where a rule holds |
+| scope lookup | 115 / 58 | 79,769 / 11,621 | looked the project up (`search kind=project text=INDY`), tried `where={"project": "INDY"}` (empty), listed the project's 1,000+ issues (`related project:INDY in_project`) or checked each hit's project | the bound server's instructions name the subjects of a kind with at most three: `Kinds: issue, project (project:INDY).`; `where={"project": "INDY"}` or `{"in_project": "project:INDY"}` filters by that neighbour, with the other entries, in one call |
+| whole-kind listing | 29 / 28 | 243,337 / 168,590 | read every issue (`search kind=issue detail=brief limit=0`, 6-9k tokens) to filter by eye | descriptions: `key` (a list) and `count` (how many) cost least, `brief` adds facts, `full` is a costly audit; under `max_list`, a `full` listing returns a tenth of the ceiling |
+| per-subject check | 137 / 88 | 72,657 / 22,009 | after a listing that already answered: `context` per hit to confirm the status at T, or `history` per hit to measure "30 days in a status" (idle) | `where` hits carry `since` (when each filtered fact took its value): idle is one search; descriptions say brief results need no `context` call; the instructions say `search(rule=)` lists where a rule holds |
 | fan-out over values | 75 / 58 | 9,681 / 6,906 | one search per status ("a status among A, B, C, D, E": 5 counts) or per priority | `where={"status": [A, B, C]}`: any of them |
 | repeat | 26 / 33 | 10,513 / 13,382 | the same search again with `related_to/via in_project` added (or the same history with `detail=full`) | the project named (the filter is visibly redundant with one project) |
 | tenant history dump | 4 / 17 | 14,848 / 129,458 | the tenant's whole status history (~11k tokens) to check a set at T | the one-call paths below; nothing specific |
-| error | 0 / 8 | 0 / 187 | `rule="in_project"`, `history(predicate="blocks")` | the note above; errors already name the valid rules |
+| error | 0 / 8 | 0 / 187 | `rule="in_project"`, `history(predicate="blocks")` | `where` on a relation name now works; errors already name the valid rules |
 
 Luna wastes more by looking up scope and fanning out (59 of its 72 runs touch the project; Haiku's 42); Haiku by
 reading wholes (the whole kind, the whole history). On idle, only 2 of 14 runs used `rule="stalled"` (the question
@@ -38,11 +38,11 @@ later request.
 **What one call can do now** (section 3). Every tenant-wide question has a one-call answer through the five tools, and
 this code's server reaches the gold on **72 / 72** with it (and idle also without the rule, from `since`: 7 / 7). Two of
 the five paths needed this branch: "a status among" (a list in `where`; before, 4-5 parallel calls) and idle without
-trusting the rule (`since` on hits; before, a history per hit). Two requests at this code's fixed part would cost ~2,300
-Luna and ~4,600 Haiku input tokens per tenant-wide run, against 26,451 and 29,064 logged and SQL's 2,494 and 5,504.
+trusting the rule (`since` on hits; before, a history per hit). Two requests at this code's fixed part would cost ~2,350
+Luna and ~4,700 Haiku input tokens per tenant-wide run, against 26,451 and 29,064 logged and SQL's 2,494 and 5,504.
 
 **What to expect** (section 4). Replaying the logged runs without the targeted calls (requests cut in proportion) gives
-4,032 Luna / 7,367 Haiku tokens per tenant-wide run (-85% / -75%), and -50% / -34% of all input per run over the
+4,070 Luna / 7,445 Haiku tokens per tenant-wide run (-85% / -74%), and -50% / -34% of all input per run over the
 benchmark. That assumes every targeted call goes; the paid A/B says how many the agents actually drop.
 
 **Changes in this branch for B** (each TDD'd; none breaks the contract, tests/contract.json unchanged):
@@ -50,12 +50,14 @@ benchmark. That assumes every targeted call goes; the paid A/B says how many the
 1. `search(where={name: [v1, v2]})`: a list against a single value is any of them (before, never a match); list-valued
    facts match as before.
 2. Brief and concise `where` hits carry `since: {predicate: valid_from}` for the facts the filter matched.
-3. An empty `where` result whose name is a relation or a kind returns `[{"note": "... related_to='project:P', via='in_project'"}]`
-   (with `detail="count"`, the note leads `{"count": 0}`).
+3. A `where` name that is a relation or a kind filters by neighbour (`{"in_project": "project:P"}`, `{"project": "P"}`,
+   by key or id, a list: any of them); an attribute or fact of that name still matches; `facts.<name>` is `<name>`.
+   (The first draft answered such a `where` with an empty note naming `related_to`; see below.)
+6. Under a `max_list` ceiling, a `full` search listing returns a tenth of it (with the ceiling of 200, 20 entries).
 4. A bound server's instructions name the subjects of a kind with at most three (as the server starts), and the
    rules line says `search(rule=)` lists where a rule holds.
-5. With part A: shorter descriptions that put `where` / `[any of]` / `since` / `count` / `key` and "facts included: no
-   context call needed" up front; `--read-only` drops annotate.
+5. With part A: shorter descriptions (346 o200k) that put `key` and `count` first, `brief` for facts ("no context call
+   needed"), `where` / `[any of]` / neighbour / `since`, and call `full` a costly audit; `--read-only` drops annotate.
 
 Not changed, and why: `count` returning the first keys too (count questions were answered by the count; the follow-up
 listings were checks of fanned-out counts, which the list `where` removes); `more` hints (3 of 144 runs paged; the rest asked
@@ -64,6 +66,27 @@ definition says "priority Blocker or Critical" while its `when` (and the questio
 rule and rebuild it by hand (11 of 14 runs searched priorities themselves, though 9 also listed the rule); fixing the wording is a
 one-line change to `evals/jira/cartridge.yaml`, left out so the A/B measures the code alone.
 
+**The first paid A/B of this branch** (`results/ab-requests.jsonl`, 387 questions x both models, 1 repetition, at
+c0f515c..d894f49): single-issue questions -10 to -18% input per run at the same or better accuracy; tenant-wide fewer
+requests (Luna 4.99 -> 3.65, Haiku 3.44 -> 3.18) but more input on Luna (26,451 -> 53,550) and on Haiku's cost (0.267 ->
+0.335 USD over the arm). Why, from the rows:
+
+- The first draft's search description had dropped "count: how many, without reading them" and listed "brief/concise
+  (facts included: no context call needed), full": search details moved from brief (Luna 136 -> 0, Haiku 140 -> 40) to
+  concise (1 -> 87, 6 -> 80) and full (20 -> 49 on Luna), and counts fell (73 -> 39).
+- Agents wrote `where={"project": "INDY"}` (Luna, 39) or `{"in_project": "project:SEC"}` (Haiku, 35); the empty answer's
+  note pointed at `related_to`, and they listed the whole project, often in concise or full: 43 Luna calls over 5k
+  tokens carried 1.21M tokens, 31 Haiku calls 416k.
+- Haiku's cost: one run (spring-tenant-014) listed 200 issues in full (80,879 tokens), so its later prompts crossed 100K
+  tokens, which Anthropic bills at 5x for Haiku: 0.087 USD, more than the arm's whole increase (without it the arm cost
+  0.248 against 0.261). Caching was not broken: its 2-request runs read the tools+system prefix as before; their
+  effective input price rose (0.0285 -> 0.0371 $/M) because the prefix shrank (read at 0.1x) while results grew (concise,
+  written to the cache at 1.25x). Nothing in bench or the server's cache placement changed (the system prompt was
+  per tenant and answer type before too).
+
+The fixes (70f8174): the description above, `where` on a neighbour's name, no note, and the `full` cap. Re-run on the
+tenant-wide questions to measure them.
+
 **The paid A/B** (the main session's): the baseline is the compact arm already logged; the new arm is this branch with
 `--keel-compact --keel-read-only` (bench builds its prompt from the server: current descriptions, the project named):
 
@@ -71,7 +94,10 @@ one-line change to `evals/jira/cartridge.yaml`, left out so the A/B measures the
 OFOX_API_KEY=$(cat ~/.ofox_key) uv run --extra mcp --with tiktoken python -m evals.jira.bench \
     --data ~/datasets/public-jira/export --systems keel --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 \
     --keel-compact --keel-read-only --out evals/jira/results/ab-requests.jsonl
-# a pilot first: --types tenant (144 runs) shows the request count on the questions it targets
+# after 70f8174, the tenant-wide re-run (144 runs; compare with the tenant rows of both files above):
+OFOX_API_KEY=$(cat ~/.ofox_key) uv run --extra mcp --with tiktoken python -m evals.jira.bench \
+    --data ~/datasets/public-jira/export --systems keel --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 \
+    --types tenant --keel-compact --keel-read-only --out evals/jira/results/ab-requests-tenant2.jsonl
 ```
 
 ## 1. What the calls were for
@@ -143,14 +169,14 @@ Cost of that path against the logged runs, per run: two requests, each carrying 
 
 | type | Luna logged | Luna one call | Luna SQL logged | Haiku logged | Haiku one call | Haiku SQL logged |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| status_at | 16,990 | 2,233 (-87%) | 2,013 | 15,263 | 4,513 (-70%) | 4,402 |
-| count_at | 33,168 | 2,194 (-93%) | 2,144 | 50,806 | 4,446 (-91%) | 4,309 |
-| rule_at | 49,749 | 2,292 (-95%) | 2,253 | 41,529 | 4,636 (-89%) | 7,111 |
-| changed | 5,840 | 2,568 (-56%) | 4,280 | 11,530 | 5,024 (-56%) | 7,439 |
-| known_at | 19,592 | 2,315 (-88%) | 2,140 | 26,863 | 4,653 (-83%) | 4,005 |
-| **all** | 26,451 | 2,311 (-91%) | 2,494 | 29,064 | 4,641 (-84%) | 5,504 |
+| status_at | 16,990 | 2,268 (-87%) | 2,013 | 15,263 | 4,586 (-70%) | 4,402 |
+| count_at | 33,168 | 2,230 (-93%) | 2,144 | 50,806 | 4,519 (-91%) | 4,309 |
+| rule_at | 49,749 | 2,328 (-95%) | 2,253 | 41,529 | 4,708 (-89%) | 7,111 |
+| changed | 5,840 | 2,603 (-55%) | 4,280 | 11,530 | 5,096 (-56%) | 7,439 |
+| known_at | 19,592 | 2,350 (-88%) | 2,140 | 26,863 | 4,726 (-82%) | 4,005 |
+| **all** | 26,451 | 2,346 (-91%) | 2,494 | 29,064 | 4,714 (-84%) | 5,504 |
 
-The one-call path's result tokens (o200k, mean): 87; its fixed part 1,285 per request.
+The one-call path's result tokens (o200k, mean): 87; its fixed part 1,306 per request.
 
 ## 4. The logged runs without the calls these changes target
 
@@ -158,19 +184,18 @@ The one-call path is what the tools now allow, not what an agent will do. Closer
 
 | type | Luna logged | Luna without the targeted calls | Haiku logged | Haiku without the targeted calls |
 | --- | ---: | ---: | ---: | ---: |
-| status_at | 16,990 | 3,899 (-77%) | 15,263 | 6,012 (-61%) |
-| count_at | 33,168 | 4,013 (-88%) | 50,806 | 6,511 (-87%) |
-| rule_at | 49,749 | 5,310 (-89%) | 41,529 | 10,086 (-76%) |
-| changed | 5,840 | 3,058 (-48%) | 11,530 | 5,985 (-48%) |
-| known_at | 19,592 | 3,307 (-83%) | 26,863 | 7,561 (-72%) |
-| **all** | 26,451 | 4,032 (-85%) | 29,064 | 7,367 (-75%) |
+| status_at | 16,990 | 3,936 (-77%) | 15,263 | 6,087 (-60%) |
+| count_at | 33,168 | 4,051 (-88%) | 50,806 | 6,584 (-87%) |
+| rule_at | 49,749 | 5,351 (-89%) | 41,529 | 10,170 (-76%) |
+| changed | 5,840 | 3,095 (-47%) | 11,530 | 6,058 (-47%) |
+| known_at | 19,592 | 3,344 (-83%) | 26,863 | 7,640 (-72%) |
+| **all** | 26,451 | 4,070 (-85%) | 29,064 | 7,445 (-74%) |
 
 What that is over the whole benchmark (387 questions; tenant-wide are 72 of them), mean logged input per run:
 
 | model | all questions, logged | tenant-wide share of it | with tenant-wide runs without the targeted calls |
 | --- | ---: | ---: | ---: |
-| Luna | 8,279 | 59% | 4,108 (-50%) |
-| Haiku | 11,740 | 46% | 7,704 (-34%) |
+| Luna | 8,279 | 59% | 4,115 (-50%) |
+| Haiku | 11,740 | 46% | 7,718 (-34%) |
 
 It still assumes every targeted call goes away: an upper bound on what these changes do through the agent, which the paid A/B measures. The tenant-wide rows include this code's fixed part; the other questions gain it too (context_tokens.md section 5), not counted here.
-
