@@ -176,7 +176,7 @@ FEW = 3  # a kind with at most this many subjects is named with them in a bound 
 
 
 def few_subjects(tools: Tools, n: int = FEW) -> dict[str, list[str]]:
-    """The subjects of each kind the bound agent may read that has at most `n` of them (a project, a site, an account):
+    """The subjects of each kind the bound agent may read that has at most `n` of them (a top-level kind):
     what an agent would otherwise look up before filtering by it."""
     out = {}
     for k in sorted(tools.cartridge.entities):
