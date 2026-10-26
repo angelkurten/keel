@@ -53,7 +53,7 @@ from typing import Any
 import numpy as np
 
 from evals.efficiency.run import Gateway, call, pause, tokens, tool_list
-from keel import Ingestor, MemoryStore, Tools, load_cartridge, mcp_server
+from keel import Ingestor, MemoryStore, Tools, load_cartridge
 from keel.envelope import Event
 from keel.mcp_server import build_server
 
@@ -97,6 +97,7 @@ KEEL_MAX_LIST: int | None = None  # --keel-max-list: the deployment ceiling an o
 KEEL_RULES = True  # --keel-no-rules: the ablation where the cartridge declares no rules and the agent applies the question's definition
 KEEL_DETAIL: str | None = None  # --keel-detail full: the ablation where every context/history/search returns its full form
 KEEL_COMPACT = False  # --keel-compact: the MCP text in its compact form (keel serve --compact)
+KEEL_READ_ONLY = False  # --keel-read-only: the four read tools only (keel serve --read-only); these agents never annotate
 
 
 @cache
@@ -145,7 +146,7 @@ def keel_server(data: Path, tenant: str) -> Any:
     """A fresh graph per question: what one agent annotates never reaches another run."""
     store = MemoryStore()
     Ingestor(keel_cartridge(), store).ingest([Event(**e) for e in source(data, tenant)], strict=True)
-    return build_server(Tools(keel_cartridge(), store, tenant=tenant, max_list=KEEL_MAX_LIST), compact=KEEL_COMPACT)
+    return build_server(Tools(keel_cartridge(), store, tenant=tenant, max_list=KEEL_MAX_LIST), compact=KEEL_COMPACT, read_only=KEEL_READ_ONLY)
 
 
 @cache
@@ -331,7 +332,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     tools_text = TOOLS_TEXT[system]
     server = keel_server(data, tenant) if system == "keel" else None
     if server is not None:
-        tools_text += "\n\n" + mcp_server.instructions(keel_cartridge(), compact=KEEL_COMPACT)
+        tools_text += "\n\n" + server.instructions  # what the server says once per session (keel/mcp_server.py instructions)
     prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
     if system == "tgms":
         from evals.jira import tgms_system
@@ -415,7 +416,8 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             **({"keel_max_list": KEEL_MAX_LIST} if system == "keel" and KEEL_MAX_LIST else {}),
             **({"keel_rules": False} if system == "keel" and not KEEL_RULES else {}),
             **({"keel_detail": KEEL_DETAIL} if system == "keel" and KEEL_DETAIL else {}),
-            **({"keel_compact": True} if system == "keel" and KEEL_COMPACT else {}), "route": gw.route(model),
+            **({"keel_compact": True} if system == "keel" and KEEL_COMPACT else {}),
+            **({"keel_read_only": True} if system == "keel" and KEEL_READ_ONLY else {}), "route": gw.route(model),
             "tool_errors": errors, "turns": sum(m["role"] == "assistant" for m in messages), "tokens": used,
             "cost_usd": round(cost, 6), "ms": round((time.monotonic() - start) * 1000)}
 
@@ -487,7 +489,7 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
 
 
 def main() -> None:
-    global SUBSET, EXTRACTOR, KEEL_MAX_LIST, KEEL_RULES, KEEL_DETAIL, KEEL_COMPACT
+    global SUBSET, EXTRACTOR, KEEL_MAX_LIST, KEEL_RULES, KEEL_DETAIL, KEEL_COMPACT, KEEL_READ_ONLY
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--data", type=Path, required=True)
     ap.add_argument("--systems", default="keel,rag,api,closed")
@@ -504,12 +506,13 @@ def main() -> None:
                     help="Keel's listing ceiling (keel serve --max-list), the full run's setting (plan B); 0: none, the ablation")
     ap.add_argument("--keel-no-rules", action="store_true", help="the cartridge declares no rules: the agent applies the definition itself")
     ap.add_argument("--keel-compact", action="store_true", help="the MCP text in its compact form (keel serve --compact): tables, short times")
+    ap.add_argument("--keel-read-only", action="store_true", help="serve only the four read tools (keel serve --read-only): no annotate")
     ap.add_argument("--keel-detail", choices=["full"], help="force every context/history/search to this detail (the brief/full ablation)")
     ap.add_argument("--ids", help="only these question ids (comma-separated)")
     ap.add_argument("--max-usd", type=float, help="stop starting runs once this invocation has spent this much")
     a = ap.parse_args()
     SUBSET, EXTRACTOR, KEEL_MAX_LIST = a.subset, a.extractor, a.keel_max_list
-    KEEL_RULES, KEEL_DETAIL, KEEL_COMPACT = not a.keel_no_rules, a.keel_detail, a.keel_compact
+    KEEL_RULES, KEEL_DETAIL, KEEL_COMPACT, KEEL_READ_ONLY = not a.keel_no_rules, a.keel_detail, a.keel_compact, a.keel_read_only
     logging.getLogger("httpx").setLevel(logging.WARNING)
     data = a.data.expanduser()
     gw = Gateway()
