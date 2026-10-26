@@ -843,8 +843,9 @@ class Tools:
                 note, mode = "nothing contains the whole text: ranked by its words instead", "words"
                 hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
+        neighbour = None  # an empty `where` on a neighbour's name: the note is the whole answer
         if where and not hits and note is None:
-            note = self._neighbour_hint(where, kinds)
+            note = neighbour = self._neighbour_hint(where, kinds)
         if detail == "count":
             counted = len(dict.fromkeys(h.get("key") or h["subject"] for h in hits))  # each subject once, as detail='key' lists them
             return [{"note": note}, {"count": counted}] if note else [{"count": counted}]
@@ -870,7 +871,7 @@ class Tools:
             if where and detail in ("brief", "concise"):
                 self._since(out, where, graph)
         out = [{"more": {"shown": len(hits), "total": total, "next": hint}}, *out] if cap and total > cap else out
-        return [{"note": note}, *out] if note and (out or where) else out
+        return [{"note": note}, *out] if note and (out or neighbour) else out
 
     def _words(self, text: str, kinds: list[str] | None, rule: str | None, related_to: str | None, via: str | None, graph: _Graph,
                where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
