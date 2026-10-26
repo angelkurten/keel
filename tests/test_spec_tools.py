@@ -653,7 +653,7 @@ def _mcp(s):
     pytest.importorskip("mcp")
     from keel.mcp_server import build_server
 
-    server = build_server(Tools(cartridge(), seed(s), T, clock=lambda: NOW))
+    server = build_server(Tools(cartridge(), seed(s), T, clock=lambda: NOW), compact=False)  # the JSON text, to compare with Python
 
     def call(tool, **args):
         res = asyncio.run(server.call_tool(tool, args))
@@ -733,13 +733,13 @@ def test_unpack_restores_what_pack_wrote():
 
 
 def test_mcp_compact_text_carries_the_same_answer_in_fewer_tokens(store):
-    """`build_server(tools, compact=True)`: what the model reads is packed (unpack gives the answer back);
-    structuredContent, what programs read, is the JSON as ever; without it nothing changes."""
+    """`build_server(tools)`: what the model reads is packed by default (unpack gives the answer back);
+    structuredContent, what programs read, is the JSON as ever; `compact=False` keeps the JSON text."""
     pytest.importorskip("mcp")
     from keel.mcp_server import build_server, instructions, unpack
 
     t = Tools(cartridge(), seed(store), T, clock=lambda: NOW)
-    plain, packed = build_server(t), build_server(t, compact=True)
+    plain, packed = build_server(t, compact=False), build_server(t)
     at = "2026-10-02T00:00:00+00:00"
     reads = [("context", {"subject": "issue:B", "as_of": at, "depth": 1}), ("context", {"subject": "issue:B", "detail": "full"}),
              ("history", {"subject": "issue:W"}), ("history", {"subject": "issue:W", "detail": "full"}),
@@ -753,7 +753,7 @@ def test_mcp_compact_text_carries_the_same_answer_in_fewer_tokens(store):
         got = unpack(json.loads(b.content[0].text))
         assert json.dumps(got, sort_keys=True) == re.sub(r'(T\d\d:\d\d:\d\d(\.\d+)?)\+00:00"', r'\1Z"', re.sub(r'T(\d\d:\d\d):00\+00:00"', r'T\1Z"', json.dumps(want, sort_keys=True))), (tool, args)
         assert len(b.content[0].text) <= len(a.content[0].text), (tool, args)
-    assert "cols" in instructions(cartridge(), compact=True) and "cols" not in instructions(cartridge())
+    assert "cols" in instructions(cartridge()) and "cols" not in instructions(cartridge(), compact=False)
 
 
 def test_history_tenant_window_marks_first_values_and_concise_leaves_them_out(store):

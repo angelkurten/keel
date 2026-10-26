@@ -136,10 +136,10 @@ def ask(gw: Gateway, src: Path, system: str, model: str, q: dict[str, Any], max_
     if system == "keel":
         c, store = load_cartridge(HERE), MemoryStore()
         Ingestor(c, store).ingest(events(src)[0], strict=True)
-        server = build_server(Tools(c, store, tenant=TENANT))
+        server = build_server(Tools(c, store, tenant=TENANT), compact=False)
         tools = [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"]}}
                  for t in tool_list(server)]
-        text += "\n\n" + mcp_server.instructions(c)
+        text += "\n\n" + mcp_server.instructions(c, compact=False)
     if system == "open":
         rows = [e.payload for e in events(src)[0] if e.subject == q["subject"]]
         text = text.format(rows="\n".join(f"{r['holder']}, {r['role']}, from {r['start']} to {r['end'] or 'now'}" for r in rows))

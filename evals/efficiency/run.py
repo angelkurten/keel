@@ -89,7 +89,7 @@ def static() -> dict[str, Any]:
         if example not in graphs:
             graphs[example] = graph(example)
         cart, store = graphs[example]
-        server = build_server(Tools(cart, store, tenant=tenant))
+        server = build_server(Tools(cart, store, tenant=tenant), compact=False)
         if defs is None:
             listed = tool_list(server)
             defs = {"tokens": tokens(json.dumps(listed)), "tokens_without_output_schema": tokens(json.dumps([{k: v for k, v in t.items() if k != "outputSchema"} for t in listed]))}
@@ -107,7 +107,7 @@ def static() -> dict[str, Any]:
 def chat_tools() -> list[dict[str, Any]]:
     cart, store = graph("fleet")
     return [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"]}}
-            for t in tool_list(build_server(Tools(cart, store, tenant="acme-logistics")))]
+            for t in tool_list(build_server(Tools(cart, store, tenant="acme-logistics"), compact=False))]
 
 
 def pause(headers: Any = None) -> float:
@@ -251,10 +251,10 @@ def from_anthropic(data: dict[str, Any]) -> dict[str, Any]:
 
 def ask(gw: Gateway, model: str, q: dict[str, Any], max_steps: int = 12) -> dict[str, Any]:
     cart, store = graph(q["example"])  # a fresh graph per question: annotations never leak between runs
-    server = build_server(Tools(cart, store, tenant=q["tenant"]))
+    server = build_server(Tools(cart, store, tenant=q["tenant"]), compact=False)
     system = SYSTEM.format(tenant=q["tenant"], today=f"{TODAY:%Y-%m-%d %H:%M} UTC")
     if hasattr(mcp_server, "instructions"):  # what MCP clients put in the system prompt
-        system += "\n\n" + mcp_server.instructions(cart)
+        system += "\n\n" + mcp_server.instructions(cart, compact=False)
     messages: list[dict[str, Any]] = [{"role": "system", "content": system},
                                       {"role": "user", "content": q["question"]}]
     used = {"input": 0, "output": 0}

@@ -112,7 +112,7 @@ def main() -> None:
     def run(job: tuple[str, str, int]) -> None:
         attack, model, rep = job
         c, store = graph(data)
-        LOCAL.server, LOCAL.seen = build_server(Tools(c, store, TENANT, agent="intern", max_list=bench.KEEL_MAX_LIST)), []
+        LOCAL.server, LOCAL.seen = build_server(Tools(c, store, TENANT, agent="intern", max_list=bench.KEEL_MAX_LIST), compact=bench.KEEL_COMPACT), []
         q = {"id": f"adversary-{attack}", "tenant": TENANT, "type": "adversary", "question": ATTACKS[attack], "answer": None, "answer_type": "value"}
         res = bench.ask(gw, data, "keel", model, q, {}, {})
         seen = "\n".join(LOCAL.seen) + "\n" + res["reply"]

@@ -26,7 +26,7 @@ from keel.ingest import JsonlAdapter
 
 pytest.importorskip("mcp")
 
-from keel.mcp_server import build_server
+from keel.mcp_server import build_server, pack
 
 FLEET, EVENTS, TENANT = "examples/fleet", "examples/fleet/events.jsonl", "acme-logistics"
 OTHER = "rival-freight"
@@ -382,8 +382,7 @@ def test_structured_content_and_text_carry_the_same_answer():
     for name, args in [("context", {"subject": "unit:MXK-4821"}), ("history", {"subject": "unit:MXK-4821"}),
                        ("search", {"text": "MXK"}), ("related", {"subject": "unit:MXK-4821"})]:
         _, text, structured = _call(srv, name, args)
-        data = json.loads(text)
-        assert structured.get("result", structured) == data, name
+        assert pack(structured.get("result", structured)) == json.loads(text), name  # the text is the same data, packed
     other = build_server(Tools(c, s, TENANT, agent="a2"))
     for name, args in [("context", {"subject": "unit:MXK-4821", "detail": "text"}), ("history", {"subject": "unit:MXK-4821", "detail": "text"})]:
         _, text, structured = _call(other, name, args)

@@ -85,7 +85,7 @@ def test_compact_text_answers_every_question_like_the_json(tenant):
     assert not Ingestor(c, store).ingest(events, strict=True).errors
     now = max(e.recorded_at for e in events) + timedelta(days=1)
     tools = Tools(c, store, tenant, clock=lambda: now)
-    plain, packed = build_server(tools), build_server(tools, compact=True)
+    plain, packed = build_server(tools, compact=False), build_server(tools)
     spent = {"plain": 0, "compact": 0}
 
     def reader(server: Any, name: str) -> Any:

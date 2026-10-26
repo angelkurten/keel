@@ -103,7 +103,7 @@ def keel_server(q: dict[str, Any], cond: str, value: Any, data: Path) -> tuple[A
             outcomes.append(f"{kw['scope']}: refused ({str(exc)[:80]})")
     cls = _SameTask if cond == "same-task" else Tools  # the answering agent works on the poisoner's task: task memory is its to read
     tools = cls(c, store, q["tenant"], agent="answerer" if registry else None, max_list=bench.KEEL_MAX_LIST)
-    return build_server(tools), outcomes
+    return build_server(tools, compact=bench.KEEL_COMPACT), outcomes
 
 
 def cited(data: Path, q: dict[str, Any]) -> str:

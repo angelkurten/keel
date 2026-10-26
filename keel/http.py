@@ -141,7 +141,7 @@ def build_http_app(
     account: str | None = None,
     health_extra: dict[str, Any] | None = None,
     recent: "RecentEvents | None" = None,
-    compact: bool = False,
+    compact: bool = True,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the

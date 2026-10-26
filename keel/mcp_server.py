@@ -171,7 +171,7 @@ TABLES = ('Lists of records come as tables: {"all": {fields every record shares}
           "Times are UTC.")
 
 
-def instructions(cartridge: Any, agent: Any = None, compact: bool = False) -> str:
+def instructions(cartridge: Any, agent: Any = None, compact: bool = True) -> str:
     """What every call would otherwise repeat, said once per session: the kinds, the relations and what each rule means
     (context's `evaluation` names them), as far as `agent` (a registry entry) may read. Sorted, so the text, and the
     prompt cache behind it, never changes for a cartridge and agent."""
@@ -184,10 +184,10 @@ def instructions(cartridge: Any, agent: Any = None, compact: bool = False) -> st
             f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}" + (f"\n{TABLES}" if compact else ""))
 
 
-def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = False):  # pragma: no cover - needs the optional mcp package
+def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = True):  # pragma: no cover - needs the optional mcp package
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
-    many tenants: the tenant and agent come from the request's key and headers, keel/http.py). `compact`: the text a
-    model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged."""
+    many tenants: the tenant and agent come from the request's key and headers, keel/http.py). `compact` (default): the text a
+    model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged; `compact=False` sends the JSON text."""
     try:
         from mcp.server.mcpserver import MCPServer as Server  # mcp >= 2
     except ImportError:

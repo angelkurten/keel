@@ -59,7 +59,7 @@ def replay(data: Path, out: Path) -> None:
                 store, cart = MemoryStore(), load_cartridge(HERE)
                 Ingestor(cart, store).ingest([Event(**json.loads(e)) for e in (data / f"{t}.bitemporal.jsonl").open()], strict=True)
                 tools = Tools(cart, store, tenant=t, max_list=200, clock=lambda: NOW)
-                servers[t] = (build_server(tools), build_server(tools, compact=True))
+                servers[t] = (build_server(tools, compact=False), build_server(tools))
             for i, c in enumerate(r["calls"]):
                 text, _, error, _ = call(servers[t][0], c["tool"], c["args"])
                 packed, _, _, _ = call(servers[t][1], c["tool"], c["args"])

@@ -88,6 +88,8 @@ def test_mcp_server_exposes_exactly_the_five_tools():
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
+    from keel.mcp_server import pack, unpack
+
     params = StdioServerParameters(
         command=sys.executable,
         args=["-m", "keel.cli", "serve", FLEET, "--tenant", TENANT, "--events", FLEET_EVENTS],
@@ -102,13 +104,13 @@ def test_mcp_server_exposes_exactly_the_five_tools():
             read_only = {t.name for t in tools if (t.annotations or None) and t.annotations.model_dump(by_alias=True).get("readOnlyHint")}
             assert read_only == names - {"annotate"}  # clients that gate on annotations run reads unprompted
             res = await session.call_tool("context", {"subject": "unit:MXK-4821", "detail": "full"})
-            ctx = json.loads(res.content[0].text)
+            ctx = unpack(json.loads(res.content[0].text))  # compact by default: unpack gives the JSON back
             assert ctx["subject"] == "unit:MXK-4821" and ctx["relations"] and "fuel_anomaly" in ctx["rules"]
             res = await session.call_tool("history", {"subject": "tire:T-9001", "since": "2026-10-01T00:00:00+00:00", "detail": "full"})
             assert len(res.content) == 1 and " " not in res.content[0].text[:40]  # one block of compact JSON, not one per item
-            facts = json.loads(res.content[0].text)
+            facts = unpack(json.loads(res.content[0].text))
             assert facts and all(f["subject"] == "tire:T-9001" for f in facts)
-            assert res.structured_content == {"result": facts}  # the same data for programmatic clients
+            assert pack(res.structured_content["result"]) == json.loads(res.content[0].text)  # the same data for programmatic clients
             tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
             res = await session.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "assessment", "value": "replace", "detail": "full"}, meta={"traceparent": tp})
             assert json.loads(res.content[0].text)["trace"] == tp  # MCP carries W3C trace context in _meta

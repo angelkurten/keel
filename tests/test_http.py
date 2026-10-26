@@ -224,8 +224,9 @@ def test_tool_schemas_are_compact():
     assert compact({"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "null"}], "default": None}) == {"anyOf": [{"type": "string"}, {"type": "integer"}]}
 
 
-def test_serve_compact_reaches_mcp_over_stdio_and_http(monkeypatch):
-    """`keel serve --compact` (KEEL_COMPACT) and `build_http_app(compact=True)` pack what /mcp's model reads."""
+def test_serve_packs_mcp_text_by_default_and_plain_keeps_json(monkeypatch):
+    """What /mcp's model reads is packed by default (`keel serve`, `build_http_app`); `keel serve --plain`
+    (KEEL_COMPACT=0) and `build_http_app(compact=False)` keep the JSON text."""
     pytest.importorskip("mcp")
     from typer.testing import CliRunner
 
@@ -241,12 +242,14 @@ def test_serve_compact_reaches_mcp_over_stdio_and_http(monkeypatch):
 
     real = keel.mcp_server.build_server
     monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw.get("compact", False)) or Fake())
-    res = CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT, "--compact"])
+    res = CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT])
     assert res.exit_code == 0, res.output
-    CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT])
-    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw.get("compact", False)) or real(*a, **kw))
-    build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT, compact=True)
-    assert seen == [True, False, True]
+    CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT, "--plain"])
+    CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT], env={"KEEL_COMPACT": "0"})
+    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw["compact"]) or real(*a, **kw))
+    build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT)
+    build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT, compact=False)
+    assert seen == [True, False, False, True, False]
 
 
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
