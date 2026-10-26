@@ -259,7 +259,7 @@ SWEEP_CHUNK = 200  # `search(rule=)` reads the facts of this many candidates at 
 DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools.spec(): short, and fixed so prompt caches hold
     "context": """What is true about a subject ('<kind>:<id>' or a list) now or at as_of: facts with `since`, relations, rule evaluations. as_known_at: as Keel knew it then. depth=1 adds neighbours. detail: brief (default), concise, full (audit). task: its memory.""",
     "history": """Facts over time of a subject, oldest first; no subject + since/until: every change in the tenant then (predicate: one field). `was`: the value replaced (null: unset; absent: a first value). as_known_at: as Keel knew it then; changed_since: recorded since a watermark. limit keeps the latest (0: all). detail: concise or full.""",
-    "search": """Find subjects. kind lists a kind; rule, where a rule holds; text matches keys and values; where={name: value or [any of]}: exact attribute or fact (hits say `since`); related_to (+via): a subject's neighbours. as_of/as_known_at: at that instant / as known then. detail: entity, key, count, brief/concise (facts included: no context call needed), full. Page with limit/after; a cut list starts with {"more": ...}.""",
+    "search": """Find subjects. kind lists a kind; rule, where a rule holds; text matches keys and values; where={name: value or [any of]}: attribute, fact or neighbour ({relation or kind: key}); hits say `since`; related_to (+via): a subject's neighbours. as_of/as_known_at: at / as known at that instant. detail: key (a list) and count (how many) cost least; brief adds facts (no context call needed); entity (default); concise; full: an audit, costly. Page with limit/after; a cut list starts with {"more": ...}.""",
     "annotate": """Record what you learned (value: any JSON). scope tenant or global needs evidence; key: an idempotent retry; status="proposed": awaits review.""",
     "related": """Neighbours of a subject by relation, now or at as_of; depth 2-3 walks further. At most limit (0: all); a cut list starts with {"more": ...}.""",
 }
@@ -760,8 +760,9 @@ class Tools:
         `where={name: value}` keeps the entities whose attribute or current fact `name` is `value` (or
         a list holding it; a list of values against a single value: any of them; text compares without case), in
         every mode: a visual by its exact title is `search(kind="visual", where={"title": "..."})`. Brief and
-        concise hits say `since` when each filtered fact took its value; an empty answer whose `where` names a
-        relation or a kind says how to filter by that neighbour (`related_to`, `via`). With `kind`, `text` matches the key, the
+        concise hits say `since` when each filtered fact took its value; a `where` name that is a relation or a
+        kind filters by neighbour (`{"<relation>": "<kind>:<id>"}`, `{"<kind>": "<id>"}`), and `facts.<name>` is `<name>`.
+        Under a `max_list` ceiling a `full` listing returns a tenth of it. With `kind`, `text` matches the key, the
         attributes and the current facts' values. Each ranked result says why it is there: `matched`
         (the attribute, predicate, or "key") and `snippet`, the part of the value that matched.
 
@@ -801,6 +802,10 @@ class Tools:
         ceiling = self.max_list if self.max_list and detail != "count" and (limit == 0 or (limit or 0) > self.max_list or per_kind is not None) else None
         if ceiling:
             limit = 0
+            if detail == "full":  # an audit is ~8x a brief entry: a tenth of the ceiling keeps one answer in one prompt
+                ceiling = max(1, ceiling // 10)
+        elif self.max_list and detail == "full" and limit is None:
+            ceiling, limit = max(1, self.max_list // 10), 0
         hide = set(exclude or ())
         if where is not None and (not isinstance(where, dict) or not where):
             raise ValueError("where maps an attribute or predicate to the value it must have, e.g. {\"title\": \"Overview\"}")
@@ -843,17 +848,14 @@ class Tools:
                 note, mode = "nothing contains the whole text: ranked by its words instead", "words"
                 hits = self._words(text, kinds, rule, related_to, via, graph, where)[:limit or None]
         hits = [h for h in hits if h.get("predicate") not in hide]  # a fact hit on a hidden predicate would show it
-        neighbour = None  # an empty `where` on a neighbour's name: the note is the whole answer
-        if where and not hits and note is None:
-            note = neighbour = self._neighbour_hint(where, kinds)
         if detail == "count":
             counted = len(dict.fromkeys(h.get("key") or h["subject"] for h in hits))  # each subject once, as detail='key' lists them
             return [{"note": note}, {"count": counted}] if note else [{"count": counted}]
         total, cap, hint = len(hits), None, ""
         if ceiling and total > ceiling:
             cap, hits = ceiling, hits[:ceiling]
-            hint = (f"this server returns at most {ceiling} per call: page with after='{hits[-1].get('key') or hits[-1]['subject']}', "
-                    "narrow the search, or count with detail='count'")
+            hint = (f"this server returns at most {ceiling} per call{' in full' if detail == 'full' else ''}: page with after='{hits[-1].get('key') or hits[-1]['subject']}', "
+                    "narrow the search, " + ("or list with detail='key' or 'brief'" if detail == "full" else "or count with detail='count'"))
         if limit is None and per_kind is None and mode in ("text", "words"):  # nobody asked for everything: cut, and say so
             listing = kinds is not None or rule is not None
             cap = LIST_CAP if listing else TEXT_CAP
@@ -871,7 +873,7 @@ class Tools:
             if where and detail in ("brief", "concise"):
                 self._since(out, where, graph)
         out = [{"more": {"shown": len(hits), "total": total, "next": hint}}, *out] if cap and total > cap else out
-        return [{"note": note}, *out] if note and (out or neighbour) else out
+        return [{"note": note}, *out] if note and out else out
 
     def _words(self, text: str, kinds: list[str] | None, rule: str | None, related_to: str | None, via: str | None, graph: _Graph,
                where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -1050,6 +1052,8 @@ class Tools:
             chunk = candidates[i : i + SWEEP_CHUNK]
             if spec or text or where:
                 graph.prime(e.key for e in chunk)  # one read per chunk, not per entity
+                if self._neighbourly(where):
+                    graph.prime_relations(e.key for e in chunk)
                 if vias := _vias(spec):  # the chunk's relations, then the facts at their other ends, in a few reads
                     graph.prime_relations(e.key for e in chunk)
                     graph.prime(r.dst if r.src == e.key else r.src for e in chunk for r in graph.relations(e.key) if r.rel in vias)
@@ -1083,7 +1087,7 @@ class Tools:
                 return None
             keys = sorted(held)
         else:
-            matching = getattr(self.store, "subjects_where", None)
+            matching = getattr(self.store, "subjects_where", None) if not self._neighbourly(where) else None
             found = matching(self.tenant, self.cartridge, kinds, where, graph.as_of, graph.known_at, self.author, graph.task) if matching and where else None
             if found is None:
                 return None
@@ -1119,21 +1123,6 @@ class Tools:
             raise ValueError(f"rule '{rule}' has no `when` to evaluate")
         return spec
 
-    def _neighbour_hint(self, where: dict[str, Any], kinds: list[str] | None) -> str | None:
-        """A `where` name that is a relation or a kind, not an attribute: the call that filters by that neighbour."""
-        out = []
-        for name, want in where.items():
-            if not isinstance(want, str) or (self.agent and not (self.agent.sees_relation(name) or self.agent.sees_kind(name))):
-                continue
-            rels = [(r, s) for r, s in self.cartridge.relations.items() if isinstance(s, dict) and (not self.agent or self.agent.sees_relation(r))
-                    and (r == name or (name in (s.get("from"), s.get("to")) and (kinds is None or {s.get("from"), s.get("to")} & set(kinds))))]
-            for r, s in rels:
-                other = s.get("to") if s.get("from") in (kinds or [s.get("from")]) else s.get("from")
-                target = want if ":" in want else f"{other if r == name else name}:{want}"
-                out.append(f"'{name}' is a {'relation' if r == name else 'kind'}, not an attribute or fact: filter by that neighbour with "
-                           f"related_to='{target}', via='{r}'")
-        return "; ".join(out) or None
-
     def _since(self, hits: list[dict[str, Any]], where: dict[str, Any], graph: _Graph) -> None:
         """`since` on each `where` hit: when each filtered fact took the value it holds (attributes have no time)."""
         for h in hits:
@@ -1144,10 +1133,33 @@ class Tools:
                 h["since"] = since
 
     def _where(self, graph: _Graph, key: str, ent: Entity | None, where: dict[str, Any]) -> bool:
-        """Every `where` entry holds as an attribute or as a current fact of the subject."""
+        """Every `where` entry holds as an attribute or as a current fact of the subject (`facts.<name>`, as the compact
+        tables name it, is `<name>`), or, for the name of a relation or a kind, as a neighbour: linked through that
+        relation, or to that subject of that kind, the value its key or its id."""
         attrs = ent.attrs if ent else {}
-        return all((name in attrs and _holds(attrs[name], want)) or any(f.predicate == name and _holds(f.value, want) for f in graph.facts(key))
-                   for name, want in where.items())
+
+        def holds(name: str, want: Any) -> bool:
+            if (name in attrs and _holds(attrs[name], want)) or any(f.predicate == name and _holds(f.value, want) for f in graph.facts(key)):
+                return True
+            if name.startswith("facts.") and name not in attrs:
+                return holds(name[6:], want)
+            return self._linked(graph, key, name, want)
+
+        return all(holds(name, want) for name, want in where.items())
+
+    def _neighbourly(self, where: dict[str, Any] | None) -> bool:
+        """A `where` that may filter by neighbour (a relation's or a kind's name) or name a fact as `facts.<name>`."""
+        return any(n in self.cartridge.relations or n in self.cartridge.entities or n.startswith("facts.") for n in where or ())
+
+    def _linked(self, graph: _Graph, key: str, name: str, want: Any) -> bool:
+        if name in self.cartridge.relations:
+            ends = [r.dst if r.src == key else r.src for r in graph.relations(key, name) if self._visible(r, key)]
+        elif name in self.cartridge.entities:
+            ends = [o for r in graph.relations(key) if self._visible(r, key) and _kind(o := r.dst if r.src == key else r.src) == name]
+        else:
+            return False
+        wants = want if isinstance(want, list) else [want]
+        return any(isinstance(w, str) and (_same(o, w) or _same(o.split(":", 1)[1], w)) for o in ends for w in wants)
 
     def _neighbours(self, subject: str, via: str | None, graph: _Graph) -> set[str]:
         """The subjects linked to `subject` at the graph's instant (through `via` when given), as the caller may see them."""

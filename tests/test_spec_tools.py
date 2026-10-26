@@ -267,20 +267,36 @@ def test_search_where_hits_say_since_when_they_hold_the_value(store):
     assert "since" not in t.search(kind="issue", where={"title": "Release"}, detail="brief")[0]
 
 
-def test_search_where_on_a_kind_or_relation_name_says_how_to_filter_by_neighbour(store):
-    """`where={"project": "P"}` matches nothing when `project` is a kind, not an attribute: rather than an empty answer
-    the agent retries blind (evals/jira/requests.md: a project lookup, then the listing again), the empty result says
-    which call filters by a neighbour. Only when nothing matched: a real attribute of that name still filters."""
+def test_search_where_on_a_relation_or_kind_filters_by_neighbour(store):
+    """Agents filter by a neighbour through `where`: `{"in_project": "project:P"}` (a relation) or `{"project": "P"}` (a
+    kind, by key or id) keeps the subjects linked to it, with the other entries and in one call (the A/B of
+    evals/jira/requests.md: 74 calls wrote it so and, answered empty, listed the whole project instead). An attribute or
+    fact of that name still matches as before; `facts.<name>`, as the compact tables name the columns, is `<name>`."""
     t = tools(store)
-    [note] = t.search(kind="issue", where={"project": "P"}, detail="key")
-    assert "related_to='project:P'" in note["note"] and "via='in_project'" in note["note"]
-    assert t.search(kind="issue", where={"project": "P"}, detail="count") == [note, {"count": 0}]
-    [note] = t.search(kind="issue", where={"in_project": "project:P"})
-    assert "related_to='project:P'" in note["note"] and "via='in_project'" in note["note"]
-    assert t.search(kind="issue", related_to="project:P", via="in_project", detail="key") == ["issue:A"]
-    assert t.search(kind="issue", where={"status_category": "nothing"}, detail="key") == []  # a fact: empty is the answer
+    assert t.search(kind="issue", where={"in_project": "project:P"}, detail="key") == ["issue:A"]
+    assert t.search(kind="issue", where={"project": "P"}, detail="key") == ["issue:A"]
+    assert t.search(kind="issue", where={"project": "project:P", "status_category": "indeterminate"}, detail="count") == [{"count": 1}]
+    assert t.search(kind="issue", where={"project": ["Q", "P"]}, detail="key") == ["issue:A"]
+    assert t.search(kind="issue", where={"project": "P", "status_category": "new"}, detail="key") == []
+    assert t.search(kind="issue", where={"blocks": "issue:B"}, detail="key") == ["issue:A", "issue:K"]  # either end
+    assert t.search(kind="issue", where={"in_project": "project:P"}, as_of=d(8, 1), detail="key") == []  # linked Sep 1
+    assert t.search(kind="issue", where={"facts.status_category": "indeterminate"}, detail="key") == ["issue:A", "issue:H"]
     store.upsert_entity(T, "issue", "Z", ref="jira#Z", title="Z", project="P")
-    assert t.search(kind="issue", where={"project": "P"}, detail="key") == ["issue:Z"]
+    assert t.search(kind="issue", where={"project": "P"}, detail="key") == ["issue:A", "issue:Z"]  # the attribute too
+
+
+def test_max_list_holds_a_full_listing_to_a_tenth(store):
+    """A `full` listing is an audit, ~8x a brief one (evals/jira: 200 issues in full were 80k tokens, one prompt over
+    Haiku's long-prompt tier). Under a deployment ceiling it returns at most a tenth of it, and says how to read the
+    rest; other details keep the ceiling, and an explicit small limit is honoured."""
+    t = Tools(cartridge(), bulk(store).store, T, clock=lambda: NOW, max_list=50)
+    page = t.search(kind="issue", limit=0, detail="full")
+    assert page[0]["more"]["shown"] == 5 and page[0]["more"]["total"] == 120 and len(entries(page)) == 5
+    assert "detail" in page[0]["more"]["next"]
+    assert len(entries(t.search(kind="issue", detail="full"))) == 5
+    assert len(t.search(kind="issue", limit=3, detail="full")) == 3
+    assert len(entries(t.search(kind="issue", limit=0, detail="brief"))) == 50
+    assert len(entries(Tools(cartridge(), store, T, clock=lambda: NOW).search(kind="issue", limit=0, detail="full"))) == 120  # no ceiling: all
 
 
 def test_search_where_without_kind_or_text_returns_only_the_entities_that_match(store):
@@ -842,7 +858,7 @@ def test_tool_descriptions_are_short_and_keep_what_agents_rely_on():
     as_known_at), the cheap details (key, count), paging (`more`), the search filters and the history windows."""
     from keel.tools import DESCRIPTIONS
 
-    assert sum(len(v) for v in DESCRIPTIONS.values()) <= 1300
+    assert sum(len(v) for v in DESCRIPTIONS.values()) <= 1360
     needs = {
         "context": ["as_of", "as_known_at", "since", "depth=1", "brief", "full"],
         "history": ["since/until", "predicate", "was", "as_known_at", "changed_since", "limit", "0: all"],
@@ -854,3 +870,8 @@ def test_tool_descriptions_are_short_and_keep_what_agents_rely_on():
     for tool, words in needs.items():
         missing = [w for w in words if w not in DESCRIPTIONS[tool]]
         assert not missing, f"{tool} lost {missing}"
+    # the A/B of this wording's first draft: without "count: how many" and with full listed beside brief, agents listed
+    # whole kinds in full (evals/jira/requests.md): the cheap details come first, and full says it is a costly audit
+    search = DESCRIPTIONS["search"]
+    assert "how many" in search and "neighbour" in search and "audit" in search and "costly" in search
+    assert search.index("key") < search.index("brief") < search.index("full")
