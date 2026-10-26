@@ -238,6 +238,51 @@ def test_search_where_matches_attrs_and_facts_without_case(store):
     assert t.search(kind="issue", where={"status_category": "new"}, as_of=d(9, 5), detail="key") == ["issue:C", "issue:D", "issue:K"]
 
 
+def test_search_where_a_list_of_values_is_any_of_them(store):
+    """`where={name: [v1, v2]}` keeps a subject whose value is any of them: "how many had a status among A, B, C" is one
+    call, not one per status (evals/jira/requests.md). A list-valued attribute or fact still matches as before: the
+    same list, or a list holding the wanted value."""
+    t = tools(store)
+    assert t.search(kind="issue", where={"status_category": ["new", "INDETERMINATE"]}, as_of=d(9, 5), detail="key") == [
+        "issue:A", "issue:C", "issue:D", "issue:H", "issue:K"]
+    assert t.search(kind="issue", where={"status_category": ["new", "indeterminate"]}, as_of=d(9, 5), detail="count") == [{"count": 5}]
+    assert t.search(where={"status_category": ["done"]}, detail="key") == ["issue:C", "issue:L"]
+    assert t.search(kind="issue", where={"status_category": ["new", "indeterminate"], "priority": ["high", "low"]}, detail="key") == ["issue:A"]
+    store.open_fact(T, "issue:E", "labels", ["ui", "auth"], valid_from=d(9, 1), source="test")
+    assert t.search(kind="issue", where={"labels": ["ui", "auth"]}, detail="key") == ["issue:E"]  # the same list
+    assert t.search(kind="issue", where={"labels": "auth"}, detail="key") == ["issue:E"]  # a list holding it
+
+
+def test_search_where_hits_say_since_when_they_hold_the_value(store):
+    """With detail brief or concise, each hit of a `where` says since when it has held the wanted value of each fact it
+    filtered on (`since: {predicate: instant}`, as context's brief does): "in progress for 30 days or more" needs no
+    history call per hit. Only the filtered predicates: the other facts carry no time, so the hit stays small."""
+    t = tools(store)
+    [a] = t.search(kind="issue", where={"title": "Login fails", "status_category": "indeterminate"}, detail="brief")
+    assert a["since"] == {"status_category": d(9, 1).isoformat()}  # title is an attribute: no time to give
+    hits = t.search(kind="issue", where={"status": ["waiting", "on hold"]}, as_of=d(9, 5), detail="concise")
+    assert [(h["key"], h["since"]) for h in hits] == [("issue:W", {"status": d(9, 1).isoformat()})]
+    assert t.search(kind="issue", where={"status": "waiting"}, detail="brief")[0]["since"] == {"status": d(9, 8).isoformat()}
+    assert "since" not in t.search(kind="issue", where={"status": "waiting"})[0]  # entity: what it is, not its facts
+    assert "since" not in t.search(kind="issue", where={"title": "Release"}, detail="brief")[0]
+
+
+def test_search_where_on_a_kind_or_relation_name_says_how_to_filter_by_neighbour(store):
+    """`where={"project": "P"}` matches nothing when `project` is a kind, not an attribute: rather than an empty answer
+    the agent retries blind (evals/jira/requests.md: a project lookup, then the listing again), the empty result says
+    which call filters by a neighbour. Only when nothing matched: a real attribute of that name still filters."""
+    t = tools(store)
+    [note] = t.search(kind="issue", where={"project": "P"}, detail="key")
+    assert "related_to='project:P'" in note["note"] and "via='in_project'" in note["note"]
+    assert t.search(kind="issue", where={"project": "P"}, detail="count") == [note, {"count": 0}]
+    [note] = t.search(kind="issue", where={"in_project": "project:P"})
+    assert "related_to='project:P'" in note["note"] and "via='in_project'" in note["note"]
+    assert t.search(kind="issue", related_to="project:P", via="in_project", detail="key") == ["issue:A"]
+    assert t.search(kind="issue", where={"status_category": "nothing"}, detail="key") == []  # a fact: empty is the answer
+    store.upsert_entity(T, "issue", "Z", ref="jira#Z", title="Z", project="P")
+    assert t.search(kind="issue", where={"project": "P"}, detail="key") == ["issue:Z"]
+
+
 def test_search_where_without_kind_or_text_returns_only_the_entities_that_match(store):
     """Without a text nothing matched a fact: `where` alone answers with the entities it keeps, as with `kind`,
     and their other facts are not hits (evals/jira: 8 issues came back with 48 fact hits and "total": 56)."""

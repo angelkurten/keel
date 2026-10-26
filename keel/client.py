@@ -144,7 +144,7 @@ class Client:
         """Text search; with `kind` or `rule`, the entities of a kind or where a rule fires, paged by `limit`/`after`.
         `mode="semantic"`: subjects ranked by meaning, each with a `score` (the server needs --index). `detail="concise"`
         puts each result's facts in it; `depth=1` its neighbours; `per_kind=n` the best n of every kind; `where={name: value}`
-        only entities with that attribute or current fact; `detail="count"` only how many; `as_of`/`as_known_at` at an instant, or as
+        only entities with that attribute or current fact (a list of values: any of them); `detail="count"` only how many; `as_of`/`as_known_at` at an instant, or as
         Keel knew it then. A list of texts returns one result list per text."""
         return self._post("/v1/search", {
             "text": text, "kind": kind, "rule": rule, "limit": limit, "after": after, "mode": mode, "min_score": min_score, "related_to": related_to,
