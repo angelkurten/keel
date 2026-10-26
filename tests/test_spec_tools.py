@@ -815,3 +815,23 @@ def test_history_tenant_window_marks_first_values_and_concise_leaves_them_out(st
     assert [(f["subject"], f["was"]) for f in concise[1:]] == [("issue:W", "On Hold"), ("issue:C", "new")]
     assert [f["subject"] for f in t.history(since=d(9, 6), until=d(9, 10), detail="concise")] == ["issue:W", "issue:C"]  # none to omit
     assert "initial" not in t.history("issue:C")[0]
+
+
+def test_tool_descriptions_are_short_and_keep_what_agents_rely_on():
+    """Every request carries the five descriptions (evals/jira/context_tokens.md: 553 o200k tokens of a 1,672 fixed
+    part). They stay near 300 tokens (~4 characters each) and keep the guidance the agents act on: time (as_of,
+    as_known_at), the cheap details (key, count), paging (`more`), the search filters and the history windows."""
+    from keel.tools import DESCRIPTIONS
+
+    assert sum(len(v) for v in DESCRIPTIONS.values()) <= 1300
+    needs = {
+        "context": ["as_of", "as_known_at", "since", "depth=1", "brief", "full"],
+        "history": ["since/until", "predicate", "was", "as_known_at", "changed_since", "limit", "0: all"],
+        "search": ["kind", "rule", "where", "any of", "since", "related_to", "via", "as_of", "as_known_at", "key", "count", "brief",
+                   "limit", "after", '{"more"'],
+        "annotate": ["evidence", "scope"],
+        "related": ["as_of", "depth", "limit", '{"more"'],
+    }
+    for tool, words in needs.items():
+        missing = [w for w in words if w not in DESCRIPTIONS[tool]]
+        assert not missing, f"{tool} lost {missing}"
