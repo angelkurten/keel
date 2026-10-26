@@ -12,10 +12,18 @@ entities:
   issue:
     description: A Jira issue (bug, task, story, epic, sub-task...). Status, assignee, priority, resolution and type are facts over time.
     ref: issues.id
+    attrs: [summary, reporter]
+    facts:            # types from the event catalog
+      status: { description: "The workflow status, as the project names it." }
+      status_category: { description: indeterminate means in progress }
+      assignee: { description: Who it is assigned to; null when unassigned. }
+      priority:
+      resolution: { description: How it was resolved; null when unresolved. }
+      issue_type:
 
 relations:
-  in_project:   { from: issue, to: project }
-  subtask_of:   { from: issue, to: issue }
+  in_project:   { from: issue, to: project, one: true }
+  subtask_of:   { from: issue, to: issue, one: true }
   blocks:       { from: issue, to: issue }
   duplicates:   { from: issue, to: issue }
   clones:       { from: issue, to: issue }

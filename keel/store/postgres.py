@@ -126,7 +126,7 @@ class PostgresStore(SqlStore):
 
     def install(self, cartridge: Any) -> None:
         """(Re)create the point-in-time functions, and the cartridge's rule functions (None: none). Idempotent per cartridge."""
-        ident = None if cartridge is None else f"{cartridge.ident}|{sorted(cartridge.predicates or {})}"
+        ident = None if cartridge is None else f"{cartridge.ident}|{sorted(cartridge.predicates or {})}|{cartridge.entities!r}|{cartridge.relations!r}"
         if ident == self._installed and ident is not None:
             return
         with self._macro_lock, self._lock:

@@ -99,7 +99,7 @@ class SqliteStore(SqlStore):
 
     def install(self, cartridge: Any) -> sqlgen.SQLite:
         """The cartridge's rules compiled for SQLite (keel/sqlgen.py), kept until the cartridge changes."""
-        ident = f"{cartridge.ident}|{sorted(cartridge.predicates or {})}|{cartridge.rules!r}|{cartridge.relations!r}|{cartridge.calendar!r}"
+        ident = f"{cartridge.ident}|{sorted(cartridge.predicates or {})}|{cartridge.rules!r}|{cartridge.relations!r}|{cartridge.calendar!r}|{cartridge.entities!r}"
         with self._compile_lock:
             if self._compiled is None or self._compiled[0] != ident:
                 self._compiled = (ident, sqlgen.SQLite.compile(cartridge))

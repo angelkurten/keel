@@ -23,6 +23,17 @@ known by k, by a close learned by k, or by a close mark recorded by k.
     <rule>_verdicts(tenant, t, k, ...)    subject, verdict (true, false or null) for its kind
     <rule>_at(tenant, t, k, ...)          the entities the rule holds for (what search(rule=) lists)
 
+Per entity kind that declares its `facts` (and optionally `attrs`; relations from it marked `one`), what an agent
+queries, with times as TIMESTAMP in UTC and instants given as TIMESTAMP or ISO text; `describe` writes the paragraph
+that documents all of it for an agent, from the same cartridge:
+
+    <kind>_state_known_at(tenant, t, k)   one row per entity of the kind with a fact at t: subject, id, ref, attrs,
+    <kind>_state_at(tenant, t)            one decoded column per declared fact, <fact>_since, each `one` target's id
+    <kind>_changes(tenant, since, until, k)
+                                          each change of a declared fact that began in [since, until): old and new
+                                          value, as Keel's tenant history reports changes (no first values, no value
+                                          recorded wrong and corrected)
+
 `alive` is the instant memory must outlive (expires_at); by default k, else now. The dialect is a class
 (DuckDB, Postgres, SQLite): it owns types, instants, JSON access and macro syntax. SQLite has no table macros:
 its dialect keeps them compiled in Python and inlines a query's calls (`SQLite.expand`).
@@ -32,9 +43,10 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime, timezone
-from typing import Any
+from typing import Any, ClassVar
 
 from keel.rules import DURATION_OPS, Calendar
+from keel.schema import parse
 from keel.scopes import GLOBAL_TENANT, Scope
 from keel.store.memory import CLOSE
 
@@ -180,6 +192,25 @@ FROM (SELECT f.* RENAME (valid_to AS stored_to), {inner}"""
         """`x` (a subject key) is of `kind`: its part before the first ':' is the kind."""
         return f"split_part({x}, ':', 1) = {self.lit(kind)}"
 
+    # the per-kind views: instants as the agent reads them, a JSON attribute, result column types
+    TYPES: ClassVar[dict[str, str]] = {"text": "text", "number": "double precision", "bool": "boolean", "time": "timestamp"}
+
+    def ts(self, x: str) -> str:
+        """A stored instant (ISO 8601 text with its offset) as a TIMESTAMP in UTC."""
+        return f"(CAST({x} AS TIMESTAMPTZ) AT TIME ZONE 'UTC')"
+
+    def ts_value(self, x: str) -> str:
+        """A text a fact holds as a TIMESTAMP in UTC (no offset: UTC), NULL when it is not an instant."""
+        return f"CASE WHEN TRY_CAST({x} AS TIMESTAMP) IS NOT NULL OR TRY_CAST({x} AS TIMESTAMPTZ) IS NOT NULL THEN keel_utc({x}) END"
+
+    def json_field(self, doc: str, name: str) -> str:
+        return f"json_extract_string({doc}, '$.{name}')"
+
+    def instant_overloads(self, name: str, params: str, returns: str) -> str:
+        """Extra signatures so the instants of an agent-facing macro may be TIMESTAMP as well as text (none here:
+        a DuckDB macro takes any type)."""
+        return ""
+
 
 class Postgres(DuckDB):
     """The Postgres dialect (12+; 16+ for subqueries without an alias): instants are text (ISO 8601, UTC) and
@@ -313,6 +344,29 @@ END $keel$;
     def weekday(self, d: str) -> str:
         return f"(CAST(EXTRACT(isodow FROM {d}) AS integer) - 1)"
 
+    def ts(self, x: str) -> str:
+        return f"(CAST({x} AS timestamptz) AT TIME ZONE 'UTC')"
+
+    def ts_value(self, x: str) -> str:
+        return f"(keel_try_ts({x}) AT TIME ZONE 'UTC')"
+
+    def json_field(self, doc: str, name: str) -> str:
+        return f"(CAST({doc} AS jsonb) ->> '{name}')"
+
+    def instant_overloads(self, name: str, params: str, returns: str) -> str:
+        """A function per instant type (timestamp: read as UTC; timestamptz) beside the text one, each calling it with
+        the UTC instant as ISO text whatever the session's zone. A quoted literal still resolves to text."""
+        names = [p.split(" := ")[0] for p in params.split(", ")]
+        out = []
+        for typ, utc in (("timestamp", "{}"), ("timestamptz", "({} AT TIME ZONE 'UTC')")):
+            decl = ", ".join("tnt text" if n == "tnt" else f"{n} {typ}" + (" DEFAULT NULL" if " := " in p else "")
+                             for n, p in zip(names, params.split(", "), strict=True))
+            call = ", ".join("tnt" if n == "tnt" else f"to_char({utc.format(n)}, 'YYYY-MM-DD\"T\"HH24:MI:SS.US') || '+00:00'" for n in names)
+            out.append(f"DROP FUNCTION IF EXISTS {name}({', '.join('text' if n == 'tnt' else typ for n in names)});\n"
+                       f"CREATE FUNCTION {name}({decl}) RETURNS TABLE({returns}) LANGUAGE sql STABLE AS $keel$\n"
+                       f"SELECT * FROM {name}({call})\n$keel$;\n")
+        return "".join(out)
+
 
 _EITHER = "-- keel_facts: as stored, or as known at k"
 
@@ -342,6 +396,7 @@ class SQLite(DuckDB):
         multi = sorted(p for p, spec in (cartridge.predicates or {}).items() if isinstance(spec, dict) and spec.get("multi"))
         symmetric = {r for r, spec in (cartridge.relations or {}).items() if isinstance(spec, dict) and spec.get("symmetric")}
         _state(d, multi)
+        _views(d, cartridge, multi)
         for name, spec in cartridge.rules.items():
             if spec.get("when"):
                 defs = dict(d.defs)
@@ -470,6 +525,17 @@ class SQLite(DuckDB):
         # the keys from 'kind:' up to 'kind;' (';' follows ':'): a range of the (tenant, subject) index
         return f"(({x} >= {self.lit(kind + ':')} AND {x} < {self.lit(kind + ';')}) OR {x} = {self.lit(kind)})"
 
+    TYPES: ClassVar[dict[str, str]] = {"text": "text", "number": "real", "bool": "integer", "time": "text"}
+
+    def ts(self, x: str) -> str:
+        return x  # SQLite has no TIMESTAMP: the stored ISO text, in UTC, compares in time order
+
+    def ts_value(self, x: str) -> str:
+        return x
+
+    def json_field(self, doc: str, name: str) -> str:
+        return f"json_extract({doc}, '$.{name}')"
+
     @staticmethod
     def register(conn: Any) -> None:
         """The helpers the expanded SQL calls, as SQLite functions on `conn` (a sqlite3 connection)."""
@@ -584,11 +650,186 @@ def macros(cartridge: Any, d: Any | None = None) -> str:
     d = d or DuckDB()
     multi = sorted(p for p, spec in (cartridge.predicates or {}).items() if isinstance(spec, dict) and spec.get("multi"))
     symmetric = {r for r, spec in (cartridge.relations or {}).items() if isinstance(spec, dict) and spec.get("symmetric")}
-    out = [d.prelude(), _state(d, multi)]
+    out = [d.prelude(), _state(d, multi), _views(d, cartridge, multi)]
     for name, spec in cartridge.rules.items():
         if spec.get("when"):
             out.append(_Rule(d, cartridge.calendar, symmetric).macros(name, spec))
     return "\n".join(out)
+
+
+# ---- per kind: what an agent queries -------------------------------------------------------------------------
+
+
+def _cls(hint: Any) -> tuple[str, list[Any] | None]:
+    """How a declared fact's JSON value is decoded into a column (text, number, bool, time), and its enum's values."""
+    if hint is None:
+        return "text", None
+    h = parse(hint)
+    if h.kind == "enum":
+        vals = list(h.values)
+        if all(isinstance(v, bool) for v in vals):
+            return "bool", vals
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in vals):
+            return "number", vals
+        return "text", vals
+    return {"int": "number", "number": "number", "bool": "bool", "datetime": "time"}.get(h.kind, "text"), None
+
+
+def kind_views(cartridge: Any) -> list[tuple[str, dict[str, dict[str, Any]], list[str], list[tuple[str, str]]]]:
+    """Every entity kind that declares facts: (kind, {fact: {type, description, cls, values}}, attrs, [(relation, to)]
+    for each relation from it marked `one`). In declaration order."""
+    out = []
+    for kind, spec in (getattr(cartridge, "entities", None) or {}).items():  # a store's stand-in for no cartridge has none
+        facts = cartridge.facts_of(kind)
+        if not facts:
+            continue
+        for name in [kind] + list(facts):
+            if not _IDENT.match(name):
+                raise NotImplementedError(f"kind '{kind}': '{name}' is not a plain SQL identifier")
+        decl = {}
+        for name, f in facts.items():
+            cls, values = _cls(f["type"])
+            decl[name] = {**f, "cls": cls, "values": values}
+        attrs = list((spec or {}).get("attrs") or []) if isinstance(spec, dict) else []
+        ones = [(r, rs["to"]) for r, rs in cartridge.relations.items() if isinstance(rs, dict) and rs.get("one") is True and rs.get("from") == kind]
+        out.append((kind, decl, attrs, ones))
+    return out
+
+
+def view_columns(cartridge: Any, kind: str) -> list[str]:
+    """The columns of `<kind>_state_at`, in order."""
+    for k, facts, attrs, ones in kind_views(cartridge):
+        if k == kind:
+            return ["subject", "id", "ref", *attrs, *facts, *(f"{f}_since" for f in facts), *(r for r, _ in ones)]
+    raise KeyError(kind)
+
+
+CHANGE_COLUMNS = ("subject", "id", "fact", "old_value", "new_value", "valid_from", "recorded_at")
+
+
+def _decode(d: Any, v: str, cls: str) -> str:
+    """A JSON value as its column: a string as text (anything else but null as its JSON text), a number, a boolean,
+    an instant."""
+    jt = d.json_type(v)
+    if cls == "number":
+        return d.json_num(v, jt)
+    if cls == "bool":
+        return f"CASE WHEN {v} = 'true' THEN TRUE WHEN {v} = 'false' THEN FALSE END"
+    if cls == "time":
+        return f"CASE WHEN {jt} = {d.JT_STR} THEN {d.ts_value(d.json_str(v))} END"
+    return f"CASE WHEN {jt} = {d.JT_STR} THEN {d.json_str(v)} WHEN {jt} = {d.JT_NULL} THEN NULL ELSE {v} END"
+
+
+def _views(d: Any, cartridge: Any, multi: list[str]) -> str:
+    """Per kind with declared facts: `<kind>_state_known_at(tenant, t, k)` and `<kind>_state_at(tenant, t)`, one row per
+    entity of the kind with a fact at t (as known at k), one decoded column per declared fact with `<fact>_since`, its
+    attributes and the target of each `one` relation from it; `<kind>_changes(tenant, since, until, k)`, each change of
+    a declared fact that started in [since, until): a value that replaced another (the same one set again included), as
+    Keel's tenant history says it (`was`): never a first value, nor a value recorded wrong and corrected (it never held)."""
+    out = []
+    for kind, facts, attrs, ones in kind_views(cartridge):
+        for name in (f"{kind}_state_at", f"{kind}_state_known_at", f"{kind}_changes"):
+            if name.lower() in {f"{r}_at".lower() for r in cartridge.rules} | {f"{r}_verdicts".lower() for r in cartridge.rules}:
+                raise NotImplementedError(f"kind '{kind}': {name} is also a rule's macro")
+        n = len(kind) + 2  # the id: the subject key after '<kind>:'
+        q = lambda c: f'"{c}"'
+        piv = ", ".join(f"max(CASE WHEN predicate = {d.lit(p)} THEN value END) AS v{i}, max(CASE WHEN predicate = {d.lit(p)} THEN valid_from END) AS s{i}"
+                        for i, p in enumerate(facts))
+        cols = ["piv.subject AS subject", f"substr(piv.subject, {n}) AS id", "e.ref AS ref",
+                *(f"{d.json_field('e.attrs', a)} AS {q(a)}" for a in attrs),
+                *(f"{_decode(d, f'piv.v{i}', spec['cls'])} AS {q(p)}" for i, (p, spec) in enumerate(facts.items())),
+                *(f"{d.ts(f'piv.s{i}')} AS {q(p + '_since')}" for i, p in enumerate(facts)),
+                *(f"CASE WHEN {d.kind_is(f'ones.r{i}', to)} THEN substr(ones.r{i}, {len(to) + 2}) ELSE ones.r{i} END AS {q(r)}" for i, (r, to) in enumerate(ones))]
+        types = ["subject text", "id text", "ref text", *(f"{q(a)} text" for a in attrs),
+                 *(f"{q(p)} {d.TYPES[spec['cls']]}" for p, spec in facts.items()), *(f"{q(p + '_since')} {d.TYPES['time']}" for p in facts),
+                 *(f"{q(r)} text" for r, _ in ones)]
+        rel = ""
+        if ones:
+            firsts = ", ".join(f"{d.first_of('dst', 'valid_from', f'rel = {d.lit(r)}')} AS r{i}" for i, (r, _) in enumerate(ones))
+            rel = (f",\nones AS (SELECT src, {firsts} FROM relations_known_at(tnt, t, k := k) "
+                   f"WHERE rel IN ({', '.join(d.lit(r) for r, _ in ones)}) GROUP BY src)")
+        body = (f"WITH cur AS (SELECT subject, predicate, value, valid_from FROM (SELECT subject, predicate, value, valid_from, "
+                f"row_number() OVER (PARTITION BY subject, predicate ORDER BY valid_from DESC, (tenant <> tnt) DESC, seq DESC) AS rn "
+                f"FROM state_known_at(tnt, t, k := k) WHERE {d.kind_is('subject', kind)}) c WHERE rn = 1),\n"
+                f"piv AS (SELECT subject, {piv} FROM cur GROUP BY subject){rel}\n"
+                f"SELECT {', '.join(cols)}\nFROM piv LEFT JOIN entities e ON e.tenant = tnt AND e.kind = {d.lit(kind)} AND e.id = substr(piv.subject, {n})"
+                + (" LEFT JOIN ones ON ones.src = piv.subject" if ones else ""))
+        for name, params, sql in ((f"{kind}_state_known_at", "tnt, t, k := NULL", body),
+                                  (f"{kind}_state_at", "tnt, t", f"SELECT * FROM {kind}_state_known_at(tnt, t)")):
+            out += [d.table_macro(name, params, sql, ", ".join(types)), d.instant_overloads(name, params, ", ".join(types))]
+        single = [p for p in facts if p not in multi]  # a multi-valued predicate has no single value it replaced
+        if single:
+            text = lambda v: _decode(d, v, "text")
+            changes = (f"SELECT w.subject AS subject, substr(w.subject, {n}) AS id, w.predicate AS fact, {text('w.old')} AS old_value, "
+                       f"{text('w.value')} AS new_value, {d.ts('w.valid_from')} AS valid_from, {d.ts('w.recorded_at')} AS recorded_at\n"
+                       f"FROM (SELECT subject, predicate, value, valid_from, recorded_at, lag(value) OVER p AS old, lag(valid_to) OVER p AS old_to\n"
+                       f"  FROM keel_visible(tnt, k := k) WHERE tenant = tnt AND {d.kind_is('subject', kind)} "
+                       f"AND predicate IN ({', '.join(d.lit(p) for p in single)}) AND (valid_to IS NULL OR valid_to > valid_from)\n"
+                       f"  WINDOW p AS (PARTITION BY subject, predicate, scope ORDER BY valid_from, seq)) w\n"
+                       f"WHERE w.old_to = w.valid_from "
+                       f"AND (since IS NULL OR w.valid_from >= keel_iso(since)) AND (until IS NULL OR w.valid_from < keel_iso(until))")
+            returns = f"subject text, id text, fact text, old_value text, new_value text, valid_from {d.TYPES['time']}, recorded_at {d.TYPES['time']}"
+            out += [d.table_macro(f"{kind}_changes", "tnt, since, until, k := NULL", changes, returns),
+                    d.instant_overloads(f"{kind}_changes", "tnt, since, until, k := NULL", returns)]
+    return "".join(out)
+
+
+_NOUN = {"number": "a number", "bool": "true or false", "time": "a TIMESTAMP"}
+
+
+def describe(cartridge: Any, tenant: str | None = None, dialect: str = "duckdb") -> str:
+    """The paragraph an agent reads to query the generated SQL, generated with it from the same cartridge so the two
+    never disagree: instants, the per-kind views and changes with every column (declared descriptions, enum values from
+    the declaration or the event catalog), the relations, the rules with their definitions, and the lower level."""
+    engine = {"duckdb": "DuckDB", "postgres": "PostgreSQL"}.get(dialect, dialect)
+    who = f"; this one's is '{tenant}'" if tenant else ""
+    lines = [(
+        f"The data is in a {engine} database generated by Keel from the domain's declaration. Every table macro takes the "
+        f"tenant first{who}. t is valid time (when something held in the world); k is transaction time: with k := k a "
+        f"macro answers as recorded by k (some records came late, some were first recorded wrong and corrected later). "
+        f"Instants are UTC: pass TIMESTAMP '2020-01-15 14:00' or ISO 8601 text (now(): now); *_since, valid_from and "
+        f"recorded_at columns are TIMESTAMP.")]
+    for kind, facts, attrs, ones in kind_views(cartridge):
+        spec = cartridge.entities.get(kind)
+        first = str(spec.get("description") or "").strip().split(". ")[0].rstrip(".") if isinstance(spec, dict) else ""
+        about = f" ({first})" if first else ""
+        cols = []
+        for p, f in facts.items():
+            notes = []
+            if f["values"]:
+                notes.append("one of " + ", ".join(map(str, f["values"])) + (" or null" if parse(f["type"]).nullable else ""))
+            elif f["cls"] in _NOUN:
+                notes.append(_NOUN[f["cls"]])
+            if f.get("description"):
+                notes.append(f["description"].strip().rstrip("."))
+            cols.append(p + (f" ({'; '.join(notes)})" if notes else ""))
+        ends = [f"{r} (id of the {to})" for r, to in ones]
+        lines.append(
+            f"- {kind}_state_at(tenant, t), {kind}_state_known_at(tenant, t, k := k): one row per {kind}{about} with a fact at t. "
+            f"Columns: subject ('{kind}:<id>'), id, ref" + "".join(f", {a}" for a in attrs) + "; " + ", ".join(cols)
+            + "; <fact>_since for each (when that value began)" + (f"; {', '.join(ends)}" if ends else "") + ". NULL: empty or unknown.")
+        lines.append(
+            f"- {kind}_changes(tenant, since, until, k := k): one row per change of a fact above that began in [since, until) "
+            f"(NULL: open-ended): {', '.join(CHANGE_COLUMNS)} (values as text). Not a change: a first value, a value recorded "
+            f"wrong and corrected later. A value set again unchanged is one (old_value = new_value).")
+    links = []
+    for r, spec in cartridge.relations.items():
+        spec = spec if isinstance(spec, dict) else {}
+        both = spec.get("symmetric")
+        links.append(f"{r} ({spec.get('from')} {'-' if both else '->'} {spec.get('to')}" + (", either direction" if both else "") + ")")
+    if links:
+        lines.append("- relations_at(tenant, t), relations_known_at(tenant, t, k := k): src, rel, dst, valid_from, valid_to; a row reads "
+                     "'src <rel> dst', ends as '<kind>:<id>'. rel: " + ", ".join(links) + ".")
+    rules = [(r, spec) for r, spec in cartridge.rules.items() if spec.get("when")]
+    if rules:
+        lines.append("Rules, as table macros listing the subject of each entity a rule holds for at t (trust them; each also takes k := k; "
+                     "<rule>_verdicts(tenant, t) gives subject, verdict true, false or null):")
+        for r, spec in rules:
+            of = f" ({spec['applies_to']})" if spec.get("applies_to") else ""
+            lines.append(f"- {rule_macro(r)}_at(tenant, t){of}: {str(spec.get('definition') or '').strip()}")
+    lines.append("Lower level: state_at(tenant, t) and state_known_at(tenant, t, k := k) (subject, predicate, value as JSON text, "
+                 "instants as ISO text), keel_facts(tenant, k := k) (every fact's history), tables entities, facts, relations.")
+    return "\n".join(lines)
 
 
 # ---- point in time --------------------------------------------------------------------------------------
