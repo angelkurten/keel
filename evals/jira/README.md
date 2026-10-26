@@ -190,6 +190,13 @@ uv run --extra mcp --with tiktoken python -m evals.jira.tokens report /tmp/repla
 uv run --extra mcp --with tiktoken pytest evals/jira/test_compact.py -q
 ```
 
+## 7. Held-out set
+
+The 387 questions above were read while Keel was tuned. A second set of 387, on three projects of Jira instances
+development never read (JiraEcosystem/AC, Sakai/GRBK, RedHat/PROJQUAY), is pre-registered in
+[`heldout/README.md`](heldout/README.md) with its generation, conditions, commands, budget and analysis
+(`heldout_analysis.py`), all committed before its first run. Bench reads it with `--questions evals/jira/heldout`.
+
 ## Results files
 
 | File | What |
