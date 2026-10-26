@@ -172,17 +172,35 @@ TABLES = ('Lists of records come as tables: {"all": {fields every record shares}
           "Times are UTC.")
 
 
-def instructions(cartridge: Any, agent: Any = None, compact: bool = True) -> str:
+FEW = 3  # a kind with at most this many subjects is named with them in a bound server's instructions
+
+
+def few_subjects(tools: Tools, n: int = FEW) -> dict[str, list[str]]:
+    """The subjects of each kind the bound agent may read that has at most `n` of them (a project, a site, an account):
+    what an agent would otherwise look up before filtering by it."""
+    out = {}
+    for k in sorted(tools.cartridge.entities):
+        if tools.agent is not None and not tools.agent.sees_kind(k):
+            continue
+        keys = [x for x in tools.search(kind=k, detail="key", limit=n + 1) if isinstance(x, str)]
+        if 0 < len(keys) <= n:
+            out[k] = keys
+    return out
+
+
+def instructions(cartridge: Any, agent: Any = None, compact: bool = True, few: dict[str, list[str]] | None = None) -> str:
     """What every call would otherwise repeat, said once per session: the kinds, the relations and what each rule means
-    (context's `evaluation` names them), as far as `agent` (a registry entry) may read. Sorted, so the text, and the
-    prompt cache behind it, never changes for a cartridge and agent."""
+    (context's `evaluation` names them), as far as `agent` (a registry entry) may read; `few` (a bound server's
+    `few_subjects`) names the subjects of the kinds that have only a few. Sorted, so the text, and the prompt cache
+    behind it, never changes for a cartridge and agent (and those few subjects)."""
     kind = (lambda k: True) if agent is None else agent.sees_kind
     seen = {r: s for r, s in cartridge.relations.items() if agent is None or (agent.sees_relation(r) and (not isinstance(s, dict) or (kind(s.get("from")) and kind(s.get("to")))))}
     rels = ", ".join(f"{r} ({s.get('from')}->{s.get('to')})" if isinstance(s, dict) else r for r, s in sorted(seen.items()))
     rules = "\n".join(f"- {r} ({s.get('applies_to', 'any')}): {s.get('definition', '').strip()}" for r, s in sorted(cartridge.rules.items())
                       if s.get("applies_to") is None or kind(s.get("applies_to")))
-    return (f"Subjects are '<kind>:<id>'. Kinds: {', '.join(k for k in sorted(cartridge.entities) if kind(k))}.\nRelations: {rels}.\n"
-            f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}" + (f"\n{TABLES}" if compact else ""))
+    kinds = ", ".join(f"{k} ({', '.join(few[k])})" if few and few.get(k) else k for k in sorted(cartridge.entities) if kind(k))
+    return (f"Subjects are '<kind>:<id>'. Kinds: {kinds}.\nRelations: {rels}.\n"
+            f"Rules (context's `evaluation`; search(rule=) lists where one holds; trust them):\n{rules}" + (f"\n{TABLES}" if compact else ""))
 
 
 READ_ONLY = "this server is read-only: it serves context, history, search and related; annotate is not served"
@@ -258,7 +276,8 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))
         read_only = read_only or writes_nothing(tools.agent)
     known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
-    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None, compact) if known is not None else None)
+    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None, compact,
+                                                                few_subjects(tools) if isinstance(tools, Tools) else None) if known is not None else None)
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     # no outputSchema: it would only say "an object" or "a list", in tokens a client may hand the model on every call;
     # structuredContent still carries the data

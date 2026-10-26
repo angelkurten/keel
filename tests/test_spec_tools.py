@@ -801,6 +801,25 @@ def test_mcp_compact_text_carries_the_same_answer_in_fewer_tokens(store):
     assert "cols" in instructions(cartridge()) and "cols" not in instructions(cartridge(), compact=False)
 
 
+def test_a_bound_server_names_the_subjects_of_kinds_with_few(store):
+    """A server bound to a tenant names the subjects of a kind that has only a few (a project, a site, an account): an
+    agent asked about "the P project" calls related_to='project:P' directly instead of looking the key up first, or
+    learns there is only one (evals/jira/requests.md: 171 calls looked a project up or checked membership). Kinds with
+    more are named alone. The rules line says search(rule=) lists where a rule holds."""
+    pytest.importorskip("mcp")
+    from keel.mcp_server import build_server, few_subjects, instructions
+
+    t = Tools(cartridge(), seed(store), T, clock=lambda: NOW)
+    assert few_subjects(t) == {"project": ["project:P"]}
+    text = build_server(t).instructions
+    assert "Kinds: issue, project (project:P)." in text and "search(rule=)" in text
+    assert text == instructions(cartridge(), few={"project": ["project:P"]})
+    assert "Kinds: issue, project." in instructions(cartridge())  # no tenant, no subjects to name
+    for i in range(4):
+        store.upsert_entity(T, "project", f"Q{i}", ref=f"jira#Q{i}")
+    assert few_subjects(t) == {}
+
+
 def test_history_tenant_window_marks_first_values_and_concise_leaves_them_out(store):
     """A window over the tenant lists what started in it; a first value (nothing held the predicate right before
     it: an issue created in the window) is marked `initial`, and the concise form, what an agent reads to answer
