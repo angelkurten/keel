@@ -1,0 +1,1976 @@
+[
+ {
+  "id": "redhat-projquay-current-001",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current status of PROJQUAY-2962?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2962",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-002",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current assignee of PROJQUAY-473?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-473",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-003",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What assignee does PROJQUAY-2114 have now?",
+  "answer": "user-a5cb4280",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2114",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-004",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current status of PROJQUAY-369?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-369",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-005",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What status does PROJQUAY-487 have now?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-487",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-006",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What assignee does PROJQUAY-2491 have now?",
+  "answer": "user-877f0483",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2491",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-007",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-1425?",
+  "answer": "Feature",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1425",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-008",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What resolution does PROJQUAY-268 have now?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-268",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-009",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What resolution does PROJQUAY-2778 have now?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2778",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-010",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-865?",
+  "answer": "Story",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-865",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-011",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current status of PROJQUAY-1562?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1562",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-012",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-1?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-013",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What assignee does PROJQUAY-410 have now?",
+  "answer": "user-c1522c9b",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-410",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-014",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-1420?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1420",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-015",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What resolution does PROJQUAY-2984 have now?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2984",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-016",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What status does PROJQUAY-1878 have now?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1878",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-017",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What assignee does PROJQUAY-585 have now?",
+  "answer": "user-c1522c9b",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-585",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-018",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-2973?",
+  "answer": "Task",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2973",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-019",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What issue type does PROJQUAY-1768 have now?",
+  "answer": "Task",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1768",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-current-020",
+  "tenant": "redhat-projquay",
+  "type": "current",
+  "question": "What is the current issue type of PROJQUAY-1239?",
+  "answer": "Story",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1239",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-001",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-02-14 21:37 UTC, what assignee did PROJQUAY-69 have?",
+  "answer": "user-a3f52c13",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-69",
+   "predicate": "assignee",
+   "as_of": "2020-02-14 21:37 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-002",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-1357 on 2021-01-15 15:11 UTC?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1357",
+   "predicate": "status",
+   "as_of": "2021-01-15 15:11 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-003",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-2348 on 2021-11-25 17:19 UTC?",
+  "answer": "Coding In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2348",
+   "predicate": "status",
+   "as_of": "2021-11-25 17:19 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-004",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-60 on 2020-10-16 03:14 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-60",
+   "predicate": "status",
+   "as_of": "2020-10-16 03:14 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-005",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-08-04 14:26 UTC, what assignee did PROJQUAY-2318 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2318",
+   "predicate": "assignee",
+   "as_of": "2021-08-04 14:26 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-006",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-08-01 10:43 UTC, what status did PROJQUAY-1946 have?",
+  "answer": "Pull Request Sent",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1946",
+   "predicate": "status",
+   "as_of": "2021-08-01 10:43 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-007",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-12-04 06:03 UTC, what status did PROJQUAY-574 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-574",
+   "predicate": "status",
+   "as_of": "2020-12-04 06:03 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-008",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-07-02 09:06 UTC, what priority did PROJQUAY-813 have?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-813",
+   "predicate": "priority",
+   "as_of": "2020-07-02 09:06 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-009",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-03-20 10:49 UTC, what status did PROJQUAY-1737 have?",
+  "answer": "Pull Request Sent",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1737",
+   "predicate": "status",
+   "as_of": "2021-03-20 10:49 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-010",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-01-08 02:27 UTC, what status did PROJQUAY-241 have?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-241",
+   "predicate": "status",
+   "as_of": "2021-01-08 02:27 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-011",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-03-30 05:58 UTC, what status did PROJQUAY-1481 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1481",
+   "predicate": "status",
+   "as_of": "2021-03-30 05:58 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-012",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-2719 on 2021-10-29 21:16 UTC?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2719",
+   "predicate": "status",
+   "as_of": "2021-10-29 21:16 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-013",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the resolution of PROJQUAY-2332 on 2021-08-09 02:21 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2332",
+   "predicate": "resolution",
+   "as_of": "2021-08-09 02:21 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-014",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-1806 on 2021-06-14 16:19 UTC?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1806",
+   "predicate": "status",
+   "as_of": "2021-06-14 16:19 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-015",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-08-13 20:17 UTC, what assignee did PROJQUAY-2355 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2355",
+   "predicate": "assignee",
+   "as_of": "2021-08-13 20:17 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-016",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-1633 on 2021-02-26 12:38 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1633",
+   "predicate": "status",
+   "as_of": "2021-02-26 12:38 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-017",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-08-13 03:00 UTC, what status did PROJQUAY-1446 have?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1446",
+   "predicate": "status",
+   "as_of": "2021-08-13 03:00 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-018",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-07-28 14:32 UTC, what status did PROJQUAY-797 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-797",
+   "predicate": "status",
+   "as_of": "2020-07-28 14:32 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-019",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-09-24 17:17 UTC, what assignee did PROJQUAY-576 have?",
+  "answer": "user-6182ca31",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-576",
+   "predicate": "assignee",
+   "as_of": "2020-09-24 17:17 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-020",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-2529 on 2021-09-27 03:25 UTC?",
+  "answer": "Coding In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2529",
+   "predicate": "status",
+   "as_of": "2021-09-27 03:25 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-021",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the assignee of PROJQUAY-465 on 2020-05-26 11:09 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-465",
+   "predicate": "assignee",
+   "as_of": "2020-05-26 11:09 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-022",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-08-18 23:43 UTC, what status did PROJQUAY-2267 have?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2267",
+   "predicate": "status",
+   "as_of": "2021-08-18 23:43 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-023",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2020-10-10 06:28 UTC, what priority did PROJQUAY-288 have?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-288",
+   "predicate": "priority",
+   "as_of": "2020-10-10 06:28 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-024",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "What was the status of PROJQUAY-545 on 2020-04-22 21:06 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-545",
+   "predicate": "status",
+   "as_of": "2020-04-22 21:06 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-as_of-025",
+  "tenant": "redhat-projquay",
+  "type": "as_of",
+  "question": "On 2021-01-28 19:12 UTC, what assignee did PROJQUAY-1429 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1429",
+   "predicate": "assignee",
+   "as_of": "2021-01-28 19:12 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-001",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-07-14 21:53 UTC, what resolution did PROJQUAY-867 have at 2020-07-14 17:19 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-867",
+   "predicate": "resolution",
+   "as_of": "2020-07-14 17:19 UTC",
+   "known_at": "2020-07-14 21:53 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-002",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2019-11-19 00:09 UTC, what was the assignee of PROJQUAY-399 at 2019-11-18 09:38 UTC?",
+  "answer": "user-3caea3d0",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-399",
+   "predicate": "assignee",
+   "as_of": "2019-11-18 09:38 UTC",
+   "known_at": "2019-11-19 00:09 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-003",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-12-03 04:43 UTC, what assignee did PROJQUAY-1175 have at 2021-12-02 16:47 UTC?",
+  "answer": "user-17460186",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1175",
+   "predicate": "assignee",
+   "as_of": "2021-12-02 16:47 UTC",
+   "known_at": "2021-12-03 04:43 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-004",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-07-17 22:07 UTC, what status did PROJQUAY-834 have at 2020-07-13 13:42 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-834",
+   "predicate": "status",
+   "as_of": "2020-07-13 13:42 UTC",
+   "known_at": "2020-07-17 22:07 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-005",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-05-21 17:16 UTC, what was the assignee of PROJQUAY-590 at 2020-05-21 16:01 UTC?",
+  "answer": "user-17460186",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-590",
+   "predicate": "assignee",
+   "as_of": "2020-05-21 16:01 UTC",
+   "known_at": "2020-05-21 17:16 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-006",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-12-10 06:40 UTC, what resolution did PROJQUAY-2883 have at 2021-12-07 18:51 UTC?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2883",
+   "predicate": "resolution",
+   "as_of": "2021-12-07 18:51 UTC",
+   "known_at": "2021-12-10 06:40 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-007",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-08-30 00:47 UTC, what was the status of PROJQUAY-304 at 2020-08-24 19:42 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-304",
+   "predicate": "status",
+   "as_of": "2020-08-24 19:42 UTC",
+   "known_at": "2020-08-30 00:47 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-008",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-10-27 16:02 UTC, what was the status of PROJQUAY-2659 at 2021-10-09 09:55 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2659",
+   "predicate": "status",
+   "as_of": "2021-10-09 09:55 UTC",
+   "known_at": "2021-10-27 16:02 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-009",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-01-19 23:12 UTC, what was the status of PROJQUAY-22 at 2021-01-05 10:50 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-22",
+   "predicate": "status",
+   "as_of": "2021-01-05 10:50 UTC",
+   "known_at": "2021-01-19 23:12 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-010",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-01-22 20:33 UTC, what was the status of PROJQUAY-1155 at 2021-01-21 15:47 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1155",
+   "predicate": "status",
+   "as_of": "2021-01-21 15:47 UTC",
+   "known_at": "2021-01-22 20:33 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-011",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-10-30 02:14 UTC, what was the status of PROJQUAY-1151 at 2020-10-29 04:00 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1151",
+   "predicate": "status",
+   "as_of": "2020-10-29 04:00 UTC",
+   "known_at": "2020-10-30 02:14 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-012",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-01-31 11:19 UTC, what status did PROJQUAY-1197 have at 2021-01-21 15:44 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1197",
+   "predicate": "status",
+   "as_of": "2021-01-21 15:44 UTC",
+   "known_at": "2021-01-31 11:19 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-013",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-04-14 23:08 UTC, what resolution did PROJQUAY-1877 have at 2021-04-14 22:34 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1877",
+   "predicate": "resolution",
+   "as_of": "2021-04-14 22:34 UTC",
+   "known_at": "2021-04-14 23:08 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-014",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-10-21 23:46 UTC, what status did PROJQUAY-1816 have at 2021-10-18 15:44 UTC?",
+  "answer": "Plan",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1816",
+   "predicate": "status",
+   "as_of": "2021-10-18 15:44 UTC",
+   "known_at": "2021-10-21 23:46 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-015",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-07-14 19:26 UTC, what status did PROJQUAY-866 have at 2020-07-14 17:08 UTC?",
+  "answer": "Blocked",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-866",
+   "predicate": "status",
+   "as_of": "2020-07-14 17:08 UTC",
+   "known_at": "2020-07-14 19:26 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-016",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-01-22 07:41 UTC, what was the status of PROJQUAY-1392 at 2021-01-18 21:03 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1392",
+   "predicate": "status",
+   "as_of": "2021-01-18 21:03 UTC",
+   "known_at": "2021-01-22 07:41 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-017",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-11-23 23:48 UTC, what was the assignee of PROJQUAY-2860 at 2021-11-23 18:49 UTC?",
+  "answer": "user-17460186",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2860",
+   "predicate": "assignee",
+   "as_of": "2021-11-23 18:49 UTC",
+   "known_at": "2021-11-23 23:48 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-018",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-09-01 06:16 UTC, what resolution did PROJQUAY-1004 have at 2020-08-25 15:03 UTC?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1004",
+   "predicate": "resolution",
+   "as_of": "2020-08-25 15:03 UTC",
+   "known_at": "2020-09-01 06:16 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-019",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-02-23 20:11 UTC, what was the status of PROJQUAY-341 at 2020-02-20 15:02 UTC?",
+  "answer": "To Do",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-341",
+   "predicate": "status",
+   "as_of": "2020-02-20 15:02 UTC",
+   "known_at": "2020-02-23 20:11 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-020",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-12-19 19:10 UTC, what was the assignee of PROJQUAY-2930 at 2021-12-11 12:30 UTC?",
+  "answer": "user-af5eb4d4",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-2930",
+   "predicate": "assignee",
+   "as_of": "2021-12-11 12:30 UTC",
+   "known_at": "2021-12-19 19:10 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-021",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-03-09 09:25 UTC, what was the resolution of PROJQUAY-1447 at 2021-03-08 10:50 UTC?",
+  "answer": "Won't Fix",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1447",
+   "predicate": "resolution",
+   "as_of": "2021-03-08 10:50 UTC",
+   "known_at": "2021-03-09 09:25 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-022",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2021-03-03 11:14 UTC, what was the assignee of PROJQUAY-1012 at 2021-03-01 10:25 UTC?",
+  "answer": "user-9d58d636",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-1012",
+   "predicate": "assignee",
+   "as_of": "2021-03-01 10:25 UTC",
+   "known_at": "2021-03-03 11:14 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-023",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-07-14 23:10 UTC, what assignee did PROJQUAY-866 have at 2020-07-14 15:41 UTC?",
+  "answer": "user-a71b6cce",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-866",
+   "predicate": "assignee",
+   "as_of": "2020-07-14 15:41 UTC",
+   "known_at": "2020-07-14 23:10 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-024",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-08-29 07:59 UTC, what status did PROJQUAY-385 have at 2020-08-24 22:47 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-385",
+   "predicate": "status",
+   "as_of": "2020-08-24 22:47 UTC",
+   "known_at": "2020-08-29 07:59 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_at-025",
+  "tenant": "redhat-projquay",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-01-28 01:54 UTC, what status did PROJQUAY-674 have at 2021-01-21 15:46 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:PROJQUAY-674",
+   "predicate": "status",
+   "as_of": "2021-01-21 15:46 UTC",
+   "known_at": "2021-01-28 01:54 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "redhat-projquay-links-001",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-06-25 00:28 UTC, of the issues related to PROJQUAY-1961, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-1480",
+   "PROJQUAY-1974"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1961",
+   "relation": "relates_to",
+   "as_of": "2021-06-25 00:28 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-002",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2022-01-04 12:25 UTC, of the issues linked to PROJQUAY-1812 as duplicates, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2046"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1812",
+   "relation": "duplicates",
+   "as_of": "2022-01-04 12:25 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-003",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-10-26 02:00 UTC, of the issues related to PROJQUAY-2567, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-1926",
+   "PROJQUAY-2422"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2567",
+   "relation": "relates_to",
+   "as_of": "2021-10-26 02:00 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-004",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2022-01-04 03:02 UTC, of the issues related to PROJQUAY-1812, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2068"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1812",
+   "relation": "relates_to",
+   "as_of": "2022-01-04 03:02 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-005",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-12-04 17:50 UTC, of the issues related to PROJQUAY-1446, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2296"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1446",
+   "relation": "relates_to",
+   "as_of": "2021-12-04 17:50 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-006",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-11-03 23:01 UTC, of the issues related to PROJQUAY-2032, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2231"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2032",
+   "relation": "relates_to",
+   "as_of": "2021-11-03 23:01 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-007",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-10-18 17:32 UTC, of the issues related to PROJQUAY-1535, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2294",
+   "PROJQUAY-2325"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1535",
+   "relation": "relates_to",
+   "as_of": "2021-10-18 17:32 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-008",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-03-05 00:22 UTC, of the issues related to PROJQUAY-21, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-20",
+   "PROJQUAY-382"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-21",
+   "relation": "relates_to",
+   "as_of": "2021-03-05 00:22 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-009",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-11-08 01:58 UTC, of the issues related to PROJQUAY-2545, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2559"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2545",
+   "relation": "relates_to",
+   "as_of": "2021-11-08 01:58 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-010",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-05-13 00:33 UTC, of the issues related to PROJQUAY-966, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-74"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-966",
+   "relation": "relates_to",
+   "as_of": "2021-05-13 00:33 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-011",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-12-20 15:02 UTC, of the issues linked to PROJQUAY-2972 as duplicates, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2976",
+   "PROJQUAY-2977"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2972",
+   "relation": "duplicates",
+   "as_of": "2021-12-20 15:02 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-012",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-09-06 17:11 UTC, of the issues linked to PROJQUAY-2121 as clones, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2135",
+   "PROJQUAY-2136"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2121",
+   "relation": "clones",
+   "as_of": "2021-09-06 17:11 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-013",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-08-26 05:13 UTC, of the issues related to PROJQUAY-2050, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-1694",
+   "PROJQUAY-1709",
+   "PROJQUAY-1839"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2050",
+   "relation": "relates_to",
+   "as_of": "2021-08-26 05:13 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-links-014",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-10-01 08:42 UTC, of the issues linked to PROJQUAY-1724 as duplicates, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-2014"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1724",
+   "relation": "duplicates",
+   "as_of": "2021-10-01 08:42 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "redhat-projquay-links-015",
+  "tenant": "redhat-projquay",
+  "type": "links",
+  "question": "On 2021-08-27 14:03 UTC, of the issues related to PROJQUAY-1480, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "PROJQUAY-1961"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-1480",
+   "relation": "relates_to",
+   "as_of": "2021-08-27 14:03 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-001",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was PROJQUAY-1690 blocked on 2021-07-20 13:56 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-1690",
+   "rule": "blocked",
+   "as_of": "2021-07-20 13:56 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-002",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was PROJQUAY-566 blocked on 2020-09-30 08:53 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-566",
+   "rule": "blocked",
+   "as_of": "2020-09-30 08:53 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-003",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was PROJQUAY-2085 blocked on 2021-07-12 12:08 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-2085",
+   "rule": "blocked",
+   "as_of": "2021-07-12 12:08 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-004",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was PROJQUAY-303 blocked on 2020-07-27 18:55 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-303",
+   "rule": "blocked",
+   "as_of": "2020-07-27 18:55 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-005",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was PROJQUAY-625 blocked on 2021-03-30 17:34 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-625",
+   "rule": "blocked",
+   "as_of": "2021-03-30 17:34 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-006",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. Was PROJQUAY-565 idle on 2021-09-05 05:24 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-565",
+   "rule": "stalled",
+   "as_of": "2021-09-05 05:24 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-007",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. Was PROJQUAY-706 idle on 2021-06-30 13:31 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-706",
+   "rule": "stalled",
+   "as_of": "2021-06-30 13:31 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-008",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. Was PROJQUAY-1861 idle on 2021-09-20 01:05 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-1861",
+   "rule": "stalled",
+   "as_of": "2021-09-20 01:05 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-009",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. Was PROJQUAY-1622 idle on 2021-10-20 21:54 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-1622",
+   "rule": "stalled",
+   "as_of": "2021-10-20 21:54 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-010",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. Was PROJQUAY-983 idle on 2021-01-08 07:05 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-983",
+   "rule": "stalled",
+   "as_of": "2021-01-08 07:05 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-011",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was PROJQUAY-681 urgent and unassigned on 2021-03-26 01:11 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-681",
+   "rule": "urgent_unassigned",
+   "as_of": "2021-03-26 01:11 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-012",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was PROJQUAY-178 urgent and unassigned on 2021-10-17 23:27 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-178",
+   "rule": "urgent_unassigned",
+   "as_of": "2021-10-17 23:27 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-013",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was PROJQUAY-2160 urgent and unassigned on 2021-08-17 13:44 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-2160",
+   "rule": "urgent_unassigned",
+   "as_of": "2021-08-17 13:44 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-014",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was PROJQUAY-1774 urgent and unassigned on 2021-12-07 03:53 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-1774",
+   "rule": "urgent_unassigned",
+   "as_of": "2021-12-07 03:53 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-rule-015",
+  "tenant": "redhat-projquay",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was PROJQUAY-2438 urgent and unassigned on 2021-09-15 10:54 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:PROJQUAY-2438",
+   "rule": "urgent_unassigned",
+   "as_of": "2021-09-15 10:54 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-abstain-001",
+  "tenant": "redhat-projquay",
+  "type": "abstain",
+  "question": "What is the current status of PROJQUAY-11271?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:PROJQUAY-11271",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-abstain-002",
+  "tenant": "redhat-projquay",
+  "type": "abstain",
+  "question": "What was the status of PROJQUAY-2036 on 2021-03-19 10:55 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:PROJQUAY-2036",
+   "predicate": "status",
+   "as_of": "2021-03-19 10:55 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-abstain-003",
+  "tenant": "redhat-projquay",
+  "type": "abstain",
+  "question": "What is the current status of PROJQUAY-11098?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:PROJQUAY-11098",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-abstain-004",
+  "tenant": "redhat-projquay",
+  "type": "abstain",
+  "question": "What was the status of PROJQUAY-469 on 2019-08-10 07:23 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:PROJQUAY-469",
+   "predicate": "status",
+   "as_of": "2019-08-10 07:23 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-abstain-005",
+  "tenant": "redhat-projquay",
+  "type": "abstain",
+  "question": "What is the current status of PROJQUAY-10232?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:PROJQUAY-10232",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-001",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2020-02-01 06:56 UTC, which issues of the PROJQUAY project had status Backlog?",
+  "answer": [
+   "PROJQUAY-499",
+   "PROJQUAY-500",
+   "PROJQUAY-501",
+   "PROJQUAY-502",
+   "PROJQUAY-503",
+   "PROJQUAY-504",
+   "PROJQUAY-505",
+   "PROJQUAY-506",
+   "PROJQUAY-507",
+   "PROJQUAY-508",
+   "PROJQUAY-921"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Backlog",
+   "as_of": "2020-02-01 06:56 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-002",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2020-05-31 05:30 UTC, which issues of the PROJQUAY project had status Reopened?",
+  "answer": [
+   "PROJQUAY-131",
+   "PROJQUAY-316",
+   "PROJQUAY-376",
+   "PROJQUAY-585",
+   "PROJQUAY-650"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2020-05-31 05:30 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-003",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2020-06-21 18:53 UTC, which issues of the PROJQUAY project had status Reopened?",
+  "answer": [
+   "PROJQUAY-131",
+   "PROJQUAY-316",
+   "PROJQUAY-376",
+   "PROJQUAY-585",
+   "PROJQUAY-650"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2020-06-21 18:53 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-004",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2019-04-20 01:24 UTC, which issues of the PROJQUAY project had status In Progress?",
+  "answer": [
+   "PROJQUAY-525",
+   "PROJQUAY-527"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2019-04-20 01:24 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-005",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2019-04-16 03:10 UTC, which issues of the PROJQUAY project had status In Progress?",
+  "answer": [
+   "PROJQUAY-525",
+   "PROJQUAY-527"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2019-04-16 03:10 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-006",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2021-12-22 22:33 UTC, which issues of the PROJQUAY project had status Coding In Progress?",
+  "answer": [
+   "PROJQUAY-1454",
+   "PROJQUAY-2035",
+   "PROJQUAY-2137",
+   "PROJQUAY-2542",
+   "PROJQUAY-2732",
+   "PROJQUAY-2802",
+   "PROJQUAY-2822",
+   "PROJQUAY-2829",
+   "PROJQUAY-2833",
+   "PROJQUAY-2845",
+   "PROJQUAY-2869",
+   "PROJQUAY-2896",
+   "PROJQUAY-2994",
+   "PROJQUAY-781"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Coding In Progress",
+   "as_of": "2021-12-22 22:33 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-007",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2019-01-14 19:49 UTC, how many issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent?",
+  "answer": 0,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2019-01-14 19:49 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-008",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2021-03-06 07:48 UTC, how many issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent?",
+  "answer": 29,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2021-03-06 07:48 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-009",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2018-05-21 02:25 UTC, how many issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent?",
+  "answer": 0,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2018-05-21 02:25 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-010",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "On 2018-05-13 23:56 UTC, how many issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent?",
+  "answer": 0,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2018-05-13 23:56 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-011",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2021-08-30 22:08 UTC, which issues of the PROJQUAY project were blocked?",
+  "answer": [
+   "PROJQUAY-1495",
+   "PROJQUAY-1690",
+   "PROJQUAY-2084",
+   "PROJQUAY-2085",
+   "PROJQUAY-2282",
+   "PROJQUAY-2283",
+   "PROJQUAY-2368",
+   "PROJQUAY-253",
+   "PROJQUAY-288",
+   "PROJQUAY-302",
+   "PROJQUAY-490",
+   "PROJQUAY-503",
+   "PROJQUAY-508"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2021-08-30 22:08 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-012",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. On 2021-02-27 11:25 UTC, which issues of the PROJQUAY project were idle?",
+  "answer": [
+   "PROJQUAY-1128",
+   "PROJQUAY-1351",
+   "PROJQUAY-333",
+   "PROJQUAY-392",
+   "PROJQUAY-586",
+   "PROJQUAY-591",
+   "PROJQUAY-672",
+   "PROJQUAY-673",
+   "PROJQUAY-763",
+   "PROJQUAY-835",
+   "PROJQUAY-922",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2021-02-27 11:25 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-013",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2020-08-14 16:36 UTC, which issues of the PROJQUAY project were urgent and unassigned?",
+  "answer": [
+   "PROJQUAY-68",
+   "PROJQUAY-868",
+   "PROJQUAY-893",
+   "PROJQUAY-944",
+   "PROJQUAY-953",
+   "PROJQUAY-966",
+   "PROJQUAY-967",
+   "PROJQUAY-968"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2020-08-14 16:36 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-014",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2021-07-07 05:22 UTC, which issues of the PROJQUAY project were blocked?",
+  "answer": [
+   "PROJQUAY-1495",
+   "PROJQUAY-1690",
+   "PROJQUAY-2084",
+   "PROJQUAY-2085",
+   "PROJQUAY-2088",
+   "PROJQUAY-253",
+   "PROJQUAY-258",
+   "PROJQUAY-288",
+   "PROJQUAY-302",
+   "PROJQUAY-303",
+   "PROJQUAY-490",
+   "PROJQUAY-503",
+   "PROJQUAY-508"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2021-07-07 05:22 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-015",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of Coding In Progress, In Progress, Pull Request Sent and its status has not changed for 30 days or more. On 2021-05-01 23:09 UTC, which issues of the PROJQUAY project were idle?",
+  "answer": [
+   "PROJQUAY-1446",
+   "PROJQUAY-1726",
+   "PROJQUAY-1813",
+   "PROJQUAY-1814",
+   "PROJQUAY-591",
+   "PROJQUAY-672",
+   "PROJQUAY-673",
+   "PROJQUAY-763",
+   "PROJQUAY-922",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2021-05-01 23:09 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-016",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2020-10-01 17:14 UTC, which issues of the PROJQUAY project were urgent and unassigned?",
+  "answer": [
+   "PROJQUAY-1097",
+   "PROJQUAY-68",
+   "PROJQUAY-784",
+   "PROJQUAY-868",
+   "PROJQUAY-893"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2020-10-01 17:14 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-017",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Which issues of the PROJQUAY project had their status changed between 2019-12-16 22:34 UTC and 2019-12-21 15:10 UTC?",
+  "answer": [
+   "PROJQUAY-113",
+   "PROJQUAY-118",
+   "PROJQUAY-119",
+   "PROJQUAY-120",
+   "PROJQUAY-413",
+   "PROJQUAY-657",
+   "PROJQUAY-84",
+   "PROJQUAY-86",
+   "PROJQUAY-91",
+   "PROJQUAY-96",
+   "PROJQUAY-97",
+   "PROJQUAY-98"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2019-12-16 22:34 UTC",
+   "until": "2019-12-21 15:10 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-018",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Which issues of the PROJQUAY project had their priority changed between 2020-09-28 16:29 UTC and 2020-10-07 19:57 UTC?",
+  "answer": [
+   "PROJQUAY-1113",
+   "PROJQUAY-1114",
+   "PROJQUAY-1115",
+   "PROJQUAY-118"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2020-09-28 16:29 UTC",
+   "until": "2020-10-07 19:57 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-019",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Which issues of the PROJQUAY project had their priority changed between 2020-07-14 22:09 UTC and 2020-07-26 15:49 UTC?",
+  "answer": [
+   "PROJQUAY-844",
+   "PROJQUAY-850",
+   "PROJQUAY-897",
+   "PROJQUAY-904"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2020-07-14 22:09 UTC",
+   "until": "2020-07-26 15:49 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-020",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "Which issues of the PROJQUAY project had their priority changed between 2020-01-08 05:10 UTC and 2020-01-29 07:19 UTC?",
+  "answer": [
+   "PROJQUAY-140",
+   "PROJQUAY-160",
+   "PROJQUAY-161",
+   "PROJQUAY-162",
+   "PROJQUAY-167",
+   "PROJQUAY-170",
+   "PROJQUAY-176",
+   "PROJQUAY-190",
+   "PROJQUAY-205",
+   "PROJQUAY-499"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2020-01-08 05:10 UTC",
+   "until": "2020-01-29 07:19 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-021",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2021-06-17 18:43 UTC, which issues of the PROJQUAY project had status Done at 2021-06-17 17:15 UTC?",
+  "answer": [
+   "PROJQUAY-2131"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Done",
+   "as_of": "2021-06-17 17:15 UTC",
+   "known_at": "2021-06-17 18:43 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-022",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2021-01-24 10:49 UTC, which issues of the PROJQUAY project had status Coding In Progress at 2021-01-21 17:47 UTC?",
+  "answer": [
+   "PROJQUAY-1195",
+   "PROJQUAY-120",
+   "PROJQUAY-1351",
+   "PROJQUAY-1394",
+   "PROJQUAY-1431",
+   "PROJQUAY-1446",
+   "PROJQUAY-292",
+   "PROJQUAY-835",
+   "PROJQUAY-922"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Coding In Progress",
+   "as_of": "2021-01-21 17:47 UTC",
+   "known_at": "2021-01-24 10:49 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-023",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2021-01-23 08:02 UTC, which issues of the PROJQUAY project had status Coding In Progress at 2021-01-21 16:42 UTC?",
+  "answer": [
+   "PROJQUAY-1195",
+   "PROJQUAY-120",
+   "PROJQUAY-1351",
+   "PROJQUAY-1394",
+   "PROJQUAY-1431",
+   "PROJQUAY-1446",
+   "PROJQUAY-292",
+   "PROJQUAY-835",
+   "PROJQUAY-922"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Coding In Progress",
+   "as_of": "2021-01-21 16:42 UTC",
+   "known_at": "2021-01-23 08:02 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-tenant-024",
+  "tenant": "redhat-projquay",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2021-04-27 23:12 UTC, which issues of the PROJQUAY project had status Coding In Progress at 2021-04-27 19:52 UTC?",
+  "answer": [
+   "PROJQUAY-1473",
+   "PROJQUAY-1710",
+   "PROJQUAY-1721",
+   "PROJQUAY-1726",
+   "PROJQUAY-1743",
+   "PROJQUAY-1813",
+   "PROJQUAY-1814",
+   "PROJQUAY-1846",
+   "PROJQUAY-1861",
+   "PROJQUAY-1867",
+   "PROJQUAY-1913",
+   "PROJQUAY-1917",
+   "PROJQUAY-1926",
+   "PROJQUAY-1928",
+   "PROJQUAY-922"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Coding In Progress",
+   "as_of": "2021-04-27 19:52 UTC",
+   "known_at": "2021-04-27 23:12 UTC"
+  }
+ }
+]

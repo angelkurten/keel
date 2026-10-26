@@ -63,7 +63,7 @@ HERE = Path(__file__).parent
 EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
 INSTANCES = {"hyperledger": ("Hyperledger", "INDY"), "mariadb": ("MariaDB", "MXS"), "spring": ("Spring", "SEC")}
 # the held-out set (evals/jira/heldout/README.md): projects of Jira instances development never read
-HELDOUT: dict[str, tuple[str, str]] = {}
+HELDOUT = {"ecosystem-ac": ("JiraEcosystem", "AC"), "sakai-grbk": ("Sakai", "GRBK"), "redhat-projquay": ("RedHat", "PROJQUAY")}
 
 
 def instance(tenant: str) -> tuple[str, str]:

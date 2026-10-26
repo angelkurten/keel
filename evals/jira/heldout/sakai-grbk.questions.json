@@ -1,0 +1,1945 @@
+[
+ {
+  "id": "sakai-grbk-current-001",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current issue type of GRBK-1345?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1345",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-002",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current assignee of GRBK-1170?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1170",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-003",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current resolution of GRBK-1013?",
+  "answer": "Non-Issue",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1013",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-004",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What assignee does GRBK-860 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-860",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-005",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What priority does GRBK-1406 have now?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1406",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-006",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What assignee does GRBK-820 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-820",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-007",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What priority does GRBK-226 have now?",
+  "answer": "Critical",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-226",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-008",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current priority of GRBK-720?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-720",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-009",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current assignee of GRBK-274?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-274",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-010",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What issue type does GRBK-483 have now?",
+  "answer": "Feature Request",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-483",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-011",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What resolution does GRBK-61 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-61",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-012",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current status of GRBK-486?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-486",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-013",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current status of GRBK-585?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-585",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-014",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current issue type of GRBK-1462?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1462",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-015",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current issue type of GRBK-20?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-20",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-016",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current priority of GRBK-1453?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1453",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-017",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What resolution does GRBK-803 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-803",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-018",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current status of GRBK-753?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-753",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-019",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What assignee does GRBK-1 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "sakai-grbk-current-020",
+  "tenant": "sakai-grbk",
+  "type": "current",
+  "question": "What is the current priority of GRBK-157?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-157",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-001",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2009-04-21 11:20 UTC, what resolution did GRBK-51 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-51",
+   "predicate": "resolution",
+   "as_of": "2009-04-21 11:20 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-002",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2010-04-30 18:43 UTC, what status did GRBK-414 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-414",
+   "predicate": "status",
+   "as_of": "2010-04-30 18:43 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-003",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2011-04-09 16:05 UTC, what assignee did GRBK-11 have?",
+  "answer": "user-66343538",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-11",
+   "predicate": "assignee",
+   "as_of": "2011-04-09 16:05 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-004",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2011-12-01 01:24 UTC, what status did GRBK-1182 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1182",
+   "predicate": "status",
+   "as_of": "2011-12-01 01:24 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-005",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the assignee of GRBK-50 on 2009-06-13 07:06 UTC?",
+  "answer": "user-a53f51f5",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-50",
+   "predicate": "assignee",
+   "as_of": "2009-06-13 07:06 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-006",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-545 on 2010-03-28 20:18 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-545",
+   "predicate": "status",
+   "as_of": "2010-03-28 20:18 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-007",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2011-08-13 04:37 UTC, what resolution did GRBK-1013 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1013",
+   "predicate": "resolution",
+   "as_of": "2011-08-13 04:37 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-008",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-304 on 2010-02-03 12:47 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-304",
+   "predicate": "status",
+   "as_of": "2010-02-03 12:47 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-009",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-361 on 2009-12-11 05:52 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-361",
+   "predicate": "status",
+   "as_of": "2009-12-11 05:52 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-010",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2012-08-13 09:21 UTC, what assignee did GRBK-1326 have?",
+  "answer": "user-ecd5f587",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1326",
+   "predicate": "assignee",
+   "as_of": "2012-08-13 09:21 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-011",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-948 on 2011-07-19 22:02 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-948",
+   "predicate": "status",
+   "as_of": "2011-07-19 22:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-012",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the priority of GRBK-101 on 2009-07-05 11:02 UTC?",
+  "answer": "Critical",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-101",
+   "predicate": "priority",
+   "as_of": "2009-07-05 11:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-013",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the resolution of GRBK-515 on 2010-06-06 02:21 UTC?",
+  "answer": "Incorporated",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-515",
+   "predicate": "resolution",
+   "as_of": "2010-06-06 02:21 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-014",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2011-08-13 06:35 UTC, what status did GRBK-764 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-764",
+   "predicate": "status",
+   "as_of": "2011-08-13 06:35 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-015",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-632 on 2010-06-21 04:13 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-632",
+   "predicate": "status",
+   "as_of": "2010-06-21 04:13 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-016",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2012-02-16 22:20 UTC, what resolution did GRBK-1221 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1221",
+   "predicate": "resolution",
+   "as_of": "2012-02-16 22:20 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-017",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the assignee of GRBK-651 on 2010-07-05 10:19 UTC?",
+  "answer": "user-ecd5f587",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-651",
+   "predicate": "assignee",
+   "as_of": "2010-07-05 10:19 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-018",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-817 on 2012-07-08 05:33 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-817",
+   "predicate": "status",
+   "as_of": "2012-07-08 05:33 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-019",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the assignee of GRBK-233 on 2009-07-30 16:35 UTC?",
+  "answer": "user-ecd5f587",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-233",
+   "predicate": "assignee",
+   "as_of": "2009-07-30 16:35 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-020",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the status of GRBK-566 on 2010-04-26 16:57 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-566",
+   "predicate": "status",
+   "as_of": "2010-04-26 16:57 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-021",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "What was the resolution of GRBK-1005 on 2011-05-31 22:38 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1005",
+   "predicate": "resolution",
+   "as_of": "2011-05-31 22:38 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-022",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2011-08-29 01:20 UTC, what resolution did GRBK-763 have?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-763",
+   "predicate": "resolution",
+   "as_of": "2011-08-29 01:20 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-023",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2009-09-04 07:08 UTC, what assignee did GRBK-345 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-345",
+   "predicate": "assignee",
+   "as_of": "2009-09-04 07:08 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-024",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2009-07-08 14:19 UTC, what resolution did GRBK-198 have?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-198",
+   "predicate": "resolution",
+   "as_of": "2009-07-08 14:19 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-as_of-025",
+  "tenant": "sakai-grbk",
+  "type": "as_of",
+  "question": "On 2010-11-03 20:37 UTC, what assignee did GRBK-768 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-768",
+   "predicate": "assignee",
+   "as_of": "2010-11-03 20:37 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-001",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2009-08-20 15:38 UTC, what resolution did GRBK-318 have at 2009-08-20 13:18 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-318",
+   "predicate": "resolution",
+   "as_of": "2009-08-20 13:18 UTC",
+   "known_at": "2009-08-20 15:38 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-002",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-08-08 02:51 UTC, what was the status of GRBK-290 at 2009-08-06 08:56 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-290",
+   "predicate": "status",
+   "as_of": "2009-08-06 08:56 UTC",
+   "known_at": "2009-08-08 02:51 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-003",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-09-02 19:17 UTC, what was the status of GRBK-345 at 2009-09-02 18:33 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-345",
+   "predicate": "status",
+   "as_of": "2009-09-02 18:33 UTC",
+   "known_at": "2009-09-02 19:17 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-004",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2010-08-10 01:27 UTC, what resolution did GRBK-687 have at 2010-08-07 00:36 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-687",
+   "predicate": "resolution",
+   "as_of": "2010-08-07 00:36 UTC",
+   "known_at": "2010-08-10 01:27 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-005",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2009-07-30 12:23 UTC, what priority did GRBK-198 have at 2009-07-30 11:51 UTC?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-198",
+   "predicate": "priority",
+   "as_of": "2009-07-30 11:51 UTC",
+   "known_at": "2009-07-30 12:23 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-006",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-12-17 10:00 UTC, what was the resolution of GRBK-913 at 2011-11-28 15:42 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-913",
+   "predicate": "resolution",
+   "as_of": "2011-11-28 15:42 UTC",
+   "known_at": "2011-12-17 10:00 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-007",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2009-06-14 23:01 UTC, what status did GRBK-190 have at 2009-06-12 17:05 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-190",
+   "predicate": "status",
+   "as_of": "2009-06-12 17:05 UTC",
+   "known_at": "2009-06-14 23:01 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-008",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2009-07-25 06:41 UTC, what assignee did GRBK-107 have at 2009-07-22 14:30 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-107",
+   "predicate": "assignee",
+   "as_of": "2009-07-22 14:30 UTC",
+   "known_at": "2009-07-25 06:41 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-009",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2011-05-13 18:51 UTC, what assignee did GRBK-957 have at 2011-05-13 14:43 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-957",
+   "predicate": "assignee",
+   "as_of": "2011-05-13 14:43 UTC",
+   "known_at": "2011-05-13 18:51 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-010",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-08-08 09:17 UTC, what was the assignee of GRBK-262 at 2009-07-30 16:33 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-262",
+   "predicate": "assignee",
+   "as_of": "2009-07-30 16:33 UTC",
+   "known_at": "2009-08-08 09:17 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-011",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-02-17 16:23 UTC, what was the status of GRBK-700 at 2012-02-17 16:05 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-700",
+   "predicate": "status",
+   "as_of": "2012-02-17 16:05 UTC",
+   "known_at": "2012-02-17 16:23 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-012",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2011-10-19 12:01 UTC, what assignee did GRBK-853 have at 2011-10-18 16:17 UTC?",
+  "answer": "user-b97cc95c",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-853",
+   "predicate": "assignee",
+   "as_of": "2011-10-18 16:17 UTC",
+   "known_at": "2011-10-19 12:01 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-013",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-05-02 13:09 UTC, what was the assignee of GRBK-77 at 2009-05-01 10:16 UTC?",
+  "answer": "user-39338616",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-77",
+   "predicate": "assignee",
+   "as_of": "2009-05-01 10:16 UTC",
+   "known_at": "2009-05-02 13:09 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-014",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-01-08 17:09 UTC, what assignee did GRBK-653 have at 2012-01-05 12:10 UTC?",
+  "answer": "user-0a3e58ec",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-653",
+   "predicate": "assignee",
+   "as_of": "2012-01-05 12:10 UTC",
+   "known_at": "2012-01-08 17:09 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-015",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-05-05 13:26 UTC, what was the priority of GRBK-75 at 2009-05-05 09:44 UTC?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-75",
+   "predicate": "priority",
+   "as_of": "2009-05-05 09:44 UTC",
+   "known_at": "2009-05-05 13:26 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-016",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2010-07-10 06:44 UTC, what assignee did GRBK-606 have at 2010-07-07 22:57 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-606",
+   "predicate": "assignee",
+   "as_of": "2010-07-07 22:57 UTC",
+   "known_at": "2010-07-10 06:44 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-017",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-05-31 09:28 UTC, what was the status of GRBK-1300 at 2012-05-09 11:04 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1300",
+   "predicate": "status",
+   "as_of": "2012-05-09 11:04 UTC",
+   "known_at": "2012-05-31 09:28 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-018",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2009-04-02 09:06 UTC, what was the status of GRBK-34 at 2009-03-26 17:56 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-34",
+   "predicate": "status",
+   "as_of": "2009-03-26 17:56 UTC",
+   "known_at": "2009-04-02 09:06 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-019",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2010-07-06 13:05 UTC, what status did GRBK-402 have at 2010-07-06 11:05 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-402",
+   "predicate": "status",
+   "as_of": "2010-07-06 11:05 UTC",
+   "known_at": "2010-07-06 13:05 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-020",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2010-05-10 15:08 UTC, what was the assignee of GRBK-36 at 2010-04-21 14:34 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-36",
+   "predicate": "assignee",
+   "as_of": "2010-04-21 14:34 UTC",
+   "known_at": "2010-05-10 15:08 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-021",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-05-04 01:47 UTC, what was the status of GRBK-817 at 2013-04-25 23:46 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-817",
+   "predicate": "status",
+   "as_of": "2013-04-25 23:46 UTC",
+   "known_at": "2013-05-04 01:47 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-022",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-05-28 19:29 UTC, what status did GRBK-1309 have at 2012-05-14 15:58 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1309",
+   "predicate": "status",
+   "as_of": "2012-05-14 15:58 UTC",
+   "known_at": "2012-05-28 19:29 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-023",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-03-14 17:54 UTC, what was the resolution of GRBK-1204 at 2012-02-28 15:39 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-1204",
+   "predicate": "resolution",
+   "as_of": "2012-02-28 15:39 UTC",
+   "known_at": "2012-03-14 17:54 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-024",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2011-01-15 07:36 UTC, what status did GRBK-326 have at 2011-01-07 14:32 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-326",
+   "predicate": "status",
+   "as_of": "2011-01-07 14:32 UTC",
+   "known_at": "2011-01-15 07:36 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_at-025",
+  "tenant": "sakai-grbk",
+  "type": "known_at",
+  "question": "As the tracker stood on 2009-12-05 19:57 UTC, what status did GRBK-310 have at 2009-12-02 18:59 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:GRBK-310",
+   "predicate": "status",
+   "as_of": "2009-12-02 18:59 UTC",
+   "known_at": "2009-12-05 19:57 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "sakai-grbk-links-001",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-01-06 04:49 UTC, of the issues related to GRBK-824, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1155",
+   "GRBK-996",
+   "GRBK-997",
+   "GRBK-998",
+   "GRBK-999"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-824",
+   "relation": "relates_to",
+   "as_of": "2015-01-06 04:49 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "sakai-grbk-links-002",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-02-21 08:14 UTC, of the issues related to GRBK-1116, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1107"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-1116",
+   "relation": "relates_to",
+   "as_of": "2015-02-21 08:14 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-003",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-10-07 04:35 UTC, of the issues related to GRBK-504, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-285",
+   "GRBK-727"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-504",
+   "relation": "relates_to",
+   "as_of": "2015-10-07 04:35 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-004",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2014-09-23 02:53 UTC, of the issues related to GRBK-447, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-548"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-447",
+   "relation": "relates_to",
+   "as_of": "2014-09-23 02:53 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-005",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2014-11-13 01:52 UTC, of the issues GRBK-404 depends on, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1220",
+   "GRBK-839"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-404",
+   "relation": "depends_on",
+   "as_of": "2014-11-13 01:52 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "sakai-grbk-links-006",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-03-30 05:45 UTC, of the issues related to GRBK-611, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-637"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-611",
+   "relation": "relates_to",
+   "as_of": "2015-03-30 05:45 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-007",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2012-05-25 18:10 UTC, of the issues related to GRBK-1428, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-649"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-1428",
+   "relation": "relates_to",
+   "as_of": "2012-05-25 18:10 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-008",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2018-03-04 20:40 UTC, of the issues related to GRBK-828, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1185"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-828",
+   "relation": "relates_to",
+   "as_of": "2018-03-04 20:40 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-009",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-07-04 00:02 UTC, of the issues related to GRBK-856, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1298",
+   "GRBK-1301"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-856",
+   "relation": "relates_to",
+   "as_of": "2015-07-04 00:02 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-010",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2017-03-17 14:20 UTC, of the issues related to GRBK-1003, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-868"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-1003",
+   "relation": "relates_to",
+   "as_of": "2017-03-17 14:20 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "sakai-grbk-links-011",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-03-26 07:57 UTC, of the issues related to GRBK-620, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1137"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-620",
+   "relation": "relates_to",
+   "as_of": "2015-03-26 07:57 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-012",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2012-12-31 09:51 UTC, of the issues GRBK-477 depends on, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-484"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-477",
+   "relation": "depends_on",
+   "as_of": "2012-12-31 09:51 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-013",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2015-11-08 01:16 UTC, of the issues related to GRBK-515, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-491",
+   "GRBK-554",
+   "GRBK-665"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-515",
+   "relation": "relates_to",
+   "as_of": "2015-11-08 01:16 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "sakai-grbk-links-014",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2013-08-07 09:18 UTC, of the issues related to GRBK-752, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1063",
+   "GRBK-743"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-752",
+   "relation": "relates_to",
+   "as_of": "2013-08-07 09:18 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "sakai-grbk-links-015",
+  "tenant": "sakai-grbk",
+  "type": "links",
+  "question": "On 2017-09-14 15:14 UTC, of the issues GRBK-514 depends on, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "GRBK-1221",
+   "GRBK-149"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-514",
+   "relation": "depends_on",
+   "as_of": "2017-09-14 15:14 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-001",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-320 idle on 2010-05-25 07:11 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-320",
+   "rule": "stalled",
+   "as_of": "2010-05-25 07:11 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-002",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-685 idle on 2010-09-11 12:32 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-685",
+   "rule": "stalled",
+   "as_of": "2010-09-11 12:32 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-003",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-1403 idle on 2019-06-23 12:00 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1403",
+   "rule": "stalled",
+   "as_of": "2019-06-23 12:00 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-004",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-649 idle on 2013-08-15 16:02 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-649",
+   "rule": "stalled",
+   "as_of": "2013-08-15 16:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-005",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-1185 idle on 2015-06-03 02:56 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1185",
+   "rule": "stalled",
+   "as_of": "2015-06-03 02:56 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-006",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-1203 idle on 2012-03-01 10:13 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1203",
+   "rule": "stalled",
+   "as_of": "2012-03-01 10:13 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-007",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-1185 idle on 2017-10-25 15:48 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1185",
+   "rule": "stalled",
+   "as_of": "2017-10-25 15:48 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-008",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was GRBK-1041 idle on 2011-07-11 12:16 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1041",
+   "rule": "stalled",
+   "as_of": "2011-07-11 12:16 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-009",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-1181 urgent and unassigned on 2018-05-22 11:35 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1181",
+   "rule": "urgent_unassigned",
+   "as_of": "2018-05-22 11:35 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-010",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-283 urgent and unassigned on 2014-05-22 02:28 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-283",
+   "rule": "urgent_unassigned",
+   "as_of": "2014-05-22 02:28 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-011",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-805 urgent and unassigned on 2011-02-11 06:21 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-805",
+   "rule": "urgent_unassigned",
+   "as_of": "2011-02-11 06:21 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-012",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-1416 urgent and unassigned on 2014-12-30 00:02 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1416",
+   "rule": "urgent_unassigned",
+   "as_of": "2014-12-30 00:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-013",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-930 urgent and unassigned on 2013-09-06 09:01 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-930",
+   "rule": "urgent_unassigned",
+   "as_of": "2013-09-06 09:01 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-014",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-1382 urgent and unassigned on 2013-11-22 11:19 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1382",
+   "rule": "urgent_unassigned",
+   "as_of": "2013-11-22 11:19 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-rule-015",
+  "tenant": "sakai-grbk",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was GRBK-1426 urgent and unassigned on 2017-01-06 14:22 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:GRBK-1426",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-01-06 14:22 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-abstain-001",
+  "tenant": "sakai-grbk",
+  "type": "abstain",
+  "question": "What is the current status of GRBK-2482?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:GRBK-2482",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-abstain-002",
+  "tenant": "sakai-grbk",
+  "type": "abstain",
+  "question": "What was the status of GRBK-319 on 2009-07-17 15:42 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:GRBK-319",
+   "predicate": "status",
+   "as_of": "2009-07-17 15:42 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-abstain-003",
+  "tenant": "sakai-grbk",
+  "type": "abstain",
+  "question": "What is the current status of GRBK-8846?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:GRBK-8846",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-abstain-004",
+  "tenant": "sakai-grbk",
+  "type": "abstain",
+  "question": "What was the status of GRBK-1063 on 2010-11-13 14:18 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:GRBK-1063",
+   "predicate": "status",
+   "as_of": "2010-11-13 14:18 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-abstain-005",
+  "tenant": "sakai-grbk",
+  "type": "abstain",
+  "question": "What is the current status of GRBK-3860?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:GRBK-3860",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-001",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2014-05-02 13:04 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1334",
+   "GRBK-1386",
+   "GRBK-1413",
+   "GRBK-401",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2014-05-02 13:04 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-002",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2018-11-10 14:06 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1334",
+   "GRBK-1386",
+   "GRBK-1413",
+   "GRBK-401",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2018-11-10 14:06 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-003",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2018-07-30 06:16 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1334",
+   "GRBK-1386",
+   "GRBK-1413",
+   "GRBK-401",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2018-07-30 06:16 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-004",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2016-06-24 00:08 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1334",
+   "GRBK-1386",
+   "GRBK-1413",
+   "GRBK-401",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2016-06-24 00:08 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-005",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2013-03-30 06:15 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-401",
+   "GRBK-451",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2013-03-30 06:15 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-006",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2017-10-12 19:11 UTC, which issues of the GRBK project had status Reopened?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1334",
+   "GRBK-1386",
+   "GRBK-1413",
+   "GRBK-401",
+   "GRBK-460",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2017-10-12 19:11 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-007",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2017-12-13 12:13 UTC, how many issues of the GRBK project had a status among: In Progress?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2017-12-13 12:13 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-008",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2018-03-08 13:34 UTC, how many issues of the GRBK project had a status among: In Progress?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2018-03-08 13:34 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-009",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2010-09-09 12:38 UTC, how many issues of the GRBK project had a status among: In Progress?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2010-09-09 12:38 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-010",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "On 2016-09-24 20:00 UTC, how many issues of the GRBK project had a status among: In Progress?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2016-09-24 20:00 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-011",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. On 2018-06-12 10:09 UTC, which issues of the GRBK project were idle?",
+  "answer": [
+   "GRBK-1185"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2018-06-12 10:09 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-012",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2010-03-14 00:02 UTC, which issues of the GRBK project were urgent and unassigned?",
+  "answer": [
+   "GRBK-112",
+   "GRBK-219",
+   "GRBK-326",
+   "GRBK-331"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2010-03-14 00:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-013",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. On 2012-04-02 18:33 UTC, which issues of the GRBK project were idle?",
+  "answer": [
+   "GRBK-1185",
+   "GRBK-1208"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2012-04-02 18:33 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-014",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2010-05-06 03:45 UTC, which issues of the GRBK project were urgent and unassigned?",
+  "answer": [
+   "GRBK-112",
+   "GRBK-149",
+   "GRBK-219",
+   "GRBK-326",
+   "GRBK-474",
+   "GRBK-493",
+   "GRBK-502",
+   "GRBK-514",
+   "GRBK-548",
+   "GRBK-567",
+   "GRBK-589"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2010-05-06 03:45 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-015",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. On 2011-11-17 22:33 UTC, which issues of the GRBK project were idle?",
+  "answer": [
+   "GRBK-1041"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2011-11-17 22:33 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-016",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2009-11-08 23:33 UTC, which issues of the GRBK project were urgent and unassigned?",
+  "answer": [
+   "GRBK-304",
+   "GRBK-326"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2009-11-08 23:33 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-017",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Which issues of the GRBK project had their status changed between 2009-10-27 16:59 UTC and 2009-11-11 22:23 UTC?",
+  "answer": [
+   "GRBK-38",
+   "GRBK-410",
+   "GRBK-412",
+   "GRBK-413",
+   "GRBK-416",
+   "GRBK-417",
+   "GRBK-419",
+   "GRBK-420"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2009-10-27 16:59 UTC",
+   "until": "2009-11-11 22:23 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-018",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Which issues of the GRBK project had their status changed between 2009-03-04 12:37 UTC and 2009-03-25 06:05 UTC?",
+  "answer": [
+   "GRBK-33",
+   "GRBK-37"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2009-03-04 12:37 UTC",
+   "until": "2009-03-25 06:05 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-019",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Which issues of the GRBK project had their status changed between 2014-06-05 07:28 UTC and 2014-07-05 04:00 UTC?",
+  "answer": [
+   "GRBK-1418",
+   "GRBK-1425"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2014-06-05 07:28 UTC",
+   "until": "2014-07-05 04:00 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-020",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "Which issues of the GRBK project had their priority changed between 2014-04-21 09:07 UTC and 2014-05-20 10:53 UTC?",
+  "answer": [
+   "GRBK-1041",
+   "GRBK-1377",
+   "GRBK-1413",
+   "GRBK-1414",
+   "GRBK-1416",
+   "GRBK-1417",
+   "GRBK-538",
+   "GRBK-769"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2014-04-21 09:07 UTC",
+   "until": "2014-05-20 10:53 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-021",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2012-10-31 20:23 UTC, which issues of the GRBK project had status Resolved at 2012-10-31 14:57 UTC?",
+  "answer": [
+   "GRBK-1314",
+   "GRBK-1322",
+   "GRBK-1326",
+   "GRBK-1334",
+   "GRBK-1336",
+   "GRBK-1340",
+   "GRBK-1341",
+   "GRBK-1343",
+   "GRBK-1345",
+   "GRBK-1348",
+   "GRBK-1349",
+   "GRBK-728"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Resolved",
+   "as_of": "2012-10-31 14:57 UTC",
+   "known_at": "2012-10-31 20:23 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-022",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2009-09-15 21:50 UTC, which issues of the GRBK project had status In Progress at 2009-09-15 18:49 UTC?",
+  "answer": [
+   "GRBK-316",
+   "GRBK-351",
+   "GRBK-369",
+   "GRBK-378"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "In Progress",
+   "as_of": "2009-09-15 18:49 UTC",
+   "known_at": "2009-09-15 21:50 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-023",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2011-03-14 21:21 UTC, which issues of the GRBK project had status In Progress at 2011-03-09 19:17 UTC?",
+  "answer": [
+   "GRBK-680",
+   "GRBK-749",
+   "GRBK-798",
+   "GRBK-887"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "In Progress",
+   "as_of": "2011-03-09 19:17 UTC",
+   "known_at": "2011-03-14 21:21 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-tenant-024",
+  "tenant": "sakai-grbk",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2012-05-20 16:00 UTC, which issues of the GRBK project had status Reopened at 2012-05-09 12:41 UTC?",
+  "answer": [
+   "GRBK-1122",
+   "GRBK-1162",
+   "GRBK-1294",
+   "GRBK-1300",
+   "GRBK-389",
+   "GRBK-400",
+   "GRBK-460",
+   "GRBK-498",
+   "GRBK-548",
+   "GRBK-812",
+   "GRBK-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Reopened",
+   "as_of": "2012-05-09 12:41 UTC",
+   "known_at": "2012-05-20 16:00 UTC"
+  }
+ }
+]

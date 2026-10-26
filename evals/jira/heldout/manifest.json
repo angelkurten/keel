@@ -1,0 +1,119 @@
+{
+ "seed": 31,
+ "inject": {
+  "seed": 31,
+  "late": 0.05,
+  "corrections": 0.02
+ },
+ "counts": {
+  "current": 20,
+  "as_of": 25,
+  "known_at": 25,
+  "links": 15,
+  "rule": 15,
+  "abstain": 5,
+  "tenant": 24
+ },
+ "keel_commit": "d7b3576cb270a4b406ac4de8167b4996b930776a",
+ "tenants": {
+  "ecosystem-ac": {
+   "instance": "JiraEcosystem",
+   "project": "AC",
+   "issues": 1544,
+   "events": 11142,
+   "questions": 129,
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "sub_types": {
+    "links:duplicates": 3,
+    "links:relates_to": 12,
+    "rule:blocked": 5,
+    "rule:stalled": 5,
+    "rule:urgent_unassigned": 5,
+    "tenant:changed": 4,
+    "tenant:count_at": 4,
+    "tenant:known_at": 4,
+    "tenant:rule_at": 6,
+    "tenant:status_at": 6
+   },
+   "questions_sha256": "9941488975547ecf3c5ebe8c76e4bedd6cf280e38c09bbaa12d3e8462a907b9e",
+   "bitemporal_sha256": "1a9d34304db9c89d35652477b7107c7907bdd4461ef0bc9a943b55128dd34ce7",
+   "injections_sha256": "a4f743c8c45884a39451717e9e82a8be8e4845bfc232cd08097586c975000bd7",
+   "events_sha256": "50edf21a7dabd85e3231e53594c694e40f1cd97d34133b4f07afb1addda09d11",
+   "export_sha256": "ead91a66ffdc37710067471f0c05c4bdc08c57519518ef8d100cd76bf1c66c78"
+  },
+  "sakai-grbk": {
+   "instance": "Sakai",
+   "project": "GRBK",
+   "issues": 1433,
+   "events": 8952,
+   "questions": 129,
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "sub_types": {
+    "links:depends_on": 3,
+    "links:relates_to": 12,
+    "rule:stalled": 8,
+    "rule:urgent_unassigned": 7,
+    "tenant:changed": 4,
+    "tenant:count_at": 4,
+    "tenant:known_at": 4,
+    "tenant:rule_at": 6,
+    "tenant:status_at": 6
+   },
+   "questions_sha256": "148967a03fb8b2c80698f8f94c5c725ca8bbabc6ccadabef8f240f5fd27607b3",
+   "bitemporal_sha256": "477a26007afdf3dde23acf7c516eeb86f4c3506d26e1db50906a6f74b5abcb5b",
+   "injections_sha256": "2003fa552acfcca41a2d44c201f0e09f17b0df1d40e034c54277cd655f59b097",
+   "events_sha256": "db7fc4c778c61a24192862ea550e6a794bd11c0623aa9c4bc29abf8fd8e4bb26",
+   "export_sha256": "e2094b0a26af7f8d897e9e7ec4e6aa9a3835a1ae12830c357b2f2d7085adca8d"
+  },
+  "redhat-projquay": {
+   "instance": "RedHat",
+   "project": "PROJQUAY",
+   "issues": 2455,
+   "events": 15906,
+   "questions": 129,
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "sub_types": {
+    "links:clones": 1,
+    "links:duplicates": 3,
+    "links:relates_to": 11,
+    "rule:blocked": 5,
+    "rule:stalled": 5,
+    "rule:urgent_unassigned": 5,
+    "tenant:changed": 4,
+    "tenant:count_at": 4,
+    "tenant:known_at": 4,
+    "tenant:rule_at": 6,
+    "tenant:status_at": 6
+   },
+   "questions_sha256": "aba3a507f2ffba38092cc1e7e47558cba424b1f8ae9b09dc298c51e6c84e7a14",
+   "bitemporal_sha256": "60b6501074fc115e9a927b9a0028ed19efda3be4ad5fd4ffa80486b083cd6d29",
+   "injections_sha256": "d77640281d704089e2c695853d7b27a87e48cae5b187de51db8299ec4ef1bf0f",
+   "events_sha256": "5b0353e237f59f208a112f40d121f7617dfafb297ffcac7c24f98c35968e86ce",
+   "export_sha256": "56ae0294693eaf22d1e91841ead54473755f88d693d6256525afa213e9a10781"
+  }
+ }
+}

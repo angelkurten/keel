@@ -1,0 +1,1883 @@
+[
+ {
+  "id": "ecosystem-ac-current-001",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What issue type does AC-335 have now?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-335",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-002",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What resolution does AC-279 have now?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-279",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-003",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current priority of AC-2362?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2362",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-004",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current assignee of AC-1715?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1715",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-005",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current resolution of AC-2468?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2468",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-006",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What resolution does AC-1189 have now?",
+  "answer": "Not a bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1189",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-007",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What priority does AC-2458 have now?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2458",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-008",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What status does AC-1453 have now?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1453",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-009",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What issue type does AC-751 have now?",
+  "answer": "Improvement",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-751",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-010",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What resolution does AC-2511 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2511",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-011",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What assignee does AC-990 have now?",
+  "answer": "user-1d714d79",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-990",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-012",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What status does AC-2340 have now?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2340",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-013",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current resolution of AC-345?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-345",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-014",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current status of AC-914?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-914",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-015",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current status of AC-531?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-531",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-016",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What resolution does AC-1775 have now?",
+  "answer": "Obsolete",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1775",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-017",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What assignee does AC-353 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-353",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-018",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current status of AC-945?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-945",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-019",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What priority does AC-1460 have now?",
+  "answer": "Trivial",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1460",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "ecosystem-ac-current-020",
+  "tenant": "ecosystem-ac",
+  "type": "current",
+  "question": "What is the current status of AC-513?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-513",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-001",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-1859 on 2016-02-09 13:17 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1859",
+   "predicate": "status",
+   "as_of": "2016-02-09 13:17 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-002",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2013-06-22 18:41 UTC, what status did AC-203 have?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-203",
+   "predicate": "status",
+   "as_of": "2013-06-22 18:41 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-003",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2013-03-02 00:29 UTC, what status did AC-591 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-591",
+   "predicate": "status",
+   "as_of": "2013-03-02 00:29 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-004",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2020-02-11 16:01 UTC, what status did AC-1150 have?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1150",
+   "predicate": "status",
+   "as_of": "2020-02-11 16:01 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-005",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2014-06-20 06:22 UTC, what status did AC-1115 have?",
+  "answer": "Under Review",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1115",
+   "predicate": "status",
+   "as_of": "2014-06-20 06:22 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-006",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the assignee of AC-1078 on 2014-06-14 07:06 UTC?",
+  "answer": "user-9f9d2016",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1078",
+   "predicate": "assignee",
+   "as_of": "2014-06-14 07:06 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-007",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the resolution of AC-1150 on 2019-04-02 15:00 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1150",
+   "predicate": "resolution",
+   "as_of": "2019-04-02 15:00 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-008",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2016-11-29 03:24 UTC, what status did AC-2201 have?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2201",
+   "predicate": "status",
+   "as_of": "2016-11-29 03:24 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-009",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2018-07-03 01:07 UTC, what status did AC-2395 have?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2395",
+   "predicate": "status",
+   "as_of": "2018-07-03 01:07 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-010",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2014-07-26 14:34 UTC, what status did AC-1246 have?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1246",
+   "predicate": "status",
+   "as_of": "2014-07-26 14:34 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-011",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-1426 on 2014-10-27 11:54 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1426",
+   "predicate": "status",
+   "as_of": "2014-10-27 11:54 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-012",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-1843 on 2016-01-25 09:38 UTC?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1843",
+   "predicate": "status",
+   "as_of": "2016-01-25 09:38 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-013",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-327 on 2012-12-05 13:14 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-327",
+   "predicate": "status",
+   "as_of": "2012-12-05 13:14 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-014",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2017-01-01 19:59 UTC, what resolution did AC-474 have?",
+  "answer": "Done",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-474",
+   "predicate": "resolution",
+   "as_of": "2017-01-01 19:59 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-015",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2013-12-17 02:37 UTC, what status did AC-852 have?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-852",
+   "predicate": "status",
+   "as_of": "2013-12-17 02:37 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-016",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the assignee of AC-1676 on 2015-08-21 05:58 UTC?",
+  "answer": "user-f412dbc0",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1676",
+   "predicate": "assignee",
+   "as_of": "2015-08-21 05:58 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-017",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-630 on 2013-06-15 16:21 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-630",
+   "predicate": "status",
+   "as_of": "2013-06-15 16:21 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-018",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2017-11-22 23:14 UTC, what status did AC-1218 have?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1218",
+   "predicate": "status",
+   "as_of": "2017-11-22 23:14 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-019",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the resolution of AC-666 on 2013-08-28 22:12 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-666",
+   "predicate": "resolution",
+   "as_of": "2013-08-28 22:12 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-020",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the assignee of AC-445 on 2013-02-17 15:20 UTC?",
+  "answer": "user-4a98be31",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-445",
+   "predicate": "assignee",
+   "as_of": "2013-02-17 15:20 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-021",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2013-02-19 21:08 UTC, what status did AC-409 have?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-409",
+   "predicate": "status",
+   "as_of": "2013-02-19 21:08 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-022",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-381 on 2012-11-10 23:32 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-381",
+   "predicate": "status",
+   "as_of": "2012-11-10 23:32 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-023",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-511 on 2013-05-07 12:22 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-511",
+   "predicate": "status",
+   "as_of": "2013-05-07 12:22 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-024",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "What was the status of AC-366 on 2013-04-07 09:19 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-366",
+   "predicate": "status",
+   "as_of": "2013-04-07 09:19 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-as_of-025",
+  "tenant": "ecosystem-ac",
+  "type": "as_of",
+  "question": "On 2013-05-17 17:29 UTC, what status did AC-308 have?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-308",
+   "predicate": "status",
+   "as_of": "2013-05-17 17:29 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-001",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-06-28 08:05 UTC, what issue type did AC-418 have at 2013-06-11 05:36 UTC?",
+  "answer": "Story",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-418",
+   "predicate": "issue_type",
+   "as_of": "2013-06-11 05:36 UTC",
+   "known_at": "2013-06-28 08:05 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-002",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2015-01-25 16:45 UTC, what was the resolution of AC-1437 at 2015-01-22 02:07 UTC?",
+  "answer": "Obsolete",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1437",
+   "predicate": "resolution",
+   "as_of": "2015-01-22 02:07 UTC",
+   "known_at": "2015-01-25 16:45 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-003",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-03-01 10:50 UTC, what status did AC-968 have at 2014-02-16 23:45 UTC?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-968",
+   "predicate": "status",
+   "as_of": "2014-02-16 23:45 UTC",
+   "known_at": "2014-03-01 10:50 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-004",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-08-07 23:10 UTC, what was the status of AC-1253 at 2014-08-06 11:04 UTC?",
+  "answer": "Under Review",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1253",
+   "predicate": "status",
+   "as_of": "2014-08-06 11:04 UTC",
+   "known_at": "2014-08-07 23:10 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-005",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-08-20 15:50 UTC, what was the resolution of AC-1208 at 2020-08-20 07:17 UTC?",
+  "answer": "Resolved Locally",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1208",
+   "predicate": "resolution",
+   "as_of": "2020-08-20 07:17 UTC",
+   "known_at": "2020-08-20 15:50 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-006",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-06-09 02:41 UTC, what status did AC-595 have at 2013-06-06 07:39 UTC?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-595",
+   "predicate": "status",
+   "as_of": "2013-06-06 07:39 UTC",
+   "known_at": "2013-06-09 02:41 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-007",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-06-06 17:05 UTC, what was the assignee of AC-611 at 2013-06-05 00:03 UTC?",
+  "answer": "user-4a98be31",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-611",
+   "predicate": "assignee",
+   "as_of": "2013-06-05 00:03 UTC",
+   "known_at": "2013-06-06 17:05 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-008",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-03-05 01:31 UTC, what status did AC-997 have at 2014-03-04 08:32 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-997",
+   "predicate": "status",
+   "as_of": "2014-03-04 08:32 UTC",
+   "known_at": "2014-03-05 01:31 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-009",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-06-14 13:28 UTC, what status did AC-579 have at 2013-06-11 05:06 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-579",
+   "predicate": "status",
+   "as_of": "2013-06-11 05:06 UTC",
+   "known_at": "2013-06-14 13:28 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-010",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2020-02-06 23:49 UTC, what was the status of AC-1930 at 2020-02-04 23:00 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1930",
+   "predicate": "status",
+   "as_of": "2020-02-04 23:00 UTC",
+   "known_at": "2020-02-06 23:49 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-011",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-06-14 03:13 UTC, what was the issue type of AC-508 at 2013-06-11 05:36 UTC?",
+  "answer": "Story",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-508",
+   "predicate": "issue_type",
+   "as_of": "2013-06-11 05:36 UTC",
+   "known_at": "2013-06-14 03:13 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-012",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-08-16 04:53 UTC, what was the status of AC-623 at 2013-07-23 06:59 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-623",
+   "predicate": "status",
+   "as_of": "2013-07-23 06:59 UTC",
+   "known_at": "2013-08-16 04:53 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-013",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2020-02-06 02:58 UTC, what status did AC-544 have at 2020-02-05 23:15 UTC?",
+  "answer": "Triage",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-544",
+   "predicate": "status",
+   "as_of": "2020-02-05 23:15 UTC",
+   "known_at": "2020-02-06 02:58 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-014",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2016-09-03 04:45 UTC, what resolution did AC-2079 have at 2016-09-01 03:55 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2079",
+   "predicate": "resolution",
+   "as_of": "2016-09-01 03:55 UTC",
+   "known_at": "2016-09-03 04:45 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-015",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2021-05-03 06:48 UTC, what resolution did AC-2526 have at 2021-05-03 03:09 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-2526",
+   "predicate": "resolution",
+   "as_of": "2021-05-03 03:09 UTC",
+   "known_at": "2021-05-03 06:48 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-016",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-08-30 04:45 UTC, what assignee did AC-709 have at 2013-08-27 22:22 UTC?",
+  "answer": "user-6e48373e",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-709",
+   "predicate": "assignee",
+   "as_of": "2013-08-27 22:22 UTC",
+   "known_at": "2013-08-30 04:45 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-017",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-09-30 08:28 UTC, what was the status of AC-943 at 2014-09-30 07:51 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-943",
+   "predicate": "status",
+   "as_of": "2014-09-30 07:51 UTC",
+   "known_at": "2014-09-30 08:28 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-018",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2017-03-09 22:12 UTC, what issue type did AC-1239 have at 2017-03-06 01:07 UTC?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1239",
+   "predicate": "issue_type",
+   "as_of": "2017-03-06 01:07 UTC",
+   "known_at": "2017-03-09 22:12 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-019",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-09-10 21:54 UTC, what was the assignee of AC-760 at 2013-09-10 20:59 UTC?",
+  "answer": "user-79d2c554",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-760",
+   "predicate": "assignee",
+   "as_of": "2013-09-10 20:59 UTC",
+   "known_at": "2013-09-10 21:54 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-020",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-06-08 19:04 UTC, what was the status of AC-320 at 2013-06-06 07:39 UTC?",
+  "answer": "New",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-320",
+   "predicate": "status",
+   "as_of": "2013-06-06 07:39 UTC",
+   "known_at": "2013-06-08 19:04 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-021",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-08-09 12:58 UTC, what status did AC-1256 have at 2014-07-29 01:26 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1256",
+   "predicate": "status",
+   "as_of": "2014-07-29 01:26 UTC",
+   "known_at": "2014-08-09 12:58 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-022",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2019-06-11 06:22 UTC, what was the status of AC-329 at 2019-06-06 11:06 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-329",
+   "predicate": "status",
+   "as_of": "2019-06-06 11:06 UTC",
+   "known_at": "2019-06-11 06:22 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-023",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-05-06 19:28 UTC, what status did AC-1059 have at 2014-05-02 04:09 UTC?",
+  "answer": "Under Review",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-1059",
+   "predicate": "status",
+   "as_of": "2014-05-02 04:09 UTC",
+   "known_at": "2014-05-06 19:28 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-024",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-06-12 04:27 UTC, what was the issue type of AC-417 at 2013-06-11 05:36 UTC?",
+  "answer": "New Feature",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-417",
+   "predicate": "issue_type",
+   "as_of": "2013-06-11 05:36 UTC",
+   "known_at": "2013-06-12 04:27 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_at-025",
+  "tenant": "ecosystem-ac",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-10-31 04:27 UTC, what resolution did AC-754 have at 2013-10-21 10:25 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:AC-754",
+   "predicate": "resolution",
+   "as_of": "2013-10-21 10:25 UTC",
+   "known_at": "2013-10-31 04:27 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-001",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2017-01-29 12:02 UTC, of the issues related to AC-1503, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1508",
+   "AC-1582"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1503",
+   "relation": "relates_to",
+   "as_of": "2017-01-29 12:02 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-002",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2016-11-28 18:00 UTC, of the issues related to AC-1813, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1815"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1813",
+   "relation": "relates_to",
+   "as_of": "2016-11-28 18:00 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-003",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2017-10-04 20:43 UTC, of the issues related to AC-1095, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1093",
+   "AC-1094"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1095",
+   "relation": "relates_to",
+   "as_of": "2017-10-04 20:43 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-004",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2020-07-21 00:31 UTC, of the issues linked to AC-1353 as duplicates, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1259"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1353",
+   "relation": "duplicates",
+   "as_of": "2020-07-21 00:31 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-005",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2019-08-24 10:31 UTC, of the issues related to AC-692, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-692",
+   "relation": "relates_to",
+   "as_of": "2019-08-24 10:31 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-006",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2018-10-13 03:58 UTC, of the issues linked to AC-1445 as duplicates, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1259",
+   "AC-1508",
+   "AC-1582"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1445",
+   "relation": "duplicates",
+   "as_of": "2018-10-13 03:58 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-007",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2020-10-19 06:16 UTC, of the issues related to AC-1861, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1863",
+   "AC-1932"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1861",
+   "relation": "relates_to",
+   "as_of": "2020-10-19 06:16 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-008",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2016-02-07 02:49 UTC, of the issues linked to AC-1032 as duplicates, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1036",
+   "AC-1037"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1032",
+   "relation": "duplicates",
+   "as_of": "2016-02-07 02:49 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-009",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2019-05-05 15:12 UTC, of the issues related to AC-1641, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1813",
+   "AC-1814"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1641",
+   "relation": "relates_to",
+   "as_of": "2019-05-05 15:12 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-010",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2017-02-02 11:07 UTC, of the issues related to AC-1814, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1641"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1814",
+   "relation": "relates_to",
+   "as_of": "2017-02-02 11:07 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-011",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2021-07-04 11:08 UTC, of the issues related to AC-1018, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-714"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1018",
+   "relation": "relates_to",
+   "as_of": "2021-07-04 11:08 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-012",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2020-09-29 10:58 UTC, of the issues related to AC-1093, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1094"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1093",
+   "relation": "relates_to",
+   "as_of": "2020-09-29 10:58 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-013",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2014-01-29 02:54 UTC, of the issues related to AC-761, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-624"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-761",
+   "relation": "relates_to",
+   "as_of": "2014-01-29 02:54 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-014",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2016-10-14 20:10 UTC, of the issues related to AC-1859, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-1861"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1859",
+   "relation": "relates_to",
+   "as_of": "2016-10-14 20:10 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-links-015",
+  "tenant": "ecosystem-ac",
+  "type": "links",
+  "question": "On 2018-12-11 14:17 UTC, of the issues related to AC-369, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "AC-205",
+   "AC-623"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-369",
+   "relation": "relates_to",
+   "as_of": "2018-12-11 14:17 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-001",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was AC-800 blocked on 2016-08-29 20:56 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-800",
+   "rule": "blocked",
+   "as_of": "2016-08-29 20:56 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-002",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was AC-742 blocked on 2016-11-09 02:47 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-742",
+   "rule": "blocked",
+   "as_of": "2016-11-09 02:47 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-003",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was AC-2488 blocked on 2019-04-05 01:07 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-2488",
+   "rule": "blocked",
+   "as_of": "2019-04-05 01:07 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-004",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was AC-1623 blocked on 2015-07-05 09:30 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-1623",
+   "rule": "blocked",
+   "as_of": "2015-07-05 09:30 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-005",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was AC-1623 blocked on 2015-10-17 17:50 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-1623",
+   "rule": "blocked",
+   "as_of": "2015-10-17 17:50 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-006",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. Was AC-462 idle on 2021-09-04 11:27 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-462",
+   "rule": "stalled",
+   "as_of": "2021-09-04 11:27 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-007",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. Was AC-1907 idle on 2016-10-30 12:17 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-1907",
+   "rule": "stalled",
+   "as_of": "2016-10-30 12:17 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-008",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. Was AC-1099 idle on 2020-10-21 02:57 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-1099",
+   "rule": "stalled",
+   "as_of": "2020-10-21 02:57 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-009",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. Was AC-1259 idle on 2021-10-11 22:38 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-1259",
+   "rule": "stalled",
+   "as_of": "2021-10-11 22:38 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-010",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. Was AC-597 idle on 2021-09-04 06:51 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-597",
+   "rule": "stalled",
+   "as_of": "2021-09-04 06:51 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-011",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was AC-2277 urgent and unassigned on 2018-08-04 18:56 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-2277",
+   "rule": "urgent_unassigned",
+   "as_of": "2018-08-04 18:56 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-012",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was AC-2065 urgent and unassigned on 2020-10-28 17:57 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-2065",
+   "rule": "urgent_unassigned",
+   "as_of": "2020-10-28 17:57 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-013",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was AC-799 urgent and unassigned on 2013-10-19 11:55 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-799",
+   "rule": "urgent_unassigned",
+   "as_of": "2013-10-19 11:55 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-014",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was AC-803 urgent and unassigned on 2013-12-20 10:04 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-803",
+   "rule": "urgent_unassigned",
+   "as_of": "2013-12-20 10:04 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-rule-015",
+  "tenant": "ecosystem-ac",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was AC-2499 urgent and unassigned on 2017-01-11 13:59 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:AC-2499",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-01-11 13:59 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-abstain-001",
+  "tenant": "ecosystem-ac",
+  "type": "abstain",
+  "question": "What is the current status of AC-4117?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:AC-4117",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-abstain-002",
+  "tenant": "ecosystem-ac",
+  "type": "abstain",
+  "question": "What was the status of AC-1296 on 2014-07-01 23:05 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:AC-1296",
+   "predicate": "status",
+   "as_of": "2014-07-01 23:05 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-abstain-003",
+  "tenant": "ecosystem-ac",
+  "type": "abstain",
+  "question": "What is the current status of AC-10553?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:AC-10553",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-abstain-004",
+  "tenant": "ecosystem-ac",
+  "type": "abstain",
+  "question": "What was the status of AC-2298 on 2016-06-03 20:12 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:AC-2298",
+   "predicate": "status",
+   "as_of": "2016-06-03 20:12 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-abstain-005",
+  "tenant": "ecosystem-ac",
+  "type": "abstain",
+  "question": "What is the current status of AC-3973?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:AC-3973",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-001",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2020-04-18 08:27 UTC, which issues of the AC project had status Triage?",
+  "answer": [
+   "AC-2515",
+   "AC-2516",
+   "AC-2518",
+   "AC-2525"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Triage",
+   "as_of": "2020-04-18 08:27 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-002",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2013-05-02 09:40 UTC, which issues of the AC project had status In Progress?",
+  "answer": [
+   "AC-231",
+   "AC-506"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2013-05-02 09:40 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-003",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2021-01-27 23:55 UTC, which issues of the AC project had status In Progress?",
+  "answer": [
+   "AC-2186",
+   "AC-2278",
+   "AC-2368",
+   "AC-2382",
+   "AC-2385",
+   "AC-2448"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2021-01-27 23:55 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-004",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2019-12-20 05:59 UTC, which issues of the AC project had status In Progress?",
+  "answer": [
+   "AC-2186",
+   "AC-2278",
+   "AC-2368",
+   "AC-2382",
+   "AC-2385",
+   "AC-2448"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2019-12-20 05:59 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-005",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2021-09-27 05:13 UTC, which issues of the AC project had status In Progress?",
+  "answer": [
+   "AC-2186",
+   "AC-2368",
+   "AC-2385",
+   "AC-2448"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2021-09-27 05:13 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-006",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2017-02-02 15:10 UTC, which issues of the AC project had status Triage?",
+  "answer": [
+   "AC-2237",
+   "AC-2499"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Triage",
+   "as_of": "2017-02-02 15:10 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-007",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2016-01-09 20:50 UTC, how many issues of the AC project had a status among: In Progress, Under Review?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2016-01-09 20:50 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-008",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2017-12-31 12:22 UTC, how many issues of the AC project had a status among: In Progress, Under Review?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2017-12-31 12:22 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-009",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2018-02-10 06:25 UTC, how many issues of the AC project had a status among: In Progress, Under Review?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2018-02-10 06:25 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-010",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "On 2017-08-13 20:03 UTC, how many issues of the AC project had a status among: In Progress, Under Review?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2017-08-13 20:03 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-011",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2016-03-02 11:58 UTC, which issues of the AC project were blocked?",
+  "answer": [
+   "AC-1623",
+   "AC-1638"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2016-03-02 11:58 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-012",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. On 2018-01-12 21:44 UTC, which issues of the AC project were idle?",
+  "answer": [
+   "AC-2184",
+   "AC-2186"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2018-01-12 21:44 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-013",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2020-05-29 23:14 UTC, which issues of the AC project were urgent and unassigned?",
+  "answer": [
+   "AC-1124"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2020-05-29 23:14 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-014",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2015-08-13 01:36 UTC, which issues of the AC project were blocked?",
+  "answer": [
+   "AC-1623",
+   "AC-1638"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2015-08-13 01:36 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-015",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress, Under Review and its status has not changed for 30 days or more. On 2013-11-19 04:10 UTC, which issues of the AC project were idle?",
+  "answer": [
+   "AC-636"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2013-11-19 04:10 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-016",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2017-07-14 22:18 UTC, which issues of the AC project were urgent and unassigned?",
+  "answer": [
+   "AC-2297",
+   "AC-2499"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-07-14 22:18 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-017",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Which issues of the AC project had their status changed between 2016-09-07 11:28 UTC and 2016-09-24 16:23 UTC?",
+  "answer": [
+   "AC-2097",
+   "AC-2127",
+   "AC-2129",
+   "AC-2132",
+   "AC-2133",
+   "AC-2134",
+   "AC-2139",
+   "AC-2140"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2016-09-07 11:28 UTC",
+   "until": "2016-09-24 16:23 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-018",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Which issues of the AC project had their priority changed between 2014-06-15 01:38 UTC and 2014-06-29 18:53 UTC?",
+  "answer": [
+   "AC-1150",
+   "AC-1153",
+   "AC-1164",
+   "AC-1182",
+   "AC-1188"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2014-06-15 01:38 UTC",
+   "until": "2014-06-29 18:53 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-019",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Which issues of the AC project had their priority changed between 2016-02-25 05:37 UTC and 2016-03-12 18:21 UTC?",
+  "answer": [
+   "AC-1668",
+   "AC-1772",
+   "AC-1831",
+   "AC-1882"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2016-02-25 05:37 UTC",
+   "until": "2016-03-12 18:21 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-020",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "Which issues of the AC project had their priority changed between 2016-04-17 04:47 UTC and 2016-05-10 14:30 UTC?",
+  "answer": [
+   "AC-1930",
+   "AC-1935",
+   "AC-1942"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2016-04-17 04:47 UTC",
+   "until": "2016-05-10 14:30 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-021",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2018-11-15 16:13 UTC, which issues of the AC project had status Waiting for Support at 2018-11-15 14:12 UTC?",
+  "answer": [
+   "AC-2477"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Waiting for Support",
+   "as_of": "2018-11-15 14:12 UTC",
+   "known_at": "2018-11-15 16:13 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-022",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2015-02-03 21:35 UTC, which issues of the AC project had status Under Review at 2015-01-29 06:50 UTC?",
+  "answer": [
+   "AC-1493"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Under Review",
+   "as_of": "2015-01-29 06:50 UTC",
+   "known_at": "2015-02-03 21:35 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-023",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2016-09-16 17:10 UTC, which issues of the AC project had status Triage at 2016-09-16 08:24 UTC?",
+  "answer": [
+   "AC-1908",
+   "AC-1938",
+   "AC-1942",
+   "AC-2011",
+   "AC-2054",
+   "AC-2068",
+   "AC-2073",
+   "AC-2089",
+   "AC-2096",
+   "AC-2097",
+   "AC-2101",
+   "AC-2134",
+   "AC-2139",
+   "AC-2143"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Triage",
+   "as_of": "2016-09-16 08:24 UTC",
+   "known_at": "2016-09-16 17:10 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-tenant-024",
+  "tenant": "ecosystem-ac",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2016-03-09 18:34 UTC, which issues of the AC project had status Under Review at 2016-03-09 15:31 UTC?",
+  "answer": [
+   "AC-1589",
+   "AC-1843",
+   "AC-804"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Under Review",
+   "as_of": "2016-03-09 15:31 UTC",
+   "known_at": "2016-03-09 18:34 UTC"
+  }
+ }
+]
