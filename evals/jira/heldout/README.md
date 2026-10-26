@@ -164,3 +164,14 @@ uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-luna.jsonl 
 - **Secondary**: cost per correct answer (USD spent over correct runs) and mean input tokens per run, per system and
   agent, overall and by scope (one-issue, tenant-wide). Descriptive, no test.
 - Reported whatever they show, next to the development numbers, never in place of them.
+
+## Amendment, 2026-10-26, before any run
+
+The author chose to run one agent only, `anthropic/claude-haiku-5.5`; `openai/gpt-6-luna` is not run. Everything
+else above stands. In consequence:
+
+- Commands: the pilot and the full run use `--models anthropic/claude-haiku-5.5`; `heldout-luna.jsonl` is not produced.
+- Analysis: `uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl --out $R/heldout-stats.md`.
+  The planned comparisons are the five for Haiku, and Holm adjusts over those five (the script adjusts over the
+  comparisons present; its table header still says "the ten").
+- Budget: about 3.5 USD (the Haiku column above, 3 reps), one brake of `--max-usd 5`.
