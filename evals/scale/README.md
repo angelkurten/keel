@@ -84,10 +84,12 @@ Stores may answer the tenant-wide reads themselves through optional capabilities
 `facts_between` (history's window by valid_from), `subjects_where` (a kind's `where` listing at an instant, as known
 then) and `rule_subjects` (a rule's compiled macro). Without them Tools sweeps in Python; with them the outputs are
 the same bytes (`tests/test_pushdown.py` on every example cartridge, `evals/jira/test_pushdown.py` on the tool calls
-behind all 387 benchmark questions, on SQLite, DuckDB and Postgres). SqliteStore answers the first two in plain SQL
-(rules stay in Python: no compiled rules on SQLite); DuckdbStore and PostgresStore answer all three. DuckdbStore ingests
-through the generic SQL path at ~600 events/s, so `one --load-from <sqlite file>` copies the rows Keel's SqliteStore
-ingest wrote, as stored. Postgres 16 ran in Docker (6 vCPU, 12 GB, default settings, JIT off in Keel's sessions).
+behind all 387 benchmark questions, on SQLite, DuckDB and Postgres). All three stores answer all three: SqliteStore
+in plain SQL, its rules compiled by sqlgen's SQLite dialect (one statement per rule, macros inlined, helpers as Python
+functions on the connection); DuckdbStore and PostgresStore by their generated macros/functions. The DuckDB and
+Postgres columns below were measured on rows copied from the SQLite build (`one --load-from <sqlite file>`), from
+before DuckdbStore had its bulk path. Postgres 16 ran in Docker (6 vCPU, 12 GB, default settings, JIT off in Keel's
+sessions).
 
 p50 in ms, one 10^7-event tenant (before: the Python path on the same ops):
 
@@ -96,7 +98,27 @@ p50 in ms, one 10^7-event tenant (before: the Python path on the same ops):
 | history window | 15,019 | 232,525 | 115 | 138 | 114 |
 | search status listing at an instant | 15,054 | 129,582 | 16,695 | 162 | 2,719 |
 | search count as known at | 37,103 | 141,230 | 22,829 | 438 | 13,133 |
-| rule count | 18,481 | 101,007 | 117,049 (Python) | 426 | 34,013 |
+| rule count | 18,481 | 101,007 | 47,703 (pushed down) | 426 | 34,013 |
 
 The (tenant, valid_from) index costs SqliteStore ingest ~20% (10^6: 18.1k -> 14.5k events/s; 10^7: 16.0k -> 13.6k)
 and ~20% on disk. See `results/summary.md` for 10^6 and p95.
+
+**SQLite rule push-down** (`kind: rule_ab` in `scale.jsonl`: one process, `search(rule=, detail="count")` pushed
+down, then with the capabilities hidden, then pushed down again, same counts every time). In seconds:
+
+| rule | 10^6 pushed down | 10^6 Python | 10^7 pushed down | 10^7 Python |
+| --- | --- | --- | --- | --- |
+| blocked | 3.9 / 1.3 | 8.5 | 80.7 / 64.0 | 202.1 |
+| stalled | 1.2 / 1.4 | 6.7 | 59.4 / 60.8 | 133.1 |
+| urgent_unassigned | 2.2 / 2.3 | 6.6 | 67.2 / 72.2 | 124.1 |
+
+3-6x at 10^6, ~2-3x at 10^7. At 10^7 the 15 GB SQLite file did not fit the page cache beside the other work on
+the machine (a few hundred MB free), so these runs are I/O-bound and noisy: the harness's latest 10^7 run (5 calls
+per op, `results/summary.md`) gave 68 s for the rule count and also slower SQL-only reads than the table above
+(status listing 56 s, history window 368 ms) on unchanged code paths. DuckDB answers the same rules in ~0.4 s.
+
+**DuckdbStore ingests through Keel** (label `syn:*`, store `duckdb`). A bulk batch's flush binds one list per column
+(`INSERT ... SELECT UNNEST(?), ...`) and closes rows with one `UPDATE ... FROM`, instead of DuckDB's row-by-row
+executemany: 14.2k events/s at 10^5 (was ~635), 11.1k at 10^6, 7.7k at 10^7 (21.7 min, with the test suite running
+beside it); 0.9 KB/event on disk. The 10^6 and 10^7 graphs are row-for-row identical to SqliteStore's builds of the same log
+(every table, every column but seq and the ingest clock, close marks and dedupe ids included).

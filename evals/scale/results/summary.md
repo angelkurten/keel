@@ -4,7 +4,7 @@ Machine: Apple M5, 10 cores, 32.0 GB RAM, Darwin 27.0.0 (27.0); Python 3.13.14, 
 
 ## Ingest throughput, replay time, store size
 
-Ingest: the log read from .jsonl and applied in batches of 5,000 (`keel ingest`'s path), parsing included. Replay: `Ingestor.replay` of the measured tenant over the built graph (wipe, then rebuild). Disk: the SQLite file after a WAL checkpoint. RSS: resident memory after ingest minus before (the whole process: store, interpreter caches).
+Ingest: the log read from .jsonl and applied in batches of 5,000 (`keel ingest`'s path), parsing included. Replay: `Ingestor.replay` of the measured tenant over the built graph (wipe, then rebuild). Disk: the SQLite file after a WAL checkpoint (DuckdbStore: its file after CHECKPOINT). RSS: resident memory after ingest minus before (the whole process: store, interpreter caches).
 
 | log | store | events | ingest s | events/s | replay s | replay ev/s | disk B/event | RSS B/event | peak RSS GiB | note |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -18,10 +18,13 @@ Ingest: the log read from .jsonl and applied in batches of 5,000 (`keel ingest`'
 | syn:10000 | sqlite | 10,000 | 0.4 | 23,495 | 0.5 | 21,501 | 1,193 | 5,135 | 0.09 |  |
 | syn:100000 | memory | 100,000 | 3.4 | 29,654 | 3.5 | 28,256 | – | 1,780 | 0.20 |  |
 | syn:100000 | sqlite | 100,000 | 4.7 | 21,057 | 5.2 | 19,246 | 1,187 | 2,986 | 0.32 |  |
+| syn:100000 | duckdb | 100,000 | 7.1 | 14,177 | 12.5 | 8,024 | 1,303 | 2,824 | 0.30 |  |
 | syn:1000000 | memory | 1,000,000 | 64.2 | 15,566 | 67.9 | 14,730 | – | 1,466 | 1.40 |  |
 | syn:1000000 | sqlite | 1,000,000 | 55.3 | 18,068 | 60.1 | 16,629 | 1,202 | 743 | 0.87 |  |
+| syn:1000000 | duckdb | 1,000,000 | 90.3 | 11,071 | 161.1 | 6,207 | 942 | 721 | 0.71 |  |
 | syn:10000000 | memory | 10,000,000 | 1,007.5 | 9,926 | 1,092.1 | 9,157 | – | 1,169 | 11.32 |  |
 | syn:10000000 | sqlite | 10,000,000 | 624.8 | 16,006 | 938.5 | 10,655 | 1,232 | 143 | 2.13 |  |
+| syn:10000000 | duckdb | 10,000,000 | 1,299.7 | 7,694 | – | – | 884 | 146 | 1.40 |  |
 | tenants:1 | memory | 1,000,000 | 72.1 | 13,868 | 79.7 | 12,547 | – | 1,466 | 1.40 |  |
 | tenants:1 | sqlite | 1,000,000 | 59.8 | 16,728 | 119.4 | 8,374 | 1,202 | 836 | 0.87 |  |
 | tenants:10 | memory | 1,000,000 | 69.6 | 14,358 | 10.4 | 9,639 | – | 1,471 | 1.41 |  |
@@ -309,25 +312,25 @@ Weighted benchmark mix, mean: memory: 56.66 ms, sqlite: 235.96 ms.
 
 ## Tenant-wide reads pushed down to the store (ms): p50 / p95
 
-The same seeded tenant-wide ops, answered by the store's optional capabilities (facts_between, subjects_where, rule_subjects) instead of Tools' Python sweep; tests/test_pushdown.py and evals/jira/test_pushdown.py check the outputs are identical. SqliteStore: plain indexed SQL, rules still in Python. DuckdbStore and PostgresStore hold the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`). Copied in: pushdown:syn:1000000 DuckdbStore: 11.0 s; pushdown:syn:1000000 PostgresStore: 30.7 s; pushdown:syn:1000000 PostgresStore: 20.6 s; pushdown:syn:10000000 DuckdbStore: 143.2 s; pushdown:syn:10000000 PostgresStore: 233.6 s; pushdown:syn:1000000 PostgresStore: 22.1 s.
+The same seeded tenant-wide ops, answered by the store's optional capabilities (facts_between, subjects_where, rule_subjects) instead of Tools' Python sweep; tests/test_pushdown.py and evals/jira/test_pushdown.py check the outputs are identical. SqliteStore: plain indexed SQL, and each rule one statement of sqlgen's SQLite dialect. DuckdbStore and PostgresStore hold the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`); DuckdbStore now also ingests through Keel's bulk path (ingest table above). Copied in: pushdown:syn:1000000 DuckdbStore: 11.0 s; pushdown:syn:1000000 PostgresStore: 30.7 s; pushdown:syn:1000000 PostgresStore: 20.6 s; pushdown:syn:10000000 DuckdbStore: 143.2 s; pushdown:syn:10000000 PostgresStore: 233.6 s; pushdown:syn:1000000 PostgresStore: 22.1 s.
 
 ### syn:1000000
 
 | op | MemoryStore, Python | SqliteStore, Python | SqliteStore, push-down | DuckdbStore, push-down | PostgresStore, push-down |
 | --- | --- | --- | --- | --- | --- |
-| history_tenant_window | 979.2 / 1,049 | 12,366 / 12,683 (n=5) | 11.4 / 15.4 | 25.8 / 28.8 | 13.5 / 16.8 |
-| search_rule_count | 1,678 / 2,172 | 8,136 / 9,485 (n=8) | 6,528 / 9,391 (n=9) | 48.5 / 63.5 | 2,260 / 3,604 |
-| search_status_at | 926.8 / 1,531 | 7,787 / 8,605 (n=8) | 194.0 / 362.6 | 26.3 / 32.4 | 223.1 / 372.6 |
-| search_known_at_count | 3,197 / 5,133 | 11,636 / 13,393 (n=5) | 791.7 / 1,550 | 60.8 / 98.3 | 434.5 / 786.1 |
+| history_tenant_window | 979.2 / 1,049 | 12,366 / 12,683 (n=5) | 12.9 / 21.7 | 25.8 / 28.8 | 13.5 / 16.8 |
+| search_rule_count | 1,678 / 2,172 | 8,136 / 9,485 (n=8) | 822.8 / 1,835 | 48.5 / 63.5 | 2,260 / 3,604 |
+| search_status_at | 926.8 / 1,531 | 7,787 / 8,605 (n=8) | 132.1 / 271.5 | 26.3 / 32.4 | 223.1 / 372.6 |
+| search_known_at_count | 3,197 / 5,133 | 11,636 / 13,393 (n=5) | 1,072 / 2,937 | 60.8 / 98.3 | 434.5 / 786.1 |
 
 ### syn:10000000
 
 | op | MemoryStore, Python | SqliteStore, Python | SqliteStore, push-down | DuckdbStore, push-down | PostgresStore, push-down |
 | --- | --- | --- | --- | --- | --- |
-| history_tenant_window | 15,019 / 16,664 (n=3) | 232,525 / 232,525 (n=1) | 114.8 / 381.9 | 138.1 / 186.6 | 114.3 / 189.7 |
-| search_rule_count | 18,481 / 18,657 (n=3) | 101,007 / 101,007 (n=1) | 117,049 / 117,049 (n=1) | 425.5 / 574.2 | 34,013 / 41,021 (n=2) |
-| search_status_at | 15,054 / 39,333 (n=3) | 129,582 / 129,582 (n=1) | 16,695 / 28,144 (n=4) | 161.8 / 243.0 | 2,719 / 6,662 |
-| search_known_at_count | 37,103 / 44,941 (n=2) | 141,230 / 141,230 (n=1) | 22,829 / 43,829 (n=3) | 438.3 / 815.2 | 13,133 / 18,180 (n=5) |
+| history_tenant_window | 15,019 / 16,664 (n=3) | 232,525 / 232,525 (n=1) | 368.0 / 534.7 (n=5) | 138.1 / 186.6 | 114.3 / 189.7 |
+| search_rule_count | 18,481 / 18,657 (n=3) | 101,007 / 101,007 (n=1) | 68,271 / 84,234 (n=5) | 425.5 / 574.2 | 34,013 / 41,021 (n=2) |
+| search_status_at | 15,054 / 39,333 (n=3) | 129,582 / 129,582 (n=1) | 56,399 / 60,025 (n=5) | 161.8 / 243.0 | 2,719 / 6,662 |
+| search_known_at_count | 37,103 / 44,941 (n=2) | 141,230 / 141,230 (n=1) | 45,417 / 85,722 (n=5) | 438.3 / 815.2 | 13,133 / 18,180 (n=5) |
 
 ## DuckDB baseline: load and size
 

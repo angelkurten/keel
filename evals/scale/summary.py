@@ -119,8 +119,9 @@ def write(results: Path, md: Path) -> str:
         parts += ["## Tenant-wide reads pushed down to the store (ms): p50 / p95", "",
                   ("The same seeded tenant-wide ops, answered by the store's optional capabilities (facts_between, subjects_where, "
                    "rule_subjects) instead of Tools' Python sweep; tests/test_pushdown.py and evals/jira/test_pushdown.py check the "
-                   "outputs are identical. SqliteStore: plain indexed SQL, rules still in Python. DuckdbStore and PostgresStore hold "
-                   "the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`)."
+                   "outputs are identical. SqliteStore: plain indexed SQL, and each rule one statement of sqlgen's SQLite dialect. "
+                   "DuckdbStore and PostgresStore hold the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`); "
+                   "DuckdbStore now also ingests through Keel's bulk path (ingest table above)."
                    + (" Copied in: " + "; ".join(loads) + "." if loads else "")), "", *tables]
     # duckdb load
     body = []

@@ -372,9 +372,9 @@ def _open(kind: str, db: Path | None, fresh: bool = True) -> Any:
 
 
 # ---- loading a push-down store from a SqliteStore build -------------------------------------------------
-# DuckdbStore and PostgresStore ingest through the generic SqlStore path (DuckDB: ~600 events/s), too slow for
-# 10^6-10^7 events. The rows Keel's own SqliteStore ingest wrote are the graph, stored identically in every SQL
-# store (ISO text instants, json.dumps values), so they are copied as stored: the same graph, loaded fast.
+# A shortcut for measuring reads: the rows Keel's own SqliteStore ingest wrote are the graph, stored identically in
+# every SQL store (ISO text instants, json.dumps values), so they are copied as stored: the same graph, loaded fast.
+# (DuckdbStore also ingests through Keel since its column-wise bulk path: 8-14k events/s.)
 
 COPIED = {
     "entities": ("tenant", "kind", "id", "ref", "attrs"),
