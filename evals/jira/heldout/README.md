@@ -175,3 +175,12 @@ else above stands. In consequence:
   The planned comparisons are the five for Haiku, and Holm adjusts over those five (the script adjusts over the
   comparisons present; its table header still says "the ten").
 - Budget: about 3.5 USD (the Haiku column above, 3 reps), one brake of `--max-usd 5`.
+
+## Correction after the run, 2026-10-26 (not pre-registered)
+
+The `sqlgen` arm of `heldout-haiku.jsonl` ran with a bug in the generator, found while reading its failures:
+`keel_iso` formatted the session's wall time with a literal `+00:00`, and the bench reopens the generated database
+in the machine's zone (America/Bogota), so every instant the agent passed to a macro shifted five hours (fixed in
+89e8510, with a test). The arm was run again on the fixed generator, same questions, agent and reps:
+`heldout-haiku-sqlgen-tzfix.jsonl`; `heldout-stats-tzfix.md` is the registered analysis with that arm in place of the
+first. `heldout-stats.md` stays as registered. Both are reported, the first as what ran under the registration.
