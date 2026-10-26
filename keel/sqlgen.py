@@ -85,9 +85,12 @@ CREATE TABLE IF NOT EXISTS accounts (id VARCHAR NOT NULL PRIMARY KEY, rps INTEGE
         """Session settings and the helpers every macro calls."""
         return f"""
 SET TimeZone = 'UTC';
+CREATE OR REPLACE MACRO keel_utc(x) AS CASE
+  WHEN regexp_matches(CAST(x AS VARCHAR), '(Z|[+-][0-9][0-9](:?[0-9][0-9])?)$') THEN CAST(x AS TIMESTAMPTZ) AT TIME ZONE 'UTC'
+  ELSE CAST(x AS TIMESTAMP) END;
 CREATE OR REPLACE MACRO keel_iso(x) AS CASE WHEN x IS NULL THEN NULL
-  WHEN microsecond(CAST(x AS TIMESTAMPTZ)) % 1000000 = 0 THEN strftime(CAST(x AS TIMESTAMPTZ), '%Y-%m-%dT%H:%M:%S+00:00')
-  ELSE strftime(CAST(x AS TIMESTAMPTZ), '%Y-%m-%dT%H:%M:%S.%f+00:00') END;
+  WHEN microsecond(keel_utc(x)) % 1000000 = 0 THEN strftime(keel_utc(x), '%Y-%m-%dT%H:%M:%S+00:00')
+  ELSE strftime(keel_utc(x), '%Y-%m-%dT%H:%M:%S.%f+00:00') END;
 CREATE OR REPLACE MACRO keel_now() AS keel_iso(get_current_timestamp());
 CREATE OR REPLACE MACRO keel_global(tnt) AS
   CASE WHEN contains(tnt, '/') THEN split_part(tnt, '/', 1) || '/{GLOBAL_TENANT}' ELSE '{GLOBAL_TENANT}' END;
@@ -217,11 +220,12 @@ CREATE TABLE IF NOT EXISTS accounts (id {t} NOT NULL PRIMARY KEY, rps INTEGER, e
 """
 
     def prelude(self) -> str:
-        iso = "to_char(CAST(x AS timestamptz) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS{}') || '+00:00'"
+        utc = "(CASE WHEN x ~ '(Z|[+-][0-9][0-9](:?[0-9][0-9])?)$' THEN CAST(x AS timestamptz) AT TIME ZONE 'UTC' ELSE CAST(x AS timestamp) END)"
+        iso = f"to_char({utc}, 'YYYY-MM-DD\"T\"HH24:MI:SS{{}}') || '+00:00'"
         return f"""
 SET TimeZone = 'UTC';
 CREATE OR REPLACE FUNCTION keel_iso(x text) RETURNS text LANGUAGE sql IMMUTABLE AS $keel$
-  SELECT CASE WHEN x IS NULL THEN NULL WHEN to_char(CAST(x AS timestamptz), 'US') = '000000' THEN {iso.format('')}
+  SELECT CASE WHEN x IS NULL THEN NULL WHEN to_char({utc}, 'US') = '000000' THEN {iso.format('')}
   ELSE {iso.format('.US')} END $keel$;
 CREATE OR REPLACE FUNCTION keel_now() RETURNS text LANGUAGE sql STABLE AS $keel$ SELECT keel_iso(CAST(now() AS text)) $keel$;
 CREATE OR REPLACE FUNCTION keel_global(tnt text) RETURNS text LANGUAGE sql IMMUTABLE AS $keel$

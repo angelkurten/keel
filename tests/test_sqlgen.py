@@ -453,3 +453,16 @@ def _strip(o: Any) -> Any:  # the ingest clock (changed_at, watermark) differs b
     if isinstance(o, (list, tuple)):
         return [_strip(v) for v in o]
     return o
+
+
+@pytest.mark.parametrize("backend", [b for b in BACKENDS if b != "sqlite"])
+def test_instants_do_not_depend_on_the_session_time_zone(backend):
+    """The generated schema sets UTC, but a later session (a read-only reopen, a pool) may run in another zone:
+    keel_iso still writes the same UTC instant, and a time without an offset is read as UTC, as Keel reads it."""
+    con = connect(load_cartridge("examples/fleet"), backend)
+    con.execute("SET TimeZone = 'America/Bogota'")
+    one = lambda x: con.execute(f"SELECT keel_iso('{x}')").fetchall()[0][0]
+    assert one("2018-11-15T16:13:00+00:00") == "2018-11-15T16:13:00+00:00"
+    assert one("2018-11-15T11:13:00-05:00") == "2018-11-15T16:13:00+00:00"
+    assert one("2018-11-15T16:13:00.5+00:00") == "2018-11-15T16:13:00.500000+00:00"
+    assert one("2018-11-15 16:13") == "2018-11-15T16:13:00+00:00"
