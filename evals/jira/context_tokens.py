@@ -51,21 +51,37 @@ def jdump(v: Any) -> str:
 # ---- the fixed part of a request -------------------------------------------------------------------------
 
 
+LOGGED_DESCRIPTIONS = {  # keel/tools.py DESCRIPTIONS as the A/B ran (1c58601 .. 6c7a627)
+    "context": """What is true about a subject ('<kind>:<id>', or a list of them) now or at as_of: facts, relations, each rule's evaluation. depth=1 adds the neighbours. detail: brief (default; facts as {predicate: value} with `since`), concise (relations one by one), full (an audit: transaction times and ids; costly). as_known_at: what Keel knew then. task: that task's memory. exclude/only: predicates to drop/keep. watermark: the cursor for history(changed_since=).""",
+    "history": """Facts over time for a subject, oldest first. Filters: since/until (ISO), predicate, scope, task; as_known_at: what Keel knew then. No subject: with since/until, what changed in the world across the tenant in that window (with predicate: e.g. whose assignee changed); with changed_since (a watermark), what Keel recorded since your last run. A fact that replaced a value says which in `was` (`was: null`: it was unset, so being set is a change); a first value has no `was`. limit keeps the most recent (0: all); a cut list starts with {"more": ...}. detail: concise (default) or full (an audit).""",
+    "search": """Find subjects. text matches keys, attributes and values (a list of texts: one result list each); mode="semantic" ranks by meaning. kind (or a list) or rule: list a kind, or where a rule holds now, by key; page with limit and after. related_to (+ via): only that subject's neighbours. where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (with current facts), concise, full, count ({"count": n}, nothing listed: how many, without reading them); depth=1 adds neighbours. as_of: rules, where and facts at that instant; as_known_at: as Keel knew them then. per_kind=n: the best n of each kind. exclude: predicates to drop. A cut list starts with {"more": ...}.""",
+    "annotate": """Record what you learned (value: any JSON). Scopes tenant and global need evidence; task ties it to a job; key makes a retry return the first write; status="proposed" waits for a person or authorized agent. Returns a receipt (detail="full": the stored fact).""",
+    "related": """Neighbours of a subject, by relation (one or a list), now or at as_of. depth 2 or 3 walks further (each entry says hops and via). At most limit (0: all); a cut list starts with {"more": ...} counting each relation.""",
+}
+LOGGED_RULES = "Rules, evaluated in context's `evaluation` (trust it):"  # the instructions' rules line as the A/B ran
+RULES_NOW = "Rules (context's `evaluation`; search(rule=) lists where one holds; trust them):"
+
+
 @cache
-def keel_parts(compact: bool) -> dict[str, Any]:
+def keel_parts(compact: bool, now: bool = False, read_only: bool = False, project: str | None = None) -> dict[str, Any]:
     """The Keel condition's system text and tool list, built as bench.ask builds them (an empty graph: neither
-    depends on the data)."""
+    depends on the data). By default as the logged A/B ran them (its descriptions and instructions, five tools), to
+    rebuild those runs; `now`: as this code sends them, `read_only` as bench --keel-read-only, and `project` the
+    tenant's one project, which a bound server names in its instructions (Kinds: ..., project (project:INDY))."""
     from evals.efficiency.run import tool_list
     from evals.jira import bench
     from keel import MemoryStore, Tools, mcp_server
     from keel.mcp_server import build_server
 
     cart = bench.keel_cartridge()
-    server = build_server(Tools(cart, MemoryStore(), tenant="hyperledger", max_list=200), compact=compact)
-    tools = [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"]}}
-             for t in tool_list(server)]
-    return {"tools_text": bench.TOOLS_TEXT["keel"] + "\n\n" + mcp_server.instructions(cart, compact=compact), "tools": tools,
-            "line": bench.TOOLS_TEXT["keel"], "instructions": mcp_server.instructions(cart, compact=compact), "cart": cart,
+    server = build_server(Tools(cart, MemoryStore(), tenant="hyperledger", max_list=200), compact=compact, read_only=read_only)
+    tools = [{"type": "function", "function": {"name": t["name"], "description": t.get("description", "") if now else LOGGED_DESCRIPTIONS[t["name"]],
+                                               "parameters": t["inputSchema"]}} for t in tool_list(server)]
+    text = mcp_server.instructions(cart, compact=compact, few={"project": [f"project:{project}"]} if project else None)
+    if not now:
+        text = text.replace(RULES_NOW, LOGGED_RULES)
+    return {"tools_text": bench.TOOLS_TEXT["keel"] + "\n\n" + text, "tools": tools,
+            "line": bench.TOOLS_TEXT["keel"], "instructions": text, "cart": cart,
             "tables": mcp_server.TABLES if compact else ""}
 
 
@@ -230,20 +246,6 @@ def openai_cached_cost(prompts: list[float], prefix: float, read: float) -> floa
 
 # ---- the options -----------------------------------------------------------------------------------------
 
-# Shorter wordings of the five descriptions, kept to what an agent of this kind of product needs to call them right;
-# illustrative (not applied): what they would save is the point.
-SHORT = {
-    "context": "What is true about a subject ('<kind>:<id>' or a list) now or at as_of: facts, relations, each rule's evaluation. "
-               "as_known_at: what Keel knew then. depth=1 adds neighbours. detail: brief (default), concise, full (audit; costly). only/exclude: predicates.",
-    "history": "Facts over time for a subject, oldest first. since/until, predicate, scope, task; as_known_at: what Keel knew then. "
-               "No subject + since/until: what changed across the tenant (with predicate: in that field); changed_since: what Keel recorded since a watermark. "
-               "`was` is the value replaced. limit keeps the most recent (0: all). detail: concise or full.",
-    "search": "Find subjects. text matches keys, attributes and values; kind or rule lists a kind, or where a rule holds; related_to (+via): "
-              "a subject's neighbours; where={name: value}: an exact attribute or fact. detail: entity (default), key, brief (current facts), "
-              "concise, full, count. as_of/as_known_at: at that instant / as known then. limit/after page. A cut list starts with {\"more\": ...}.",
-    "annotate": "Record what you learned (value: any JSON). tenant and global scopes need evidence.",
-    "related": "Neighbours of a subject by relation, now or at as_of; depth 2-3 walks further. At most limit (0: all).",
-}
 
 
 def usage(rows: list[dict[str, Any]]) -> tuple[Counter, Counter]:
@@ -558,6 +560,8 @@ def report(data: Path) -> str:
     rels_tok = sum(tokens(ln) for ln in lines if ln.startswith("Relations"))
     drop = {(n, k) for n, k, _ in unused if n != "annotate"}
 
+    from keel.tools import DESCRIPTIONS as now
+
     def trimmed(short: bool = False, no_annotate: bool = False, no_unused: bool = False, no_defaults: bool = False) -> int:
         """o200k saved per request by sending this tool list instead of today's (each change measured on the whole list)."""
         out = []
@@ -567,24 +571,24 @@ def report(data: Path) -> str:
                 continue
             props = {k: ({kk: vv for kk, vv in v.items() if kk != "default"} if no_defaults else v)
                      for k, v in f["parameters"].get("properties", {}).items() if not (no_unused and (f["name"], k) in drop)}
-            out.append({"type": "function", "function": {"name": f["name"], "description": SHORT[f["name"]] if short else f["description"],
+            out.append({"type": "function", "function": {"name": f["name"], "description": now[f["name"]] if short else f["description"],
                                                          "parameters": f["parameters"] | {"properties": props}}})
         return tokens(jdump(kc["tools"])) - tokens(jdump(out))
 
     schema_defaults = trimmed(no_defaults=True)
     opts = [
-        ("Fixed: shorter tool descriptions (the SHORT wordings in this script)", trimmed(short=True), "core (keel/tools.py DESCRIPTIONS)",
+        ("Fixed: shorter tool descriptions (applied: keel/tools.py DESCRIPTIONS now)", trimmed(short=True), "core (keel/tools.py DESCRIPTIONS)",
          "none: prose, outside contract.json", "low-medium: the dropped clauses are the ones the agents rarely need, but each was added after a misuse"),
         ("Fixed: drop never-used parameters from the schemas (" + ", ".join(f"{n}.{k}" for n, k, _ in unused if n != "annotate") + ")",
          trimmed(no_unused=True), "core (signatures)", "breaking: deprecation first (SPEC §11)", "none on this eval; other agents lose those features"),
-        ("Fixed: hide annotate from a read-only agent's tool list (registry: an agent with no write scope)", trimmed(no_annotate=True),
-         "core (mcp_server lists tools per agent)", "additive: refresh (default lists all five)", "none on this eval (never called)"),
+        ("Fixed: hide annotate from a read-only agent's tool list (applied: --read-only, or an agent declared writes: [])", trimmed(no_annotate=True),
+         "core (mcp_server lists tools per agent)", "none: the default lists all five, the contract is unchanged", "none on this eval (never called)"),
         ("Fixed: drop schema defaults (they repeat the descriptions)", schema_defaults, "core (_compact_schema)",
          "breaking for the MCP inputSchema snapshot (default removed)", "low"),
         ("Fixed: the four tool-list trims above together (overlaps counted once)", trimmed(True, True, True, True), "core",
          "breaking (parameters, defaults): deprecation first", "low-medium"),
         ("Fixed: the two non-breaking ones together (short descriptions + no annotate for a read-only agent)", trimmed(True, True),
-         "core", "none / additive refresh", "low-medium"),
+         "core", "none", "low-medium"),
         ("Fixed: drop the TABLES note (compact only)", tables_tok, "core (instructions)", "none: prose",
          "medium-high: it is how the agent reads tables; moving it into a tool description saves nothing"),
         ("Fixed: drop the rules from the instructions (context's evaluation names them)", rules_tok, "core (instructions)", "none: prose",
@@ -630,8 +634,53 @@ def report(data: Path) -> str:
       f"and {mean([x['r']['cost_usd'] for x in by['sql', 'openai/gpt-6-luna']]) * 1e6:.0f}; Haiku "
       f"{mean([x['r']['tokens']['input'] for x in by['sql', 'anthropic/claude-haiku-5.5']]):,.0f} and "
       f"{mean([x['r']['cost_usd'] for x in by['sql', 'anthropic/claude-haiku-5.5']]) * 1e6:.0f}.\n")
-    w("Short wordings measured (o200k): " + ", ".join(f"{n} {tokens(next(t['function']['description'] for t in kc['tools'] if t['function']['name'] == n))} -> {tokens(s)}"
-                                                    for n, s in SHORT.items()) + ".\n")
+    w("Descriptions as logged -> now (o200k): " + ", ".join(f"{n} {tokens(LOGGED_DESCRIPTIONS[n])} -> {tokens(d)}" for n, d in now.items())
+      + f"; all five {sum(tokens(d) for d in LOGGED_DESCRIPTIONS.values())} -> {sum(tokens(d) for d in now.values())}.\n")
+
+    # 5. this code's fixed part
+    from evals.jira import bench
+
+    w("## 5. The fixed part this code sends (the new arm)\n")
+    w("Built as bench now builds it: the current descriptions, the instructions the bound server says (the tenant's one "
+      "project named, the rules line naming search(rule=)), with all five tools and with bench --keel-read-only (four). "
+      "o200k, mean over the compact arm's questions; provider tokens by each model's compact-arm calibration (rf). Saved "
+      "per run: every compact-arm run recomputed with the smaller fixed part at its logged number of requests (the "
+      "requests the other changes may save come on top, evals/jira/requests.md).\n")
+    qs = questions(data)
+    variants = [("as logged (A/B compact arm)", {}), ("now, five tools", {"now": True}), ("now, --keel-read-only", {"now": True, "read_only": True})]
+    rows, deltas = [], {}
+    base = {}
+    for name, kw in variants:
+        per = []
+        comp = Counter()
+        for x in by[cond, "openai/gpt-6-luna"]:
+            r = x["r"]
+            q = qs[r["id"]]
+            kp_ = keel_parts(True, project=bench.INSTANCES[r["tenant"]][1] if kw else None, **kw)
+            fixed = tokens(system_prompt("keel-compact", r["tenant"], q["answer_type"], tools_text=kp_["tools_text"])) + tokens(jdump(kp_["tools"])) + tokens(q["question"])
+            per.append(fixed)
+            comp["tool definitions"] += tokens(jdump(kp_["tools"]))
+            comp["descriptions"] += sum(tokens(t["function"]["description"]) for t in kp_["tools"])
+            comp["instructions"] += tokens(kp_["instructions"])
+        n = len(per)
+        f = mean(per)
+        base.setdefault("f", f)
+        deltas[name] = base["f"] - f
+        lr, hr = calib[cond, "openai/gpt-6-luna"].rf, calib[cond, "anthropic/claude-haiku-5.5"].rf
+        rows.append([name, comp["descriptions"] / n, comp["tool definitions"] / n, comp["instructions"] / n, f, f"{lr * f:,.0f}", f"{hr * f:,.0f}"])
+    w(table(["fixed part", "descriptions", "tool definitions", "MCP instructions", "total (o200k)", "Luna tokens", "Haiku tokens"], rows))
+    rows = []
+    for name, d in deltas.items():
+        if not d:
+            continue
+        sv = saving(cond, delta_fixed=d)
+        L, H = sv["openai/gpt-6-luna"], sv["anthropic/claude-haiku-5.5"]
+        rows.append([name, round(d), f"{L[0]:,.0f} ({L[0] / mean([x['r']['tokens']['input'] for x in by[cond, 'openai/gpt-6-luna']]):.1%})", f"{L[1] * 1e6:.1f}",
+                     f"{H[0]:,.0f} ({H[0] / mean([x['r']['tokens']['input'] for x in by[cond, 'anthropic/claude-haiku-5.5']]):.1%})", f"{H[1] * 1e6:.1f}"])
+    w("\n" + table(["against the logged arm", "o200k saved per request", "Luna input tokens saved per run", "Luna $ saved per run (micro$)",
+                     "Haiku input tokens saved per run", "Haiku $ saved per run (micro$)"], rows) + "\n")
+    sq = mean([x["fixed"] for x in by["sql", "openai/gpt-6-luna"]])
+    w(f"SQL's fixed part, for scale: {sq:,.0f} o200k.\n")
     return "\n".join(out)
 
 
