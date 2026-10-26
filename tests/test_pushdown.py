@@ -155,7 +155,7 @@ class Scenario:
         # instants where the planted memory changes an answer: before/after the close mark is learned, inside the expiry
         self.t_probe = [at(0.5), at(0.82), at(0.92)]
         self.k_probe = [at(0.5), at(0.87), at(0.95)]
-        odd = ["straße", "K", ["alpha", "Beta"], 1, True, 2.0, None, "Plain", {"k": "v"}]
+        odd = ["straße", "K", ["alpha", "Beta"], 1, True, 2.0, None, "Plain", {"k": "v"}, "\u212a", 0, False, -0.0, 2, "STRASSE", "Ünïcode"]
         for i, v in enumerate(odd):
             s.open_fact(t, keys[i % len(keys)], "label", v, at(0.1 + 0.08 * i), source="test", recorded_at=at(0.1 + 0.08 * i))
         s.open_fact(t, a, "label", "plain", at(0.95), source="test", recorded_at=at(0.97))
@@ -168,7 +168,7 @@ class Scenario:
         s.open_fact(t, b, "opinion", "expired", at(0.2), source="annotate:aide", corrected_by="aide", recorded_at=at(0.2), expires_at=at(0.7))
         s.open_fact(global_of(t), a, "label", "Plain", at(0.45), source="annotate:root", scope="global", recorded_at=at(0.45))
         s.open_fact(global_of(t), b, "opinion", "global", at(0.5), source="annotate:root", scope="global", recorded_at=at(0.5))
-        s.upsert_entity(t, *b.split(":", 1), label="PLAIN", tags=["x", "Plain"], n=1)
+        s.upsert_entity(t, *b.split(":", 1), label="PLAIN", tags=["x", "Plain"], n=1, f=2.0, flag=True, none=None)
         s.upsert_entity(t, *c.split(":", 1), label="straße")
         s.link(t, a, "x_rel", b, at(0.3), recorded_at=at(0.3))
         s.unlink(t, a, "x_rel", b, at(0.3), recorded_at=at(0.6))  # an empty period: a relation mark
@@ -238,6 +238,10 @@ def wheres(sc: Scenario) -> list[dict[str, Any]]:
         vals = sorted(set(by[n]), key=lambda v: (-by[n].count(v), v))[:2]
         out += [{n: v} for v in vals] + [{n: vals[0].swapcase()}]
     out += [{"label": v} for v in ("STRASSE", "k", "beta", "plain", "PLAIN", "straße", "nobody", 1, True, None, ["x"])]
+    # typed wants the store now compares itself: numbers (int against float, bool against 0/1, -0.0), null, text whose
+    # casefold differs from lower (ß, the Kelvin sign), non-ASCII text, lists (any of), on facts and on attributes
+    out += [{"label": v} for v in (2, 2.0, 0, False, -0.0, 1.0, "\u212a", "Straße", "ünïcode", ["straße", 2], [], ["nobody", None], ["PLAIN", "k"])]
+    out += [{"n": 1}, {"n": True}, {"n": 1.0}, {"flag": 1}, {"f": 2}, {"tags": "PLAIN"}, {"tags": ["y", "x"]}, {"none": None}, {"label": "straße", "n": 1}]
     out += sc.probes
     out += [{"opinion": "AGENT-ONLY"}, {"opinion": "task-only"}, {"opinion": "global"}, {"opinion": "by-two"}, {"opinion": "proposed"}]
     if len(out) > 2:
@@ -295,11 +299,30 @@ def test_search_rule_pushes_down_with_counts_pages_and_memory(kind, name, tmp_pa
 
 
 @pytest.mark.parametrize("kind", STORES)
+def test_typed_wants_are_compared_by_the_store(kind, tmp_path):
+    """Numbers, booleans, null, non-ASCII text and lists of them are compared in SQL too: the store answers (no
+    Python sweep), every key it marks certain is one Python's `where` keeps, and every key Python keeps is listed."""
+    sc = Scenario(kind, "fleet", tmp_path)
+    s, kinds, now = sc.store, sorted(sc.c.entities), datetime.now(UTC)
+    for where in ({"label": 1}, {"label": 2}, {"label": 0}, {"label": True}, {"label": False}, {"label": -0.0}, {"label": None},
+                  {"label": "straße"}, {"label": "STRASSE"}, {"label": "\u212a"}, {"label": "ÜNÏCODE"}, {"label": ["x", 2, None]},
+                  {"label": []}, {"n": 1}, {"flag": 1}, {"none": None}, {"tags": "plain"}, {"label": "straße", "n": True}):
+        found = s.subjects_where(sc.tenant, sc.c, kinds, where, now)
+        assert found is not None, where
+        python = set(sc.tools(Plain(s)).search(kind=kinds, where=where, detail="key", limit=0))
+        assert python <= set(found), where
+        assert {k for k, sure in found.items() if sure} <= python, where
+    sure = s.subjects_where(sc.tenant, sc.c, kinds, {"label": 2}, now)
+    assert sure and all(sure.values())  # 2 and 2.0 are both certain: no Python check left
+
+
+@pytest.mark.parametrize("kind", STORES)
 def test_a_where_the_store_cannot_compare_exactly_falls_back(kind, tmp_path):
-    """Non-text wants and non-ASCII text are not compared in SQL: the store declines and Tools sweeps in Python."""
+    """What SQL cannot compare like Python does (NaN, objects, nested lists, a name that is not plain ASCII): the store
+    declines and Tools sweeps in Python."""
     sc = Scenario(kind, "fleet", tmp_path)
     s = sc.store
-    for where in ({"label": 1}, {"label": "straße"}, {"label": None}, {"label": ["x"]}):
+    for where in ({"label": float("nan")}, {"label": float("inf")}, {"label": {"k": "v"}}, {"label": [["x"]]}, {"läbel": "x"}):
         assert s.subjects_where(sc.tenant, sc.c, sorted(sc.c.entities), where, datetime.now(UTC)) is None, where
     assert s.subjects_where(sc.tenant, sc.c, sorted(sc.c.entities), {"label": "plain"}, datetime.now(UTC)) is not None
 

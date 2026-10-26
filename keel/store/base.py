@@ -165,8 +165,9 @@ class Store(Protocol):
     # push-down (optional, feature-detected by Tools; without them Tools reads the tenant in Python, same answers):
     # facts_between: the tenant's facts (no close marks) with valid_from in [since, until], as stored, in write order;
     # optionally one predicate, only those recorded by `recorded_by`, memory expired by `alive_at` (now) left out.
-    # subjects_where: the entities of `kinds` a `where` of ASCII texts may hold for at `as_of` (as known at `known_at`),
-    # as Tools reads facts for (author, task); key -> True when certain, False when Tools must check; None to decline.
+    # subjects_where: the entities of `kinds` a `where` (texts, numbers, booleans, null, lists of them) may hold for at `as_of`
+    # (as known at `known_at`), as Tools reads facts for (author, task); key -> True when certain, False when Tools must
+    # check; None to decline.
     # rule_subjects: the entities a cartridge rule holds for at `as_of` (as known at `known_at`), for (author, task);
     # None to decline (a rule the store cannot compile).
     # def facts_between(self, tenant: str, since: datetime, until: datetime, predicate: str | None = None,

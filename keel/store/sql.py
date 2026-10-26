@@ -14,6 +14,7 @@ ponytail: one connection per store; a pool if a deployment ever shows contention
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 import warnings
@@ -162,6 +163,7 @@ class SqlStore:
     JSON_TEXT = True  # values are stored as json.dumps text (ASCII): subjects_where may compare that text; MySQL's JSON column is not
     # attribute access for subjects_where (SQLite's JSON1): the type of attrs at a path, its text, whether a text is ASCII
     JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "json_type({0}, {1})", "json_extract({0}, {1})", "'text'", "'array'"
+    JT_NULL, JT_NUMBER, JT_BOOL = "'null'", "'integer', 'real'", "'true', 'false'"
     ASCII = "(length({0}) = length(CAST({0} AS BLOB)))"
     JSON_PATH = "$.\"{}\""  # an attribute as the JSON functions name it
     INSTR = "instr({0}, {1})"
@@ -688,26 +690,24 @@ class SqlStore:
                        author: str | None = None, task: str | None = None) -> dict[str, bool] | None:
         """Optional capability (Tools feature-detects it): the entities of `kinds` that `where` may hold for at `as_of`
         (as known at `known_at`), each entry an attribute or a current fact (accepted, visible to `author` and `task`
-        as Tools reads them, the global partition's global facts included) equal to a text without case. Key -> True
-        when certain, False when the store cannot compare exactly (a list, non-ASCII text) and Tools must check it.
-        None when the filter is not one the store compares (a want that is not ASCII text): Tools sweeps in Python."""
+        as Tools reads them, the global partition's global facts included) that is the wanted value, or for a list
+        of wants any of them, as Tools' `where` compares (text without case, 1 == 1.0 == True). Key -> True when
+        certain, False when the store cannot compare exactly (a list value, non-ASCII text, a numeric attribute) and
+        Tools must check it. None when the filter is not one the store compares (see `where_plan`): Tools sweeps."""
         plan = where_plan(where)
         if plan is None or not self.JSON_TEXT:
             return None
         cur, params = self._where_state(tenant, cartridge, [n for n, _ in plan], as_of, known_at, author, task)
-        # a list, or a non-ASCII text (json.dumps escapes it as \uXXXX): the store cannot say, Tools checks it
-        uncertain = f"(value LIKE ? OR {self.INSTR.format('value', '?')} > 0)"
         cols, fparams = [], []
         for i, (name, want) in enumerate(plan):
-            cols.append(f"max(CASE WHEN predicate = ? THEN CASE WHEN lower(value) = ? THEN 2 WHEN {uncertain} THEN 1 ELSE 0 END ELSE 0 END) AS f{i}")
-            fparams += [name, json.dumps(want).lower(), "[%", "\\u"]
+            sure, maybe, p = _value_match(want, self.INSTR)
+            cols.append(f"max(CASE WHEN predicate = ? THEN CASE WHEN {sure} THEN 2 WHEN {maybe} THEN 1 ELSE 0 END ELSE 0 END) AS f{i}")
+            fparams += [name, *p]
         attrs, aparams, sel = [], [], []
-        jt, js = self.JSON_TYPE.format("e.attrs", "?"), self.JSON_STR.format("e.attrs", "?")
         for i, (name, want) in enumerate(plan):
-            path = self.JSON_PATH.format(name)
-            attrs.append(f"CASE WHEN {jt} = {self.JT_TEXT} AND {self.ASCII.format(js)} AND lower({js}) = ? THEN 2 "
-                         f"WHEN {jt} = {self.JT_ARRAY} OR ({jt} = {self.JT_TEXT} AND NOT {self.ASCII.format(js)}) THEN 1 ELSE 0 END AS a{i}")
-            aparams += [path, path, path, path, want.lower(), path, path, path, path]
+            sure, maybe, p = self._attr_match(want, self.JSON_PATH.format(name))
+            attrs.append(f"CASE WHEN {sure} THEN 2 WHEN {maybe} THEN 1 ELSE 0 END AS a{i}")
+            aparams += p
             sel.append(f"(a{i} > 0 OR f{i} > 0)")
         mention = " OR ".join(f"{self.INSTR.format('e.attrs', '?')} > 0" for _ in plan)
         sql = (f"WITH cur AS ({cur}), g AS (SELECT subject, {', '.join(cols)} FROM cur GROUP BY subject) "
@@ -717,6 +717,30 @@ class SqlStore:
                f"WHERE e.tenant = ? AND e.kind IN ({_in(len(kinds))}) AND (g.subject IS NOT NULL OR {mention})) x WHERE {' AND '.join(sel)}")
         rows = self._rows(sql, (*params, *fparams, *aparams, tenant, *kinds, *(json.dumps(n) for n, _ in plan)))
         return {f"{r['kind']}:{r['id']}": all(max(r[f"a{i}"], r[f"f{i}"]) == 2 for i in range(len(plan))) for r in rows}
+
+    def _attr_match(self, want: Any, path: str) -> tuple[str, str, list[Any]]:
+        """SQL saying an entity's attribute at `path` is certainly `want` (or one of a list of wants), and SQL saying
+        it may be (Tools checks): a text compared like Tools (an ASCII one by its lower case, any other exactly; other
+        non-ASCII text may be equal without case), null by its type; a number, boolean or list attribute may be."""
+        jt, js = self.JSON_TYPE.format("e.attrs", "?"), self.JSON_STR.format("e.attrs", "?")
+        text = f"{jt} = {self.JT_TEXT}"
+        sure, maybe, ps, pm = [], [f"{jt} = {self.JT_ARRAY}"], [], [path]
+        for w in want if isinstance(want, list) else [want]:
+            if w is None:
+                sure.append(f"{jt} = {self.JT_NULL}")
+                ps.append(path)
+            elif isinstance(w, str):
+                sure.append(f"({text} AND {js} = ?)")
+                ps += [path, path, w]
+                if (c := w.casefold()).isascii():
+                    sure.append(f"({text} AND {self.ASCII.format(js)} AND lower({js}) = ?)")
+                    ps += [path, path, path, path, c]
+                maybe.append(f"({text} AND NOT {self.ASCII.format(js)})")
+                pm += [path, path, path]
+            else:  # a number or a boolean: an attribute of either type may equal it (1 == 1.0 == True), Tools says
+                maybe.append(f"{jt} IN ({self.JT_NUMBER}, {self.JT_BOOL})")
+                pm.append(path)
+        return " OR ".join(sure) or "1 = 0", " OR ".join(maybe), ps + pm
 
     def _where_state(self, tenant: str, cartridge: Any, predicates: list[str], as_of: datetime, known_at: datetime | None,
                      author: str | None, task: str | None) -> tuple[str, tuple[Any, ...]]:
@@ -962,16 +986,64 @@ def _key(row: Any) -> ApiKey:
                   agent=row["agent"], glob=bool(row["glob"]), revoked_at=_dt(row["revoked_at"]))
 
 
-def where_plan(where: dict[str, Any]) -> list[tuple[str, str]] | None:
-    """`search(where=)` entries a store compares in SQL: ASCII text wanted, under a plain ASCII name (a JSON path
-    needs no quoting). Anything else (a number, a list, None, non-ASCII text) is compared in Python."""
+def where_plan(where: dict[str, Any]) -> list[tuple[str, Any]] | None:
+    """`search(where=)` entries a store compares in SQL: under a plain ASCII name (a JSON path needs no quoting), a
+    text, a finite number, a boolean, null, or a list of those (any of them). Anything else (NaN or infinity, an
+    object, a list in a list) is compared in Python."""
     plan = []
     for name, want in where.items():
-        if not (isinstance(want, str) and want.isascii() and isinstance(name, str) and name.isascii() and name.isprintable()
-                and '"' not in name and "\\" not in name):
+        if not (isinstance(name, str) and name.isascii() and name.isprintable() and '"' not in name and "\\" not in name):
+            return None
+        if not all(_comparable(w) for w in (want if isinstance(want, list) else [want])):
             return None
         plan.append((name, want))
     return plan or None
+
+
+def _comparable(w: Any) -> bool:
+    return w is None or isinstance(w, (str, bool)) or (isinstance(w, int) or (isinstance(w, float) and math.isfinite(w)))
+
+
+def _numbers(w: float) -> set[str]:
+    """Every JSON text (as json.dumps writes it) whose value Python finds equal to the number `w`: the int, the float
+    (and -0.0 for zero), and true or false for 1 and 0. A value with another text is not equal."""
+    out = {json.dumps(w)}
+    try:
+        f = float(w)
+    except OverflowError:  # an int no float reaches: only ints equal it
+        f = None
+    if f is not None and f == w:
+        out.add(json.dumps(f))
+        if f.is_integer():
+            out.add(json.dumps(int(f)))
+        if f == 0:
+            out |= {"0.0", "-0.0", "false"}
+        if f == 1:
+            out.add("true")
+    return out
+
+
+def _value_match(want: Any, instr: str) -> tuple[str, str, list[Any]]:
+    """SQL over a fact's `value` (JSON text as json.dumps writes it: ASCII, \\uXXXX escapes) saying it certainly is
+    `want` (or one of a list of wants) as Tools' `where` compares, and SQL saying it may be (Tools checks): a list
+    value, or for a wanted text a value with escapes (non-ASCII text equal without case: ß and SS)."""
+    texts: set[str] = set()
+    lowered: set[str] = set()
+    escaped = False
+    for w in want if isinstance(want, list) else [want]:
+        if w is None:
+            texts.add("null")
+        elif isinstance(w, str):
+            texts.add(json.dumps(w))
+            if (c := w.casefold()).isascii():  # an ASCII value is equal without case when its lower case is `c`
+                lowered.add(json.dumps(c))
+            escaped = True
+        else:
+            texts |= _numbers(w)
+    sure = [f"value IN ({_in(len(texts))})"] if texts else []
+    sure += [f"lower(value) IN ({_in(len(lowered))})"] if lowered else []
+    maybe = "value LIKE ?" + (f" OR {instr.format('value', '?')} > 0" if escaped else "")
+    return " OR ".join(sure) or "1 = 0", maybe, [*sorted(texts), *sorted(lowered), "[%", *(["\\u"] if escaped else [])]
 
 
 def _in(n: int) -> str:

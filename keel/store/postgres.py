@@ -141,6 +141,7 @@ class PostgresStore(SqlStore):
 
     # subjects_where on Postgres: attrs read as jsonb by key
     JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "jsonb_typeof(({0})::jsonb -> {1}::text)", "(({0})::jsonb ->> {1}::text)", "'string'", "'array'"
+    JT_NULL, JT_NUMBER, JT_BOOL = "'null'", "'number'", "'boolean'"
     ASCII = "(octet_length({0}) = length({0}))"
     JSON_PATH = "{}"
     INSTR = "strpos({0}, {1})"

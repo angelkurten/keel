@@ -155,6 +155,7 @@ class DuckdbStore(SqlStore):
 
     # subjects_where on DuckDB's JSON: attrs read with its json functions, the state from the generated macro
     JSON_TYPE, JSON_STR, JT_TEXT, JT_ARRAY = "json_type({0}, {1})", "json_extract_string({0}, {1})", "'VARCHAR'", "'ARRAY'"
+    JT_NULL, JT_NUMBER, JT_BOOL = "'NULL'", "'BIGINT', 'UBIGINT', 'HUGEINT', 'DOUBLE'", "'BOOLEAN'"
     ASCII = "(strlen({0}) = length({0}))"
 
     def _where_state(self, tenant: str, cartridge: Any, predicates: list[str], as_of: datetime, known_at: datetime | None,
