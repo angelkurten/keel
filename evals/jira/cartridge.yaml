@@ -80,7 +80,7 @@ rules:
     when: { predicate: status_category, eq: indeterminate, open_for_days: { gte: 30 } }
   urgent_unassigned:
     applies_to: issue
-    definition: "An urgent issue (priority Blocker or Critical) that is not done and has nobody assigned."
+    definition: "An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned."
     when:
       all:
         - { predicate: priority, in: [Blocker, Critical, Highest] }

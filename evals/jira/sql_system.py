@@ -144,7 +144,7 @@ recorded_at = transaction time).
 Rules (definitions):
 - blocked (issue): An issue is blocked while an issue that blocks it is not done.
 - stalled (issue): An issue has stalled when it is in progress and its status has not changed for 30 days.
-- urgent_unassigned (issue): An urgent issue (priority Blocker or Critical) that is not done and has nobody assigned."""
+- urgent_unassigned (issue): An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned."""
 
 TOOLS = [{"type": "function", "function": {
     "name": "sql_query", "description": "Run one read-only SQL query (DuckDB dialect) over the project's tables and macros; returns columns and rows (at most 200, with the total when cut).",
