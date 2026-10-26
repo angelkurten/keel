@@ -184,3 +184,41 @@ in the machine's zone (America/Bogota), so every instant the agent passed to a m
 89e8510, with a test). The arm was run again on the fixed generator, same questions, agent and reps:
 `heldout-haiku-sqlgen-tzfix.jsonl`; `heldout-stats-tzfix.md` is the registered analysis with that arm in place of the
 first. `heldout-stats.md` stays as registered. Both are reported, the first as what ran under the registration.
+
+## Post hoc: `sqlgen2` (not pre-registered, added after seeing results)
+
+Added on 2026-10-26, after the Haiku results above (`results/heldout-haiku.jsonl`, `results/heldout-stats.md`) were
+read: generated SQL (`sqlgen`) scored below hand-written SQL (`sql`). One cause was a time-zone bug in the generated
+helpers (fixed in 89e8510, after the run); the rest is the shape of what was generated. `sqlgen2` is the generator's
+answer to that shape, built and tuned knowing the result, so **it is exploratory**: none of the planned comparisons,
+the Holm adjustment or the claims above cover it, and its number is reported beside them, never in their place.
+
+What changes (keel/sqlgen.py, from the cartridge's new optional declarations: `facts` and `attrs` per entity kind,
+`one: true` on a relation):
+
+- `issue_state_at(tenant, t)` and `issue_state_known_at(tenant, t, k := k)`: one row per issue with a fact at t, a
+  decoded column per declared fact (status, status_category, assignee, priority, resolution, issue_type),
+  `<fact>_since` for each, summary and reporter, and `in_project` / `subtask_of` as ids (`one` relations).
+- `issue_changes(tenant, since, until, k := k)`: one row per change of a declared fact in [since, until), with
+  old_value and new_value, as Keel's tenant `history` reports a change (never a first value, nor a value recorded
+  wrong and corrected later).
+- Times are TIMESTAMP (UTC) in these views; their arguments take TIMESTAMP or ISO text.
+- The tool paragraph is generated with the SQL (`keel.sqlgen.describe`), not written by hand
+  (`sqlgen_system.tools_text_v2`: 712 tokens with its one-line tool preamble, o200k; `sql`'s is 695, `sqlgen`'s 779).
+
+`sqlgen` is unchanged: its database is built from the cartridge with the new declarations taken out, so its script
+and cache file are the ones the run above used, and its paragraph is the same text. Offline, the new views reach all
+387 gold answers (`test_heldout.py::test_heldout_gold_is_reached_by_the_generated_views`), and a scripted model runs
+the condition on every tenant (`test_every_condition_runs_on_the_heldout_tenants_without_a_model[sqlgen2]`).
+
+The paid run, Haiku only, the held-out set, 3 repetitions, one brake (`sqlgen` cost 0.88 USD for its 3
+repetitions with Haiku; a rerun of the same command resumes), into its own file so the pre-registered results stay untouched:
+
+```bash
+H=~/datasets/public-jira/heldout; R=evals/jira/results
+uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
+   --questions evals/jira/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --keel-compact --keel-read-only \
+   --systems sqlgen2 --models anthropic/claude-haiku-5.5 --reps 3 --max-usd 2 --out $R/heldout-haiku-sqlgen2.jsonl
+uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl $R/heldout-haiku-sqlgen2.jsonl \
+   --out $R/heldout-sqlgen2-stats.md   # descriptive: sqlgen2's row beside the others; the planned comparisons are unchanged
+```

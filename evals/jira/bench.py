@@ -25,6 +25,9 @@ happened and when it was recorded, corrections included), in its best ordinary f
           writes the bitemporal conditions itself, and gets the rules as the cartridge's definitions in words.
 - sqlgen: the same tool over the schema and macros Keel generates from the cartridge (keel/sqlgen.py), filled by
           ingesting the log through Keel (evals/jira/sqlgen_system.py): generated macros in place of hand-written ones.
+- sqlgen2: post hoc (after the held-out results, not pre-registered): the same, with the cartridge's declared facts
+          compiled too (issue_state_at, issue_changes: one row per issue, a column per field, TIMESTAMP times) and the
+          tool paragraph generated with the SQL (keel.sqlgen.describe) instead of written by hand.
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -91,6 +94,7 @@ TOOLS_TEXT = {
     "sql": "",  # filled from evals.jira.sql_system on first use
     "sql-tables": "",
     "sqlgen": "",
+    "sqlgen2": "",
 }
 MEMORY_TOOLS = [{"type": "function", "function": {
     "name": "search_memory", "description": "Search the project's memory for facts relevant to a query.",
@@ -349,21 +353,23 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
 
         tools_text = tgms_system.TOOLS_TEXT
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
-    if system in ("sql", "sql-tables", "sqlgen"):
+    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
         from evals.jira import sql_system
 
-        if system == "sqlgen":
+        if system in ("sqlgen", "sqlgen2"):
             from evals.jira import sqlgen_system
 
-            db, text = sqlgen_system.tenant_db(data, tenant, source(data, tenant)), sqlgen_system.tools_text(tenant)
+            v2 = system == "sqlgen2"
+            db = sqlgen_system.tenant_db(data, tenant, source(data, tenant), v2=v2)
+            text = sqlgen_system.tools_text_v2(tenant) if v2 else sqlgen_system.tools_text(tenant)
         else:
             db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
             text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
-             "sql": None, "sql-tables": None, "sqlgen": None}[system]
-    if system in ("sql", "sql-tables", "sqlgen"):
+             "sql": None, "sql-tables": None, "sqlgen": None, "sqlgen2": None}[system]
+    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
         tools = sql_system.TOOLS
     if system == "tgms":
         tools = tgms_system.tools()
@@ -400,7 +406,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                         text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
                     elif system == "tgms":
                         text = tgms_system.call(data, tenant, name, args)
-                    elif system in ("sql", "sql-tables", "sqlgen"):
+                    elif system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
                         if name != "sql_query":
                             raise ValueError(f"unknown tool {name}")
                         text = sql_system.query(db, str(args.get("sql", "")))

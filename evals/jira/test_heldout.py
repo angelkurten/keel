@@ -94,11 +94,26 @@ def test_heldout_gold_is_reached_by_keel_by_hand_sql_and_by_generated_sql(tenant
     assert [q["id"] for q in qs if sqlgen_system.oracle_answer(gen, tenant, q) != q["answer"]] == []
 
 
+@needs_data
+@pytest.mark.parametrize("tenant", TENANTS)
+def test_heldout_gold_is_reached_by_the_generated_views(tenant):
+    """sqlgen v2 (post hoc, not pre-registered): every gold answer by one query over the per-kind views, changes,
+    relations and rule macros generated from the cartridge's declared facts."""
+    pytest.importorskip("duckdb")
+    from evals.jira import sqlgen_system
+
+    events, qs = events_of(tenant), committed(tenant)
+    gen = sqlgen_system.build(events, tenant, v2=True)
+    bad = [(q["id"], got, q["answer"]) for q in qs if (got := sqlgen_system.oracle_answer_v2(gen, tenant, q)) != q["answer"]]
+    assert bad == [], (len(bad), bad[:5])
+
+
 SMOKE = {  # one representative tool call per condition; {t} is the tenant, {k} an issue key of the tenant
     "keel": ("search", {"kind": "issue", "where": {"status": "Open"}, "as_of": "2020-01-01T00:00:00Z", "detail": "key"}),
     "sql": ("sql_query", {"sql": "SELECT count(*) FROM issue_state_at(TIMESTAMP '2020-01-01')"}),
     "sql-tables": ("sql_query", {"sql": "SELECT count(*) FROM field_versions"}),
     "sqlgen": ("sql_query", {"sql": "SELECT count(*) FROM state_at('{t}', '2020-01-01T00:00:00+00:00')"}),
+    "sqlgen2": ("sql_query", {"sql": "SELECT count(*) FROM issue_state_at('{t}', TIMESTAMP '2020-01-01')"}),
     "api": ("get_issue", {"key": "{k}"}),
 }
 
