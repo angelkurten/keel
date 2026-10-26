@@ -177,6 +177,19 @@ cartridge's definitions in words, as Keel's tool paragraph gives them. One repet
 $B --with duckdb==2.0.0 --with numpy --systems sql-tables --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 --reps 1 --max-usd 3 --out $R/full-sql-tables.jsonl
 ```
 
+## 8. Tool-result tokens and the compact form
+
+Offline, no model called: `tokens.py` replays every Keel call of the full run on the plain and the compact MCP server
+(`keel serve --compact`) and breaks the result tokens down by tool, detail and field against the SQL baseline;
+`test_compact.py` checks that the compact text unpacks to the JSON and gives the same gold answer on all 387 questions.
+The breakdown is `tokens.md`. `bench --keel-compact` runs the agents on the compact form.
+
+```bash
+uv run --extra mcp --with tiktoken python -m evals.jira.tokens replay --data $E --out /tmp/replay.jsonl
+uv run --extra mcp --with tiktoken python -m evals.jira.tokens report /tmp/replay.jsonl
+uv run --extra mcp --with tiktoken pytest evals/jira/test_compact.py -q
+```
+
 ## Results files
 
 | File | What |
