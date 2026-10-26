@@ -224,6 +224,31 @@ def test_tool_schemas_are_compact():
     assert compact({"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "null"}], "default": None}) == {"anyOf": [{"type": "string"}, {"type": "integer"}]}
 
 
+def test_serve_compact_reaches_mcp_over_stdio_and_http(monkeypatch):
+    """`keel serve --compact` (KEEL_COMPACT) and `build_http_app(compact=True)` pack what /mcp's model reads."""
+    pytest.importorskip("mcp")
+    from typer.testing import CliRunner
+
+    import keel.mcp_server
+    from keel.cli import app
+    from keel.http import build_http_app
+
+    seen = []
+
+    class Fake:
+        def run(self):
+            pass
+
+    real = keel.mcp_server.build_server
+    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw.get("compact", False)) or Fake())
+    res = CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT, "--compact"])
+    assert res.exit_code == 0, res.output
+    CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT])
+    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw.get("compact", False)) or real(*a, **kw))
+    build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT, compact=True)
+    assert seen == [True, False, True]
+
+
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from typer.testing import CliRunner
 

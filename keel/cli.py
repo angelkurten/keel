@@ -879,6 +879,7 @@ def serve(
     cdc: Path | None = typer.Option(None, "--cdc", envvar="KEEL_CDC_MAP", help="http only: also follow Postgres tables (the `keel cdc` map; KEEL_PG_DSN), in a thread of this server; /health shows its state."),
     clock: str | None = typer.Option(None, "--clock", envvar="KEEL_CLOCK", help="Start the tools' clock at this ISO instant and let it run: a demo or a test pinned to a day, whose agents' notes land on that day too. Ingest keeps real time."),
     max_list: int | None = typer.Option(None, "--max-list", envvar="KEEL_MAX_LIST", help="The most entries one listing returns (search, related, history) when a caller asks for all or for more; the rest is paged, and the answer says so. Unset: no ceiling, as a report or an export may want everything."),
+    compact: bool = typer.Option(False, "--compact", envvar="KEEL_COMPACT", help="MCP: what the model reads is compact, the same data in fewer tokens: lists of records as tables (fields they share said once), short UTC times. structuredContent and /v1 keep the JSON."),
     index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):
     """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
@@ -903,7 +904,7 @@ def serve(
 
         if not tenant:
             raise typer.BadParameter("--tenant is required with the stdio transport", param_hint="--tenant")
-        build_server(_tools(c, store, tenant, agent, **semantic)).run()
+        build_server(_tools(c, store, tenant, agent, **semantic), compact=compact).run()
         return
     if transport != "http":
         raise typer.BadParameter("stdio or http", param_hint="--transport")
@@ -947,7 +948,7 @@ def serve(
     if cdc:
         _follow_in_background(c, store, dsn, cdc, account, health["cdc"], recent=recent)
     api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, health_extra=health,
-                         recent=recent, **semantic)
+                         recent=recent, compact=compact, **semantic)
     if not http2:
         uvicorn.run(api, host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
         return

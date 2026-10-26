@@ -141,6 +141,7 @@ def build_http_app(
     account: str | None = None,
     health_extra: dict[str, Any] | None = None,
     recent: "RecentEvents | None" = None,
+    compact: bool = False,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the
@@ -174,7 +175,7 @@ def build_http_app(
             pinned = {g: Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock,
                                max_list=max_list, writes_global=g) for g in (True, False)}
             bound = lambda request: pinned[request is None or (k := key_of(request)) is None or k.glob]
-        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None)
+        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None, compact=compact)
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
