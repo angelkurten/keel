@@ -52,7 +52,10 @@ def reads(q: dict[str, Any]) -> list[tuple[str, Any]]:
     if sub in ("status_at", "known_at"):
         return [("search_where", lambda x: x.search(kind="issue", where={"status": p["status"]}, as_of=t, as_known_at=k, detail="key", limit=0)),
                 ("search_where_count", lambda x: x.search(kind="issue", where={"status": p["status"]}, as_of=t, as_known_at=k, detail="count")),
-                ("search_where_page", lambda x: x.search(kind="issue", where={"status": p["status"]}, as_of=t, as_known_at=k, detail="brief", limit=5))]
+                ("search_where_page", lambda x: x.search(kind="issue", where={"status": p["status"]}, as_of=t, as_known_at=k, detail="brief", limit=5)),
+                # typed wants the store compares too: a list (any of, one in another case) and null (unassigned)
+                ("search_where_any", lambda x: x.search(kind="issue", where={"status": [p["status"].upper(), "Closed"]}, as_of=t, as_known_at=k, detail="key", limit=0)),
+                ("search_where_null", lambda x: x.search(kind="issue", where={"assignee": None}, as_of=t, as_known_at=k, detail="count"))]
     if sub == "count_at":
         return [("search_count", lambda x: x.search(kind="issue", where={"status_category": p["category"]}, as_of=t, detail="count"))]
     if sub == "rule_at":
