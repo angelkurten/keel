@@ -108,8 +108,73 @@
           "examples": [
             "patients.id"
           ]
+        },
+        "attrs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "description": "Attributes its handlers set on the entity (upsert_entity), shown as columns of the generated `<kind>_state_at` view (keel/sqlgen.py).",
+          "examples": [
+            [
+              "summary",
+              "reporter"
+            ]
+          ]
+        },
+        "facts": {
+          "description": "The predicates its facts hold, for the generated SQL (keel/sqlgen.py): one column each in `<kind>_state_at`, and the changes `<kind>_changes` lists. A list of names, or name -> payload hint or {type, description}; without a type, the hint of the payload field of the same name in the kind's events.",
+          "markdownDescription": "The predicates its facts hold, for the generated SQL (keel/sqlgen.py): one column each in `<kind>_state_at`, and the changes `<kind>_changes` lists.\n\n```yaml\nfacts: [status, assignee]\n# or\nfacts:\n  status: [open, in_progress, done]\n  amount: { type: number | null, description: What the customer owes. }\n  note:          # the type of the payload field `note` in this kind's events, if any\n```",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/fact"
+              }
+            }
+          ]
         }
       }
+    },
+    "fact": {
+      "description": "One declared fact: its payload hint, or {type, description}, or nothing (the type comes from the event catalog).",
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": [
+            "string",
+            "array"
+          ],
+          "$ref": "#/$defs/payloadHint"
+        },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/payloadHint"
+            },
+            "description": {
+              "type": "string",
+              "description": "What the fact means, for the agents reading the generated SQL."
+            }
+          }
+        }
+      ]
     },
     "relation": {
       "type": "object",
@@ -130,6 +195,10 @@
         "symmetric": {
           "type": "boolean",
           "description": "Recorded from either end, shown once (direction `both`)."
+        },
+        "one": {
+          "type": "boolean",
+          "description": "A source holds at most one target at a time: the generated `<kind>_state_at` view (keel/sqlgen.py) shows the target's id in a column named after the relation."
         }
       }
     },

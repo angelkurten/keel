@@ -21,10 +21,19 @@ FULL = """
 name: everything
 version: 0.1
 entities:
-  ticket: { description: A support ticket., ref: tickets.id }
+  ticket:
+    description: A support ticket.
+    ref: tickets.id
+    attrs: [title]
+    facts:
+      status: [open, closed]
+      amount: { type: number | null, description: What the customer owes. }
+      due_on: { description: When it is due. }
+      note:
   customer:
+    facts: [tier, joined]
 relations:
-  of_customer: { from: ticket, to: customer }
+  of_customer: { from: ticket, to: customer, one: true }
   relates_to: { from: ticket, to: ticket, symmetric: true }
 events:
   ticket.opened:
@@ -132,6 +141,11 @@ DELETE = object()
         (("consolidate", "recurring", "reduce"), "median"),
         (("agents", "triage", "writes"), ["global"]),
         (("semantic", "predicates"), ["status"]),  # together with exclude
+        (("entities", "ticket", "facts", "status"), "strng"),
+        (("entities", "ticket", "facts", "amount"), {"type": "number", "unit": "usd"}),
+        (("entities", "ticket", "facts"), "status"),
+        (("entities", "ticket", "attrs"), "title"),
+        (("relations", "of_customer", "one"), "yes"),
     ],
 )
 def test_shapes_validate_rejects_are_rejected(path, value):
@@ -144,3 +158,29 @@ def test_shapes_validate_rejects_are_rejected(path, value):
     else:
         node[path[-1]] = value
     assert errors(doc)
+
+
+@pytest.mark.parametrize(
+    "path, value, problem",
+    [
+        (("entities", "ticket", "facts", "status"), "strng", "entity 'ticket': fact 'status': unknown payload hint 'strng'"),
+        (("entities", "ticket", "facts", "amount"), {"type": "number", "unit": "usd"},
+         "entity 'ticket': fact 'amount' is a payload hint or {type, description}"),
+        (("entities", "ticket", "facts"), "status", "entity 'ticket': facts is a list of predicates or a mapping predicate -> hint"),
+        (("entities", "ticket", "facts", "title"), None, "entity 'ticket': 'title' is both an attribute and a fact"),
+        (("entities", "ticket", "facts", "of_customer"), None, "entity 'ticket': 'of_customer' is both a fact and a relation from it marked one"),
+        (("entities", "ticket", "facts", "id"), None, "entity 'ticket': 'id' is a name the generated SQL uses; name it otherwise"),
+        (("entities", "ticket", "facts", "status-2"), None, "entity 'ticket': fact 'status-2' is not a plain identifier"),
+        (("entities", "ticket", "attrs"), "title", "entity 'ticket': attrs is a list of attribute names"),
+        (("relations", "of_customer", "one"), "yes", "relation 'of_customer': one is true or false"),
+        (("relations", "relates_to", "one"), True, "relation 'relates_to': a symmetric relation cannot be one"),
+    ],
+)
+def test_declared_facts_and_one_are_checked_by_the_code(tmp_path, path, value, problem):
+    doc = yaml.safe_load(FULL)
+    node = doc
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    (tmp_path / "cartridge.yaml").write_text(yaml.safe_dump(doc), encoding="utf-8")
+    assert any(p.startswith(problem) for p in load_cartridge(tmp_path, handlers=False).validate()), problem

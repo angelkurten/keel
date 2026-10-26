@@ -277,9 +277,45 @@
    "entity": {
     "description": "An entity kind.",
     "properties": {
+     "attrs": {
+      "description": "Attributes its handlers set on the entity (upsert_entity), shown as columns of the generated `<kind>_state_at` view (keel/sqlgen.py).",
+      "examples": [
+       [
+        "summary",
+        "reporter"
+       ]
+      ],
+      "items": {
+       "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+       "type": "string"
+      },
+      "type": "array"
+     },
      "description": {
       "description": "What this kind is, in the product's words.",
       "type": "string"
+     },
+     "facts": {
+      "anyOf": [
+       {
+        "items": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "additionalProperties": {
+         "$ref": "#/$defs/fact"
+        },
+        "propertyNames": {
+         "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "type": "object"
+       }
+      ],
+      "description": "The predicates its facts hold, for the generated SQL (keel/sqlgen.py): one column each in `<kind>_state_at`, and the changes `<kind>_changes` lists. A list of names, or name -> payload hint or {type, description}; without a type, the hint of the payload field of the same name in the kind's events.",
+      "markdownDescription": "The predicates its facts hold, for the generated SQL (keel/sqlgen.py): one column each in `<kind>_state_at`, and the changes `<kind>_changes` lists.\n\n```yaml\nfacts: [status, assignee]\n# or\nfacts:\n  status: [open, in_progress, done]\n  amount: { type: number | null, description: What the customer owes. }\n  note:          # the type of the payload field `note` in this kind's events, if any\n```"
      },
      "ref": {
       "description": "Where `ref` points in the system of record, e.g. `patients.id`. Keel holds pointers, not copies.",
@@ -345,6 +381,35 @@
      "subject"
     ],
     "type": "object"
+   },
+   "fact": {
+    "anyOf": [
+     {
+      "type": "null"
+     },
+     {
+      "$ref": "#/$defs/payloadHint",
+      "type": [
+       "string",
+       "array"
+      ]
+     },
+     {
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+       "description": {
+        "description": "What the fact means, for the agents reading the generated SQL.",
+        "type": "string"
+       },
+       "type": {
+        "$ref": "#/$defs/payloadHint"
+       }
+      },
+      "type": "object"
+     }
+    ],
+    "description": "One declared fact: its payload hint, or {type, description}, or nothing (the type comes from the event catalog)."
    },
    "leaf": {
     "additionalProperties": false,
@@ -803,6 +868,10 @@
      "from": {
       "description": "The source entity kind.",
       "type": "string"
+     },
+     "one": {
+      "description": "A source holds at most one target at a time: the generated `<kind>_state_at` view (keel/sqlgen.py) shows the target's id in a column named after the relation.",
+      "type": "boolean"
      },
      "symmetric": {
       "description": "Recorded from either end, shown once (direction `both`).",

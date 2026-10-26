@@ -234,10 +234,14 @@ entities:               # required: kind -> spec
   <kind>:
     description: <text>
     ref: <table.column> # optional, documents where `ref` points
+    attrs: [<attr>, ...]        # optional: attributes its handlers set, columns of the generated SQL views (keel/sqlgen.py)
+    facts: [<predicate>, ...]   # optional: its predicates, for the generated views; or <predicate>: <hint> | {type: <hint>, description: <text>}
+                                #   (no type: the hint of the payload field of the same name in the kind's events)
 
 relations:              # optional: rel -> {from: <kind>, to: <kind>}
   <rel>: { from: <kind>, to: <kind> }
   <rel>: { from: <kind>, to: <kind>, symmetric: true }   # recorded from either end, shown once (direction `both`)
+  <rel>: { from: <kind>, to: <kind>, one: true }         # at most one target per source at a time: a column of the generated views
 
 events:                 # required: type -> spec
   <type>:

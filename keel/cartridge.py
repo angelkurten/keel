@@ -16,6 +16,7 @@ domain leaked in; pull it back out.
 from __future__ import annotations
 
 import importlib.util
+import re
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
@@ -32,13 +33,17 @@ from keel.rules import problems as rule_problems
 from keel.schema import check, parse, payload_schema
 from keel.scopes import MemoryPolicy, Scope
 
+# the names the generated per-kind SQL (keel/sqlgen.py) uses for its own columns and macro parameters
+VIEW_NAMES = frozenset({"id", "subject", "ref", "tnt", "t", "k", "since", "until", "alive", "as_author", "as_task"})
+_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 
 @dataclass
 class Cartridge:
     name: str
     path: Path
-    entities: dict[str, dict[str, Any]]  # kind -> {description, ref?}
-    relations: dict[str, dict[str, str]]  # rel -> {from, to}
+    entities: dict[str, dict[str, Any]]  # kind -> {description, ref?, attrs?, facts?}
+    relations: dict[str, dict[str, Any]]  # rel -> {from, to, symmetric?, one?}
     events: dict[str, dict[str, Any]]  # type -> {subject, owner, payload: {...}}
     rules: dict[str, Any] = field(default_factory=dict)  # semantic definitions, versioned
     policy: MemoryPolicy = field(default_factory=MemoryPolicy.default)
@@ -118,7 +123,70 @@ class Cartridge:
         for name, spec in self.predicates.items():
             if not isinstance(spec, dict) or set(spec) - {"multi", "description"}:
                 problems.append(f"predicate '{name}': only `multi` (true/false) and `description` are understood")
+        problems += self._view_problems()
         return problems
+
+    def _view_problems(self) -> list[str]:
+        """The optional declarations the generated per-kind SQL reads: an entity's `attrs` and `facts`, a relation's `one`."""
+        problems: list[str] = []
+        for rel, spec in self.relations.items():
+            one = (spec or {}).get("one")
+            if one is not None and not isinstance(one, bool):
+                problems.append(f"relation '{rel}': one is true or false")
+            elif one and spec.get("symmetric"):
+                problems.append(f"relation '{rel}': a symmetric relation cannot be one")
+        for kind, spec in self.entities.items():
+            spec = spec if isinstance(spec, dict) else {}
+            attrs, facts = spec.get("attrs"), spec.get("facts")
+            if attrs is not None and not (isinstance(attrs, list) and all(isinstance(a, str) for a in attrs)):
+                problems.append(f"entity '{kind}': attrs is a list of attribute names")
+                attrs = None
+            if facts is not None and not isinstance(facts, (list, dict)) or isinstance(facts, list) and not all(isinstance(f, str) for f in facts):
+                problems.append(f"entity '{kind}': facts is a list of predicates or a mapping predicate -> hint")
+                facts = None
+            names: list[str] = list(attrs or [])
+            for name, fact in (facts.items() if isinstance(facts, dict) else ((f, None) for f in facts or [])):
+                names.append(name)
+                if isinstance(fact, dict) and (not fact or set(fact) - {"type", "description"}):
+                    problems.append(f"entity '{kind}': fact '{name}' is a payload hint or {{type, description}}")
+                    continue
+                hint = fact.get("type") if isinstance(fact, dict) else fact
+                if hint is not None:
+                    try:
+                        parse(hint)
+                    except ValueError as exc:
+                        problems.append(f"entity '{kind}': fact '{name}': {exc}")
+            for name in set(attrs or []) & set(facts or []):
+                problems.append(f"entity '{kind}': '{name}' is both an attribute and a fact")
+            ones = [r for r, rs in self.relations.items() if (rs or {}).get("one") is True and rs.get("from") == kind]
+            for name in sorted(set(ones) & set(names)):
+                problems.append(f"entity '{kind}': '{name}' is both a fact and a relation from it marked one")
+            if facts:
+                for name in names + ones:
+                    if not _IDENT.match(name):
+                        problems.append(f"entity '{kind}': fact '{name}' is not a plain identifier")
+                    elif name.lower() in VIEW_NAMES:
+                        problems.append(f"entity '{kind}': '{name}' is a name the generated SQL uses; name it otherwise")
+        return problems
+
+    def facts_of(self, kind: str) -> dict[str, dict[str, Any]]:
+        """The facts an entity kind declares (`facts:`), in order: predicate -> {type, description}. `type` is the
+        declared payload hint, else the hint of the payload field of the same name in the kind's events when they all
+        agree (the catalog, never a payload), else None."""
+        spec = self.entities.get(kind)
+        facts = spec.get("facts") if isinstance(spec, dict) else None
+        items = facts.items() if isinstance(facts, dict) else ((f, None) for f in facts or [])
+        out: dict[str, dict[str, Any]] = {}
+        for name, fact in items:
+            hint = fact.get("type") if isinstance(fact, dict) else fact
+            if hint is None:
+                seen = [repr(e["payload"][name]) for e in self.events.values()
+                        if isinstance(e, dict) and e.get("subject") == kind and isinstance(e.get("payload"), dict) and name in e["payload"]]
+                if seen and len(set(seen)) == 1:
+                    hint = next(e["payload"][name] for e in self.events.values()
+                                if isinstance(e, dict) and e.get("subject") == kind and isinstance(e.get("payload"), dict) and name in e["payload"])
+            out[name] = {"type": hint, "description": fact.get("description") if isinstance(fact, dict) else None}
+        return out
 
     def schema(self) -> dict[str, Any]:
         """The cartridge as one JSON document: envelope schema, events with payload schemas (§5.5),
