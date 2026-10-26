@@ -142,10 +142,12 @@ def build_http_app(
     health_extra: dict[str, Any] | None = None,
     recent: "RecentEvents | None" = None,
     compact: bool = True,
+    read_only: bool = False,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the
-    account's own database (`keel accounts set --store`); keys, limits and usage stay in `store`."""
+    account's own database (`keel accounts set --store`); keys, limits and usage stay in `store`. `read_only`: the
+    four read tools only, over /mcp and /v1 (annotate is refused)."""
     try:
         from fastapi import FastAPI, HTTPException, Request
         from pydantic import BaseModel
@@ -159,7 +161,7 @@ def build_http_app(
     from importlib.util import find_spec
 
     if tenant is not None or find_spec("mcp") is not None:  # the http extra brings mcp; a bare FastAPI install serves /v1 only
-        from keel.mcp_server import build_server
+        from keel.mcp_server import build_server, writes_nothing
 
         def per_request(request: Any) -> Tools:
             """Without a fixed tenant, /mcp builds its tools per call from the request, exactly like /v1."""
@@ -175,7 +177,8 @@ def build_http_app(
             pinned = {g: Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock,
                                max_list=max_list, writes_global=g) for g in (True, False)}
             bound = lambda request: pinned[request is None or (k := key_of(request)) is None or k.glob]
-        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None, compact=compact)
+        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None, compact=compact,
+                              read_only=read_only or (tenant is not None and writes_nothing(pinned[False].agent)))
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
@@ -410,6 +413,9 @@ def build_http_app(
 
     @app.post("/v1/annotate")
     def annotate(body: AnnotateIn, request: Request) -> dict[str, Any]:
+        if read_only:
+            run(lambda: tools_for(request))  # who asks first: an unauthenticated caller learns nothing about the server
+            raise HTTPException(403, "this server is read-only: it serves context, history, search and related; annotate is not served")
         if body.scope == "global" and (key := key_of(request)) is not None and not key.glob:
             raise HTTPException(403, "only the account's global key may write global memory (keel keys create --global)")
         return run(lambda: tools_for(request).annotate(body.subject, body.predicate, body.value, body.scope, body.evidence, body.by, body.task, body.key, body.status, body.detail))

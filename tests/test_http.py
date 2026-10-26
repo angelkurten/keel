@@ -252,6 +252,37 @@ def test_serve_packs_mcp_text_by_default_and_plain_keeps_json(monkeypatch):
     assert seen == [True, False, False, True, False]
 
 
+def test_serve_read_only_serves_the_read_tools(monkeypatch):
+    """`keel serve --read-only` (KEEL_READ_ONLY=1) lists only the four read tools over MCP; over HTTP /mcp does too and
+    /v1/annotate is refused. The default serves all five."""
+    pytest.importorskip("mcp")
+    from fastapi.testclient import TestClient
+    from typer.testing import CliRunner
+
+    import keel.mcp_server
+    from keel.cli import app
+    from keel.http import build_http_app
+
+    seen = []
+
+    class Fake:
+        def run(self):
+            pass
+
+    real = keel.mcp_server.build_server
+    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw.get("read_only", False)) or Fake())
+    assert CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT]).exit_code == 0
+    assert CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT, "--read-only"]).exit_code == 0
+    assert CliRunner().invoke(app, ["serve", FLEET, "--tenant", TENANT], env={"KEEL_READ_ONLY": "1"}).exit_code == 0
+    monkeypatch.setattr(keel.mcp_server, "build_server", lambda *a, **kw: seen.append(kw["read_only"]) or real(*a, **kw))
+    build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT)
+    api = build_http_app(load_cartridge(FLEET), MemoryStore(), secret="s", tenant=TENANT, read_only=True)
+    assert seen == [False, True, True, False, True]
+    with TestClient(api) as client:
+        res = client.post("/v1/annotate", json={"subject": "tire:T-1", "predicate": "note", "value": "x"}, headers={"Authorization": "Bearer s"})
+        assert res.status_code == 403 and "read-only" in res.json()["detail"]
+
+
 def test_serve_refuses_an_open_api_on_a_network_host(monkeypatch):
     from typer.testing import CliRunner
 

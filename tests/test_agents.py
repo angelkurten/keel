@@ -127,3 +127,41 @@ def test_declared_evidence_must_be_an_applied_event_or_a_declared_ref():
     assert copilot.annotate("tire:T-9001", "depth_mm", 2.5, scope="tenant", evidence=event_id)["value"] == 2.5
     assert copilot.annotate("tire:T-9001", "depth_mm", 2.4, scope="tenant", evidence="photo:12")["value"] == 2.4
     assert copilot.annotate("tire:T-9001", "note", "x", scope="task")["value"] == "x"  # task needs no evidence
+
+
+def _listed(server):
+    import asyncio
+
+    return sorted(t.name for t in asyncio.run(server.list_tools()))
+
+
+def test_a_read_only_server_lists_four_tools_and_refuses_annotate():
+    """`build_server(read_only=True)` (keel serve --read-only) serves the four read tools: an agent that never writes
+    does not pay for annotate's definition on every request (evals/jira/context_tokens.md). A call to annotate is
+    refused, saying why. The default still lists all five."""
+    pytest.importorskip("mcp")
+    import asyncio
+
+    from keel.mcp_server import build_server
+
+    c, s = _fleet_with_agents()
+    c.agents = {}
+    t = Tools(c, s, TENANT)
+    assert _listed(build_server(t)) == ["annotate", "context", "history", "related", "search"]
+    server = build_server(t, read_only=True)
+    assert _listed(server) == ["context", "history", "related", "search"]
+    with pytest.raises(Exception, match="read-only"):
+        asyncio.run(server.call_tool("annotate", {"subject": "tire:T-9001", "predicate": "note", "value": "x"}))
+    assert [f for f in s.facts(TENANT, "tire:T-9001") if f.predicate == "note"] == []
+
+
+def test_an_agent_that_may_write_no_scope_gets_the_read_tools_only():
+    """The registry says it plainly with `writes: []`: such an agent is served read-only without a flag. An agent that
+    may write some scope (the default [task, agent]) keeps annotate listed."""
+    pytest.importorskip("mcp")
+    from keel.mcp_server import build_server
+
+    c, s = _fleet_with_agents()
+    c.agents = parse_agents(AGENTS | {"reporter": {"description": "Reads only.", "writes": []}})
+    assert _listed(build_server(Tools(c, s, TENANT, agent="reporter"))) == ["context", "history", "related", "search"]
+    assert "annotate" in _listed(build_server(Tools(c, s, TENANT, agent="tires-bot")))

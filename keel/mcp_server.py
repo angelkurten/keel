@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - mcp 1.x, or no mcp at all (build_serve
         from mcp.server.fastmcp import Context
     except ImportError:
         Context = Any
+from keel.store.base import Scope
 from keel.tools import DESCRIPTIONS, Tools, _lean
 
 
@@ -184,10 +185,21 @@ def instructions(cartridge: Any, agent: Any = None, compact: bool = True) -> str
             f"Rules, evaluated in context's `evaluation` (trust it):\n{rules}" + (f"\n{TABLES}" if compact else ""))
 
 
-def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = True):  # pragma: no cover - needs the optional mcp package
+READ_ONLY = "this server is read-only: it serves context, history, search and related; annotate is not served"
+
+
+def writes_nothing(agent: Any) -> bool:
+    """An agent whose registry entry may write no scope (`writes: []`): it is served the read tools only."""
+    return agent is not None and not any(agent.can_write(s) for s in Scope)
+
+
+def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = True,  # pragma: no cover - needs the optional mcp package
+                 read_only: bool = False):
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
     many tenants: the tenant and agent come from the request's key and headers, keel/http.py). `compact` (default): the text a
-    model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged; `compact=False` sends the JSON text."""
+    model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged; `compact=False` sends the JSON text.
+    `read_only`: only the four read tools are listed (annotate is refused), for agents that never write; a bound agent
+    whose registry entry may write no scope is served so without the flag."""
     try:
         from mcp.server.mcpserver import MCPServer as Server  # mcp >= 2
     except ImportError:
@@ -244,19 +256,20 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
 
     if isinstance(tools, Tools):
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))
+        read_only = read_only or writes_nothing(tools.agent)
     known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
     mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None, compact) if known is not None else None)
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     # no outputSchema: it would only say "an object" or "a list", in tokens a client may hand the model on every call;
     # structuredContent still carries the data
-    read_only = {"annotations": ToolAnnotations(readOnlyHint=True), "structured_output": False}
+    reader = {"annotations": ToolAnnotations(readOnlyHint=True), "structured_output": False}
 
-    @mcp.tool(**read_only, description=DESCRIPTIONS["context"])
+    @mcp.tool(**reader, description=DESCRIPTIONS["context"])
     @guarded
     def context(subject: str | list[str], as_of: str | None = None, depth: int = 0, as_known_at: str | None = None, task: str | None = None, detail: Literal["brief", "concise", "full", "text"] = "brief", exclude: list[str] | None = None, only: list[str] | None = None, ctx: Context | None = None) -> dict[str, Any] | list[dict[str, Any]]:
         return bound(ctx).context(subject, _dt(as_of), depth, _dt(as_known_at), task, "brief" if detail == "text" else detail, exclude, only)
 
-    @mcp.tool(**read_only, description=DESCRIPTIONS["history"])
+    @mcp.tool(**reader, description=DESCRIPTIONS["history"])
     @guarded
     def history(
         subject: str | None = None,
@@ -273,7 +286,7 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
     ) -> list[dict[str, Any]]:
         return bound(ctx).history(subject, _dt(since), _dt(until), predicate, scope, _dt(as_known_at), task, _dt(changed_since), limit, "concise" if detail == "text" else detail)
 
-    @mcp.tool(**read_only, description=DESCRIPTIONS["search"])
+    @mcp.tool(**reader, description=DESCRIPTIONS["search"])
     @guarded
     def search(
         text: str | list[str] = "", kind: str | list[str] | None = None, rule: str | None = None, limit: int | None = None, after: str | None = None, mode: Literal["text", "semantic"] = "text",
@@ -289,8 +302,6 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         lean = lambda hits: [_lean(h) if isinstance(h, dict) and "predicate" in h else h for h in hits]  # an agent reads fact hits without bookkeeping
         return [lean(x) for x in out] if isinstance(text, list) else lean(out)
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False), structured_output=False, description=DESCRIPTIONS["annotate"])
-    @guarded
     def annotate(
         # int stays apart from float so pydantic keeps 3 as 3, not 3.0
         subject: str, predicate: str, value: str | int | float | bool | list[Any] | dict[str, Any] | None, scope: Literal["agent", "task", "tenant", "global"] = "task", evidence: str | None = None, by: str | None = None,  # noqa: PYI041
@@ -300,7 +311,11 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         t.trace = _trace(ctx)
         return t.annotate(subject, predicate, value, scope, evidence, by, task, key, status, detail)
 
-    @mcp.tool(**read_only, description=DESCRIPTIONS["related"])
+    if not read_only:
+        mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False), structured_output=False,
+                 description=DESCRIPTIONS["annotate"])(guarded(annotate))
+
+    @mcp.tool(**reader, description=DESCRIPTIONS["related"])
     @guarded
     def related(subject: str, relation: str | list[str] | None = None, as_of: str | None = None, depth: int = 1, limit: int = 50, ctx: Context | None = None) -> list[dict[str, Any]]:
         return bound(ctx).related(subject, relation, _dt(as_of), depth, limit)
@@ -308,4 +323,13 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
     manager = getattr(mcp, "_tool_manager", None)  # ponytail: the mcp package's own attribute; a public hook if it offers one
     for t in manager.list_tools() if manager else []:
         t.parameters = _compact_schema(t.parameters)
+    if read_only and manager:  # "Unknown tool: annotate" would leave the agent guessing why
+        call = manager.call_tool
+
+        async def refusing(name: str, arguments: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+            if name == "annotate":
+                raise ToolError(READ_ONLY)
+            return await call(name, arguments, *args, **kwargs)
+
+        manager.call_tool = refusing
     return mcp
