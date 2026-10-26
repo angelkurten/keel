@@ -650,7 +650,8 @@ def macros(cartridge: Any, d: Any | None = None) -> str:
     d = d or DuckDB()
     multi = sorted(p for p, spec in (cartridge.predicates or {}).items() if isinstance(spec, dict) and spec.get("multi"))
     symmetric = {r for r, spec in (cartridge.relations or {}).items() if isinstance(spec, dict) and spec.get("symmetric")}
-    out = [d.prelude(), _state(d, multi), _views(d, cartridge, multi)]
+    views = _views(d, cartridge, multi)
+    out = [d.prelude(), _state(d, multi), *([views] if views else [])]  # no declared facts: the script as before, byte for byte
     for name, spec in cartridge.rules.items():
         if spec.get("when"):
             out.append(_Rule(d, cartridge.calendar, symmetric).macros(name, spec))
