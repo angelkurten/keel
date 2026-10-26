@@ -63,3 +63,14 @@ def test_bench_keel_read_only_drops_annotate(monkeypatch, tmp_path):
     res, tools, _ = run(monkeypatch, tmp_path, read_only=True)
     assert [t["function"]["name"] for t in tools] == ["context", "history", "search", "related"]
     assert res["correct"] and res.get("keel_read_only") is True
+
+
+def test_bench_reads_questions_from_their_own_directory(tmp_path):
+    """`--questions DIR`: the held-out set is read from evals/jira/heldout, its data from --data."""
+    from evals.jira.bench import load_questions
+
+    qs = [{"id": f"t-{k}-{i:03d}", "tenant": "t", "type": k} for k in ("current", "tenant") for i in (1, 2)]
+    (tmp_path / "t.questions.json").write_text(json.dumps(qs))
+    assert load_questions(tmp_path, ["t"]) == qs
+    assert [q["id"] for q in load_questions(tmp_path, ["t"], types=["tenant"], per_type=1)] == ["t-tenant-001"]
+    assert [q["id"] for q in load_questions(tmp_path, ["t"], ids=["t-current-002"])] == ["t-current-002"]

@@ -23,6 +23,8 @@ happened and when it was recorded, corrections included), in its best ordinary f
           (evals/jira/sql_system.py; run with `--with duckdb==2.0.0`).
 - sql-tables: the same tables, prompt and tool without the macros or ready-made predicates (an ablation): the agent
           writes the bitemporal conditions itself, and gets the rules as the cartridge's definitions in words.
+- sqlgen: the same tool over the schema and macros Keel generates from the cartridge (keel/sqlgen.py), filled by
+          ingesting the log through Keel (evals/jira/sqlgen_system.py): generated macros in place of hand-written ones.
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -60,6 +62,13 @@ from keel.mcp_server import build_server
 HERE = Path(__file__).parent
 EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
 INSTANCES = {"hyperledger": ("Hyperledger", "INDY"), "mariadb": ("MariaDB", "MXS"), "spring": ("Spring", "SEC")}
+# the held-out set (evals/jira/heldout/README.md): projects of Jira instances development never read
+HELDOUT: dict[str, tuple[str, str]] = {}
+
+
+def instance(tenant: str) -> tuple[str, str]:
+    """(Jira instance, project key) of a development or held-out tenant."""
+    return INSTANCES.get(tenant) or HELDOUT[tenant]
 SYSTEM = """You answer questions about the Jira project {project} of the {instance} tracker. Today is {today}. All times are UTC.
 {tools}
 Use your tools before answering and never invent facts. Read every date in the question carefully: some ask what was true at \
@@ -81,6 +90,7 @@ TOOLS_TEXT = {
     "tgms": "",  # filled from evals.jira.tgms_system on first use
     "sql": "",  # filled from evals.jira.sql_system on first use
     "sql-tables": "",
+    "sqlgen": "",
 }
 MEMORY_TOOLS = [{"type": "function", "function": {
     "name": "search_memory", "description": "Search the project's memory for facts relevant to a query.",
@@ -327,7 +337,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     tenant = q["tenant"]
     if system == "tgms-pev":
         return ask_pev(gw, data, model, q)
-    instance, project = INSTANCES[tenant]
+    instance, project = INSTANCES.get(tenant) or HELDOUT[tenant]
     fmt = FORMATS["value" if q["answer_type"] == "unknown" else q["answer_type"]]  # an abstention looks like any value question
     tools_text = TOOLS_TEXT[system]
     server = keel_server(data, tenant) if system == "keel" else None
@@ -339,16 +349,21 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
 
         tools_text = tgms_system.TOOLS_TEXT
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
-    if system in ("sql", "sql-tables"):
+    if system in ("sql", "sql-tables", "sqlgen"):
         from evals.jira import sql_system
 
-        db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
-        text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
+        if system == "sqlgen":
+            from evals.jira import sqlgen_system
+
+            db, text = sqlgen_system.tenant_db(data, tenant, source(data, tenant)), sqlgen_system.tools_text(tenant)
+        else:
+            db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
+            text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
-             "sql": None, "sql-tables": None}[system]
-    if system in ("sql", "sql-tables"):
+             "sql": None, "sql-tables": None, "sqlgen": None}[system]
+    if system in ("sql", "sql-tables", "sqlgen"):
         tools = sql_system.TOOLS
     if system == "tgms":
         tools = tgms_system.tools()
@@ -385,7 +400,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                         text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
                     elif system == "tgms":
                         text = tgms_system.call(data, tenant, name, args)
-                    elif system in ("sql", "sql-tables"):
+                    elif system in ("sql", "sql-tables", "sqlgen"):
                         if name != "sql_query":
                             raise ValueError(f"unknown tool {name}")
                         text = sql_system.query(db, str(args.get("sql", "")))
@@ -488,6 +503,22 @@ def grade(q: dict[str, Any], answer: Any) -> bool:
 # ---- the run ------------------------------------------------------------------------------
 
 
+def load_questions(where: Path, tenants: list[str], types: list[str] | None = None, ids: list[str] | None = None,
+                   per_type: int | None = None) -> list[dict[str, Any]]:
+    """The questions to ask, per tenant from <where>/<tenant>.questions.json, filtered by type, id and a pilot's first N."""
+    out = []
+    for tenant in tenants:
+        qs = json.loads((where / f"{tenant}.questions.json").read_text())
+        if types:
+            qs = [q for q in qs if q["type"] in types]
+        if ids:
+            qs = [q for q in qs if q["id"] in ids]
+        if per_type:
+            qs = [q for q in qs if int(q["id"].rsplit("-", 1)[1]) <= per_type]
+        out += qs
+    return out
+
+
 def main() -> None:
     global SUBSET, EXTRACTOR, KEEL_MAX_LIST, KEEL_RULES, KEEL_DETAIL, KEEL_COMPACT, KEEL_READ_ONLY
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -509,6 +540,8 @@ def main() -> None:
     ap.add_argument("--keel-read-only", action="store_true", help="serve only the four read tools (keel serve --read-only): no annotate")
     ap.add_argument("--keel-detail", choices=["full"], help="force every context/history/search to this detail (the brief/full ablation)")
     ap.add_argument("--ids", help="only these question ids (comma-separated)")
+    ap.add_argument("--questions", type=Path, help="where <tenant>.questions.json are (default --data): the held-out set is "
+                                                   "read from evals/jira/heldout")
     ap.add_argument("--max-usd", type=float, help="stop starting runs once this invocation has spent this much")
     a = ap.parse_args()
     SUBSET, EXTRACTOR, KEEL_MAX_LIST = a.subset, a.extractor, a.keel_max_list
@@ -516,16 +549,8 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     data = a.data.expanduser()
     gw = Gateway()
-    questions = []
-    for tenant in a.tenants.split(","):
-        qs = json.loads((data / f"{tenant}.questions.json").read_text())
-        if a.types:
-            qs = [q for q in qs if q["type"] in a.types.split(",")]
-        if a.ids:
-            qs = [q for q in qs if q["id"] in a.ids.split(",")]
-        if a.per_type:
-            qs = [q for q in qs if int(q["id"].rsplit("-", 1)[1]) <= a.per_type]
-        questions += qs
+    questions = load_questions((a.questions or a.data).expanduser(), a.tenants.split(","), a.types and a.types.split(","),
+                               a.ids and a.ids.split(","), a.per_type)
     systems, models = a.systems.split(","), a.models.split(",")
     rags = {t: Rag(data, t, gw) for t in {q["tenant"] for q in questions}} if "rag" in systems else {}
     apis = {t: Api(data, t) for t in {q["tenant"] for q in questions}} if "api" in systems else {}
