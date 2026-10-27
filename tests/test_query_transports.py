@@ -120,3 +120,16 @@ def test_serve_takes_query_flags():
 
     out = CliRunner().invoke(app, ["serve", "--help"], env={"COLUMNS": "200"}).output
     assert "--query" in out and "--query-timeout" in out
+
+
+def test_a_per_request_mcp_server_with_query_states_the_schema(tmp_path):
+    """/mcp for any tenant (no --tenant): with query on, the instructions carry the schema (tenant left open)."""
+    pytest.importorskip("fastapi")
+    from keel.http import build_http_app
+
+    c, store = _store(tmp_path)
+    app = build_http_app(c, store, secret="s", query=True)
+    server = app.app.state.mcp_server if hasattr(app.app.state, "mcp_server") else None
+    assert server is not None and "tire_state_at" in server.instructions and "SQLite" in server.instructions
+    off = build_http_app(c, store, secret="s")
+    assert off.app.state.mcp_server.instructions is None

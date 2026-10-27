@@ -182,7 +182,7 @@ def build_http_app(
             pinned = {g: Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock,
                                max_list=max_list, writes_global=g, **asked) for g in (True, False)}
             bound = lambda request: pinned[request is None or (k := key_of(request)) is None or k.glob]
-        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None, compact=compact,
+        server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None or query else None, compact=compact,
                               read_only=read_only or (tenant is not None and writes_nothing(pinned[False].agent)),
                               query=query and (tenant is None or pinned[False].can_query()), dialect=getattr(store, "QUERY_DIALECT", None))
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
@@ -207,6 +207,7 @@ def build_http_app(
             meter.flush()
 
     app = FastAPI(title=f"keel:{cartridge.name}", version="1", lifespan=lifespan)
+    app.state.mcp_server = server  # the MCP server behind /mcp (None without the mcp package), for tests and embedding
     ingestor = Ingestor(cartridge, store)
     own: dict[str, tuple[Store, Ingestor]] = {}  # an account's own database (keel accounts set --store), opened once
     own_lock = threading.Lock()
