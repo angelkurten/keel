@@ -858,7 +858,10 @@ def test_tool_descriptions_are_short_and_keep_what_agents_rely_on():
     as_known_at), the cheap details (key, count), paging (`more`), the search filters and the history windows."""
     from keel.tools import DESCRIPTIONS
 
-    assert sum(len(v) for v in DESCRIPTIONS.values()) <= 1360
+    assert sum(len(v) for k, v in DESCRIPTIONS.items() if k != "query") <= 1360
+    # the optional sixth is listed only where enabled; its text is fixed too and says what it never reads
+    assert len(DESCRIPTIONS["query"]) <= 600
+    assert all(w in DESCRIPTIONS["query"] for w in ("SELECT", "limit", '{"more"', "never agent or task memory or proposals"))
     needs = {
         "context": ["as_of", "as_known_at", "since", "depth=1", "brief", "full"],
         "history": ["since/until", "predicate", "was", "as_known_at", "changed_since", "limit", "0: all"],
