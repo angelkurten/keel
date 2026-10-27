@@ -74,3 +74,42 @@ def test_bench_reads_questions_from_their_own_directory(tmp_path):
     assert load_questions(tmp_path, ["t"]) == qs
     assert [q["id"] for q in load_questions(tmp_path, ["t"], types=["tenant"], per_type=1)] == ["t-tenant-001"]
     assert [q["id"] for q in load_questions(tmp_path, ["t"], ids=["t-current-002"])] == ["t-current-002"]
+
+
+def test_bench_keel_plus_query_serves_the_sixth_tool_through_the_real_server(monkeypatch, tmp_path):
+    """`keel+query`: the five tools and query, through the MCP server Keel ships (SqliteStore, `query=True`), the schema
+    in the instructions the agent is handed; a scripted model answers a status question with one SQL call."""
+    from evals.jira import bench
+    from keel.tools import DESCRIPTIONS
+
+    (tmp_path / "t.bitemporal.jsonl").write_text("".join(json.dumps(e) + "\n" for e in LOG))
+    monkeypatch.setitem(bench.INSTANCES, "t", ("Test", "P"))
+    monkeypatch.setattr(bench, "KEEL_COMPACT", True)
+    monkeypatch.setattr(bench, "KEEL_READ_ONLY", True)
+    bench.keel_tools.cache_clear()
+    seen: dict[str, Any] = {}
+
+    class Gw:
+        def route(self, model: str) -> str:
+            return "fake"
+
+        def chat(self, model: str, messages: list[dict[str, Any]], tools: Any) -> tuple[dict[str, Any], dict[str, int], float]:
+            seen.setdefault("system", messages[0]["content"])
+            seen.setdefault("tools", tools)
+            if len(messages) == 2:
+                sql = "SELECT id FROM issue_state_at('t', '2020-01-15T00:00:00+00:00') WHERE status IN ('In Progress', 'Done') ORDER BY id"
+                call = {"id": "c1", "function": {"name": "query", "arguments": json.dumps({"sql": sql})}}
+                return {"content": "", "tool_calls": [call]}, {"input": 10, "output": 5}, 0.001
+            seen["result"] = messages[-1]["content"]
+            return {"content": 'ANSWER: ["P-1"]'}, {"input": 20, "output": 5}, 0.001
+
+    q = {"id": "t-tenant-001", "tenant": "t", "type": "tenant", "question": "On 2020-01-15 00:00 UTC, which issues of the P project had status In Progress?",
+         "answer": ["P-1"], "answer_type": "set", "params": {}}
+    res = bench.ask(Gw(), tmp_path, "keel+query", "m", q, {}, {})
+    bench.keel_tools.cache_clear()
+    names = [t["function"]["name"] for t in seen["tools"]]
+    assert names == ["context", "history", "search", "related", "query"]
+    assert next(t for t in seen["tools"] if t["function"]["name"] == "query")["function"]["description"] == DESCRIPTIONS["query"]
+    assert "issue_state_at" in seen["system"] and "SQLite" in seen["system"]
+    assert "P-1" in seen["result"]
+    assert res["correct"] and res["system"] == "keel+query" and not res["calls"][0]["error"] and res["calls"][0]["tool"] == "query"

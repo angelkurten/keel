@@ -222,3 +222,26 @@ uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python 
 uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl $R/heldout-haiku-sqlgen2.jsonl \
    --out $R/heldout-sqlgen2-stats.md   # descriptive: sqlgen2's row beside the others; the planned comparisons are unchanged
 ```
+
+## Post hoc: `keel+query` (not pre-registered, exploratory)
+
+Added on 2026-10-26, after the held-out results were read, when the user decided to give Keel an optional sixth tool,
+`query` (read-only SQL over the schema `keel/sqlgen.py` generates from the cartridge, bound to the tenant by the store;
+docs/serve.md, SPEC §7.8). `keel+query` is Keel's condition with that tool added: the agent gets the read tools and
+`query` through the MCP server Keel ships (`build_server(query=True)` over an in-memory `SqliteStore`, so SQLite's
+dialect), the generated schema in the server's instructions, the tool's description fixed. Built knowing the results,
+so **it is exploratory**: none of the planned comparisons, the Holm adjustment or the claims above cover it; its number
+is reported beside them, never in their place. Offline, a scripted model runs it through the real server
+(`evals/jira/test_bench_keel.py::test_bench_keel_plus_query_serves_the_sixth_tool_through_the_real_server`).
+
+The paid run, Haiku only, the held-out set, 3 repetitions, one brake (a rerun of the same command resumes), into its
+own file so the pre-registered results stay untouched:
+
+```bash
+H=~/datasets/public-jira/heldout; R=evals/jira/results
+uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
+   --questions evals/jira/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --keel-compact --keel-read-only \
+   --systems keel+query --models anthropic/claude-haiku-5.5 --reps 3 --max-usd 2 --out $R/heldout-haiku-keel-query.jsonl
+uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl $R/heldout-haiku-keel-query.jsonl \
+   --out $R/heldout-keel-query-stats.md   # descriptive: keel+query's row beside the others; the planned comparisons are unchanged
+```

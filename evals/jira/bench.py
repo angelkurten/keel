@@ -28,6 +28,9 @@ happened and when it was recorded, corrections included), in its best ordinary f
 - sqlgen2: post hoc (after the held-out results, not pre-registered): the same, with the cartridge's declared facts
           compiled too (issue_state_at, issue_changes: one row per issue, a column per field, TIMESTAMP times) and the
           tool paragraph generated with the SQL (keel.sqlgen.describe) instead of written by hand.
+- keel+query: post hoc, exploratory: Keel's tools plus the optional sixth, query (read-only SQL over the same
+          generated schema), through the real MCP server (`build_server(query=True)` on an in-memory SqliteStore, the
+          schema in the server's instructions), as `keel serve --query` serves them.
 
 Same model, same system prompt but for one paragraph about the tools, temperature 0. The agent ends with
 `ANSWER: <json>`; grading is exact after normalising (case, None/"none"/"unassigned", sets of keys, yes/no),
@@ -58,7 +61,7 @@ from typing import Any
 import numpy as np
 
 from evals.efficiency.run import Gateway, call, pause, tokens, tool_list
-from keel import Ingestor, MemoryStore, Tools, load_cartridge
+from keel import Ingestor, MemoryStore, SqliteStore, Tools, load_cartridge
 from keel.envelope import Event
 from keel.mcp_server import build_server
 
@@ -85,6 +88,8 @@ FORMATS = {
 }
 TOOLS_TEXT = {
     "keel": "The project's data is in Keel, a context graph, through five tools. Subjects are '<kind>:<id>', issues are 'issue:<KEY>'.",
+    "keel+query": "The project's data is in Keel, a context graph, through its tools, query among them (read-only SQL over the schema "
+                  "below). Subjects are '<kind>:<id>', issues are 'issue:<KEY>'.",
     "rag": "The project's records (every change to every issue, with when it happened and when it was recorded) are searchable through search_records.",
     "api": "The tracker's API is available: get_issue, get_changelog and search_issues.",
     "closed": "You have no tools: answer from what you know.",
@@ -156,17 +161,22 @@ def keel_cartridge() -> Any:
     return c if KEEL_RULES else replace(c, rules={})
 
 
-def keel_server(data: Path, tenant: str) -> Any:
-    """A fresh graph per question: what one agent annotates never reaches another run."""
-    store = MemoryStore()
+KEEL_SYSTEMS = ("keel", "keel+query")  # keel+query: the five tools and the optional sixth (keel serve --query), exploratory
+
+
+def keel_server(data: Path, tenant: str, query: bool = False) -> Any:
+    """A fresh graph per question: what one agent annotates never reaches another run. `query`: the sixth tool too, which
+    needs a store with SQL (an in-memory SqliteStore), served as `keel serve --query` serves it."""
+    store = SqliteStore(":memory:") if query else MemoryStore()
     Ingestor(keel_cartridge(), store).ingest([Event(**e) for e in source(data, tenant)], strict=True)
-    return build_server(Tools(keel_cartridge(), store, tenant=tenant, max_list=KEEL_MAX_LIST), compact=KEEL_COMPACT, read_only=KEEL_READ_ONLY)
+    return build_server(Tools(keel_cartridge(), store, tenant=tenant, max_list=KEEL_MAX_LIST, query=query), compact=KEEL_COMPACT,
+                        read_only=KEEL_READ_ONLY, query=query)
 
 
 @cache
-def keel_tools(data: Path, tenant: str) -> list[dict[str, Any]]:
+def keel_tools(data: Path, tenant: str, query: bool = False) -> list[dict[str, Any]]:
     return [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""), "parameters": t["inputSchema"]}}
-            for t in tool_list(keel_server(data, tenant))]
+            for t in tool_list(keel_server(data, tenant, query))]
 
 
 # ---- rag ---------------------------------------------------------------------------------
@@ -344,7 +354,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     instance, project = INSTANCES.get(tenant) or HELDOUT[tenant]
     fmt = FORMATS["value" if q["answer_type"] == "unknown" else q["answer_type"]]  # an abstention looks like any value question
     tools_text = TOOLS_TEXT[system]
-    server = keel_server(data, tenant) if system == "keel" else None
+    server = keel_server(data, tenant, system == "keel+query") if system in KEEL_SYSTEMS else None
     if server is not None:
         tools_text += "\n\n" + server.instructions  # what the server says once per session (keel/mcp_server.py instructions)
     prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
@@ -366,7 +376,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
             text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
         prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
-    tools = {"keel": keel_tools(data, tenant) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
+    tools = {"keel": keel_tools(data, tenant) if server else None, "keel+query": keel_tools(data, tenant, True) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
              "sql": None, "sql-tables": None, "sqlgen": None, "sqlgen2": None}[system]
     if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
@@ -398,7 +408,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             for wait in backoff():  # a rate limit or gateway outage under a search is waited out, never shown to the agent
                 error = False
                 try:
-                    if system == "keel":
+                    if system in KEEL_SYSTEMS:
                         if KEEL_DETAIL and name in ("context", "history", "search"):
                             args = args | {"detail": KEEL_DETAIL}
                         text, _, error, _ = call(server, name, args)
@@ -434,11 +444,11 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     answer, parsed = extract(reply)
     return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": system, "model": model, "gold": q["answer"],
             "answer": answer, "parsed": parsed, "correct": parsed and grade(q, answer), "reply": reply[-2000:], "calls": calls,
-            **({"keel_max_list": KEEL_MAX_LIST} if system == "keel" and KEEL_MAX_LIST else {}),
-            **({"keel_rules": False} if system == "keel" and not KEEL_RULES else {}),
-            **({"keel_detail": KEEL_DETAIL} if system == "keel" and KEEL_DETAIL else {}),
-            **({"keel_compact": True} if system == "keel" and KEEL_COMPACT else {}),
-            **({"keel_read_only": True} if system == "keel" and KEEL_READ_ONLY else {}), "route": gw.route(model),
+            **({"keel_max_list": KEEL_MAX_LIST} if system in KEEL_SYSTEMS and KEEL_MAX_LIST else {}),
+            **({"keel_rules": False} if system in KEEL_SYSTEMS and not KEEL_RULES else {}),
+            **({"keel_detail": KEEL_DETAIL} if system in KEEL_SYSTEMS and KEEL_DETAIL else {}),
+            **({"keel_compact": True} if system in KEEL_SYSTEMS and KEEL_COMPACT else {}),
+            **({"keel_read_only": True} if system in KEEL_SYSTEMS and KEEL_READ_ONLY else {}), "route": gw.route(model),
             "tool_errors": errors, "turns": sum(m["role"] == "assistant" for m in messages), "tokens": used,
             "cost_usd": round(cost, 6), "ms": round((time.monotonic() - start) * 1000)}
 
