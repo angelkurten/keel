@@ -1,4 +1,4 @@
-"""HTTP client for the five tools: the Python runtime behind `keel sdk python`, stdlib only.
+"""HTTP client for the five tools (and the optional sixth, query): the Python runtime behind `keel sdk python`, stdlib only.
 
     from keel.client import Client
     keel = Client("http://keel.internal:8000", tenant="acme-logistics", secret=os.environ["KEEL_SECRET"])
@@ -162,6 +162,11 @@ class Client:
     def related(self, subject: str, relation: str | list[str] | None = None, as_of: datetime | str | None = None, depth: int = 1, limit: int | None = 50) -> list[dict[str, Any]]:
         """Neighbours, optionally by relation (one or a list); `depth` 2 or 3 walks further, with `hops` and `via`; at most `limit`."""
         return self._post("/v1/related", {"subject": subject, "relation": relation, "as_of": _iso(as_of), "depth": depth, "limit": limit})
+
+    def query(self, sql: str, limit: int | None = None) -> list[dict[str, Any]]:
+        """Read-only SQL over the schema generated from the cartridge (the optional sixth tool; the server needs
+        --query). Rows as objects keyed by column; a cut list starts with {"more": ...}."""
+        return self._post("/v1/query", {"sql": sql, "limit": limit})
 
     def events(self, batch: Event | dict[str, Any] | list[Event | dict[str, Any]]) -> dict[str, Any]:
         items = batch if isinstance(batch, list) else [batch]

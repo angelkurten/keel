@@ -1,4 +1,4 @@
-"""HTTP transport: the five tools as a JSON API for many tenants, the ingest endpoint, and MCP
+"""HTTP transport: the five tools (and the optional sixth, query) as a JSON API for many tenants, the ingest endpoint, and MCP
 over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
 
     keel serve examples/fleet --transport http --db keel.db                 # /v1/* and /mcp for any tenant (X-Keel-Tenant)
@@ -13,6 +13,7 @@ over streamable HTTP for one tenant. Optional extra: `uv sync --extra http`.
     POST /v1/search    {text (or a list), kind? (or a list), rule?, mode?, detail?, depth?, per_kind?, exclude?, as_of?, where?, as_known_at?}
     POST /v1/annotate  {subject, predicate, value, scope?, evidence?, by?}
     POST /v1/related   {subject, relation? (or a list), as_of?, depth?}
+    POST /v1/query     {sql, limit?}  -> rows; only with query=True (`keel serve --query`), else 404
     GET  /openapi.json, /health
     POST /mcp          MCP over streamable HTTP: bound to `tenant` when given, else per request from the key and headers
     GET  /v1/cartridge                               -> the cartridge's YAML as JSON (not handlers.py)
@@ -143,17 +144,21 @@ def build_http_app(
     recent: "RecentEvents | None" = None,
     compact: bool = True,
     read_only: bool = False,
+    query: bool = False,
+    query_timeout: float | None = None,
 ) -> Any:
     """An ASGI app. With `tenant`, `/mcp` is also served, bound to that tenant (and `agent`). With `account`
     (hosted: one container per account), only that account's keys are accepted and its graph lives in the
     account's own database (`keel accounts set --store`); keys, limits and usage stay in `store`. `read_only`: the
-    four read tools only, over /mcp and /v1 (annotate is refused)."""
+    four read tools only, over /mcp and /v1 (annotate is refused). `query`: the optional sixth tool, read-only SQL,
+    over /mcp and `POST /v1/query` (off: /v1/query answers 404), stopped after `query_timeout` seconds."""
     try:
         from fastapi import FastAPI, HTTPException, Request
         from pydantic import BaseModel
     except ImportError as exc:
         raise SystemExit("The HTTP transport needs the optional dependency: uv sync --extra http") from exc
 
+    asked: dict[str, Any] = {"query": query, **({"query_timeout": query_timeout} if query_timeout else {})}
     meter = Meter(store)  # tool calls per tenant and day (keel/usage.py), flushed every few seconds and at shutdown
     quotas = Quotas(store)  # per account (keel/accounts.py), for requests made with an API key
     server = None
@@ -175,10 +180,11 @@ def build_http_app(
         bound: Any = per_request
         if tenant is not None:  # one Tools per right to write global: the operator and a --global key, or any other key
             pinned = {g: Tools(cartridge, store, tenant, agent, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock,
-                               max_list=max_list, writes_global=g) for g in (True, False)}
+                               max_list=max_list, writes_global=g, **asked) for g in (True, False)}
             bound = lambda request: pinned[request is None or (k := key_of(request)) is None or k.glob]
         server = build_server(bound, name=f"keel:{cartridge.name}", cartridge=cartridge if tenant is not None else None, compact=compact,
-                              read_only=read_only or (tenant is not None and writes_nothing(pinned[False].agent)))
+                              read_only=read_only or (tenant is not None and writes_nothing(pinned[False].agent)),
+                              query=query and (tenant is None or pinned[False].can_query()), dialect=getattr(store, "QUERY_DIALECT", None))
         kw: dict[str, Any] = {"streamable_http_path": "/mcp", "json_response": True, "host": host}
         if host not in ("127.0.0.1", "localhost"):
             try:  # behind a proxy the Host header is the public one; the shared secret is the guard
@@ -251,7 +257,7 @@ def build_http_app(
         trace = "; ".join(p for p in parts if p) or None
         try:
             return Tools(cartridge, graph_for(key)[0], t, who, trace=trace, embedder=embedder, index=index, reranker=reranker, meter=meter, clock=clock, max_list=max_list,
-                         writes_global=key is None or key.glob)
+                         writes_global=key is None or key.glob, **asked)
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -316,6 +322,10 @@ def build_http_app(
         key: str | None = None
         status: str | None = None
         detail: str = "ack"
+
+    class QueryIn(BaseModel):
+        sql: str
+        limit: int | None = None
 
     class RelatedIn(BaseModel):
         subject: str
@@ -423,6 +433,16 @@ def build_http_app(
     @app.post("/v1/related")
     def related(body: RelatedIn, request: Request) -> list[dict[str, Any]]:
         return run(lambda: tools_for(request).related(body.subject, body.relation, dt(body.as_of), body.depth, body.limit))
+
+    if query:
+        @app.post("/v1/query")
+        def query_(body: QueryIn, request: Request) -> list[dict[str, Any]]:
+            return run(lambda: tools_for(request).query(body.sql, body.limit))
+    else:
+        @app.post("/v1/query", include_in_schema=False)
+        def query_off(request: Request) -> None:
+            run(lambda: tools_for(request))  # who asks first, as /v1/annotate on a read-only server
+            raise HTTPException(404, "query is not enabled on this server (keel serve --query)")
 
     @app.get("/v1/cartridge")
     def cartridge_doc() -> dict[str, Any]:

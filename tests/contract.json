@@ -15,6 +15,10 @@
        "human"
       ]
      },
+     "query": {
+      "description": "May call the optional sixth tool, query (read-only SQL), when the server enables it. SQL reads past `reads`, so it is off unless true. Default false.",
+      "type": "boolean"
+     },
      "reads": {
       "description": "What it may see. Absent: everything.",
       "properties": {
@@ -1294,6 +1298,17 @@
     "required": false
    }
   },
+  "query": {
+   "limit": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "sql": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
+   }
+  },
   "related": {
    "as_of": {
     "default": "None",
@@ -1497,6 +1512,9 @@
     "get"
    ],
    "/v1/history": [
+    "post"
+   ],
+   "/v1/query": [
     "post"
    ],
    "/v1/related": [
@@ -1870,6 +1888,30 @@
      }
     },
     "title": "HistoryIn",
+    "type": "object"
+   },
+   "QueryIn": {
+    "properties": {
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Limit"
+     },
+     "sql": {
+      "title": "Sql",
+      "type": "string"
+     }
+    },
+    "required": [
+     "sql"
+    ],
+    "title": "QueryIn",
     "type": "object"
    },
    "RelatedIn": {
@@ -2323,6 +2365,25 @@
       "type": "string"
      }
     },
+    "type": "object"
+   }
+  },
+  "query": {
+   "annotations": {
+    "readOnlyHint": true
+   },
+   "inputSchema": {
+    "properties": {
+     "limit": {
+      "type": "integer"
+     },
+     "sql": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "sql"
+    ],
     "type": "object"
    }
   },
@@ -2906,6 +2967,17 @@
     "default": "None",
     "kind": "POSITIONAL_OR_KEYWORD",
     "required": false
+   }
+  },
+  "query": {
+   "limit": {
+    "default": "None",
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": false
+   },
+   "sql": {
+    "kind": "POSITIONAL_OR_KEYWORD",
+    "required": true
    }
   },
   "related": {

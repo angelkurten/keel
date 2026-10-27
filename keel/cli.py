@@ -881,9 +881,11 @@ def serve(
     max_list: int | None = typer.Option(None, "--max-list", envvar="KEEL_MAX_LIST", help="The most entries one listing returns (search, related, history) when a caller asks for all or for more; the rest is paged, and the answer says so. Unset: no ceiling, as a report or an export may want everything."),
     compact: bool = typer.Option(True, "--compact/--plain", envvar="KEEL_COMPACT", help="MCP: what the model reads is compact (the default), the same data in fewer tokens: lists of records as tables (fields they share said once), short UTC times; --plain (KEEL_COMPACT=0) sends the JSON text. structuredContent and /v1 keep the JSON."),
     read_only: bool = typer.Option(False, "--read-only", envvar="KEEL_READ_ONLY", help="Serve the four read tools only (context, history, search, related): agents that never write skip annotate's definition on every request, and a call to it is refused (over HTTP, /v1/annotate too). An agent declared with `writes: []` is served so without it."),
+    query: bool = typer.Option(False, "--query", envvar="KEEL_QUERY", help="Also serve the optional sixth tool, query: read-only SQL over the schema generated from the cartridge, bound to the tenant by the store (SQLite, DuckDB, Postgres). Over MCP the schema rides in the instructions; over HTTP, POST /v1/query. A registry agent needs `query: true`."),
+    query_timeout: float = typer.Option(5.0, "--query-timeout", envvar="KEEL_QUERY_TIMEOUT", help="With --query: seconds one query may run before the store stops it."),
     index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):
-    """Serve the five tools over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
+    """Serve the five tools (and with --query the sixth) over MCP (stdio) or HTTP. --events fills an in-memory graph; --db serves a durable one."""
     c = load_cartridge(cartridge)
     store = _store(db)
     if events:
@@ -905,7 +907,8 @@ def serve(
 
         if not tenant:
             raise typer.BadParameter("--tenant is required with the stdio transport", param_hint="--tenant")
-        build_server(_tools(c, store, tenant, agent, **semantic), compact=compact, read_only=read_only).run()
+        asked = {"query": True, "query_timeout": query_timeout} if query else {}
+        build_server(_tools(c, store, tenant, agent, **semantic, **asked), compact=compact, read_only=read_only, query=query).run()
         return
     if transport != "http":
         raise typer.BadParameter("stdio or http", param_hint="--transport")
@@ -949,7 +952,7 @@ def serve(
     if cdc:
         _follow_in_background(c, store, dsn, cdc, account, health["cdc"], recent=recent)
     api = build_http_app(c, store, secret=secret, tenant=tenant, agent=agent, host=host, ui=ui, account=account, health_extra=health,
-                         recent=recent, compact=compact, read_only=read_only, **semantic)
+                         recent=recent, compact=compact, read_only=read_only, query=query, query_timeout=query_timeout if query else None, **semantic)
     if not http2:
         uvicorn.run(api, host=host, port=port, ssl_certfile=certfile, ssl_keyfile=keyfile)
         return

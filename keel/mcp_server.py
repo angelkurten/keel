@@ -3,7 +3,7 @@
     keel serve examples/fleet --tenant heineken-mx --events examples/fleet/events.jsonl
 
 Any MCP-capable agent (Claude, an OpenAI agent, LangGraph via an MCP client)
-then sees context/history/search/annotate/related and nothing else.
+then sees context/history/search/annotate/related and nothing else; `--query` adds the optional sixth, query.
 """
 
 from __future__ import annotations
@@ -212,12 +212,16 @@ def writes_nothing(agent: Any) -> bool:
 
 
 def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None, cartridge: Any = None, compact: bool = True,  # pragma: no cover - needs the optional mcp package
-                 read_only: bool = False):
+                 read_only: bool = False, query: bool = False, dialect: str | None = None):
     """`tools` is bound to one tenant, or a function of the HTTP request that builds them per call (one server for
     many tenants: the tenant and agent come from the request's key and headers, keel/http.py). `compact` (default): the text a
     model reads is `pack`ed (tables, short times; the instructions say how to read it), structuredContent unchanged; `compact=False` sends the JSON text.
     `read_only`: only the four read tools are listed (annotate is refused), for agents that never write; a bound agent
-    whose registry entry may write no scope is served so without the flag."""
+    whose registry entry may write no scope is served so without the flag.
+    `query`: the optional sixth tool, read-only SQL (Tools.query), listed when the bound tools offer it (a store with
+    SQL, an agent with `query: true`); a per-request server lists it and the call refuses what it cannot serve. Its
+    description stays fixed; the schema it reads, generated from the cartridge, is added to the instructions
+    (`dialect`: the store's SQL dialect for a per-request server; a bound one knows it)."""
     try:
         from mcp.server.mcpserver import MCPServer as Server  # mcp >= 2
     except ImportError:
@@ -276,8 +280,16 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))
         read_only = read_only or writes_nothing(tools.agent)
     known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
-    mcp = Server(name or "keel", instructions=instructions(known, tools.agent if isinstance(tools, Tools) else None, compact,
-                                                                few_subjects(tools) if isinstance(tools, Tools) else None) if known is not None else None)
+    if isinstance(tools, Tools):
+        query = query and tools.can_query()
+    text = instructions(known, tools.agent if isinstance(tools, Tools) else None, compact,
+                        few_subjects(tools) if isinstance(tools, Tools) else None) if known is not None else None
+    if query and known is not None:
+        from keel import sqlgen
+
+        schema = tools.query_schema() if isinstance(tools, Tools) else sqlgen.describe(known, None, dialect or "duckdb")
+        text = f"{text}\nThe query tool reads this schema:\n{schema}"
+    mcp = Server(name or "keel", instructions=text)
     # Four tools only read. Clients that gate calls on annotations (Codex does) run them without asking.
     # no outputSchema: it would only say "an object" or "a list", in tokens a client may hand the model on every call;
     # structuredContent still carries the data
@@ -338,6 +350,12 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
     @guarded
     def related(subject: str, relation: str | list[str] | None = None, as_of: str | None = None, depth: int = 1, limit: int = 50, ctx: Context | None = None) -> list[dict[str, Any]]:
         return bound(ctx).related(subject, relation, _dt(as_of), depth, limit)
+
+    if query:  # the optional sixth tool, read-only: listed only when the host enables it
+        @mcp.tool(**reader, description=DESCRIPTIONS["query"])
+        @guarded
+        def query(sql: str, limit: int | None = None, ctx: Context | None = None) -> list[dict[str, Any]]:
+            return bound(ctx).query(sql, limit)
 
     manager = getattr(mcp, "_tool_manager", None)  # ponytail: the mcp package's own attribute; a public hook if it offers one
     for t in manager.list_tools() if manager else []:
