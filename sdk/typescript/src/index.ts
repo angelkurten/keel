@@ -385,6 +385,12 @@ export class Client<S extends string = string> {
     return this.post<Related[]>("/v1/related", { subject, relation, as_of: asOf ? iso(asOf) : undefined, depth, limit: limit ?? 0 }).then(items);
   }
 
+  /** Read-only SQL over the schema generated from the cartridge: the optional sixth tool, served when the server runs
+   * with --query. Rows keyed by column (instants as ISO text in UTC); a cut list starts with `{ more: ... }`. */
+  query(sql: string, limit?: number): Promise<Array<Record<string, unknown>>> {
+    return this.post("/v1/query", { sql, limit });
+  }
+
   /** Ingest one envelope or a batch. Retrying on a network error is safe: the server skips ids it already applied, and
    * derives the id from the content when an envelope has none. */
   events(batch: Envelope | Envelope[]): Promise<IngestReport> {

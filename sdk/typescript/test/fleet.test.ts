@@ -1,4 +1,5 @@
 // End to end from Bun: start `keel serve --transport http` (Python), emit typed events, ask the tools.
+import { tmpdir } from "node:os";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { type Entity, KeelError } from "@keel-context/sdk";
 import { client, emit, subjects } from "./keel-fleet";
@@ -84,4 +85,27 @@ test("typed events in, context with the rule's verdict out", async () => {
   expect((await keel.contextBrief(subjects.tire("T-9001"))).since).toHaveProperty("depth_mm");
   expect(await keel.annotate({ subject: subjects.tire("T-9001"), predicate: "seen", value: true, detail: "ack" })).not.toHaveProperty("tenant");
   await expect(client({ baseUrl: `http://127.0.0.1:${PORT}`, tenant, secret: "wrong" }).search("x")).rejects.toMatchObject({ status: 401 });
+});
+
+test("query: read-only SQL when the server runs with --query", async () => {
+  const port = PORT + 1;
+  const db = `${tmpdir()}/keel-ts-query-${port}.db`;
+  const q = Bun.spawn(["uv", "run", "keel", "serve", "examples/fleet", "--transport", "http", "--port", String(port), "--db", db,
+    "--events", "examples/fleet/events.jsonl", "--query"], { cwd: ROOT, env: { ...process.env, KEEL_SECRET: SECRET }, stdout: "ignore", stderr: "ignore" });
+  try {
+    for (let i = 0; i < 200; i++) {
+      try {
+        if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) break;
+      } catch {}
+      await Bun.sleep(100);
+    }
+    const keel = client({ baseUrl: `http://127.0.0.1:${port}`, tenant: "acme-logistics", secret: SECRET });
+    const rows = await keel.query("SELECT subject FROM tire_critical_at('acme-logistics', '2030-01-01T00:00:00+00:00')");
+    expect(rows).toEqual([{ subject: "tire:T-9001" }]);
+    const cut = await keel.query("SELECT subject FROM state_at('acme-logistics', '2030-01-01T00:00:00+00:00')", 1);
+    expect(Object.keys(cut[0])).toEqual(["more"]);
+    await expect(keel.query("SELECT * FROM api_keys")).rejects.toBeInstanceOf(KeelError);
+  } finally {
+    q.kill();
+  }
 });

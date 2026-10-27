@@ -1,6 +1,6 @@
 # @keel-context/sdk
 
-Runtime for the clients `keel sdk typescript <cartridge>` generates: the event envelope and the five Keel tools over HTTP (`keel serve --transport http`).
+Runtime for the clients `keel sdk typescript <cartridge>` generates: the event envelope and the five Keel tools over HTTP (`keel serve --transport http`), plus `query(sql, limit?)`, the optional sixth (read-only SQL; the server runs with `--query`).
 
 ```bash
 npm install @keel-context/sdk          # or: bun add @keel-context/sdk
