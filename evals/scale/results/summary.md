@@ -332,6 +332,25 @@ The same seeded tenant-wide ops, answered by the store's optional capabilities (
 | search_status_at | 15,054 / 39,333 (n=3) | 129,582 / 129,582 (n=1) | 56,399 / 60,025 (n=5) | 161.8 / 243.0 | 2,719 / 6,662 |
 | search_known_at_count | 37,103 / 44,941 (n=2) | 141,230 / 141,230 (n=1) | 45,417 / 85,722 (n=5) | 438.3 / 815.2 | 13,133 / 18,180 (n=5) |
 
+## Typed `where` wants pushed down (s)
+
+`search(kind="issue", where=..., detail="count")` with a want the stores used to decline (null, a list), in one process (`python -m evals.scale.where_ab`): by subjects_where, with the capabilities hidden (Tools' Python sweep, what these wants took before), and by subjects_where again; same count each time.
+
+| log | store | op | where | count | Python | pushed down (1st / 2nd) |
+| --- | --- | --- | --- | --- | --- | --- |
+| syn:1000000 | SqliteStore | where_null_at | `{"assignee": null}` | 6,945 | 13.0 | 3.734 / 0.443 |
+| syn:1000000 | SqliteStore | where_any_of_at | `{"status": ["New", "In Progress"]}` | 35,508 | 12.1 | 0.538 / 0.528 |
+| syn:1000000 | SqliteStore | where_null_known_at | `{"resolution": null}` | 53,794 | 22.8 | 1.250 / 1.186 |
+| syn:1000000 | DuckdbStore | where_null_at | `{"assignee": null}` | 6,945 | 36.2 | 0.077 / 0.044 |
+| syn:1000000 | DuckdbStore | where_any_of_at | `{"status": ["New", "In Progress"]}` | 35,508 | 37.4 | 0.098 / 0.114 |
+| syn:1000000 | DuckdbStore | where_null_known_at | `{"resolution": null}` | 53,794 | 37.7 | 0.217 / 0.175 |
+| syn:10000000 | SqliteStore | where_null_at | `{"assignee": null}` | 69,169 | 218.8 | 60.026 / 56.347 |
+| syn:10000000 | SqliteStore | where_any_of_at | `{"status": ["New", "In Progress"]}` | 352,205 | 227.9 | 55.644 / 46.282 |
+| syn:10000000 | SqliteStore | where_null_known_at | `{"resolution": null}` | 533,427 | 280.5 | 69.576 / 68.170 |
+| syn:10000000 | DuckdbStore | where_null_at | `{"assignee": null}` | 69,169 | 1,400.2 | 0.407 / 0.424 |
+| syn:10000000 | DuckdbStore | where_any_of_at | `{"status": ["New", "In Progress"]}` | 352,205 | 1,291.2 | 1.074 / 0.661 |
+| syn:10000000 | DuckdbStore | where_null_known_at | `{"resolution": null}` | 533,427 | 852.5 | 1.220 / 1.105 |
+
 ## DuckDB baseline: load and size
 
 DuckDB reads the .jsonl, derives valid_to/closed_at with one window function and indexes (tenant, subject); facts only, no links, no rules, no dedupe, no incremental maintenance.

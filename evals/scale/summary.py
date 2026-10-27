@@ -123,6 +123,18 @@ def write(results: Path, md: Path) -> str:
                    "DuckdbStore and PostgresStore hold the rows Keel's SqliteStore ingest wrote, copied as stored (`one --load-from`); "
                    "DuckdbStore now also ingests through Keel's bulk path (ingest table above)."
                    + (" Copied in: " + "; ".join(loads) + "." if loads else "")), "", *tables]
+    # typed `where` wants (null, lists): pushed down vs the Python sweep they took before, one process each
+    ab = [r for r in rows if r.get("kind") == "where_ab"]
+    if ab:
+        latest = {(r["label"], r["store"], r["op"]): r for r in ab}
+        body = [[label.removeprefix("pushdown:"), names.get(store, store), op, f"`{json.dumps(r['where'])}`", _f(r["count"]),
+                 _f(r["python_s"], 1), f"{_f(r['pushdown_s'], 3)} / {_f(r['pushdown2_s'], 3)}"]
+                for (label, store, op), r in latest.items()]
+        parts += ["## Typed `where` wants pushed down (s)", "",
+                  ("`search(kind=\"issue\", where=..., detail=\"count\")` with a want the stores used to decline (null, a list), "
+                   "in one process (`python -m evals.scale.where_ab`): by subjects_where, with the capabilities hidden (Tools' "
+                   "Python sweep, what these wants took before), and by subjects_where again; same count each time."), "",
+                  _table(["log", "store", "op", "where", "count", "Python", "pushed down (1st / 2nd)"], body), ""]
     # duckdb load
     body = []
     for label in _labels(rows, "real:") + _labels(rows, "syn:"):

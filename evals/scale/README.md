@@ -117,6 +117,28 @@ the machine (a few hundred MB free), so these runs are I/O-bound and noisy: the 
 per op, `results/summary.md`) gave 68 s for the rule count and also slower SQL-only reads than the table above
 (status listing 56 s, history window 368 ms) on unchanged code paths. DuckDB answers the same rules in ~0.4 s.
 
+**Typed `where` wants** (`kind: where_ab` in `scale.jsonl`, `python -m evals.scale.where_ab`). `subjects_where` used to
+compare only ASCII text; a null, a number, a boolean, non-ASCII text or a list of wants made the store decline and Tools
+swept the kind in Python. It now compares them in SQL on the json.dumps text of each value (every JSON text Python finds
+equal to a number, text by casefold when that is ASCII, a list as any of), leaving only list values, escaped text and
+numeric attributes for Tools to check. One process per store: pushed down, capabilities hidden (the old path), pushed
+down again; same counts. In seconds (second pushed-down run):
+
+| op | 10^6 SQLite: before / after | 10^6 DuckDB | 10^7 SQLite | 10^7 DuckDB |
+| --- | --- | --- | --- | --- |
+| `{"assignee": null}` at an instant | 13.0 / 0.44 | 36.2 / 0.04 | 218.8 / 56.3 | 1,400 / 0.42 |
+| `{"status": ["New", "In Progress"]}` at an instant | 12.1 / 0.53 | 37.4 / 0.11 | 227.9 / 46.3 | 1,291 / 0.66 |
+| `{"resolution": null}` as known at | 22.8 / 1.19 | 37.7 / 0.18 | 280.5 / 68.2 | 852 / 1.11 |
+
+The SQLite 10^7 file (15 GB) is I/O-bound as above. The last two 10^7 DuckDB rows ran beside the test suite.
+
+The per-kind views sqlgen generates (`<kind>_state_at`, `<kind>_state_known_at`, `<kind>_changes`) are not what
+Tools reads: they keep one value per fact (Tools' `where` matches any current value: a tenant fact beside untasked
+task memory or a global annotation), they have no author or task (agent and task memory), they list only entities
+with a fact, and `<kind>_changes` leaves out first values and corrected ones that `history` returns (marked `initial`,
+or with no `was`). On the same 10^6 DuckDB graph, `issue_state_at(...) WHERE status = ...` took 109 ms against
+`subjects_where`'s 67 ms (assignee null: 103 vs 50 ms). They stay what agents query in SQL.
+
 **DuckdbStore ingests through Keel** (label `syn:*`, store `duckdb`). A bulk batch's flush binds one list per column
 (`INSERT ... SELECT UNNEST(?), ...`) and closes rows with one `UPDATE ... FROM`, instead of DuckDB's row-by-row
 executemany: 14.2k events/s at 10^5 (was ~635), 11.1k at 10^6, 7.7k at 10^7 (21.7 min, with the test suite running

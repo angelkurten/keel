@@ -322,6 +322,19 @@ def test_summary_puts_the_pushed_down_reads_beside_the_python_path(tmp_path):
     assert "syn:1000" in section and "9,000" in section and "12.0" in section and "40.0" in section and "PostgresStore" in section
 
 
+def test_summary_lists_the_typed_where_a_b_runs(tmp_path):
+    from evals.scale import summary
+
+    rows = [{"kind": "where_ab", "label": "pushdown:syn:1000", "store": s, "op": "where_null_at", "where": {"assignee": None},
+             "pushdown_s": 3.7, "python_s": 13.04, "pushdown2_s": 0.443, "count": 6945, "same_count": True, "machine": harness.machine()}
+            for s in ("sqlite", "duckdb")]
+    res = tmp_path / "r.jsonl"
+    res.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    text = summary.write(res, tmp_path / "s.md")
+    section = text.split("Typed `where` wants", 1)[1]
+    assert "where_null_at" in section and "13.0" in section and "0.443" in section and "DuckdbStore" in section and "6,945" in section
+
+
 def test_a_duckdb_ingest_reports_its_file_size_and_rows(tmp_path):
     """DuckdbStore now ingests through Keel's bulk path: the ingest row carries its size on disk, as SQLite's does."""
     pytest.importorskip("duckdb")
