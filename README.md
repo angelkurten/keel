@@ -37,7 +37,7 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.
 
-## Five tools, any agent
+## Five tools, any agent (and an optional sixth)
 
 | Tool | The question it answers |
 | --- | --- |
@@ -46,8 +46,9 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 | `search` | Which subjects match? By text, kind, rule, attribute value or meaning. |
 | `related` | What is it connected to, up to three hops? |
 | `annotate` | Remember what an agent or a person concluded, with evidence and a scope. |
+| `query` (optional) | Off unless enabled (`keel serve --query`): read-only SQL over views generated from the cartridge, to filter, join, count or aggregate. The store binds it to one tenant. |
 
-Every parameter is in the [specification](docs/SPEC.md#7-the-five-tools).
+Every parameter is in the [specification](docs/SPEC.md#7-the-tools-five-core-one-optional). `query` never sees another tenant, agent or task memory, or proposals, whatever SQL the agent writes ([how](docs/serve.md#query-read-only-sql)).
 
 `search(mode="semantic")` finds subjects by meaning: ids in the query first, then a dense and a lexical leg fused, then an optional reranker. Where vectors live and which model makes them are adapters you choose: in memory, Chroma, Weaviate, any OpenAI-compatible embeddings endpoint, or your own vector database and model ([how](docs/serve.md#semantic-search), [example](examples/custom_adapters.py)).
 

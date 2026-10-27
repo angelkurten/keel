@@ -71,9 +71,9 @@ The graph is partitioned **one subgraph per tenant**. No read crosses tenants; t
 | `MysqlStore` | Several processes, production. | `--db mysql://user:pass@host:3306/keel` |
 | Your own | Postgres, a graph database, anything else. | Implement the protocol in `keel/store/base.py` and pass the conformance suite: `KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py` |
 
-## 5. The five tools
+## 5. The five tools, and an optional sixth
 
-The public standard. Every agent, through any surface, uses these five and no other. A `Tools` instance is bound to one tenant (and, with a registry, one agent). Full signatures are in the [specification](SPEC.md#7-the-five-tools).
+The public standard. Every agent, through any surface, uses these five and, where the host enables it, the read-only `query`; no other. A `Tools` instance is bound to one tenant (and, with a registry, one agent). Full signatures are in the [specification](SPEC.md#7-the-tools-five-core-one-optional).
 
 | Tool | The question it answers |
 | --- | --- |
@@ -82,6 +82,7 @@ The public standard. Every agent, through any surface, uses these five and no ot
 | `search` | Which subjects match? By text, kind, rule, attribute value or meaning (semantic). |
 | `related` | What is it connected to, up to three hops? |
 | `annotate` | Remember what the agent concluded: earned memory, with evidence and a scope. |
+| `query` (optional) | Off unless enabled (`keel serve --query`): read-only SQL over views generated from the cartridge, to filter, join, count or aggregate. The store binds it to one tenant. |
 
 ### Memory scopes and the agent registry
 
@@ -135,7 +136,7 @@ They run outside ingest, from the CLI or cron, so they may call the network or a
 - **Deterministic ingest.** No network, no LLM, no randomness in handlers. LLMs belong in jobs or in the agent.
 - **Facts close.** Handlers never delete or mutate a fact.
 - **One tenant per `Tools` instance.** Cross-tenant reads do not exist.
-- **Five tools.** A new capability goes into the semantics of these five before anyone adds a sixth.
+- **Five core tools, plus an optional sixth.** A new capability goes into the semantics of these five before anyone adds another. The sixth, `query`, is read-only SQL generated from the cartridge, off unless enabled, bound to one tenant by the store.
 - **Provenance on every fact.** `source`, `evidence`, and `corrected_by` when someone corrected it.
 
 ## Your first day

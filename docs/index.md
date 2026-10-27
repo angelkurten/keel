@@ -33,9 +33,9 @@ Keel is not an agent framework (your agents stay where they are), not a document
 
 ![Keel architecture: sources, adapters, deterministic ingest, bitemporal store, cartridge, five tools, jobs, surfaces and agents](architecture.svg)
 
-Events are the truth and the graph is derived, so one tenant's subgraph can be rebuilt by replaying its log. Agents never see a pipeline: they see five tools. [Architecture](architecture.md) walks through every box, with the options for each and when to pick which.
+Events are the truth and the graph is derived, so one tenant's subgraph can be rebuilt by replaying its log. Agents never see a pipeline: they see five tools (six, with the optional read-only `query`). [Architecture](architecture.md) walks through every box, with the options for each and when to pick which.
 
-## Five tools, any agent
+## Five tools, any agent (and an optional sixth)
 
 | Tool | The question it answers |
 | --- | --- |
@@ -44,8 +44,9 @@ Events are the truth and the graph is derived, so one tenant's subgraph can be r
 | `search` | Which subjects match? By text, kind, rule, attribute value or meaning. |
 | `related` | What is it connected to, up to three hops? |
 | `annotate` | Remember what an agent or a person concluded, with evidence and a scope. |
+| `query` (optional) | Off unless enabled (`keel serve --query`): read-only SQL over views generated from the cartridge, to filter, join, count or aggregate. The store binds it to one tenant. |
 
-The names and signatures are part of the public standard; every parameter is in the [specification](SPEC.md#7-the-five-tools).
+The names and signatures are part of the public standard; every parameter is in the [specification](SPEC.md#7-the-tools-five-core-one-optional).
 
 ## Quick start
 

@@ -25,8 +25,8 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Ingestor (keel/ingest.py)                 reads an adapter, dispatches by event.type
    -> HandlerRegistry (keel/handlers.py)        cartridge handlers map payload -> store primitives
    -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory, sqlite or mysql: dialects of sql.py)
-   -> Tools (keel/tools.py)                     context / history / search / annotate / related; bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
-   -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools
+   -> Tools (keel/tools.py)                     context / history / search / annotate / related (+ optional query: read-only SQL); bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
+   -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools (and query when enabled)
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers (your own; empty here)
 examples/<name>/                                 fleet, crm, finance, clinics: a cartridge, its events.jsonl and its test_<name>.py
 ```
@@ -41,7 +41,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 4. **Provenance on every fact.** `source`, `evidence` (event id, row ref, photo), and `corrected_by` when a human or agent corrected it.
 5. **Scopes, not a flat store.** `global` > `tenant` > `task` > `agent`. Policy (TTL, evidence requirement) is enforced in `Tools.annotate` via `MemoryPolicy`, never trusted to the calling agent. Promotion to a wider scope is an explicit `annotate` with evidence. Reads are enforced in `Tools` too: agent memory reaches only its author, task memory only calls that pass its task, global memory (partition `__global__`) every tenant. When the cartridge declares `agents:`, the registry (who may write which scope, see which kinds and relations) is enforced in `Tools` too; a missing or unknown agent id is refused.
 6. **The core is domain-agnostic.** No entity kind, relation name, predicate, rule or event type appears anywhere under `keel/`. The acceptance test for any core change: both `examples/fleet` and `examples/crm` still pass without edits. Adding a third cartridge must require zero changes under `keel/`.
-7. **Five tools, and only five.** New capabilities go into the semantics of these five (richer `context`, filters on `history`) before anyone adds a sixth. The tool names and signatures are part of the public standard.
+7. **Five core tools, plus an optional sixth, `query`.** New capabilities go into the semantics of the five core tools (richer `context`, filters on `history`) before anyone adds another. The sixth, `query` (decided by the user on 2026-10-26), is a read-only SQL surface generated from the cartridge (`keel/sqlgen.py`), off unless the host enables it (`keel serve --query`, `build_server(query=True)`, `build_http_app(query=True)`), bound to one tenant by the store (`keel/store/query.py`), never by the agent's SQL; it complements the five and never replaces them. No seventh without the user's say. The tool names and signatures are part of the public standard.
 8. **One subgraph per tenant.** Every store call takes `tenant` first. Cross-tenant reads do not exist; the only shared partition is `__global__`, written only by `annotate(scope="global")` from a privileged caller. A tool instance is bound to one tenant.
 9. **Handlers are small.** A handler maps one payload to primitives in ~10 lines. Business logic (what "critical" means) lives in `rules`, read by tools, not in handlers and not in agents. Rules may compose (`all`/`any`/`not`), follow relations (`via`) and measure durations; what they cannot express (counts over time, aggregates) stays a definition the agent applies.
 10. **Deterministic ingest.** No network calls, no LLM calls, no randomness in the ingest path. Replay must produce an identical graph.
@@ -51,7 +51,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 - Python 3.10+, `uv`, `pytest`, `ruff` (line length 100). Type hints everywhere; pydantic for the envelope only, dataclasses in the store.
 - Subject keys are `<kind>:<id>` strings. Event types are dotted lowercase: `inspection.created`.
 - Datetimes are timezone-aware UTC. A naive datetime is read as UTC wherever it enters (envelope, store primitives, tools).
-- Public surface: `keel/__init__.py` exports. Anything else is internal and may change. The whole public contract (exports, envelope, cartridge schema, the five tools over Python, MCP and HTTP, store protocol, Python client) is frozen in `tests/contract.json`: an addition refreshes it with `uv run python tests/test_contract.py --update`; a break needs a deprecation first (SPEC §11) and never `--allow-breaking` without the user's say.
+- Public surface: `keel/__init__.py` exports. Anything else is internal and may change. The whole public contract (exports, envelope, cartridge schema, the five tools and the optional query over Python, MCP and HTTP, store protocol, Python client) is frozen in `tests/contract.json`: an addition refreshes it with `uv run python tests/test_contract.py --update`; a break needs a deprecation first (SPEC §11) and never `--allow-breaking` without the user's say.
 - All user-facing text (README, docs, CLI help, errors) is in English. Commit messages in English.
 - Tests: every core change adds or updates a test in `tests/`; example cartridge changes add events to `examples/<name>/events.jsonl` and assertions in `examples/<name>/test_<name>.py`.
 

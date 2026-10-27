@@ -86,6 +86,7 @@ The parameters of 0.19 (§7.1, §7.3, §7.5 of the spec) are in all four runtime
 | Two hops through some relations | `related(s, ["r1", "r2"], depth=2)` | `related(s, ["r1", "r2"], undefined, 2)` | `RelatedWith(ctx, s, RelatedOptions{Relations: ..., Depth: 2})` | `related($s, ['r1', 'r2'], null, 2)` |
 | Just some predicates (0.22) | `context([a, b], only=[...])` | `contexts([a, b], undefined, 0, { only: [...] })` | `ContextOptions{Only: ...}` | `context([$a, $b], only: [...])` |
 | Hide predicates, past instant | `exclude=[...]`, `as_of=` | `exclude`, `asOf` | `Exclude`, `AsOf` | `'exclude'`, `'as_of'` |
+| Read-only SQL (server with `--query`) | `query(sql, limit=None)` (`keel.client.Client`) | `query(sql, limit?)` | not yet | not yet |
 
 ## Runtime options
 
