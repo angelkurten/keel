@@ -8,6 +8,10 @@ They are plain functions first, so any framework can call them directly;
     search(text)                       entities and facts matching text
     annotate(scope, fact, evidence)    an agent or a human writes what it learned
     related(subject, relation)         neighbors by relation type
+
+and an optional sixth, listed only where the host enables it (rule 7):
+
+    query(sql, limit)                  read-only SQL over the schema generated from the cartridge, one tenant's rows
 """
 
 from __future__ import annotations
@@ -262,7 +266,12 @@ DESCRIPTIONS = {  # what an agent reads about each tool, over MCP and from Tools
     "search": """Find subjects. kind lists a kind; rule, where a rule holds; text matches keys and values; where={name: value or [any of]}: attribute, fact or neighbour ({relation or kind: key}); hits say `since`; related_to (+via): a subject's neighbours. as_of/as_known_at: at / as known at that instant. detail: key (a list) and count (how many) cost least; brief adds facts (no context call needed); entity (default); concise; full: an audit, costly. Page with limit/after; a cut list starts with {"more": ...}.""",
     "annotate": """Record what you learned (value: any JSON). scope tenant or global needs evidence; key: an idempotent retry; status="proposed": awaits review.""",
     "related": """Neighbours of a subject by relation, now or at as_of; depth 2-3 walks further. At most limit (0: all); a cut list starts with {"more": ...}.""",
+    # the sixth, optional tool: fixed text; the schema it reads is generated from the cartridge (Tools.query_schema),
+    # in the server's instructions over MCP and after this text in Tools.spec()
+    "query": """Read-only SQL (one SELECT or WITH) over this tenant's data, through the views and table macros the schema describes: per-kind state at an instant, changes, relations, rules. Rows come back as objects keyed by column, instants as ISO text in UTC; at most limit rows (default 200; 0: the server's most), a cut list starts with {"more": ...}. It reads the tenant's accepted facts and global memory, never agent or task memory or proposals. Prefer the other tools for one subject; use this to filter, join, count or aggregate.""",
 }
+QUERY_ROWS = 200  # `query` returns at most this many rows when the caller sets no limit
+QUERY_TIMEOUT = 5.0  # seconds one `query` may run before the store stops it
 
 
 class _Graph:
@@ -363,8 +372,13 @@ class Tools:
         self, cartridge: Cartridge, store: Store, tenant: str, agent: str | None = None, trace: str | None = None,
         embedder: Any = None, index: Any = None, reranker: Any = None, meter: Callable[[str, str], None] | None = None,
         clock: Callable[[], datetime] | None = None, max_list: int | None = None, writes_global: bool = True,
+        query: bool = False, query_timeout: float = QUERY_TIMEOUT,
     ) -> None:
         self.cartridge = cartridge
+        # the optional sixth tool: `query` is listed (spec, MCP) only when the host enables it; the method itself answers
+        # whenever the store can (keel/store/query.py)
+        self.serves_query = query
+        self.query_timeout = query_timeout
         # whether this caller may write global memory at all: a transport turns it off for a key that is not --global,
         # so no transport (/v1, /mcp, bound or per request) can forget the check
         self.writes_global = writes_global
@@ -1412,8 +1426,62 @@ class Tools:
                               "next": f"narrow with relation=, or page one relation with search(related_to='{subject}', via=<relation>, limit=, after=<last key>)"}}, *out]
         return out
 
+    # ---- the optional sixth tool ----------------------------------------------------------
+
+    def query(self, sql: str, limit: int | None = None) -> list[dict[str, Any]]:
+        """Read-only SQL over the schema generated from the cartridge (keel/sqlgen.py; `query_schema` documents it),
+        for this tenant only: one SELECT (or WITH ... SELECT). Isolation is the store's, never this text's: the query
+        runs where only the tenant's readable rows exist (keel/store/query.py), and it reads accepted tenant-scope
+        facts and the global memory this tenant reads; never agent or task memory, never proposals. A caller bound
+        to a registry entry needs `query: true` there: SQL reads past its kinds and relations. Rows are objects keyed
+        by column (instants as ISO text in UTC); at most `limit` (None: QUERY_ROWS; 0 or more than the deployment's
+        ceiling: the ceiling, else LIST_MAX), the first entry {"more": {shown, next}} when rows were cut. The store
+        stops a query after `query_timeout` seconds."""
+        from keel.store.query import checked, json_safe
+
+        if self.meter:
+            self.meter(self.tenant, "query")
+        run = getattr(self.store, "query_rows", None)
+        if run is None:
+            raise ValueError(f"query is not supported by this store ({type(self.store).__name__}); SqliteStore, DuckdbStore and PostgresStore serve it")
+        if self.agent is not None and not self.agent.query:
+            raise PermissionError(f"agent '{self.agent.id}' may not query: SQL reads past its kinds and relations; its registry entry needs `query: true`")
+        _counted(limit, "limit")
+        most = self.max_list or LIST_MAX
+        cap = min(QUERY_ROWS, most) if limit is None else most if limit == 0 or limit > most else limit
+        cols, rows, more = run(self.tenant, self.cartridge, checked(sql), cap, self.query_timeout)
+        names: list[str] = []
+        for c in cols:  # two columns of one name (a join's ids) both reach the caller
+            n, i = c, 2
+            while n in names:
+                n, i = f"{c}_{i}", i + 1
+            names.append(n)
+        out: list[dict[str, Any]] = [dict(zip(names, map(json_safe, r))) for r in rows]
+        if more:
+            return [{"more": {"shown": len(out), "next": "raise limit, page with ORDER BY ... LIMIT/OFFSET, or aggregate"}}, *out]
+        return out
+
+    def query_schema(self) -> str:
+        """What `query` reads, generated from the cartridge for this tenant and the store's SQL dialect."""
+        from keel import sqlgen
+
+        return sqlgen.describe(self.cartridge, self.tenant, getattr(self.store, "QUERY_DIALECT", "duckdb"))
+
+    def can_query(self) -> bool:
+        """Whether `query` can answer this caller: a store with SQL, an agent allowed by its registry entry."""
+        return getattr(self.store, "query_rows", None) is not None and (self.agent is None or self.agent.query)
+
+    def offers_query(self) -> bool:
+        """Whether `query` is listed (spec): enabled by the host and able to answer."""
+        return self.serves_query and self.can_query()
+
     # for frameworks that want a schema list
     def spec(self) -> list[dict[str, Any]]:
+        if self.offers_query():
+            return [*self._spec(), {"name": "query", "args": ["sql", "limit?"], "doc": DESCRIPTIONS["query"] + "\n\n" + self.query_schema()}]
+        return self._spec()
+
+    def _spec(self) -> list[dict[str, Any]]:
         return [
             {"name": "context", "args": ["subject", "as_of?", "depth?", "as_known_at?", "task?", "detail?", "exclude?", "only?"], "doc": DESCRIPTIONS["context"]},
             {"name": "history", "args": ["subject?", "since?", "until?", "predicate?", "scope?", "as_known_at?", "task?", "changed_since?", "limit?", "detail?"], "doc": DESCRIPTIONS["history"]},

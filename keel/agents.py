@@ -37,6 +37,7 @@ class AgentSpec:
     writes: frozenset[str] = DEFAULT_WRITES  # scope values
     kinds: frozenset[str] | None = None  # None = every kind
     relations: frozenset[str] | None = None  # None = every relation
+    query: bool = False  # may call the optional `query` tool (SQL reads past `kinds` and `relations`)
 
     def can_write(self, scope: Scope) -> bool:
         return scope != Scope.GLOBAL and scope.value in self.writes  # global is never an agent's, whatever its entry says
@@ -60,6 +61,7 @@ def parse_agents(raw: dict[str, Any] | None) -> dict[str, AgentSpec]:
             writes=frozenset(str(s) for s in spec.get("writes", DEFAULT_WRITES)),
             kinds=frozenset(reads["kinds"]) if "kinds" in reads else None,
             relations=frozenset(reads["relations"]) if "relations" in reads else None,
+            query=spec.get("query") is True,
         )
     return out
 

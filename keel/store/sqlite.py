@@ -15,11 +15,13 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from keel import sqlgen
+from keel.store import query as q
 from keel.store.sql import SqlStore, _ts
 
 
@@ -77,10 +79,13 @@ class SqliteStore(SqlStore):
 
         self._compiled: tuple[str, sqlgen.SQLite] | None = None
         self._compile_lock = threading.Lock()
+        self._sandboxes: dict[str, _Sandbox] = {}  # query: one per tenant, rebuilt when its rows change
+        self._sandbox_lock = threading.Lock()
         super().__init__(connect, prefix)
         # the expanded rule SQL names the unprefixed tables; window functions, FILTER, IS DISTINCT FROM need 3.39
         if prefix or sqlite3.sqlite_version_info < sqlgen.SQLite.MIN_VERSION:
             self.rule_subjects = None  # type: ignore[assignment]
+            self.query_rows = None  # type: ignore[assignment]
 
     def _prepare(self, conn: sqlite3.Connection) -> None:
         sqlgen.SQLite.register(conn)
@@ -124,3 +129,91 @@ class SqliteStore(SqlStore):
         sql = (f"SELECT subject FROM {sqlgen.rule_macro(rule)}_at({lit(tenant)}, {lit(_ts(as_of))}, k := {lit(_ts(known_at))}, "
                f"alive := {lit(_ts(known_at or utcnow()))}, as_author := {lit(author)}, as_task := {lit(task)})")
         return {r[0] for r in self._rows(compiled.expand(sql))}
+
+    # ---- query: the tenant's rows in a sandbox of their own -------------------------------
+
+    QUERY_DIALECT = "sqlite"
+    SANDBOXES = 8  # tenants whose sandbox is kept; the least recently queried is dropped past it
+
+    def query_rows(self, tenant: str, cartridge: Any, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
+        """An agent's read-only SQL over the generated views, for `tenant` only (Tools.query). It runs in an in-memory
+        SQLite database that holds nothing but what the tenant may read (keel/store/query.py `visible`), with the
+        cartridge's macros inlined (`SQLite.expand`), behind an authorizer that allows reading those three tables and
+        calling functions (not extension or file ones), nothing else: no PRAGMA, ATTACH, write or schema change. A
+        progress handler stops it at `timeout` seconds. At most `cap` rows; `more` when there were others."""
+        from keel.envelope import utcnow
+
+        compiled = self.install(cartridge)
+        now = _ts(utcnow())
+        with self._sandbox_lock:
+            box = self._sandboxes.pop(tenant, None) or _Sandbox()
+            self._sandboxes[tenant] = box  # most recent last
+            while len(self._sandboxes) > self.SANDBOXES:
+                self._sandboxes.pop(next(iter(self._sandboxes)))
+        with box.lock:
+            mark = q.fingerprint(self, tenant, now)
+            if box.mark != mark:
+                box.load(q.visible(self, tenant, now))
+                box.mark = mark
+            try:
+                expanded = compiled.expand(sql)
+            except (ValueError, IndexError) as exc:  # an unbalanced quote or parenthesis
+                raise ValueError(f"query does not parse: {exc}") from exc
+            return box.run(expanded, cap, timeout)
+
+
+_ALLOWED = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION, getattr(sqlite3, "SQLITE_RECURSIVE", 33)}
+_TABLES = {"facts", "entities", "relations"}
+_NO_FUNCTIONS = {"load_extension", "readfile", "writefile", "edit", "fts3_tokenizer", "sqlite_dbpage", "zeroblob", "randomblob"}
+
+
+def _authorize(action: int, a: str | None, b: str | None, db: str | None, source: str | None) -> int:
+    """A query's sandbox: read the three tables and call functions; everything else is denied."""
+    if action not in _ALLOWED:
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_READ and db is not None and (a not in _TABLES or db != "main"):  # db None: a CTE's rows
+        return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_FUNCTION and (b or "").lower() in _NO_FUNCTIONS:
+        return sqlite3.SQLITE_DENY
+    return sqlite3.SQLITE_OK
+
+
+class _Sandbox:
+    """One tenant's readable rows in a private in-memory SQLite database (SqliteStore.query_rows)."""
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.mark: Any = None
+        self.conn = sqlite3.connect(":memory:", isolation_level=None, check_same_thread=False)
+        sqlgen.SQLite.register(self.conn)
+        for table, cols in (("facts", sqlgen.FACT_COLUMNS), ("entities", q.ENTITY_COLUMNS), ("relations", q.RELATION_COLUMNS)):
+            self.conn.execute(f"CREATE TABLE {table} ({', '.join(cols)})")
+        self.conn.execute("CREATE INDEX facts_subject ON facts (tenant, subject)")
+        self.conn.execute("CREATE INDEX relations_src ON relations (tenant, src)")
+
+    def load(self, tables: dict[str, tuple[tuple[str, ...], list[tuple[Any, ...]]]]) -> None:
+        self.conn.execute("BEGIN")
+        for table, (cols, rows) in tables.items():
+            self.conn.execute(f"DELETE FROM {table}")
+            self.conn.executemany(f"INSERT INTO {table} ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", rows)
+        self.conn.execute("COMMIT")
+
+    def run(self, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
+        deadline = time.monotonic() + timeout
+        self.conn.set_authorizer(_authorize)
+        self.conn.set_progress_handler(lambda: time.monotonic() > deadline, 1000)
+        try:
+            cur = self.conn.execute(sql)
+            got = cur.fetchmany(cap + 1)
+            cols = [d[0] for d in cur.description or ()]
+            cur.close()
+        except sqlite3.OperationalError as exc:
+            if "interrupt" in str(exc):
+                raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
+            raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
+        except (sqlite3.Error, sqlite3.Warning, OverflowError) as exc:
+            raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
+        finally:
+            self.conn.set_authorizer(None)
+            self.conn.set_progress_handler(None, 0)
+        return cols, [tuple(r) for r in got[:cap]], len(got) > cap

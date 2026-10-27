@@ -10,13 +10,18 @@ pushes down to when the store has it. Everything else is `keel.store.sql.SqlStor
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import tempfile
 import threading
+import weakref
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from keel import sqlgen
+from keel.store import query as q
 from keel.store.sql import SqlStore, _ts
 
 _DML = re.compile(r"^\s*(INSERT|UPDATE|DELETE)\b", re.IGNORECASE)
@@ -79,6 +84,9 @@ class DuckdbStore(SqlStore):
         self.SCHEMA = sqlgen.DuckDB().schema()
         self._installed: str | None = None
         self._macro_lock = threading.Lock()
+        self._sandboxes: dict[str, _Sandbox] = {}  # query: one per tenant, rebuilt when its rows change
+        self._sandbox_lock = threading.Lock()
+        self._sandbox_dir: str | None = None
         super().__init__(lambda: duckdb.connect(str(path)), prefix)
         self.install(None)
 
@@ -186,3 +194,101 @@ class DuckdbStore(SqlStore):
                f"alive := {lit(alive)}, as_author := {lit(author)}, as_task := {lit(task)})")
         with self._lock:
             return {r[0] for r in self.db.execute(sql).fetchall()}
+
+    # ---- query: the tenant's rows in a sandbox of their own -------------------------------
+
+    QUERY_DIALECT = "duckdb"
+    SANDBOXES = 8  # tenants whose sandbox is kept; the least recently queried is dropped past it
+
+    def query_rows(self, tenant: str, cartridge: Any, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
+        """An agent's read-only SQL over the generated macros, for `tenant` only (Tools.query). It runs in a separate
+        DuckDB database holding nothing but what the tenant may read (keel/store/query.py `visible`) and the
+        cartridge's macros, opened read-only with file and network access, extension loading, Python replacement
+        scans and further configuration disabled; interrupted at `timeout` seconds. At most `cap` rows; `more` when
+        there were others."""
+        from keel.envelope import utcnow
+
+        now = _ts(utcnow())
+        with self._sandbox_lock:
+            if self._sandbox_dir is None:
+                self._sandbox_dir = tempfile.mkdtemp(prefix="keel-query-")  # 0700: this process's sandboxes only
+                weakref.finalize(self, shutil.rmtree, self._sandbox_dir, True)
+            box = self._sandboxes.pop(tenant, None) or _Sandbox(self._sandbox_dir)
+            self._sandboxes[tenant] = box  # most recent last
+            while len(self._sandboxes) > self.SANDBOXES:
+                self._sandboxes.pop(next(iter(self._sandboxes))).close()
+        with box.lock:
+            mark = (q.fingerprint(self, tenant, now), self._ident(cartridge))
+            if box.mark != mark:
+                with self._lock:
+                    rows = q.visible(self, tenant, now)
+                box.load(rows, cartridge)
+                box.mark = mark
+            return box.run(sql, cap, timeout)
+
+    @staticmethod
+    def _ident(cartridge: Any) -> str:
+        return f"{cartridge.ident}|{sorted(cartridge.predicates or {})}|{cartridge.rules!r}|{cartridge.entities!r}|{cartridge.relations!r}"
+
+
+class _Sandbox:
+    """One tenant's readable rows in a read-only DuckDB file of their own (DuckdbStore.query_rows)."""
+
+    LOCKED: ClassVar[dict[str, Any]] = {"enable_external_access": False, "autoinstall_known_extensions": False, "autoload_known_extensions": False,
+              "allow_community_extensions": False, "memory_limit": "1GB", "threads": 2}
+
+    def __init__(self, folder: str) -> None:
+        self.lock = threading.Lock()
+        self.mark: Any = None
+        self.folder, self.conn, self.path, self.n = folder, None, None, 0
+
+    def close(self) -> None:
+        if self.conn is not None:
+            self.conn.close()
+            self.conn = None
+        if self.path and os.path.exists(self.path):
+            os.remove(self.path)
+            wal = self.path + ".wal"
+            if os.path.exists(wal):
+                os.remove(wal)
+
+    def load(self, tables: dict[str, tuple[tuple[str, ...], list[tuple[Any, ...]]]], cartridge: Any) -> None:
+        import duckdb
+
+        self.close()
+        self.n += 1
+        self.path = os.path.join(self.folder, f"{id(self):x}-{self.n}.duckdb")
+        w = duckdb.connect(self.path)
+        try:
+            w.execute(sqlgen.DuckDB().schema())
+            for table, (cols, rows) in tables.items():
+                if rows:
+                    lists = [[r[i] for r in rows] for i in range(len(cols))]
+                    w.execute(f"INSERT INTO {table} ({', '.join(cols)}) SELECT {', '.join('UNNEST(?)' for _ in cols)}", lists)
+            w.execute(sqlgen.macros(cartridge))
+        finally:
+            w.close()
+        self.conn = duckdb.connect(self.path, read_only=True, config=dict(self.LOCKED))
+        self.conn.execute("SET TimeZone = 'UTC'")
+        self.conn.execute("SET python_enable_replacements = false")
+        self.conn.execute("SET lock_configuration = true")
+
+    def run(self, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
+        import duckdb
+
+        timer = threading.Timer(timeout, self.conn.interrupt)
+        timer.start()
+        try:
+            statements = self.conn.extract_statements(sql)
+            if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
+                raise ValueError("query reads only: one SELECT (or WITH ... SELECT) statement over the generated views")
+            cur = self.conn.execute(sql)
+            got = cur.fetchmany(cap + 1)
+            cols = [d[0] for d in cur.description or ()]
+        except duckdb.InterruptException as exc:
+            raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
+        except duckdb.Error as exc:
+            raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
+        finally:
+            timer.cancel()
+        return cols, [tuple(r) for r in got[:cap]], len(got) > cap

@@ -1002,6 +1002,10 @@
               "description": "Relations it may read. Absent: every relation."
             }
           }
+        },
+        "query": {
+          "type": "boolean",
+          "description": "May call the optional sixth tool, query (read-only SQL), when the server enables it. SQL reads past `reads`, so it is off unless true. Default false."
         }
       }
     },
