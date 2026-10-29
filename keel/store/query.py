@@ -82,20 +82,26 @@ def visible(store: Any, tenant: str, now: str) -> dict[str, tuple[tuple[str, ...
             "relations": (RELATION_COLUMNS, tup(rels, RELATION_COLUMNS))}
 
 
-def fingerprint(store: Any, tenant: str, now: str) -> tuple[Any, ...]:
-    """What changes when anything a sandbox copied of `tenant` does (a write, a delete, an expiry, an entity's attrs).
-    Its first element is how many rows a copy would hold."""
+def counts(store: Any, tenant: str, now: str) -> tuple[Any, ...]:
+    """The cheap part of `fingerprint` (aggregates over indexes, no row read): how many rows a copy would hold, and the
+    facts' and relations' counts, sums and latest changes. What a forget, a write or an expiry moves."""
     facts = store._one("SELECT count(*) AS n, sum(seq) AS t, max(seq) AS s, max(changed_at) AS c, max(closed_at) AS d, "
                        "sum(CASE WHEN expires_at IS NOT NULL AND expires_at <= ? THEN 1 ELSE 0 END) AS x "
                        "FROM facts WHERE tenant IN (?, ?)", (now, tenant, global_of(tenant)))
     rels = store._one("SELECT count(*) AS n, sum(seq) AS t, max(seq) AS s, max(changed_at) AS c FROM relations WHERE tenant = ?", (tenant,))
     size = int(facts["n"] or 0) + int(rels["n"] or 0) + int(store._one("SELECT count(*) AS n FROM entities WHERE tenant = ?", (tenant,))["n"] or 0)
-    if size > COPY_MAX:  # from the counts alone, before a row is read
-        raise ValueError(f"this tenant is too large for query on this store ({size} rows; this store copies at most "
+    return (size, tuple(facts[k] for k in ("n", "t", "s", "c", "d", "x")), tuple(rels[k] for k in ("n", "t", "s", "c")))
+
+
+def fingerprint(store: Any, tenant: str, now: str) -> tuple[Any, ...]:
+    """What changes when anything a sandbox copied of `tenant` does (a write, a delete, an expiry, an entity's attrs):
+    `counts`, then a hash of the entities. Its first element is how many rows a copy would hold."""
+    head = counts(store, tenant, now)
+    if head[0] > COPY_MAX:  # from the counts alone, before a row is read
+        raise ValueError(f"this tenant is too large for query on this store ({head[0]} rows; this store copies at most "
                          f"{COPY_MAX}): serve query from PostgresStore")
     ents = store._rows(f"SELECT {', '.join(ENTITY_COLUMNS)} FROM entities WHERE tenant = ? ORDER BY kind, id", (tenant,))
-    return (size, tuple(facts[k] for k in ("n", "t", "s", "c", "d", "x")), tuple(rels[k] for k in ("n", "t", "s", "c")),
-            hash(tuple(tuple(r[c] for c in ENTITY_COLUMNS) for r in ents)))
+    return (*head, hash(tuple(tuple(r[c] for c in ENTITY_COLUMNS) for r in ents)))
 
 
 # rows (facts, relations, entities) a sandbox copies of one tenant; a larger tenant is refused. A copy is a full one (entities

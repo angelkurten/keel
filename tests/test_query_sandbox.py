@@ -207,3 +207,32 @@ def test_a_forget_in_another_process_drops_this_ones_copy(tmp_path):
     assert RIVAL not in a._sandboxes.boxes and box.closed
     assert TENANT in a._sandboxes.boxes  # unchanged: kept
     assert tools(c, a, RIVAL).query("SELECT count(*) AS n FROM facts") == [{"n": 1}]  # its own global memory: GLOBAL-OK only
+
+
+def test_the_cross_process_sweep_stays_inside_the_timeout(tmp_path, monkeypatch):
+    """Third review: after another process wrote, the sweep fingerprinted every held copy before the query's deadline
+    started (2.1-2.6 s under a 0.5 s timeout with 8 tenants of 90,000 rows). It now compares counts only, inside the
+    deadline, and drops what it has no time left to check."""
+    import time as _time
+
+    from keel import SqliteStore
+
+    c = cartridge()
+    a = populate(SqliteStore(tmp_path / "keel.db"), c)
+    b = SqliteStore(tmp_path / "keel.db")
+    for i in range(8):
+        a.upsert_entity(f"t{i}", "tire", "x", ref="r")
+        tools(c, a, f"t{i}").query("SELECT 1 AS one")
+    prints: list[str] = []
+    real_print = q.fingerprint
+    monkeypatch.setattr(q, "fingerprint", lambda store, tenant, now: prints.append(tenant) or real_print(store, tenant, now))
+    real = q.counts
+    monkeypatch.setattr(q, "counts", lambda *a, **k: _time.sleep(0.3) or real(*a, **k))
+    b.upsert_entity("elsewhere", "tire", "y", ref="r")  # another process wrote
+    start = _time.monotonic()
+    try:
+        tools(c, a, "t0", query_timeout=0.5).query("SELECT 1 AS one")
+    except ValueError as exc:
+        assert "timed out" in str(exc)
+    assert _time.monotonic() - start < 1.5
+    assert set(prints) <= {"t0"}  # the sweep reads counts only; the queried tenant's own refresh may fingerprint

@@ -147,10 +147,10 @@ class SqliteStore(SqlStore):
 
         compiled = self.install(cartridge)
         now = _ts(utcnow())
-        self._sweep(now)
+        deadline = time.monotonic() + timeout  # the sweep and the copy count against the query's timeout
+        self._sweep(now, deadline)
         box = self._sandboxes.acquire(tenant)
         try:
-            deadline = time.monotonic() + timeout  # the copy counts against the query's timeout
             q.refresh(self, box, tenant, cartridge, self._changes(), now, deadline)
             try:
                 expanded = compiled.expand(sql, budget=[self.EXPANDED_MAX])
@@ -160,18 +160,17 @@ class SqliteStore(SqlStore):
         finally:
             box.lock.release()
 
-    def _sweep(self, now: str) -> None:
+    def _sweep(self, now: str, deadline: float) -> None:
         """When another process has written to the file (a forget by another worker or the CLI), drop every held copy
-        whose tenant changed, so no copy of forgotten data outlives the next query here, whichever tenant it is for."""
+        whose tenant changed, so no copy of forgotten data outlives the next query here, whichever tenant it is for. It
+        compares counts only (no row read), and past `deadline` drops the copies it had no time left to check."""
         version = self._changes()[1]
         if version == self._seen_version:
             return
         self._seen_version = version
         for tenant, box in list(self._sandboxes.boxes.items()):
-            try:
-                stale = box.mark is None or q.fingerprint(self, tenant, now) != box.mark[0]
-            except ValueError:  # grew past the ceiling
-                stale = True
+            mark = box.mark
+            stale = mark is None or time.monotonic() > deadline or q.counts(self, tenant, now) != mark[0][:3]
             if stale:
                 self._sandboxes.drop(tenant)
 
