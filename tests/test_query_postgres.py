@@ -248,3 +248,16 @@ def test_a_superuser_store_caps_temp_files_per_role():
     c = cartridge()
     t = Tools(c, store, TENANT, query=True)
     assert t.query("SELECT current_setting('temp_file_limit') AS v") == [{"v": "1GB"}]
+
+
+def test_a_leftover_check_statement_never_blocks_the_next_query(store):
+    """Third review: a cancel near the timeout could leave the named check statement prepared, and every later query on
+    that connection failed with "prepared statement keel_query_check already exists". The check now uses the unnamed
+    statement, which the next parse replaces."""
+    c = cartridge()
+    t = Tools(c, store, TENANT, query=True)
+    assert t.query("SELECT 1 AS one") == [{"one": 1}]
+    conn, _ = store._query_connection(TENANT)
+    conn.pgconn.prepare(b"keel_query_check", b"SELECT 1")  # as a cancelled check would leave it
+    assert t.query("SELECT 2 AS two") == [{"two": 2}]
+    assert t.query("SELECT 3 AS three") == [{"three": 3}]
