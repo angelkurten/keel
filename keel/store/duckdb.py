@@ -291,7 +291,8 @@ class _Sandbox(q.Box):
         self.conn.execute("SET python_enable_replacements = false")
         self.conn.execute("SET lock_configuration = true")
 
-    WIDENING = frozenset({"repeat", "lpad", "rpad", "printf", "format", "list_resize", "array_resize", "range", "generate_series"})
+    WIDENING = frozenset({"repeat", "lpad", "rpad", "printf", "format", "list_resize", "array_resize", "range", "generate_series",
+                           "repeat_row"})  # values or rows from nothing: memory_limit does not bound them
 
     def _functions(self, sql: str) -> set[str]:
         """Every function a SELECT calls, read from DuckDB's own parse (json_serialize_sql)."""

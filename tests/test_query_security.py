@@ -290,3 +290,18 @@ def test_a_long_result_stops_at_the_byte_budget(attacked):
     assert set(out[0]) == {"more"}
     assert 0 < len(out) - 1 < 400
     assert sum(len(r["pad"]) for r in out[1:]) <= RESULT_MAX
+
+
+def test_duckdb_refuses_its_row_generators_too(tmp_path):
+    """Second review d1-d3: repeat_row(num_rows := 10^9) generates rows from nothing as range does; it is refused with
+    the other generators, however it is spelled."""
+    pytest.importorskip("duckdb")
+    from keel import Tools
+
+    c = cartridge()
+    tools = Tools(c, populate(make_store("duckdb", tmp_path), c), TENANT, query=True)
+    for sql in ("SELECT count(*) AS n FROM repeat_row(1, num_rows := 1000000000)",
+                "SELECT count(*) AS n FROM REPEAT_ROW(1, num_rows := 1000)",
+                "SELECT md5(CAST(random() AS VARCHAR)) AS v FROM main.repeat_row(1, num_rows := 100000)"):
+        with pytest.raises(ValueError, match="may not call"):
+            tools.query(sql)
