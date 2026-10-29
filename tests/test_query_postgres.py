@@ -144,3 +144,29 @@ def test_a_wide_row_is_refused_on_the_server(store):
     with pytest.raises(ValueError, match="too large"):
         t.query("SELECT repeat('x', 50000000) AS blob", limit=1)
     assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 200 * 2**20
+
+
+def test_an_agent_holding_keels_advisory_locks_stalls_it_no_longer_than_its_timeout(store):
+    """An agent may take the advisory locks Keel's install and setup wait on; it holds them at most its query's
+    timeout, and they are released after it whatever it did."""
+    import copy as _copy
+
+    c = cartridge()
+    t = Tools(c, store, TENANT, query=True, query_timeout=1.5)
+    th = threading.Thread(target=lambda: _quiet(t, "SELECT pg_advisory_lock(7413) AS a, pg_advisory_lock(7414) AS b, (SELECT 1 FROM pg_sleep(10)) AS s"))
+    th.start()
+    time.sleep(0.5)
+    start = time.monotonic()
+    other = _copy.copy(c)
+    other.relations = {**c.relations, "extra_rel": {"from": "unit", "to": "unit"}}  # another revision: install runs again
+    store.install(other)
+    assert time.monotonic() - start < 4
+    th.join()
+    assert store._one("SELECT count(*) AS n FROM pg_locks WHERE locktype = 'advisory'")["n"] == 0
+
+
+def _quiet(t: Any, sql: str) -> None:
+    try:
+        t.query(sql)
+    except ValueError:
+        pass
