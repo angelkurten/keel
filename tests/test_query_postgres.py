@@ -200,3 +200,28 @@ def test_the_timeout_bounds_the_whole_query_not_each_fetch(store):
         t.query("SELECT i, CAST(pg_sleep(0.02) AS text) AS s FROM generate_series(1, 1000) i", limit=0)  # each FETCH under 2 s
     assert time.monotonic() - start < 4
     assert t.query("SELECT 1 AS one") == [{"one": 1}]
+
+
+def test_a_role_is_never_repointed_to_another_tenant(store):
+    """Second review q3: role names kept 48 bits of a hash, and a second tenant whose name collided repointed the
+    shared role to itself (ON CONFLICT DO UPDATE), so the first tenant's agents read the second's rows. Names now
+    carry the whole hash, and a role bound to another tenant is refused, never rebound."""
+    import base64
+
+    from keel.store.postgres import PostgresStore
+
+    c = cartridge()
+    populate(store, c)
+    mine = Tools(c, store, TENANT, query=True)
+    assert "TENANT-OK" in json.dumps(mine.query("SELECT value FROM facts", limit=0))
+    role = store._role_name(TENANT)
+    assert len(role) <= 63
+    db, schema, user = store._query_where
+    whole = base64.b32encode(hashlib.sha256(f"{db}|{schema}|{user}|{TENANT}".encode()).digest()).decode().rstrip("=").lower()
+    assert whole in role
+    other = PostgresStore.from_url(store._dsn)
+    other._role_name = lambda tenant: role  # a collision, as if RIVAL's name hashed to TENANT's
+    with pytest.raises(ValueError, match="(?i)another tenant|bound"):
+        Tools(c, other, RIVAL, query=True).query("SELECT count(*) AS n FROM facts")
+    answer = json.dumps(mine.query("SELECT value FROM facts", limit=0))
+    assert "TENANT-OK" in answer and "RIVAL-SECRET" not in answer

@@ -14,6 +14,7 @@ functions (keel/sqlgen.py, Postgres dialect) let `search(rule=)` push a rule dow
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import threading
@@ -302,13 +303,18 @@ class PostgresStore(SqlStore):
         from the DSN, unchanged when the store's credentials rotate."""
         try:
             group, secret = self._query_setup()
-            db, schema, user = self._query_where  # type: ignore[misc]
-            role = f"{group}_{hashlib.sha256(f'{db}|{schema}|{user}|{tenant}'.encode()).hexdigest()[:12]}"
+            role = self._role_name(tenant)
             password = hmac.new(secret.encode(), role.encode(), hashlib.sha256).hexdigest()
             qr, s = f'"{role}"', self._qs
             with self.transaction():
                 self._exec("SET LOCAL lock_timeout = '10s'")
                 self._exec("SELECT pg_advisory_xact_lock(7414)")
+                # a role is bound once and never repointed: one bound to another tenant (a name collision) is refused
+                self._exec(f"INSERT INTO {s}.keel_query_roles (role, tenant, glob) VALUES (?, ?, ?) ON CONFLICT (role) DO NOTHING",
+                           (role, tenant, global_of(tenant)))
+                bound = self._one(f"SELECT tenant FROM {s}.keel_query_roles WHERE role = ?", (role,))
+                if bound is None or bound["tenant"] != tenant:
+                    raise ValueError(f"query refused: the role for tenant '{tenant}' is bound to another tenant")
                 if self._one("SELECT 1 AS one FROM pg_roles WHERE rolname = ?", (role,)) is None:
                     self._exec(f"CREATE ROLE {qr} LOGIN CONNECTION LIMIT 16 PASSWORD '{password}'")
                 else:
@@ -316,14 +322,19 @@ class PostgresStore(SqlStore):
                 self._exec(f"ALTER ROLE {qr} SET search_path = {s}")
                 self._exec(f"ALTER ROLE {qr} SET statement_timeout = '60s'")
                 self._exec(f'GRANT "{group}" TO {qr}')
-                self._exec(f"INSERT INTO {s}.keel_query_roles (role, tenant, glob) VALUES (?, ?, ?) "
-                           "ON CONFLICT (role) DO UPDATE SET tenant = excluded.tenant, glob = excluded.glob", (role, tenant, global_of(tenant)))
             return role, password
         except ValueError:
             raise
         except Exception as exc:  # psycopg's, by message: a deployment that cannot isolate query is told so
             raise ValueError("query cannot isolate tenants on this Postgres (its user needs CREATEROLE and to own its schema): "
                              f"{q.clean_error(exc)}") from exc
+
+    def _role_name(self, tenant: str) -> str:
+        """The tenant's login role: the whole SHA-256 of deployment and tenant (base32, 52 characters; 59 with the prefix,
+        under Postgres's 63), so two tenants never share one."""
+        self._query_schema()
+        db, schema, user = self._query_where  # type: ignore[misc]
+        return "keel_q_" + _b32(f"{db}|{schema}|{user}|{tenant}")
 
     def _query_setup(self) -> tuple[str, str]:
         """Once per process: the deployment's random secret, the role binding table (neither readable by any query
@@ -334,7 +345,7 @@ class PostgresStore(SqlStore):
 
         schema = self._query_schema()
         db, _, user = self._query_where  # type: ignore[misc]
-        group = "keel_q_" + hashlib.sha256(f"{db}|{schema}|{user}".encode()).hexdigest()[:12]
+        group = "keel_q_g_" + _b32(f"{db}|{schema}|{user}")
         s, g = self._qs, f'"{group}"'
         rows = "(SELECT r.{} FROM " + s + ".keel_query_roles r WHERE r.role = CAST(current_user AS text))"
         t, gl = Scope.TENANT.value, Scope.GLOBAL.value
@@ -364,3 +375,8 @@ class PostgresStore(SqlStore):
             self._exec(f"GRANT SELECT ON {s}.keel_q_facts, {s}.keel_q_entities, {s}.keel_q_relations TO {g}")
         self._query_ready = (group, secret)
         return self._query_ready
+
+
+def _b32(text: str) -> str:
+    """The whole SHA-256 of `text` as lowercase base32 without padding (52 characters): a role name's part."""
+    return base64.b32encode(hashlib.sha256(text.encode()).digest()).decode().rstrip("=").lower()
