@@ -97,7 +97,7 @@ def setup(kind: str, tmp_path: Path) -> tuple[Any, Any]:
 
 def tools_of(setup: tuple[Any, Any], **kw: Any) -> Tools:
     c, store = setup
-    return Tools(c, store, TENANT, clock=lambda: NOW, **kw)
+    return Tools(c, store, TENANT, clock=lambda: NOW, **{"query": True, **kw})
 
 
 def rows(result: list[Any]) -> list[dict[str, Any]]:
@@ -200,7 +200,7 @@ def test_the_store_answers_what_was_written_since_the_last_query(setup):
 def test_a_store_without_sql_refuses_clearly():
     c = cartridge()
     with pytest.raises(ValueError, match="(?i)not supported"):
-        Tools(c, MemoryStore(), TENANT).query("SELECT 1")
+        Tools(c, MemoryStore(), TENANT, query=True).query("SELECT 1")
 
 
 def test_spec_lists_query_only_when_enabled_and_supported(tmp_path):
@@ -220,8 +220,8 @@ def test_registry_bound_agents_need_query_true(tmp_path):
     c = cartridge(agents={"bot": {"writes": ["task"]}, "analyst": {"writes": ["task"], "query": True}})
     store = SqliteStore(tmp_path / "k.db")
     with pytest.raises(PermissionError, match="query"):
-        Tools(c, store, TENANT, "bot").query("SELECT 1 AS one")
-    assert Tools(c, store, TENANT, "analyst").query("SELECT 1 AS one") == [{"one": 1}]
+        Tools(c, store, TENANT, "bot", query=True).query("SELECT 1 AS one")
+    assert Tools(c, store, TENANT, "analyst", query=True).query("SELECT 1 AS one") == [{"one": 1}]
     assert "query" not in [s["name"] for s in Tools(c, store, TENANT, "bot", query=True).spec()]
     assert "query" in [s["name"] for s in Tools(c, store, TENANT, "analyst", query=True).spec()]
 
@@ -239,3 +239,12 @@ def test_the_sqlite_schema_says_how_sqlite_reads_instants():
     text = sqlgen.describe(cartridge(), TENANT, "sqlite")
     assert "SQLite" in text and "TIMESTAMP '" not in text and "keel_now()" in text
     assert sqlgen.describe(cartridge(), TENANT) == sqlgen.describe(cartridge(), TENANT, "duckdb")  # as before
+
+
+def test_query_answers_only_where_the_host_enabled_it(tmp_path):
+    """The switch is the tool's own: Tools without query=True refuses, whatever the store could do."""
+    c = cartridge()
+    store = SqliteStore(tmp_path / "k.db")
+    with pytest.raises(ValueError, match="(?i)not enabled"):
+        Tools(c, store, TENANT).query("SELECT 1 AS one")
+    assert Tools(c, store, TENANT, query=True).query("SELECT 1 AS one") == [{"one": 1}]

@@ -184,7 +184,7 @@ def test_a_runaway_query_is_stopped(attacked):
     c, store = attacked
     from keel import Tools
 
-    tools = Tools(c, store, TENANT, query_timeout=0.5)
+    tools = Tools(c, store, TENANT, query=True, query_timeout=0.5)
     for sql in ("WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r) SELECT count(*) AS n FROM r",
                 f"SELECT count(*) AS n FROM keel_facts('{TENANT}') a, keel_facts('{TENANT}') b, keel_facts('{TENANT}') c, keel_facts('{TENANT}') d, keel_facts('{TENANT}') e, keel_facts('{TENANT}') f, keel_facts('{TENANT}') g, keel_facts('{TENANT}') h"):
         start = time.monotonic()
@@ -215,7 +215,7 @@ def test_one_tenant_never_reads_another_through_the_same_store(tmp_path, kind):
 
     c = cartridge()
     store = populate(make_store(kind, tmp_path), c)
-    mine, theirs = Tools(c, store, TENANT), Tools(c, store, RIVAL)
+    mine, theirs = Tools(c, store, TENANT, query=True), Tools(c, store, RIVAL, query=True)
     for _ in range(2):
         assert "RIVAL-SECRET" not in json.dumps(mine.query("SELECT * FROM facts", limit=0))
         assert "RIVAL-SECRET" in json.dumps(theirs.query("SELECT * FROM facts", limit=0))

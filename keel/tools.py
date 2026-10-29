@@ -1435,12 +1435,15 @@ class Tools:
         facts and the global memory this tenant reads; never agent or task memory, never proposals. A caller bound
         to a registry entry needs `query: true` there: SQL reads past its kinds and relations. Rows are objects keyed
         by column (instants as ISO text in UTC); at most `limit` (None: QUERY_ROWS; 0 or more than the deployment's
-        ceiling: the ceiling, else LIST_MAX), the first entry {"more": {shown, next}} when rows were cut. The store
+        ceiling: the ceiling, else LIST_MAX), the first entry {"more": {shown, next}} when rows were cut. Only with
+        Tools(query=True): the host enables it. The store
         stops a query after `query_timeout` seconds."""
         from keel.store.query import checked, json_safe
 
         if self.meter:
             self.meter(self.tenant, "query")
+        if not self.serves_query:
+            raise ValueError("query is not enabled here: the host turns it on (Tools(query=True), keel serve --query)")
         run = getattr(self.store, "query_rows", None)
         if run is None:
             raise ValueError(f"query is not supported by this store ({type(self.store).__name__}); SqliteStore, DuckdbStore and PostgresStore serve it")

@@ -281,7 +281,10 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         read_only = read_only or writes_nothing(tools.agent)
     known = tools.cartridge if isinstance(tools, Tools) else cartridge  # a server for many tenants may still have one cartridge
     if isinstance(tools, Tools):
-        query = query and tools.can_query()
+        if query and not tools.serves_query:  # the server's switch turns the bound tools' on, never the reverse
+            tools = copy.copy(tools)
+            tools.serves_query = True
+        query = query and tools.offers_query()
     text = instructions(known, tools.agent if isinstance(tools, Tools) else None, compact,
                         few_subjects(tools) if isinstance(tools, Tools) else None) if known is not None else None
     if query and known is not None:
