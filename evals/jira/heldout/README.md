@@ -130,7 +130,7 @@ for harness errors only; its rows are not analysed:
 
 ```bash
 H=~/datasets/public-jira/heldout; R=evals/jira/results
-B="uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
+B="uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
    --questions evals/jira/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --keel-compact --keel-read-only"
 $B --systems keel,sql,sqlgen,sql-tables,api --models openai/gpt-6-luna,anthropic/claude-haiku-5.5 --per-type 1 --reps 1 \
    --max-usd 0.5 --out $R/heldout-pilot.jsonl
@@ -216,7 +216,7 @@ repetitions with Haiku; a rerun of the same command resumes), into its own file 
 
 ```bash
 H=~/datasets/public-jira/heldout; R=evals/jira/results
-uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
+uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
    --questions evals/jira/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --keel-compact --keel-read-only \
    --systems sqlgen2 --models anthropic/claude-haiku-5.5 --reps 3 --max-usd 2 --out $R/heldout-haiku-sqlgen2.jsonl
 uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl $R/heldout-haiku-sqlgen2.jsonl \
@@ -239,9 +239,16 @@ own file so the pre-registered results stay untouched:
 
 ```bash
 H=~/datasets/public-jira/heldout; R=evals/jira/results
-uv run --extra mcp --with tiktoken --with anthropic --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
+uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench --data $H \
    --questions evals/jira/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --keel-compact --keel-read-only \
    --systems keel+query --models anthropic/claude-haiku-5.5 --reps 3 --max-usd 2 --out $R/heldout-haiku-keel-query.jsonl
 uv run --with numpy python -m evals.jira.heldout_analysis $R/heldout-haiku.jsonl $R/heldout-haiku-keel-query.jsonl \
    --out $R/heldout-keel-query-stats.md   # descriptive: keel+query's row beside the others; the planned comparisons are unchanged
 ```
+
+Result (run 2026-10-29 on 25979b2, 1,161 runs, 0.496 USD): keel+query **99.1%** (one-issue 99.0, tenant-wide 99.5),
+0.00043 USD per correct answer, 9,727 input tokens per run. Beside it: keel 95.9, sql 98.7, sqlgen2 99.1. Paired over
+the same questions with a tenant-then-question bootstrap (B = 10,000, seed 0, no adjustment, exploratory):
+keel+query − keel +3.3 points [+1.7, +5.2] (30 questions better, 0 worse); − sql +0.4 [+0.0, +0.9]; − sqlgen2 +0.1
+[−0.3, +0.6]. Haiku made 1,457 `query` calls against 576 to the five core tools; 158 calls of 2,033 failed (timeouts,
+unknown columns or macros) and the agent recovered from almost all of them. Links questions were the weakest type (93%).
