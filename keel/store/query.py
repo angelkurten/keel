@@ -89,13 +89,18 @@ def fingerprint(store: Any, tenant: str, now: str) -> tuple[Any, ...]:
                        "sum(CASE WHEN expires_at IS NOT NULL AND expires_at <= ? THEN 1 ELSE 0 END) AS x "
                        "FROM facts WHERE tenant IN (?, ?)", (now, tenant, global_of(tenant)))
     rels = store._one("SELECT count(*) AS n, sum(seq) AS t, max(seq) AS s, max(changed_at) AS c FROM relations WHERE tenant = ?", (tenant,))
+    size = int(facts["n"] or 0) + int(rels["n"] or 0) + int(store._one("SELECT count(*) AS n FROM entities WHERE tenant = ?", (tenant,))["n"] or 0)
+    if size > COPY_MAX:  # from the counts alone, before a row is read
+        raise ValueError(f"this tenant is too large for query on this store ({size} rows; this store copies at most "
+                         f"{COPY_MAX}): serve query from PostgresStore")
     ents = store._rows(f"SELECT {', '.join(ENTITY_COLUMNS)} FROM entities WHERE tenant = ? ORDER BY kind, id", (tenant,))
-    size = int(facts["n"] or 0) + int(rels["n"] or 0) + len(ents)
     return (size, tuple(facts[k] for k in ("n", "t", "s", "c", "d", "x")), tuple(rels[k] for k in ("n", "t", "s", "c")),
             hash(tuple(tuple(r[c] for c in ENTITY_COLUMNS) for r in ents)))
 
 
-COPY_MAX = 250_000  # rows (facts, relations, entities) a sandbox copies of one tenant; a larger tenant is refused
+# rows (facts, relations, entities) a sandbox copies of one tenant; a larger tenant is refused. A copy is a full one (entities
+# carry no change time to copy them incrementally), about 1 s for 100,000 rows, and counts against the query's timeout.
+COPY_MAX = 100_000
 
 
 class Sandboxes:
@@ -140,24 +145,24 @@ class Sandboxes:
             box.closed, box.mark, box.gate = True, None, None
 
 
-def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: str) -> None:
+def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: str, deadline: float | None = None) -> None:
     """Bring a sandbox (its lock held) up to date with the store: nothing to do while nothing was written anywhere
     (`gate`, the store's change counter) and no copied fact expired; else a fingerprint of the tenant, and a copy only
-    when it changed. A tenant larger than COPY_MAX rows is refused. Never under the store's main lock."""
+    when it changed. A tenant larger than COPY_MAX rows is refused. Never under the store's main lock. A copy that ends
+    past `deadline` (a monotonic clock) ends the query as timed out; the copy is kept, so the next query does not repeat it."""
     if box.mark is not None and box.gate == gate and (box.expiry is None or now < box.expiry):
         return
     mark = (fingerprint(store, tenant, now), getattr(cartridge, "ident", None), repr(getattr(cartridge, "rules", None)),
             repr(getattr(cartridge, "entities", None)), repr(getattr(cartridge, "relations", None)))
     if mark != box.mark:
-        if mark[0][0] > COPY_MAX:
-            raise ValueError(f"this tenant is too large for query on this store ({mark[0][0]} rows; this store copies at most "
-                             f"{COPY_MAX}): serve query from PostgresStore")
         tables = visible(store, tenant, now)
         box.load(tables, cartridge)
         box.mark = mark
         expiries = [r[FACT_COLUMNS.index("expires_at")] for r in tables["facts"][1]]
         box.expiry = min((e for e in expiries if e), default=None)
     box.gate = gate
+    if deadline is not None and clock.monotonic() > deadline:
+        raise ValueError("query timed out while this tenant's rows were copied for it: ask again")
 
 
 class Box:

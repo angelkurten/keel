@@ -155,3 +155,36 @@ def test_the_duckdb_sandbox_never_spills_to_disk(tmp_path):
                   "SELECT count(*) AS n FROM (SELECT i, md5(i::VARCHAR) || md5((i + 1)::VARCHAR) AS h FROM r ORDER BY h)")
     assert sum(os.path.getsize(os.path.join(r, n)) for r, _, ns in os.walk(store._sandbox_dir) for n in ns) < 50 * 2**20
     assert out.query("SELECT current_setting('temp_directory') AS d") == [{"d": ""}]
+
+
+def test_a_large_tenant_is_refused_from_counts_alone(kind, tmp_path, monkeypatch):
+    """Second review a6: 40,000 entities and 200,000 facts took 2.2-2.5 s and 520 MB per query after any write. Past
+    the ceiling (now 100,000 rows) a tenant is refused from three counts, before any row is read."""
+    c = cartridge()
+    store = populate(make_store(kind, tmp_path), c)
+    assert q.COPY_MAX == 100_000
+    monkeypatch.setattr(q, "COPY_MAX", 5)
+    read: list[str] = []
+    real = store._rows
+    monkeypatch.setattr(store, "_rows", lambda sql, params=(): read.append(sql) or real(sql, params))
+    with pytest.raises(ValueError, match="too large"):
+        tools(c, store).query("SELECT 1 AS one")
+    assert not any("FROM entities" in s and "count(" not in s for s in read)
+
+
+def test_the_copy_counts_against_the_querys_timeout(kind, tmp_path, monkeypatch):
+    """A copy that runs past the timeout ends the query as timed out (the copy is kept: the next query is quick)."""
+    import time as _time
+
+    c = cartridge()
+    store = populate(make_store(kind, tmp_path), c)
+    box_type = type(store._sandboxes.make())
+    real_load = box_type.load
+    monkeypatch.setattr(box_type, "load", lambda self, *a: _time.sleep(1.2) or real_load(self, *a))
+    t = tools(c, store, query_timeout=1)
+    start = _time.monotonic()
+    with pytest.raises(ValueError, match="timed out"):
+        t.query("SELECT 1 AS one")
+    assert _time.monotonic() - start < 2.5
+    monkeypatch.setattr(box_type, "load", real_load)
+    assert t.query("SELECT 1 AS one") == [{"one": 1}]
