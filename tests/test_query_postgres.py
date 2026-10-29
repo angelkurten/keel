@@ -142,7 +142,7 @@ def test_a_wide_row_is_refused_on_the_server(store):
     out = t.query("SELECT i, repeat('x', 100000) AS blob FROM generate_series(1, 1500) i", limit=1000)
     assert "more" in out[0] and len(out) < 200
     with pytest.raises(ValueError, match="too large"):
-        t.query("SELECT repeat('x', 50000000) AS blob", limit=1)
+        t.query("SELECT repeat('x', 5000000) AS blob", limit=1)  # 5 MB: over a row's budget, quick to build
     assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 200 * 2**20
 
 
