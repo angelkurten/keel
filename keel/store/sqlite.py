@@ -206,6 +206,8 @@ class _Sandbox(q.Box):
     def __init__(self) -> None:
         super().__init__()
         self.conn = sqlite3.connect(":memory:", isolation_level=None, check_same_thread=False)
+        if hasattr(self.conn, "setlimit"):  # Python 3.11+: no string or blob past a row's budget (printf('%500000000d'))
+            self.conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, q.ROW_MAX)
         sqlgen.SQLite.register(self.conn)
         for table, cols in (("facts", sqlgen.FACT_COLUMNS), ("entities", q.ENTITY_COLUMNS), ("relations", q.RELATION_COLUMNS)):
             self.conn.execute(f"CREATE TABLE {table} ({', '.join(cols)})")
@@ -228,16 +230,16 @@ class _Sandbox(q.Box):
         self.conn.set_progress_handler(lambda: time.monotonic() > deadline, 1000)
         try:
             cur = self.conn.execute(sql)
-            got = cur.fetchmany(cap + 1)
             cols = [d[0] for d in cur.description or ()]
+            got, more = q.take(cur.fetchmany, cap)
             cur.close()
         except sqlite3.OperationalError as exc:
             if "interrupt" in str(exc):
                 raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
             raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
-        except (sqlite3.Error, sqlite3.Warning, OverflowError) as exc:
+        except (sqlite3.Error, sqlite3.Warning, OverflowError, MemoryError) as exc:
             raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
         finally:
             self.conn.set_authorizer(None)
             self.conn.set_progress_handler(None, 0)
-        return cols, [tuple(r) for r in got[:cap]], len(got) > cap
+        return cols, got, more

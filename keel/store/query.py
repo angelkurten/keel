@@ -170,6 +170,35 @@ class Box:
         self.closed = False
 
 
+RESULT_MAX = 8 * 2**20  # bytes of values one answer carries; past it the answer stops early, led by {"more": ...}
+ROW_MAX = 2**20  # bytes of one row; a larger one is refused (the database is told to stop before it is sent where it can)
+TOO_LARGE = "a row of this result is too large (over 1 MB): select fewer or narrower columns"
+
+
+def _size(v: Any) -> int:
+    return len(v) if isinstance(v, (str, bytes, bytearray)) else 8 if v is None or isinstance(v, (int, float, bool)) else len(str(v))
+
+
+def take(fetch: Any, cap: int) -> tuple[list[tuple[Any, ...]], bool]:
+    """At most `cap` rows from `fetch(n)` (a cursor's fetchmany), and whether others were left: past `cap` rows or
+    RESULT_MAX bytes. A row over ROW_MAX is refused."""
+    rows: list[tuple[Any, ...]] = []
+    total = 0
+    while len(rows) <= cap:
+        batch = fetch(min(64, cap + 1 - len(rows)))
+        if not batch:
+            break
+        for r in batch:
+            n = sum(_size(v) for v in r)
+            if n > ROW_MAX:
+                raise ValueError(TOO_LARGE)
+            if total + n > RESULT_MAX:
+                return rows, True
+            total += n
+            rows.append(tuple(r))
+    return rows[:cap], len(rows) > cap
+
+
 def clean_error(exc: BaseException) -> str:
     """A database error as one line for the agent (the first line: no context dump)."""
     text = str(exc).strip().splitlines()

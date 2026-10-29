@@ -151,6 +151,7 @@ def test_the_duckdb_sandbox_never_spills_to_disk(tmp_path):
     store = populate(make_store("duckdb", tmp_path), c)
     out = tools(c, store, query_timeout=5)
     with pytest.raises(ValueError):
-        out.query("SELECT count(*) AS n FROM (SELECT i, md5(i::VARCHAR) || md5((i + 1)::VARCHAR) AS h FROM range(200000000) t(i) ORDER BY h)")
+        out.query("WITH RECURSIVE r(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM r WHERE i < 50000000) "
+                  "SELECT count(*) AS n FROM (SELECT i, md5(i::VARCHAR) || md5((i + 1)::VARCHAR) AS h FROM r ORDER BY h)")
     assert sum(os.path.getsize(os.path.join(r, n)) for r, _, ns in os.walk(store._sandbox_dir) for n in ns) < 50 * 2**20
     assert out.query("SELECT current_setting('temp_directory') AS d") == [{"d": ""}]

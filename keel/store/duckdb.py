@@ -254,7 +254,7 @@ class _Sandbox(q.Box):
 
     LOCKED: ClassVar[dict[str, Any]] = {"enable_external_access": False, "autoinstall_known_extensions": False,
                                         "autoload_known_extensions": False, "allow_community_extensions": False,
-                                        "memory_limit": "512MB", "threads": 2, "temp_directory": ""}
+                                        "memory_limit": "256MB", "threads": 2, "temp_directory": ""}
 
     def __init__(self, folder: str) -> None:
         super().__init__()
@@ -289,6 +289,27 @@ class _Sandbox(q.Box):
         self.conn.execute("SET python_enable_replacements = false")
         self.conn.execute("SET lock_configuration = true")
 
+    WIDENING = frozenset({"repeat", "lpad", "rpad", "printf", "format", "list_resize", "array_resize", "range", "generate_series"})
+
+    def _functions(self, sql: str) -> set[str]:
+        """Every function a SELECT calls, read from DuckDB's own parse (json_serialize_sql)."""
+        import json
+
+        tree = json.loads(self.conn.execute("SELECT json_serialize_sql(?)", [sql]).fetchone()[0])
+        if tree.get("error"):
+            raise ValueError(f"query failed: {tree.get('error_message', 'it does not parse')}")
+        names: set[str] = set()
+        todo: list[Any] = [tree]
+        while todo:
+            o = todo.pop()
+            if isinstance(o, dict):
+                if isinstance(o.get("function_name"), str):
+                    names.add(o["function_name"].lower())
+                todo.extend(o.values())
+            elif isinstance(o, list):
+                todo.extend(o)
+        return names
+
     def run(self, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
         import duckdb
 
@@ -298,13 +319,24 @@ class _Sandbox(q.Box):
             statements = self.conn.extract_statements(sql)
             if len(statements) != 1 or statements[0].type != duckdb.StatementType.SELECT:
                 raise ValueError("query reads only: one SELECT (or WITH ... SELECT) statement over the generated views")
-            cur = self.conn.execute(sql)
-            got = cur.fetchmany(cap + 1)
-            cols = [d[0] for d in cur.description or ()]
+            one = statements[0].query
+            wide = sorted(self._functions(one) & self.WIDENING)
+            if wide:  # DuckDB's memory_limit does not bound them: repeat('x', 500000000) takes 500 MB whatever it says
+                raise ValueError(f"query may not call {', '.join(wide)}: they build values past a row's budget")
+            cols = [r[0] for r in self.conn.execute(f"DESCRIBE {one}").fetchall()]
+            # every row measured in the database: one too large is an error there, never sent here
+            names = [f"keel_c{i}" for i in range(len(cols))]
+            size = " + ".join(f"coalesce(strlen(CAST({n} AS VARCHAR)), 0)" for n in names) or "0"
+            wrapped = (f"SELECT * FROM ({one}\n) AS keel_q({', '.join(names)}) "
+                       f"WHERE CASE WHEN {size} > {q.ROW_MAX} THEN error('{q.TOO_LARGE}') ELSE true END")
+            if len(self.conn.extract_statements(wrapped)) != 1:
+                raise ValueError("query reads only: one SELECT (or WITH ... SELECT) statement over the generated views")
+            cur = self.conn.execute(wrapped)
+            got, more = q.take(cur.fetchmany, cap)
         except duckdb.InterruptException as exc:
             raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
         except duckdb.Error as exc:
             raise ValueError(f"query failed: {q.clean_error(exc).replace(self.folder, '<sandbox>')}") from exc
         finally:
             timer.cancel()
-        return cols, [tuple(r) for r in got[:cap]], len(got) > cap
+        return cols, got, more

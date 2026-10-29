@@ -247,3 +247,46 @@ def test_nested_macros_cannot_blow_up_the_sqlite_expansion(tmp_path):
     assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 300 * 2**20  # bytes on macOS, KB on Linux: loose either way
     with pytest.raises(ValueError):
         tools.query(f"SELECT * FROM state_at('{TENANT}', '{T}', 'x', 'y', 'z', 'w', 'v')")  # more arguments than the macro takes
+
+
+WIDE = {"sqlite": "printf('%500000000d', {i})", "duckdb": "repeat('x', 500000000)", "postgres": "repeat('x', 500000000)"}
+TALL = {"sqlite": "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 400) SELECT n, printf('%100000d', n) AS pad FROM r",
+        "duckdb": "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 400), p AS (SELECT string_agg('x', '') AS s FROM (SELECT 1 FROM r, r AS r2 LIMIT 100000)) SELECT n, s AS pad FROM r, p",
+        "postgres": "SELECT i AS n, repeat('x', 100000) AS pad FROM generate_series(1, 400) i"}
+
+
+def _kind(store: Any) -> str:
+    return {"SqliteStore": "sqlite", "DuckdbStore": "duckdb", "PostgresStore": "postgres"}[type(store).__name__]
+
+
+@pytest.mark.parametrize("n", [1, 3])
+def test_a_huge_value_is_refused_not_fetched(attacked, n):
+    """Review a3/p4: the row cap did not bound bytes: one row of 500 MB values went whole into the server's memory."""
+    import resource
+
+    _, store = attacked
+    tools = tools_of(attacked)
+    f = WIDE[_kind(store)]
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    start = time.monotonic()
+    from keel.store.query import ROW_MAX
+
+    try:  # refused (DuckDB, Postgres), or cut by the database's own length limit to NULL (SQLite)
+        out = tools.query("SELECT " + ", ".join(f.format(i=i) + f" AS c{i}" for i in range(n)), limit=1)
+        assert sum(len(str(v)) for v in out[-1].values()) <= ROW_MAX
+    except ValueError as exc:
+        assert any(w in str(exc).lower() for w in ("too large", "too big", "may not call", "memory", "limit")), exc
+    assert time.monotonic() - start < 6
+    grown = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before
+    assert grown < 200 * 2**20, grown  # bytes on macOS (KB on Linux: looser still)
+
+
+def test_a_long_result_stops_at_the_byte_budget(attacked):
+    """Many wide rows: the answer stops at the byte budget and says more exist, as a row cap does."""
+    from keel.store.query import RESULT_MAX
+
+    _, store = attacked
+    out = tools_of(attacked).query(TALL[_kind(store)], limit=0)
+    assert set(out[0]) == {"more"}
+    assert 0 < len(out) - 1 < 400
+    assert sum(len(r["pad"]) for r in out[1:]) <= RESULT_MAX
