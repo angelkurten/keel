@@ -134,6 +134,7 @@ class SqliteStore(SqlStore):
 
     QUERY_DIALECT = "sqlite"
     SANDBOXES = 8  # tenants whose sandbox is kept; the least recently queried is dropped past it
+    EXPANDED_MAX = 200_000  # characters an agent's query may grow to with its macros inlined (the largest one alone: ~5,000)
 
     def query_rows(self, tenant: str, cartridge: Any, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
         """An agent's read-only SQL over the generated views, for `tenant` only (Tools.query). It runs in an in-memory
@@ -156,7 +157,7 @@ class SqliteStore(SqlStore):
                 box.load(q.visible(self, tenant, now))
                 box.mark = mark
             try:
-                expanded = compiled.expand(sql)
+                expanded = compiled.expand(sql, budget=[self.EXPANDED_MAX])
             except (ValueError, IndexError) as exc:  # an unbalanced quote or parenthesis
                 raise ValueError(f"query does not parse: {exc}") from exc
             return box.run(expanded, cap, timeout)

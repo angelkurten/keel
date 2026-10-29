@@ -424,16 +424,19 @@ class SQLite(DuckDB):
 
     # ---- expansion ----
 
-    def expand(self, sql: str, env: dict[str, str] | None = None) -> str:
+    def expand(self, sql: str, env: dict[str, str] | None = None, budget: list[int] | None = None) -> str:
         """`sql` with every call of a compiled macro inlined as a subquery and every name in `env` (a macro's
-        parameters) replaced by its literal. String literals are copied untouched."""
+        parameters) replaced by its literal. String literals are copied untouched. `budget` ([characters]) bounds the
+        work: macro calls nested in macro arguments grow the text exponentially, so an untrusted query
+        (`SqliteStore.query_rows`) passes one and gets ValueError once it is spent."""
         env = env or {}
         out, i, n = [], 0, len(sql)
+        spend = (lambda x: x) if budget is None else lambda x: _spend(budget, x)
         while i < n:
             c = sql[i]
             if c == "'":
                 j = _end_of_string(sql, i)
-                out.append(sql[i:j])
+                out.append(spend(sql[i:j]))
                 i = j
                 continue
             m = _WORD.match(sql, i) if c.isalpha() or c == "_" else None
@@ -451,28 +454,30 @@ class SQLite(DuckDB):
                 k += 1
             if word in self.defs and k < n and sql[k] == "(":
                 close = _close_paren(sql, k)
-                out.append("(" + self._call(word, _split_args(sql[k + 1 : close]), env) + ")")
+                out.append("(" + self._call(word, _split_args(sql[k + 1 : close]), env, budget) + ")")
                 i = close + 1
                 continue
-            out.append(env.get(word, word))
+            out.append(spend(env.get(word, word)))
             i = j
         return "".join(out)
 
-    def _call(self, name: str, args: list[str], env: dict[str, str]) -> str:
+    def _call(self, name: str, args: list[str], env: dict[str, str], budget: list[int] | None = None) -> str:
         params, body = self.defs[name]
         values: dict[str, str] = {}
         for pos, a in enumerate(args):
             key, sep, v = a.partition(":=")
             if sep:
-                values[key.strip()] = self.expand(v.strip(), env)
+                values[key.strip()] = self.expand(v.strip(), env, budget)
+            elif pos < len(params):
+                values[params[pos][0]] = self.expand(a.strip(), env, budget)
             else:
-                values[params[pos][0]] = self.expand(a.strip(), env)
+                raise ValueError(f"{name} takes at most {len(params)} arguments")
         for p, default in params:
             values.setdefault(p, default or "NULL")
         if body == _EITHER:  # k is a literal here: pick the branch, never run both
             known = values["k"] != "NULL"
-            return self.expand("SELECT * FROM keel_facts_known(tnt, k)" if known else "SELECT * FROM keel_facts_now(tnt)", values)
-        return self.expand(body, values)
+            return self.expand("SELECT * FROM keel_facts_known(tnt, k)" if known else "SELECT * FROM keel_facts_now(tnt)", values, budget)
+        return self.expand(body, values, budget)
 
     # ---- the bodies (column lists, as Postgres) ----
 
@@ -580,6 +585,14 @@ class SQLite(DuckDB):
 
 
 _WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _spend(budget: list[int], text: str) -> str:
+    budget[0] -= len(text)
+    if budget[0] < 0:
+        raise ValueError("query is too large once its macros are expanded (macro calls nested in macro arguments): "
+                         "nest less, or compute the inner instant in a CTE")
+    return text
 
 
 def _end_of_string(sql: str, i: int) -> int:

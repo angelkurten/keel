@@ -225,3 +225,25 @@ def test_one_tenant_never_reads_another_through_the_same_store(tmp_path, kind):
 @pytest.fixture(params=STORES)
 def kind(request: Any) -> str:
     return request.param
+
+
+def test_nested_macros_cannot_blow_up_the_sqlite_expansion(tmp_path):
+    """Review a7/a8: macro calls nested in macro arguments expanded exponentially (depth 15, under 1,000 characters: 7 s
+    and 2 GB before the timeout could start). The expansion now has a budget and stops at once with a clear error."""
+    import resource
+
+    from keel import SqliteStore, Tools
+
+    c = cartridge()
+    tools = Tools(c, populate(SqliteStore(tmp_path / "k.db"), c), TENANT, query=True, query_timeout=5)
+    inner = f"'{T}'"
+    for _ in range(15):
+        inner = f"(SELECT max(valid_from) FROM state_at('{TENANT}', {inner}))"
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    start = time.monotonic()
+    with pytest.raises(ValueError, match="(?i)too large|nest"):
+        tools.query(f"SELECT count(*) AS n FROM state_at('{TENANT}', {inner})")
+    assert time.monotonic() - start < 2
+    assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 300 * 2**20  # bytes on macOS, KB on Linux: loose either way
+    with pytest.raises(ValueError):
+        tools.query(f"SELECT * FROM state_at('{TENANT}', '{T}', 'x', 'y', 'z', 'w', 'v')")  # more arguments than the macro takes
