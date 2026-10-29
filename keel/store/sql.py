@@ -307,6 +307,7 @@ class SqlStore:
 
     def _exec(self, sql: str, params: tuple[Any, ...] = ()) -> int:
         with self._lock:
+            self._writes = getattr(self, "_writes", 0) + 1  # a change counter for query's sandboxes (keel/store/query.py)
             cur = self._cursor(self.db)
             cur.execute(self._sql(sql), params)
             return cur.rowcount
@@ -314,6 +315,7 @@ class SqlStore:
     def _insert(self, sql: str, params: tuple[Any, ...] = ()) -> int:
         """Rows inserted; `self._last_id` holds the new autoincrement id."""
         with self._lock:
+            self._writes = getattr(self, "_writes", 0) + 1
             cur = self._cursor(self.db)
             cur.execute(self._sql(sql), params)
             self._last_id = cur.lastrowid
@@ -330,6 +332,7 @@ class SqlStore:
         """Multi-row writes. PyMySQL folds an INSERT ... VALUES executemany into one statement per
         chunk; sqlite3 runs them in-process. Either way: one round trip per chunk, not per row."""
         with self._lock:
+            self._writes = getattr(self, "_writes", 0) + 1
             for i in range(0, len(rows), size):
                 cur = self._cursor(self.db)
                 cur.executemany(self._sql(sql), rows[i : i + size])

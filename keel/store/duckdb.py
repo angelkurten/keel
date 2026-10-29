@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from keel import sqlgen
+from keel.scopes import is_global
 from keel.store import query as q
 from keel.store.sql import SqlStore, _ts
 
@@ -84,9 +85,10 @@ class DuckdbStore(SqlStore):
         self.SCHEMA = sqlgen.DuckDB().schema()
         self._installed: str | None = None
         self._macro_lock = threading.Lock()
-        self._sandboxes: dict[str, _Sandbox] = {}  # query: one per tenant, rebuilt when its rows change
         self._sandbox_lock = threading.Lock()
         self._sandbox_dir: str | None = None
+        self._sandboxes = q.Sandboxes(self._sandbox, self.SANDBOXES)  # query: one per tenant, refreshed when its rows change
+        self._writes = 0  # every write through this store: while it stands still, no sandbox needs a fingerprint
         super().__init__(lambda: duckdb.connect(str(path)), prefix)
         self.install(None)
 
@@ -109,6 +111,7 @@ class DuckdbStore(SqlStore):
         does not keep that order, so the entity upsert updates the rows that exist and inserts the others."""
         if not rows:
             return
+        self._writes += 1
         if sql == self.UPSERT_ENTITY:
             with self._lock:
                 lists = [[r[i] for r in rows] for i in range(3)]
@@ -136,6 +139,7 @@ class DuckdbStore(SqlStore):
         """A batch's closes in one UPDATE joined to its lists (seq, valid_to, closed_at, changed_at)."""
         if not closes:
             return
+        self._writes += 1
         seqs = list(closes)
         cols = [seqs] + [[_ts(closes[s][i]) for s in seqs] for i in range(3)]
         with self._lock:
@@ -204,61 +208,73 @@ class DuckdbStore(SqlStore):
         """An agent's read-only SQL over the generated macros, for `tenant` only (Tools.query). It runs in a separate
         DuckDB database holding nothing but what the tenant may read (keel/store/query.py `visible`) and the
         cartridge's macros, opened read-only with file and network access, extension loading, Python replacement
-        scans and further configuration disabled; interrupted at `timeout` seconds. At most `cap` rows; `more` when
-        there were others."""
+        scans, spilling to disk and further configuration disabled; interrupted at `timeout` seconds. At most `cap`
+        rows; `more` when there were others."""
         from keel.envelope import utcnow
 
         now = _ts(utcnow())
+        box = self._sandboxes.acquire(tenant)
+        try:
+            q.refresh(self, box, tenant, cartridge, self._writes, now)
+            return box.run(sql, cap, timeout)
+        finally:
+            box.lock.release()
+
+    def _sandbox(self) -> _Sandbox:
         with self._sandbox_lock:
             if self._sandbox_dir is None:
                 self._sandbox_dir = tempfile.mkdtemp(prefix="keel-query-")  # 0700: this process's sandboxes only
                 weakref.finalize(self, shutil.rmtree, self._sandbox_dir, True)
-            box = self._sandboxes.pop(tenant, None) or _Sandbox(self._sandbox_dir)
-            self._sandboxes[tenant] = box  # most recent last
-            while len(self._sandboxes) > self.SANDBOXES:
-                self._sandboxes.pop(next(iter(self._sandboxes))).close()
-        with box.lock:
-            mark = (q.fingerprint(self, tenant, now), self._ident(cartridge))
-            if box.mark != mark:
-                with self._lock:
-                    rows = q.visible(self, tenant, now)
-                box.load(rows, cartridge)
-                box.mark = mark
-            return box.run(sql, cap, timeout)
+            return _Sandbox(self._sandbox_dir)
 
-    @staticmethod
-    def _ident(cartridge: Any) -> str:
-        return f"{cartridge.ident}|{sorted(cartridge.predicates or {})}|{cartridge.rules!r}|{cartridge.entities!r}|{cartridge.relations!r}"
+    # what forgets a tenant's data forgets its sandbox's copy too (the global partition: every tenant's)
+    def forget(self, tenant: str) -> dict[str, int]:
+        out = super().forget(tenant)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def forget_before(self, tenant: str, before: datetime) -> dict[str, int]:
+        out = super().forget_before(tenant, before)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def expire(self, tenant: str, now: datetime | None = None) -> int:
+        out = super().expire(tenant, now)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def reset(self, tenant: str, keep_annotations: bool = False) -> None:
+        super().reset(tenant, keep_annotations)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
 
 
-class _Sandbox:
-    """One tenant's readable rows in a read-only DuckDB file of their own (DuckdbStore.query_rows)."""
+class _Sandbox(q.Box):
+    """One tenant's readable rows in a read-only DuckDB file of their own, in a folder of its own
+    (DuckdbStore.query_rows). No temp directory: what does not fit in memory fails, never spills to disk."""
 
-    LOCKED: ClassVar[dict[str, Any]] = {"enable_external_access": False, "autoinstall_known_extensions": False, "autoload_known_extensions": False,
-              "allow_community_extensions": False, "memory_limit": "1GB", "threads": 2}
+    LOCKED: ClassVar[dict[str, Any]] = {"enable_external_access": False, "autoinstall_known_extensions": False,
+                                        "autoload_known_extensions": False, "allow_community_extensions": False,
+                                        "memory_limit": "512MB", "threads": 2, "temp_directory": ""}
 
     def __init__(self, folder: str) -> None:
-        self.lock = threading.Lock()
-        self.mark: Any = None
-        self.folder, self.conn, self.path, self.n = folder, None, None, 0
+        super().__init__()
+        self.folder, self.conn, self.dir, self.n = folder, None, None, 0
 
     def close(self) -> None:
         if self.conn is not None:
             self.conn.close()
             self.conn = None
-        if self.path and os.path.exists(self.path):
-            os.remove(self.path)
-            wal = self.path + ".wal"
-            if os.path.exists(wal):
-                os.remove(wal)
+        if self.dir:
+            shutil.rmtree(self.dir, ignore_errors=True)
+            self.dir = None
 
     def load(self, tables: dict[str, tuple[tuple[str, ...], list[tuple[Any, ...]]]], cartridge: Any) -> None:
         import duckdb
 
         self.close()
-        self.n += 1
-        self.path = os.path.join(self.folder, f"{id(self):x}-{self.n}.duckdb")
-        w = duckdb.connect(self.path)
+        self.dir = tempfile.mkdtemp(dir=self.folder)
+        path = os.path.join(self.dir, "sandbox.duckdb")
+        w = duckdb.connect(path)
         try:
             w.execute(sqlgen.DuckDB().schema())
             for table, (cols, rows) in tables.items():
@@ -268,7 +284,7 @@ class _Sandbox:
             w.execute(sqlgen.macros(cartridge))
         finally:
             w.close()
-        self.conn = duckdb.connect(self.path, read_only=True, config=dict(self.LOCKED))
+        self.conn = duckdb.connect(path, read_only=True, config=dict(self.LOCKED))
         self.conn.execute("SET TimeZone = 'UTC'")
         self.conn.execute("SET python_enable_replacements = false")
         self.conn.execute("SET lock_configuration = true")
@@ -288,7 +304,7 @@ class _Sandbox:
         except duckdb.InterruptException as exc:
             raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
         except duckdb.Error as exc:
-            raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
+            raise ValueError(f"query failed: {q.clean_error(exc).replace(self.folder, '<sandbox>')}") from exc
         finally:
             timer.cancel()
         return cols, [tuple(r) for r in got[:cap]], len(got) > cap

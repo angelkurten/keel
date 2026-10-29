@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from keel import sqlgen
+from keel.scopes import is_global
 from keel.store import query as q
 from keel.store.sql import SqlStore, _ts
 
@@ -79,8 +80,7 @@ class SqliteStore(SqlStore):
 
         self._compiled: tuple[str, sqlgen.SQLite] | None = None
         self._compile_lock = threading.Lock()
-        self._sandboxes: dict[str, _Sandbox] = {}  # query: one per tenant, rebuilt when its rows change
-        self._sandbox_lock = threading.Lock()
+        self._sandboxes = q.Sandboxes(_Sandbox, self.SANDBOXES)  # query: one per tenant, refreshed when its rows change
         super().__init__(connect, prefix)
         # the expanded rule SQL names the unprefixed tables; window functions, FILTER, IS DISTINCT FROM need 3.39
         if prefix or sqlite3.sqlite_version_info < sqlgen.SQLite.MIN_VERSION:
@@ -146,21 +146,42 @@ class SqliteStore(SqlStore):
 
         compiled = self.install(cartridge)
         now = _ts(utcnow())
-        with self._sandbox_lock:
-            box = self._sandboxes.pop(tenant, None) or _Sandbox()
-            self._sandboxes[tenant] = box  # most recent last
-            while len(self._sandboxes) > self.SANDBOXES:
-                self._sandboxes.pop(next(iter(self._sandboxes)))
-        with box.lock:
-            mark = q.fingerprint(self, tenant, now)
-            if box.mark != mark:
-                box.load(q.visible(self, tenant, now))
-                box.mark = mark
+        box = self._sandboxes.acquire(tenant)
+        try:
+            q.refresh(self, box, tenant, cartridge, self._changes(), now)
             try:
                 expanded = compiled.expand(sql, budget=[self.EXPANDED_MAX])
             except (ValueError, IndexError) as exc:  # an unbalanced quote or parenthesis
                 raise ValueError(f"query does not parse: {exc}") from exc
             return box.run(expanded, cap, timeout)
+        finally:
+            box.lock.release()
+
+    def _changes(self) -> tuple[int, int]:
+        """A counter of every write to the database: this connection's own (total_changes) and other processes'
+        (data_version): while it stands still, no sandbox needs even a fingerprint."""
+        with self._lock:
+            return self.db.total_changes, self.db.execute("PRAGMA data_version").fetchone()[0]
+
+    # what forgets a tenant's data forgets its sandbox's copy too (the global partition: every tenant's)
+    def forget(self, tenant: str) -> dict[str, int]:
+        out = super().forget(tenant)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def forget_before(self, tenant: str, before: datetime) -> dict[str, int]:
+        out = super().forget_before(tenant, before)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def expire(self, tenant: str, now: datetime | None = None) -> int:
+        out = super().expire(tenant, now)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
+        return out
+
+    def reset(self, tenant: str, keep_annotations: bool = False) -> None:
+        super().reset(tenant, keep_annotations)
+        self._sandboxes.drop(None if is_global(tenant) else tenant)
 
 
 _ALLOWED = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION, getattr(sqlite3, "SQLITE_RECURSIVE", 33)}
@@ -179,12 +200,11 @@ def _authorize(action: int, a: str | None, b: str | None, db: str | None, source
     return sqlite3.SQLITE_OK
 
 
-class _Sandbox:
+class _Sandbox(q.Box):
     """One tenant's readable rows in a private in-memory SQLite database (SqliteStore.query_rows)."""
 
     def __init__(self) -> None:
-        self.lock = threading.Lock()
-        self.mark: Any = None
+        super().__init__()
         self.conn = sqlite3.connect(":memory:", isolation_level=None, check_same_thread=False)
         sqlgen.SQLite.register(self.conn)
         for table, cols in (("facts", sqlgen.FACT_COLUMNS), ("entities", q.ENTITY_COLUMNS), ("relations", q.RELATION_COLUMNS)):
@@ -192,7 +212,10 @@ class _Sandbox:
         self.conn.execute("CREATE INDEX facts_subject ON facts (tenant, subject)")
         self.conn.execute("CREATE INDEX relations_src ON relations (tenant, src)")
 
-    def load(self, tables: dict[str, tuple[tuple[str, ...], list[tuple[Any, ...]]]]) -> None:
+    def close(self) -> None:
+        self.conn.close()
+
+    def load(self, tables: dict[str, tuple[tuple[str, ...], list[tuple[Any, ...]]]], cartridge: Any = None) -> None:
         self.conn.execute("BEGIN")
         for table, (cols, rows) in tables.items():
             self.conn.execute(f"DELETE FROM {table}")
