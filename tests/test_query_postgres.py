@@ -225,3 +225,26 @@ def test_a_role_is_never_repointed_to_another_tenant(store):
         Tools(c, other, RIVAL, query=True).query("SELECT count(*) AS n FROM facts")
     answer = json.dumps(mine.query("SELECT value FROM facts", limit=0))
     assert "TENANT-OK" in answer and "RIVAL-SECRET" not in answer
+
+
+def test_forget_drops_the_tenants_query_role_and_binding(store):
+    """Second review (suspected): forget left the tenant's query role and its binding behind."""
+    c = cartridge()
+    populate(store, c)
+    Tools(c, store, RIVAL, query=True).query("SELECT 1 AS one")
+    role = store._role_name(RIVAL)
+    assert role in roles()
+    store.forget(RIVAL)
+    assert role not in roles()
+    assert store._one(f"SELECT count(*) AS n FROM {store._qs}.keel_query_roles WHERE tenant = ?", (RIVAL,))["n"] == 0
+    assert Tools(c, store, RIVAL, query=True).query("SELECT count(*) AS n FROM entities") == [{"n": 0}]  # made again
+
+
+def test_a_superuser_store_caps_temp_files_per_role():
+    """temp_file_limit is a superuser's setting: a superuser store sets it on each role (a CREATEROLE one cannot)."""
+    from conftest import postgres_store
+
+    store = postgres_store()
+    c = cartridge()
+    t = Tools(c, store, TENANT, query=True)
+    assert t.query("SELECT current_setting('temp_file_limit') AS v") == [{"v": "1GB"}]

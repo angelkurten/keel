@@ -321,6 +321,8 @@ class PostgresStore(SqlStore):
                     self._exec(f"ALTER ROLE {qr} LOGIN PASSWORD '{password}'")
                 self._exec(f"ALTER ROLE {qr} SET search_path = {s}")
                 self._exec(f"ALTER ROLE {qr} SET statement_timeout = '60s'")
+                if self._one("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")["rolsuper"]:
+                    self._exec(f"ALTER ROLE {qr} SET temp_file_limit = '1GB'")  # a superuser's setting: CREATEROLE cannot
                 self._exec(f'GRANT "{group}" TO {qr}')
             return role, password
         except ValueError:
@@ -328,6 +330,19 @@ class PostgresStore(SqlStore):
         except Exception as exc:  # psycopg's, by message: a deployment that cannot isolate query is told so
             raise ValueError("query cannot isolate tenants on this Postgres (its user needs CREATEROLE and to own its schema): "
                              f"{q.clean_error(exc)}") from exc
+
+    def forget(self, tenant: str) -> dict[str, int]:
+        """Store protocol; also the tenant's query role and its binding, when query was ever set up here."""
+        out = super().forget(tenant)
+        schema = self._query_schema()
+        if self._one("SELECT to_regclass(?) AS r", ('"' + schema.replace('"', '""') + '".keel_query_roles',))["r"] is not None:
+            self._drop_query_connection(tenant)
+            bound = {r["role"] for r in self._rows(f"SELECT role FROM {self._qs}.keel_query_roles WHERE tenant = ?", (tenant,))}
+            self._exec(f"DELETE FROM {self._qs}.keel_query_roles WHERE tenant = ?", (tenant,))  # access ends here, whatever follows
+            for role in sorted(bound | {self._role_name(tenant)}):
+                if self._one("SELECT 1 AS one FROM pg_roles WHERE rolname = ?", (role,)) is not None:
+                    self._exec('DROP ROLE "' + role.replace('"', '""') + '"')
+        return out
 
     def _role_name(self, tenant: str) -> str:
         """The tenant's login role: the whole SHA-256 of deployment and tenant (base32, 52 characters; 59 with the prefix,
