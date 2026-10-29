@@ -80,7 +80,8 @@ class SqliteStore(SqlStore):
 
         self._compiled: tuple[str, sqlgen.SQLite] | None = None
         self._compile_lock = threading.Lock()
-        self._sandboxes = q.Sandboxes(_Sandbox, self.SANDBOXES)  # query: one per tenant, refreshed when its rows change
+        self._sandboxes = q.Sandboxes(_Sandbox, self.SANDBOXES)
+        self._seen_version: int | None = None  # PRAGMA data_version when the sandboxes were last checked  # query: one per tenant, refreshed when its rows change
         super().__init__(connect, prefix)
         # the expanded rule SQL names the unprefixed tables; window functions, FILTER, IS DISTINCT FROM need 3.39
         if prefix or sqlite3.sqlite_version_info < sqlgen.SQLite.MIN_VERSION:
@@ -146,6 +147,7 @@ class SqliteStore(SqlStore):
 
         compiled = self.install(cartridge)
         now = _ts(utcnow())
+        self._sweep(now)
         box = self._sandboxes.acquire(tenant)
         try:
             deadline = time.monotonic() + timeout  # the copy counts against the query's timeout
@@ -157,6 +159,21 @@ class SqliteStore(SqlStore):
             return box.run(expanded, cap, max(0.05, deadline - time.monotonic()))
         finally:
             box.lock.release()
+
+    def _sweep(self, now: str) -> None:
+        """When another process has written to the file (a forget by another worker or the CLI), drop every held copy
+        whose tenant changed, so no copy of forgotten data outlives the next query here, whichever tenant it is for."""
+        version = self._changes()[1]
+        if version == self._seen_version:
+            return
+        self._seen_version = version
+        for tenant, box in list(self._sandboxes.boxes.items()):
+            try:
+                stale = box.mark is None or q.fingerprint(self, tenant, now) != box.mark[0]
+            except ValueError:  # grew past the ceiling
+                stale = True
+            if stale:
+                self._sandboxes.drop(tenant)
 
     def _changes(self) -> tuple[int, int]:
         """A counter of every write to the database: this connection's own (total_changes) and other processes'

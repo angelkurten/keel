@@ -188,3 +188,22 @@ def test_the_copy_counts_against_the_querys_timeout(kind, tmp_path, monkeypatch)
     assert _time.monotonic() - start < 2.5
     monkeypatch.setattr(box_type, "load", real_load)
     assert t.query("SELECT 1 AS one") == [{"one": 1}]
+
+
+def test_a_forget_in_another_process_drops_this_ones_copy(tmp_path):
+    """Second review s1: forget run by another worker (or the CLI) on the same SQLite file left this process's copy of
+    the forgotten tenant in memory. When another process has written, the next query here (for any tenant) drops
+    every held copy whose tenant changed."""
+    from keel import SqliteStore
+
+    c = cartridge()
+    a = populate(SqliteStore(tmp_path / "keel.db"), c)
+    b = SqliteStore(tmp_path / "keel.db")
+    tools(c, a, RIVAL).query("SELECT count(*) AS n FROM facts")
+    tools(c, a).query("SELECT 1 AS one")
+    box = a._sandboxes.boxes[RIVAL]
+    b.forget(RIVAL)
+    tools(c, a).query("SELECT 1 AS one")
+    assert RIVAL not in a._sandboxes.boxes and box.closed
+    assert TENANT in a._sandboxes.boxes  # unchanged: kept
+    assert tools(c, a, RIVAL).query("SELECT count(*) AS n FROM facts") == [{"n": 1}]  # its own global memory: GLOBAL-OK only
