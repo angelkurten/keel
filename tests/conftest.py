@@ -3,6 +3,8 @@
 import importlib
 import os
 import tempfile
+from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import pytest
 
@@ -46,5 +48,36 @@ def postgres_store():
     from keel.store.postgres import PostgresStore
 
     s = PostgresStore.from_url(POSTGRES)
+    s._exec("TRUNCATE " + ", ".join(TABLES))
+    return s
+
+
+def as_user(user: str, password: str, database: str | None = None) -> str:
+    u = urlparse(POSTGRES)
+    return urlunparse(u._replace(netloc=f"{user}:{password}@{u.hostname}:{u.port}", path=f"/{database}" if database else u.path))
+
+
+def admin(sql: str, database: str | None = None) -> None:
+    import psycopg
+
+    with psycopg.connect(as_user(urlparse(POSTGRES).username, urlparse(POSTGRES).password, database) if database else POSTGRES,
+                         autocommit=True) as conn:
+        conn.execute(sql)
+
+
+def postgres_app_store(user: str = "keel_app", createrole: bool = True) -> Any:
+    """A store whose user has only LOGIN (CREATEROLE) and owns its schema: the deployment CI checks."""
+    import psycopg
+
+    from keel.store.postgres import PostgresStore
+
+    admin(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{user}') THEN "
+          f"CREATE ROLE {user} LOGIN {'CREATEROLE' if createrole else ''} PASSWORD 'apppw'; END IF; END $$")
+    try:  # a database of its own (an empty public schema), the user owning only its schema in it
+        admin(f"CREATE DATABASE {user}_db")
+    except psycopg.errors.DuplicateDatabase:
+        pass
+    admin(f"CREATE SCHEMA IF NOT EXISTS {user} AUTHORIZATION {user}", f"{user}_db")
+    s = PostgresStore.from_url(as_user(user, "apppw", f"{user}_db"))
     s._exec("TRUNCATE " + ", ".join(TABLES))
     return s

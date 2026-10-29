@@ -30,7 +30,7 @@ RIVAL = "rival"
 T = "2030-01-01T00:00:00+00:00"
 NOW = datetime(2026, 10, 1, tzinfo=timezone.utc)
 SECRETS = ("RIVAL-SECRET", "AGENT-SECRET", "TASK-SECRET", "PROPOSED-SECRET", "KEY-SECRET", "OTHER-GLOBAL-SECRET")
-STORES = ["sqlite", "sqlite-memory", "duckdb"] + (["postgres"] if POSTGRES else [])
+STORES = ["sqlite", "sqlite-memory", "duckdb"] + (["postgres", "postgres-app"] if POSTGRES else [])  # postgres-app: a CREATEROLE-only user
 
 
 def cartridge(agents: dict[str, Any] | None = None) -> Any:
@@ -56,9 +56,9 @@ def make_store(kind: str, tmp_path: Path) -> Any:
         from keel.store.duckdb import DuckdbStore
 
         return DuckdbStore(tmp_path / "keel.duckdb")
-    from conftest import postgres_store
+    from conftest import postgres_app_store, postgres_store
 
-    return postgres_store()
+    return postgres_app_store() if kind == "postgres-app" else postgres_store()
 
 
 def populate(store: Any, c: Any) -> Any:

@@ -256,7 +256,7 @@ TALL = {"sqlite": "WITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM 
 
 
 def _kind(store: Any) -> str:
-    return {"SqliteStore": "sqlite", "DuckdbStore": "duckdb", "PostgresStore": "postgres"}[type(store).__name__]
+    return {"SqliteStore": "sqlite", "DuckdbStore": "duckdb", "PostgresStore": "postgres"}[type(store).__name__]  # either Postgres user
 
 
 @pytest.mark.parametrize("n", [1, 3])
@@ -275,8 +275,8 @@ def test_a_huge_value_is_refused_not_fetched(attacked, n):
         out = tools.query("SELECT " + ", ".join(f.format(i=i) + f" AS c{i}" for i in range(n)), limit=1)
         assert sum(len(str(v)) for v in out[-1].values()) <= ROW_MAX
     except ValueError as exc:
-        assert any(w in str(exc).lower() for w in ("too large", "too big", "may not call", "memory", "limit")), exc
-    assert time.monotonic() - start < 6
+        assert any(w in str(exc).lower() for w in ("too large", "too big", "may not call", "memory", "limit", "timed out")), exc
+    assert time.monotonic() - start < 8  # Postgres builds the value, then stops at the timeout: never sent
     grown = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before
     assert grown < 200 * 2**20, grown  # bytes on macOS (KB on Linux: looser still)
 
