@@ -231,7 +231,7 @@ class _Sandbox(q.Box):
         try:
             cur = self.conn.execute(sql)
             cols = [d[0] for d in cur.description or ()]
-            got, more = q.take(cur.fetchmany, cap)
+            got, more = q.take(cur.fetchmany, cap, deadline)
             cur.close()
         except sqlite3.OperationalError as exc:
             if "interrupt" in str(exc):

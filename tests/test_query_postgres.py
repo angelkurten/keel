@@ -188,3 +188,15 @@ def test_the_row_check_wrapper_cannot_be_escaped(store):
     assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 100 * 2**20
     assert t.query("SELECT 1 AS a -- a trailing comment") == [{"a": 1}]
     assert t.query("SELECT 1 AS a;") == [{"a": 1}]
+
+
+def test_the_timeout_bounds_the_whole_query_not_each_fetch(store):
+    """Second review q2: statement_timeout restarted on every FETCH of the cursor, so a query whose rows each took a
+    little ran 61.8 s under a 5 s timeout, holding its locks. One deadline now covers the whole query."""
+    c = cartridge()
+    t = Tools(c, store, TENANT, query=True, query_timeout=2)
+    start = time.monotonic()
+    with pytest.raises(ValueError, match="timed out"):
+        t.query("SELECT i, CAST(pg_sleep(0.02) AS text) AS s FROM generate_series(1, 1000) i", limit=0)  # each FETCH under 2 s
+    assert time.monotonic() - start < 4
+    assert t.query("SELECT 1 AS one") == [{"one": 1}]

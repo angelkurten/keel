@@ -14,6 +14,7 @@ from __future__ import annotations
 import math
 import re
 import threading
+import time as clock
 import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
@@ -172,6 +173,7 @@ class Box:
 
 RESULT_MAX = 8 * 2**20  # bytes of values one answer carries; past it the answer stops early, led by {"more": ...}
 ROW_MAX = 2**20  # bytes of one row; a larger one is refused (the database is told to stop before it is sent where it can)
+TIMED_OUT = "query timed out: narrow it, or aggregate"
 TOO_LARGE = "a row of this result is too large (over 1 MB): select fewer or narrower columns"
 
 
@@ -179,12 +181,15 @@ def _size(v: Any) -> int:
     return len(v) if isinstance(v, (str, bytes, bytearray)) else 8 if v is None or isinstance(v, (int, float, bool)) else len(str(v))
 
 
-def take(fetch: Any, cap: int) -> tuple[list[tuple[Any, ...]], bool]:
+def take(fetch: Any, cap: int, deadline: float | None = None) -> tuple[list[tuple[Any, ...]], bool]:
     """At most `cap` rows from `fetch(n)` (a cursor's fetchmany), and whether others were left: past `cap` rows or
-    RESULT_MAX bytes. A row over ROW_MAX is refused."""
+    RESULT_MAX bytes. A row over ROW_MAX is refused. Past `deadline` (a monotonic clock) no further batch is fetched:
+    the query's timeout covers all of it, not each fetch."""
     rows: list[tuple[Any, ...]] = []
     total = 0
     while len(rows) <= cap:
+        if deadline is not None and clock.monotonic() > deadline:
+            raise ValueError(TIMED_OUT)
         batch = fetch(min(64, cap + 1 - len(rows)))
         if not batch:
             break

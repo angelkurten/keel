@@ -15,6 +15,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 import weakref
 from datetime import datetime
 from pathlib import Path
@@ -313,6 +314,7 @@ class _Sandbox(q.Box):
     def run(self, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:
         import duckdb
 
+        deadline = time.monotonic() + timeout
         timer = threading.Timer(timeout, self.conn.interrupt)
         timer.start()
         try:
@@ -332,7 +334,7 @@ class _Sandbox(q.Box):
             if len(self.conn.extract_statements(wrapped)) != 1:
                 raise ValueError("query reads only: one SELECT (or WITH ... SELECT) statement over the generated views")
             cur = self.conn.execute(wrapped)
-            got, more = q.take(cur.fetchmany, cap)
+            got, more = q.take(cur.fetchmany, cap, deadline)
         except duckdb.InterruptException as exc:
             raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
         except duckdb.Error as exc:

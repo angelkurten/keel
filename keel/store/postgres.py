@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import threading
+import time
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -202,17 +203,30 @@ class PostgresStore(SqlStore):
                    f"THEN {self._qs}.keel_query_too_large() ELSE true END")
         with lock:
             self._one_select(conn, body)  # parsed alone first: balanced, so the wrapper below cannot be closed early
+            # one deadline for the whole query: statement_timeout restarts on every FETCH of the cursor, so a timer cancels
+            # whatever is running when it ends, take() fetches nothing after it, and PG 17+ adds transaction_timeout
+            deadline = time.monotonic() + timeout
+            timer = threading.Timer(timeout, getattr(conn, "cancel_safe", conn.cancel))
+            timer.start()
             try:
-                conn.execute(f"SET LOCAL statement_timeout = {max(1, int(timeout * 1000))}")
+                ms = max(1, int(timeout * 1000))
+                conn.execute(f"SET LOCAL statement_timeout = {ms}")
+                if conn.info.server_version >= 170000:
+                    conn.execute(f"SET LOCAL transaction_timeout = {ms + 1000}")
                 cur = conn.cursor(name="keel_query")  # DECLARE ... CURSOR FOR: a SELECT, nothing else
                 cur.execute(wrapped)
                 cols = [d.name for d in cur.description or ()]
-                got, more = q.take(cur.fetchmany, cap)
+                got, more = q.take(cur.fetchmany, cap, deadline)
             except psycopg.errors.QueryCanceled as exc:
                 raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
+            except ValueError as exc:
+                if str(exc) == q.TIMED_OUT:
+                    raise ValueError(f"query timed out after {timeout:g} s: narrow it, or aggregate") from exc
+                raise
             except psycopg.Error as exc:
                 raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
             finally:
+                timer.cancel()
                 try:
                     conn.rollback()  # undoes set_config, temp tables, LISTEN, NOTIFY; not a session advisory lock
                     conn.execute("SELECT pg_advisory_unlock_all()")
