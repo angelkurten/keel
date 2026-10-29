@@ -261,3 +261,36 @@ def test_a_leftover_check_statement_never_blocks_the_next_query(store):
     conn.pgconn.prepare(b"keel_query_check", b"SELECT 1")  # as a cancelled check would leave it
     assert t.query("SELECT 2 AS two") == [{"two": 2}]
     assert t.query("SELECT 3 AS three") == [{"three": 3}]
+
+
+def test_forget_succeeds_while_another_worker_holds_the_tenants_connection(store):
+    """Third review: forget raised DependentObjectsStillExist when another worker had the tenant's query connection
+    open (its role owns that session's temporary views). The data and the binding go regardless; the role is left with a
+    warning and dropped by a later setup once nothing holds it."""
+    import warnings
+
+    from keel.store.postgres import PostgresStore
+
+    c = cartridge()
+    populate(store, c)
+    worker = PostgresStore.from_url(store._dsn)
+    held = Tools(c, worker, RIVAL, query=True)
+    assert "RIVAL-SECRET" in json.dumps(held.query("SELECT value FROM facts", limit=0))
+    role = store._role_name(RIVAL)
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        store.forget(RIVAL)
+    assert store._one(f"SELECT count(*) AS n FROM {store._qs}.keel_query_roles WHERE tenant = ?", (RIVAL,))["n"] == 0
+    assert "RIVAL-SECRET" not in json.dumps(held.query("SELECT value FROM facts", limit=0) if _answers(held) else [])
+    for conn, _ in list(worker._query_conns.values()):
+        conn.close()
+    PostgresStore.from_url(store._dsn)._query_setup()
+    assert role not in roles()
+
+
+def _answers(t: Any) -> bool:
+    try:
+        t.query("SELECT 1 AS one")
+        return True
+    except ValueError:
+        return False

@@ -344,9 +344,26 @@ class PostgresStore(SqlStore):
             bound = {r["role"] for r in self._rows(f"SELECT role FROM {self._qs}.keel_query_roles WHERE tenant = ?", (tenant,))}
             self._exec(f"DELETE FROM {self._qs}.keel_query_roles WHERE tenant = ?", (tenant,))  # access ends here, whatever follows
             for role in sorted(bound | {self._role_name(tenant)}):
-                if self._one("SELECT 1 AS one FROM pg_roles WHERE rolname = ?", (role,)) is not None:
-                    self._exec('DROP ROLE "' + role.replace('"', '""') + '"')
+                self._drop_role(role, warn=True)
         return out
+
+    def _drop_role(self, role: str, warn: bool = False) -> bool:
+        """Drop a query role no tenant is bound to. While another worker's session holds it (its temporary views), it
+        cannot be dropped: it is left, reading nothing (no binding), for a later setup to drop."""
+        import psycopg
+
+        if self._one("SELECT 1 AS one FROM pg_roles WHERE rolname = ?", (role,)) is None:
+            return True
+        try:
+            self._exec('DROP ROLE "' + role.replace('"', '""') + '"')
+            return True
+        except psycopg.Error as exc:
+            if warn:
+                import warnings
+
+                warnings.warn(f"query role {role} is still in use and was left; it reads nothing and a later setup drops it "
+                              f"({q.clean_error(exc)})", RuntimeWarning, stacklevel=3)
+            return False
 
     def _role_name(self, tenant: str) -> str:
         """The tenant's login role: the whole SHA-256 of deployment and tenant (base32, 52 characters; 59 with the prefix,
@@ -392,6 +409,13 @@ class PostgresStore(SqlStore):
                 self._exec(f"CREATE ROLE {g} NOLOGIN")
             self._exec(f"GRANT USAGE ON SCHEMA {s} TO {g}")
             self._exec(f"GRANT SELECT ON {s}.keel_q_facts, {s}.keel_q_entities, {s}.keel_q_relations TO {g}")
+        # roles of this deployment left by a forget while a session held them: dropped once nothing does
+        members = self._rows("SELECT m.rolname AS role FROM pg_auth_members a JOIN pg_roles g ON g.oid = a.roleid "
+                             "JOIN pg_roles m ON m.oid = a.member WHERE g.rolname = ?", (group,))
+        bound = {r["role"] for r in self._rows(f"SELECT role FROM {s}.keel_query_roles")}
+        for r in members:
+            if r["role"] not in bound:
+                self._drop_role(r["role"])
         self._query_ready = (group, secret)
         return self._query_ready
 
