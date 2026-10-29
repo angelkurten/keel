@@ -170,3 +170,21 @@ def _quiet(t: Any, sql: str) -> None:
         t.query(sql)
     except ValueError:
         pass
+
+
+def test_the_row_check_wrapper_cannot_be_escaped(store):
+    """Second review q1/q2: the agent's text was pasted into the row-measuring wrapper with a first-word check only, so
+    `... ) AS keel_q UNION ALL SELECT * FROM (...` closed it early and a 300 MB value reached Keel unmeasured."""
+    import resource
+
+    c = cartridge()
+    t = Tools(c, store, TENANT, query=True)
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    for sql in ("SELECT repeat('x', 300000000) AS a\n) AS keel_q UNION ALL SELECT * FROM (SELECT 'y' AS a",
+                "SELECT 1 AS a) AS keel_q; SELECT 2 AS b --",
+                "SELECT 1 AS a /*"):
+        with pytest.raises(ValueError):
+            t.query(sql, limit=1)
+    assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 100 * 2**20
+    assert t.query("SELECT 1 AS a -- a trailing comment") == [{"a": 1}]
+    assert t.query("SELECT 1 AS a;") == [{"a": 1}]

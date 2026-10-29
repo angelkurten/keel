@@ -201,6 +201,7 @@ class PostgresStore(SqlStore):
         wrapped = (f"SELECT keel_q.* FROM ({body}\n) AS keel_q WHERE CASE WHEN octet_length(CAST(keel_q AS text)) > {q.ROW_MAX} "
                    f"THEN {self._qs}.keel_query_too_large() ELSE true END")
         with lock:
+            self._one_select(conn, body)  # parsed alone first: balanced, so the wrapper below cannot be closed early
             try:
                 conn.execute(f"SET LOCAL statement_timeout = {max(1, int(timeout * 1000))}")
                 cur = conn.cursor(name="keel_query")  # DECLARE ... CURSOR FOR: a SELECT, nothing else
@@ -219,6 +220,23 @@ class PostgresStore(SqlStore):
                 except psycopg.Error:  # the connection is gone: the next query opens another
                     self._drop_query_connection(tenant)
             return cols, got, more
+
+    @staticmethod
+    def _one_select(conn: Any, body: str) -> None:
+        """The agent's text, alone, must be exactly one statement that returns rows: the server parses it (a protocol
+        prepare, never run) and it is deallocated at once. Text that parses alone is balanced (parentheses, quotes,
+        comments), so pasted into the row-measuring wrapper it cannot close the wrapper and add a part of its own."""
+        from psycopg import pq
+
+        pg, name = conn.pgconn, b"keel_query_check"
+        res = pg.prepare(name, body.encode())
+        if res.status != pq.ExecStatus.COMMAND_OK:
+            raise ValueError(f"query failed: {q.clean_error(Exception((res.error_message or b'').decode(errors='replace')))}")
+        try:
+            if pg.describe_prepared(name).nfields == 0:
+                raise ValueError("query reads only: one SELECT (or WITH ... SELECT) statement over the generated views")
+        finally:
+            pg.exec_(b"DEALLOCATE keel_query_check")
 
     @property
     def _qs(self) -> str:
