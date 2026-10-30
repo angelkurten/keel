@@ -60,5 +60,5 @@ def test_a_relation_linked_again_by_every_event_stays_cheap_in_order():
     s = SqliteStore()
     start = time.perf_counter()
     Ingestor(load_cartridge(FLEET), s).ingest(events, strict=True, batch=5000)
-    assert time.perf_counter() - start < 3.0
+    assert time.perf_counter() - start < 8.0  # ~1.4 s alone; a 2-core CI runner under -n auto took 4.1 s
     assert [(r.valid_from, r.valid_to) for r in s.relations("t", "tire:T-9", rel="mounted_on")] == [(T0, None)]
