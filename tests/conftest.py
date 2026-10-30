@@ -71,6 +71,8 @@ def postgres_app_store(user: str = "keel_app", createrole: bool = True) -> Any:
 
     from keel.store.postgres import PostgresStore
 
+    user += f"_{WORKER}" if WORKER else ""  # roles are the cluster's: one user per xdist worker
+
     admin(f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{user}') THEN "
           f"CREATE ROLE {user} LOGIN {'CREATEROLE' if createrole else ''} PASSWORD 'apppw'; END IF; END $$")
     try:  # a database of its own (an empty public schema), the user owning only its schema in it
@@ -81,3 +83,16 @@ def postgres_app_store(user: str = "keel_app", createrole: bool = True) -> Any:
     s = PostgresStore.from_url(as_user(user, "apppw", f"{user}_db"))
     s._exec("TRUNCATE " + ", ".join(TABLES))
     return s
+
+
+WORKER = os.environ.get("PYTEST_XDIST_WORKER", "")  # gw0, gw1... under `pytest -n`
+if POSTGRES and WORKER:  # one database per worker: every test empties the tables it uses
+    import psycopg as _pg
+
+    _db = f"{urlparse(POSTGRES).path.lstrip('/')}_{WORKER}"
+    try:
+        admin(f"CREATE DATABASE {_db}")
+    except _pg.errors.DuplicateDatabase:
+        pass
+    POSTGRES = as_user(urlparse(POSTGRES).username, urlparse(POSTGRES).password, _db)
+    os.environ["KEEL_POSTGRES_URL"] = POSTGRES  # test modules read it when imported, after this file

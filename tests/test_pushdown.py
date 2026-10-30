@@ -211,6 +211,8 @@ def test_history_window_pushes_down_with_the_same_output(kind, name, tmp_path):
     windows = [(None, w[1]), (w[0], w[-1]), (w[1], w[-2]), (w[len(w) // 2], None), (w[2], w[2] + timedelta(days=7)), (sc.t_probe[0], sc.t_probe[2])]
     predicates = [None, "opinion", "label", *thin(sorted({f.predicate for f in sc.facts}), 2 if small else 4)]
     knowns = [None, *thin(sc.tx, 2 if small else 4), *sc.k_probe]
+    if kind != "sqlite":  # the whole grid on SQLite; every other known instant elsewhere, as in the where test
+        knowns = knowns[::2]
     for since, until in windows:
         for p in predicates:
             for k in knowns:
@@ -262,11 +264,13 @@ def test_search_where_pushes_down_with_the_same_output(kind, name, tmp_path):
     instants = [None, *thin(sc.world, 2 if small else 4), *sc.t_probe]
     knowns = [None, *thin(sc.tx, 2 if small else 3), *sc.k_probe]
     rng = random.Random(3)
+    grid = [(t, k) for t in instants for k in knowns]
     for where in wheres(sc):
         for ks in listings:
-            for t in instants:
-                for k in knowns:
-                    both(sc, lambda x: x.search(kind=ks, where=where, as_of=t, as_known_at=k, detail="key", limit=0), spy=spy)
+            # SQLite walks the whole (as_of, as_known_at) grid; DuckDB and Postgres share its SQL builder and take a
+            # seeded sample of 3 (a query costs them ~25x more)
+            for t, k in grid if kind == "sqlite" else rng.sample(grid, min(3, len(grid))):
+                both(sc, lambda x: x.search(kind=ks, where=where, as_of=t, as_known_at=k, detail="key", limit=0), spy=spy)
             t, k = rng.choice(instants), rng.choice(knowns)  # pages, counts and entities at one (t, k) per listing
             both(sc, lambda x: x.search(kind=ks, where=where, as_of=t, as_known_at=k, detail="count"), spy=spy)
             page = ask(lambda: sc.tools(sc.store).search(kind=ks, where=where, as_of=t, as_known_at=k, detail="key", limit=2))

@@ -200,7 +200,8 @@ def test_no_session_state_outlives_a_query(attacked):
         pytest.skip("Postgres sessions only")
     tools = tools_of(attacked)
     tools.query("SELECT pg_advisory_lock(7413) AS l, pg_advisory_lock(7414) AS m")
-    assert store._one("SELECT count(*) AS n FROM pg_locks WHERE locktype = 'advisory'")["n"] == 0
+    assert store._one("SELECT count(*) AS n FROM pg_locks WHERE locktype = 'advisory' AND database = "
+                      "(SELECT oid FROM pg_database WHERE datname = current_database())")["n"] == 0  # other xdist workers' are theirs
 
 
 def test_a_very_long_query_is_refused_before_it_runs(attacked):

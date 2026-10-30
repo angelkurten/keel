@@ -6,7 +6,7 @@ Keel is built in the open, part-time. Small, focused pull requests land fastest.
 
 ```bash
 uv sync --extra dev
-uv run pytest
+uv run pytest -n auto   # parallel (pytest-xdist); each worker gets its own Postgres database when KEEL_POSTGRES_URL is set
 uv run keel validate examples/fleet --events examples/fleet/events.jsonl && uv run keel validate examples/crm --events examples/crm/events.jsonl && uv run keel validate examples/finance --events examples/finance/events.jsonl && uv run keel validate examples/clinics --events examples/clinics/events.jsonl
 ```
 

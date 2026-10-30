@@ -13,6 +13,7 @@ from KEEL_POSTGRES_URL, as CI would: `app_store`).
 
 from __future__ import annotations
 
+import gc
 import hashlib
 import hmac
 import json
@@ -28,6 +29,7 @@ from conftest import postgres_app_store as app_store
 from test_query import RIVAL, SECRETS, TENANT, T, cartridge, populate
 
 from keel import Tools
+from keel.store.postgres import _b32
 
 POSTGRES = os.environ.get("KEEL_POSTGRES_URL")
 pytestmark = pytest.mark.skipif(not POSTGRES, reason="set KEEL_POSTGRES_URL")
@@ -64,10 +66,10 @@ def test_a_user_without_createrole_gets_a_clear_error_and_leaves_no_role():
     behind) and surfaced as a 500."""
     store = app_store("keel_weak", createrole=False)
     c = cartridge()
-    before = roles()
     with pytest.raises(ValueError, match="CREATEROLE"):
         Tools(c, store, TENANT, query=True).query("SELECT 1 AS one")
-    assert roles() == before
+    db, schema, user = (store._one("SELECT current_database() AS d, current_schema() AS s, current_user AS u")[k] for k in "dsu")
+    assert not {store._role_name(TENANT), "keel_q_g_" + _b32(f"{db}|{schema}|{user}")} & roles()  # other workers add theirs
 
 
 def test_tenants_cannot_see_or_signal_each_others_queries(store):
@@ -229,6 +231,7 @@ def test_a_role_is_never_repointed_to_another_tenant(store):
 
 def test_forget_drops_the_tenants_query_role_and_binding(store):
     """Second review (suspected): forget left the tenant's query role and its binding behind."""
+    gc.collect()  # an earlier test's store, unreferenced but not yet closed, would still hold the role
     c = cartridge()
     populate(store, c)
     Tools(c, store, RIVAL, query=True).query("SELECT 1 AS one")

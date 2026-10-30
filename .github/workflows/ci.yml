@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: uv sync --extra dev
       - run: uv run ruff check .
-      - run: uv run pytest -q
+      - run: uv run pytest -q -n auto
       - name: every cartridge validates against its stream
         run: |
           for c in fleet crm finance clinics; do
