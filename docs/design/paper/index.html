@@ -1,0 +1,1430 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/docs/design/paper/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Design note: the paper - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-note-the-paper" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design note: the paper
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first pilot in a day
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Send your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serve the tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../showcase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The support showcase
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-not-ours-to-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is not ours to claim
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-thesis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The thesis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claims-and-the-experiment-behind-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claims and the experiment behind each
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation protocol
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#week-2-the-jira-cartridge-and-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Week 2: the Jira cartridge and adapter
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#week-4-questions-and-gold-answers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Week 4: questions and gold answers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 4: questions and gold answers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#human-review-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Human review (2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#review-by-independent-judges-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Review by independent judges (2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#week-5-the-harness-keel-rag-the-products-api-closed-book" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Week 5: the harness (Keel, RAG, the product's API, closed book)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Week 5: the harness (Keel, RAG, the product&#39;s API, closed book)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#graphiti-and-mem0-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graphiti and Mem0 (2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-sixth-type-questions-over-the-whole-tenant-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A sixth type: questions over the whole tenant (2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-changes-after-the-pilot-2026-10-20-decided-with-angel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core changes after the pilot (2026-10-20, decided with Angel)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tgms-on-the-pilot-only-2026-10-20-decided-with-angel-no-budget-for-more" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TGMS, on the pilot only (2026-10-20, decided with Angel: no budget for more)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-full-run-plan-b-decided-with-angel-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The full run: plan B (decided with Angel, 2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-through-the-anthropic-endpoint-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude through the Anthropic endpoint (2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keel-runs-with-the-200-ceiling-decided-with-angel-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keel runs with the 200 ceiling (decided with Angel, 2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#claude-straight-from-anthropic-and-what-the-credit-buys-decided-with-angel-2026-10-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude straight from Anthropic, and what the credit buys (decided with Angel, 2026-10-20)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design-note-the-paper">Design note: the paper<a class="headerlink" href="#design-note-the-paper" title="Permanent link">&para;</a></h1>
+<p>Status: week 1 of 16 (plan at https://claude.ai/artifact/L1ZYTBKwJqx16z8uSKfyyZ). Decided 2026-10-20: a benchmark of our own over the Public Jira Dataset (MSR 2022, Zenodo, CC BY 4.0); five systems (Keel, RAG, the product's API as tools, Graphiti, Mem0); agents <code>openai/gpt-6-luna</code> and <code>anthropic/claude-haiku-5.5</code>; no judge (answers are structured and graded by exact match; decided in week 5); a preprint on arXiv in early February 2027; about 110–140 USD of API.</p>
+<h2 id="what-is-not-ours-to-claim">What is not ours to claim<a class="headerlink" href="#what-is-not-ours-to-claim" title="Permanent link">&para;</a></h2>
+<p>Related work already has these, so the paper cites them and builds on them:</p>
+<ul>
+<li><strong>A bitemporal store an agent can ask "what did we believe on date X"</strong>, with retract kept apart from correct: TGMS (arXiv 2607.10265, Apache-2.0), Zep/Graphiti (arXiv 2501.13956), TOKI (arXiv 2606.06240).</li>
+<li><strong>An append-only log as the truth, replayed to an identical state across backends</strong>: TGMS (Kùzu and DuckDB, byte-identical).</li>
+<li><strong>No LLM where facts become true; deterministic, bounded operators; MCP</strong>: TGMS.</li>
+<li><strong>Fewer prompt tokens because structure stays out of the context</strong>: TGMS (about 6.5k tokens per task against 32k for long-context RAG).</li>
+</ul>
+<h2 id="the-thesis">The thesis<a class="headerlink" href="#the-thesis" title="Permanent link">&para;</a></h2>
+<p>Agents inside a product should read the product's own events, compiled deterministically, instead of facts an LLM extracted from text. Every memory system we found builds memory from conversation; none builds it from a product's structured event log, and no study compares the two on cost, fidelity and reproducibility. The evidence so far is indirect: write-time extraction misses or garbles facts (HaluMem, arXiv 2511.03506: extraction recall under 60%; Ground Truth First, arXiv 2607.21962: questions backed by badly written facts fail 24.2% of the time against 1.6%), construction is slow (MemoryAgentBench: Mem0 up to 18,483 s to build memory, BM25 0.1 s), and LLM writers drift on replay (TOKI). Agents also find the new fact and still answer from the stale one (STALE, arXiv 2605.06527: Zep 6.0%, Mem0 8.3%).</p>
+<h2 id="claims-and-the-experiment-behind-each">Claims and the experiment behind each<a class="headerlink" href="#claims-and-the-experiment-behind-each" title="Permanent link">&para;</a></h2>
+<p><strong>C1. Deterministic ingest of product events is cheaper, more faithful and reproducible where LLM extraction is not.</strong>
+E1: ingest the same Jira events into Keel, Graphiti and Mem0 (extractor: GPT-6 Luna; one ablation with a stronger extractor). Per 1k events: LLM calls, tokens, dollars, wall time, failures and retries. Write fidelity: precision and recall of stored facts against the changelog, and the rate of facts no event supports. Determinism: ingest twice and once in shuffled arrival order, and diff the graphs. Keel's side needs no model; kagent's numbers (101k events in 8 s on MySQL) set the scale.</p>
+<p><strong>C2. That fidelity carries into answers, most of all on time.</strong>
+E2: about 300 questions generated from the changelog, gold computed by replay, in five types: current state, as of a valid time, as known at a recorded time (with injected late and corrected events), multi-hop over issue links, and rule verdicts (blocked, waiting, inherited pause, the rules kagent uses). Plus abstention questions and a closed-book baseline, since public Jira may be in the models' training data. Structured answers (status, assignee, dates, sets of issue keys) are graded by exact or set match; the judge grades only free text. Systems without a recorded-time axis are reported as "not supported" on as-known-at, not scored as failures.</p>
+<p><strong>C3. One domain-agnostic core serves different products, with the domain declared once.</strong>
+E3: the cartridges in <code>examples/</code> (fleet 193 lines, crm 85, finance 142, clinics 77, relay 219), the Jira cartridge and kagent in production, each with zero changes under <code>keel/</code>. E4: TGMS's correction-probe pairs on its own data (SNAP communication networks) through a cartridge, against TGMS's published numbers. Only the probes are comparable; Keel has no motif or reachability operators.</p>
+<p><strong>C4. Agents can write memory into the graph under policy the server enforces.</strong>
+TGMS leaves agent write-back open. Keel ships scoped <code>annotate</code> (global, tenant, task, agent), TTL and evidence rules, a per-agent registry, isolation per tenant, and annotations that survive replay. E5: property tests and an adversarial agent that tries to read another tenant, another agent's memory, or a kind it is not registered for; leakage reported as a count (expected 0).</p>
+<p><strong>C5 (secondary). How tool results are shaped is a cost and accuracy lever.</strong>
+Already measured (<code>evals/efficiency</code>, 0.31.0): tool-result tokens 45.2k to 12.3k on a fixed call set; Sonnet accuracy 0.90 to 0.98; DeepSeek Flash calls 10.4 to 5.7. In the paper: the brief/full and capped/uncapped ablations inside E2, framed as complementary to TGMS.</p>
+<h2 id="evaluation-protocol">Evaluation protocol<a class="headerlink" href="#evaluation-protocol" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Gold from the log, never from a model.</strong></li>
+<li><strong>Judge</strong>: a family neither agent belongs to. Two people label a stratified 20% per question type; report Cohen's kappa and judge-human agreement. Plant wrong answers, stale values on as-of questions among them, and report how many the judge accepts. LongMemEval's rule that a knowledge-update answer is correct while it still mentions the stale value does not apply.</li>
+<li><strong>Statistics</strong>: 3 runs per agent, system and type; bootstrap 95% intervals; paired tests.</li>
+<li><strong>Fair baselines</strong>: same extractor model for Graphiti and Mem0. Graphiti gets JSON episodes, the Jira ontology as Pydantic types, <code>reference_time</code> = <code>occurred_at</code>, one group per tenant, and we wait for its background processing before asking. Mem0 gets one <code>user_id</code> per tenant and timestamps as metadata. Versions pinned; configs and harness published; Zep and Mem0 get a review window before the preprint (the lesson of their LoCoMo dispute).</li>
+<li><strong>Read side</strong>: accuracy per type, tokens per answer (each model's tokenizer), tool calls and turns, p50/p95 latency from the same host for every system.</li>
+</ul>
+<h2 id="open">Open<a class="headerlink" href="#open" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The judge (DeepSeek V4 Pro 0813) is not confirmed.</li>
+<li>E1's write-fidelity scoring for Graphiti and Mem0 means mapping their stored facts back to changelog fields; it may add a week to the harness (weeks 5–7).</li>
+<li>E4 depends on TGMS's repo running as published.</li>
+<li>kagent promised <code>keel usage</code> around 2026-11-08: real usage for C3.</li>
+<li><strong>Transaction time from the envelope (decided 2026-10-20, core change).</strong> Until now stores stamped <code>recorded_at</code>, <code>closed_at</code> and link times with the ingest clock, so replay did not rebuild when Keel learned things and late arrivals could not be simulated. Now an event that declares <code>recorded_at</code> writes with it (the Ingestor wraps the store its handler gets); <code>changed_at</code>, a new ingest-clock column, carries the change feed and the watermark so a late event is still a new change. Determinism (E1) can now compare whole graphs, transaction time included; only <code>changed_at</code> and row ids differ between runs.</li>
+</ul>
+<h2 id="week-2-the-jira-cartridge-and-adapter">Week 2: the Jira cartridge and adapter<a class="headerlink" href="#week-2-the-jira-cartridge-and-adapter" title="Permanent link">&para;</a></h2>
+<p><code>evals/jira/</code>: <code>cartridge.yaml</code> and <code>handlers.py</code> (issues, projects, six link relations, three rules: blocked, stalled, urgent_unassigned; nulls are facts, so a rule can test "nobody assigned"), <code>adapt.py</code> (issues with changelogs in Jira's REST shape, JSON or the dataset's BSON, to events; values named by id as they are today, links recorded from their outward end, moved issues under their final key) and <code>check.py</code> (replay must end where Jira is today). On kagent's 359 cards: 2,341 events, no mismatch with Jira's current fields, the same file byte for byte on a second run.</p>
+<p>The tenants, one whole project per Jira instance (whole projects keep links inside the tenant), restored from the dataset's <code>mongodump</code> with <code>mongorestore --nsInclude</code> and exported with <code>mongoexport --jsonArray</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Tenant</th>
+<th>Project</th>
+<th>Span</th>
+<th>Issues</th>
+<th>Events</th>
+<th>Links</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>hyperledger</td>
+<td>INDY (Hyperledger Indy)</td>
+<td>2017-04 to 2020-11</td>
+<td>2,323</td>
+<td>18,036</td>
+<td>1,590 (relates, blocks, clones, duplicates)</td>
+</tr>
+<tr>
+<td>mariadb</td>
+<td>MXS (MaxScale)</td>
+<td>2014-01 to 2021-01</td>
+<td>3,333</td>
+<td>17,934</td>
+<td>805 (relates, blocks, duplicates)</td>
+</tr>
+<tr>
+<td>spring</td>
+<td>SEC (Spring Security)</td>
+<td>2005-06 to 2016-03</td>
+<td>3,150</td>
+<td>15,699</td>
+<td>630 (relates, duplicates, depends on)</td>
+</tr>
+</tbody>
+</table>
+<p>All three: no mismatch with Jira's current fields, and the same graph, transaction time included, in log order, reversed, and three shuffles (memory and SQLite in batches). Ingest takes 0.1–0.2 s per tenant in memory.</p>
+<p>Two core bugs surfaced on the way and are fixed, each with a conformance test: a close took the arriving fact's <code>recorded_at</code> instead of the later of the two (so a successor arriving first gave a different <code>closed_at</code>), and facts starting at the same instant (INDY-1393 moved to "To Test" twice in one second) were ordered by arrival, which left two open statuses. A predicate's history is now ordered by <code>valid_from</code>, then <code>recorded_at</code>, then evidence and value.</p>
+<h2 id="week-4-questions-and-gold-answers">Week 4: questions and gold answers<a class="headerlink" href="#week-4-questions-and-gold-answers" title="Permanent link">&para;</a></h2>
+<p><code>evals/jira/questions.py</code> fills templates with a fixed seed (7) and computes every gold answer with its own oracle, a walk over the log that imports nothing from Keel. 105 questions per tenant, 315 in all:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Per tenant</th>
+<th>What it asks</th>
+<th>Gold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>current</td>
+<td>20</td>
+<td>a field's value now</td>
+<td>value</td>
+</tr>
+<tr>
+<td>as_of</td>
+<td>25</td>
+<td>a field's value at an instant inside its history; in 80% the value is no longer current, so today's value does not pass for remembering</td>
+<td>value</td>
+</tr>
+<tr>
+<td>known_at</td>
+<td>25</td>
+<td>a field's value at an instant, as recorded by a later one, over the injected windows, before and after the record arrived</td>
+<td>value</td>
+</tr>
+<tr>
+<td>links</td>
+<td>15</td>
+<td>of the issues linked to one by a relation at an instant, which were done (or not) then</td>
+<td>sorted list of keys</td>
+</tr>
+<tr>
+<td>rule</td>
+<td>15</td>
+<td>blocked, stalled or urgent and unassigned at an instant, the definition in the question; yes and no balanced; Spring SEC has no blocks links, so its share goes to the other two</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>abstain</td>
+<td>5</td>
+<td>an issue that does not exist, or a field the tracker does not keep</td>
+<td>unknown</td>
+</tr>
+</tbody>
+</table>
+<p>Instants are whole minutes at least an hour from any change the question reads. <code>None</code> as a value means none (unassigned, unresolved). Statuses whose category no current issue shows (a migrated workflow: Spring's Open, Resolved, Reopened...) take it from a declared table of Jira's standard workflows (<code>FALLBACK_CATEGORIES</code> in adapt.py); without it, 61% of Spring's status events had none and its rules could not be evaluated over history.</p>
+<p><code>--check</code> answers every question with Keel's primitives directly, no agent: 315 of 315 agree. That is the ceiling an agent with Keel can reach, and the oracle and Keel checked against each other. Regenerating gives the same file.</p>
+<h3 id="human-review-2026-10-20">Human review (2026-10-20)<a class="headerlink" href="#human-review-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>Angel reviewed the 50-question sheet (<code>review-50.md</code>, stratified by tenant and type, drawn from the final questions) against the issues' history: all 50 ok.</p>
+<h3 id="review-by-independent-judges-2026-10-20">Review by independent judges (2026-10-20)<a class="headerlink" href="#review-by-independent-judges-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>Three agents, one per tenant, rebuilt the gold answer of 50 stratified questions (17, 17, 16) from the raw Jira export with code, never from the event log, so a bug shared by the adapter, the oracle and Keel could show. 46 ok, 3 ambiguous, 1 wrong. Fixed:</p>
+<ul>
+<li><strong>Wrong (an adapter bug):</strong> Jira can hold the same link twice (INDY-2293 linked INDY-2292 twice and removed it once; 58 duplicate adds in Hyperledger alone). The adapter treated links as a set, so one removal dropped a link that still existed. It now counts adds and removes, as kagent's exporter did. <code>check.py</code> now also compares each issue's open links with its current <code>issuelinks</code> (relates_to without direction, since Jira shows it outward on one end): no mismatch in the three tenants, 4 with the old adapter.</li>
+<li><strong>Ambiguous (rule wording):</strong> "stalled when it is in progress" tested the indeterminate category, which includes Confirmed (MariaDB) and Waiting for Feedback (Spring); MariaDB also has a status named Stalled. Rule and link questions now list the tenant's statuses that count as done or in progress, and the stalled rule is asked as "idle".</li>
+<li><strong>Abstentions on fields the raw tracker may hold</strong> (sprint, due date: MariaDB has 2,129 sprint changes) were unfair to systems that read raw Jira. Abstentions are now issues that never existed and issues asked about before they were created.</li>
+<li><strong>Link questions</strong> whose linked issues were all in one category made the done/not-done filter moot; now 80% have a mix.</li>
+</ul>
+<p>To state in the paper: a correction window's gold answer before the correction arrives is the injected wrong value, a value that never existed in Jira, by design. Jira's "includes" / "is part of" links map to relates_to. An issue moved to another project keeps its old key in the changelog and its new one in <code>issuelinks</code>, so a link to it can split across two keys; links outside the tenant are not asked about.</p>
+<p>Round two (24 new link, rule and abstain questions, same method): 24 ok; the three fixes hold. One more change from it: link questions ask only about the tenant's own issues (one asked about MDEV-20119, reached only through MXS issues' links).</p>
+<h2 id="week-5-the-harness-keel-rag-the-products-api-closed-book">Week 5: the harness (Keel, RAG, the product's API, closed book)<a class="headerlink" href="#week-5-the-harness-keel-rag-the-products-api-closed-book" title="Permanent link">&para;</a></h2>
+<p><code>evals/jira/bench.py</code>. Every system reads the same source, the tenant's log as written (each event with when it happened and when it was recorded, corrections included), in its best ordinary form: Keel's five tools through a real MCP session; RAG with one text record per event, both times in it, hybrid search (dense <code>text-embedding-3-small</code> at 512 dimensions plus BM25, fused by RRF) and an optional issue-key filter; a Jira-like API (<code>get_issue</code>, <code>get_changelog</code> with both times, <code>search_issues</code>); and no tools at all, a contamination control. Same model, same prompt but for the paragraph about the tools, temperature 0. The agent ends with <code>ANSWER: &lt;json&gt;</code>, graded by exact match after normalising (case, none/unassigned, sets of keys, yes/no), so <strong>no judge model is needed</strong>: every answer in this benchmark is structured. That drops the judge's cost and its bias, and the judge-validation step shrinks to checking the normaliser.</p>
+<p>Smoke run (Hyperledger, one question per type, 2026-10-20): Haiku 5.5 and DeepSeek V4.1 Flash 1017, 48 runs, 0.17 USD, every answer parseable. Keel, RAG and the API all answered the six correctly; closed book got only the abstention, so the models do not know these trackers from training. Six questions separate nothing; the differences will be in the full run and in cost (DeepSeek on RAG read 43k input tokens per question, on Keel 15k, on the API 3k).</p>
+<p><code>openai/gpt-6-luna</code> answers 401 through OfoxAI since 2026-10-20 (the gateway's OpenAI account is deactivated; embeddings still work). Agents: to be decided.</p>
+<h3 id="graphiti-and-mem0-2026-10-20">Graphiti and Mem0 (2026-10-20)<a class="headerlink" href="#graphiti-and-mem0-2026-10-20" title="Permanent link">&para;</a></h3>
+<p><code>evals/jira/memories.py</code>, pinned to releases at least two weeks old: graphiti-core 0.30.2 (0.31.x came out 2026-10-15 and 10-20) and mem0ai 2.2.1 with its <code>extras</code> (BM25 on). Configured as their guides say for an OpenAI-compatible provider (checked against their current docs): Graphiti with <code>OpenAIGenericClient</code> on Neo4j 5.26 (its Kuzu backend is deprecated and fails in 0.30.2); <code>json_object</code> structured output made Haiku add text after the JSON (5 failed calls in 29), the default <code>json_schema</code> had none. Mem0 with its openai LLM and embedder pointed at the gateway and Qdrant embedded on disk; its OSS SDK refuses a <code>timestamp</code>, so times travel in the text and metadata, as its guide does for dates.</p>
+<p>Ingest cost, measured per event with Haiku 5.5 as the extractor (12 events each):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>LLM calls</th>
+<th>Input tokens</th>
+<th>Output tokens</th>
+<th>Seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Graphiti</td>
+<td>3.3</td>
+<td>9,984</td>
+<td>432</td>
+<td>11.0</td>
+</tr>
+<tr>
+<td>Mem0</td>
+<td>1.0</td>
+<td>13,398</td>
+<td>427</td>
+<td>5.9</td>
+</tr>
+<tr>
+<td>Keel</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>~0.00001 (51,669 events in ~0.5 s)</td>
+</tr>
+</tbody>
+</table>
+<p>The whole log through Graphiti would be ~134 hours and ~46 USD. Both ingest the subset the questions touch (asked issues and their linked ones: 2,321 + 1,122 + 938 = 4,381 events), about 12 USD and 7 hours with the three tenants in parallel. That subset is less noise than the other systems read, which favours Graphiti and Mem0; <code>bench.py --subset</code> gives every system the same subset for a like-for-like table. Both systems run through the harness end to end (<code>search_memory</code>).</p>
+<p><strong>Agents confirmed (2026-10-20): <code>openai/gpt-6-luna</code> and <code>anthropic/claude-haiku-5.5</code></strong>, no judge (exact match). Luna answered again through OfoxAI the same evening; it is also the extractor for Graphiti and Mem0. Luna smoke run (Hyperledger, six questions): every answer parseable; on Keel 1.8 tool calls and 5.6k input tokens per question.</p>
+<p><strong>Pilot finding (2026-10-20):</strong> the blocked-rule question defined "blocked while an issue that blocks it is not done" and left out that the issue itself must not be done, which the rule and the gold require. Haiku on Keel answered MXS-1270 (closed at the time, its blocker open) by the definition as written, and said in its reply that Keel's rule evaluated false and why. The wording now states both conditions; the ten blocked questions keep their ids and gold, and their pilot runs are redone.</p>
+<p><strong>Pilot findings to act on before the full run (2026-10-20):</strong>
+- The API baseline's changelog lacked each issue's initial values (Jira's history shows them), so the API agent answered unknown to as_of questions whose answer was the initial status. Fixed (<code>4d782cd</code>); the API runs were redone.
+- Keel rejects times written as in the questions ("2016-09-14 07:38 UTC"): 3 of Haiku's 172 Keel calls failed on it, each costing a turn before the agent sent ISO 8601. Decided with Angel: accept that form in the core after the pilot and before the full run, rerun Keel there, and say so in the paper.</p>
+<h3 id="a-sixth-type-questions-over-the-whole-tenant-2026-10-20">A sixth type: questions over the whole tenant (2026-10-20)<a class="headerlink" href="#a-sixth-type-questions-over-the-whole-tenant-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>The pilot with Haiku on MariaDB saturated: Keel, RAG and the API each answered 105 of 105 (closed book 0 of 90, all "unknown"), and the API was the cheapest (3.2k input tokens a question against Keel's 7.5k; Keel the fastest, 7 s against 17 s). Every question so far names one issue, and for that a per-issue API is enough. Agents inside a product also ask about the whole project at once ("what is blocked today?"), a category the benchmark lacked; it is added, and the one-issue questions stay and are reported as they are.</p>
+<p><code>tenant</code>, 24 per tenant, appended last so the 315 earlier questions keep their text and gold (checked): which issues had a status at an instant (6), how many were in progress (4, a count), where a rule held (6), which changed a field in a window (4), and which had a status as recorded by a later instant (4, over an injected window). Instants keep an hour from every change in the tenant; set answers hold 1 to 41 keys. Keel's primitives agree on all 72 (<code>search(rule=, as_of=)</code> for the rule listings).</p>
+<p>Fairness: the API gets what Jira's JQL offers for history, <code>&lt;field&gt; WAS &lt;value&gt; ON &lt;instant&gt;</code> and <code>&lt;field&gt; CHANGED DURING (&lt;from&gt;, &lt;until&gt;)</code>, as filters on <code>search_issues</code>; with them it answers the 42 status, count and change questions exactly (checked without an agent). What neither the API nor Keel has a primitive for is reported as found: the API has no rule evaluation and no transaction time, and Keel's <code>search</code> has no <code>as_known_at</code> and no tenant-wide listing of changes in a world-time window.</p>
+<h3 id="core-changes-after-the-pilot-2026-10-20-decided-with-angel">Core changes after the pilot (2026-10-20, decided with Angel)<a class="headerlink" href="#core-changes-after-the-pilot-2026-10-20-decided-with-angel" title="Permanent link">&para;</a></h3>
+<p>From the pilot's Keel transcripts: agents copied times as the questions write them ("2016-09-14 07:38 UTC"), which Keel refused (3 of 172 calls); on tenant-wide questions they began by listing every issue with its facts (<code>search(kind="issue", detail="brief", limit=0)</code>, 80k to 250k tokens) to count or to orient, then made the right call (<code>search(where=..., as_of=...)</code>, 8 to 120 tokens); and <code>search</code> had no <code>as_known_at</code>, so a set "as recorded by K" was approximated. Changes, each with a conformance test, all reruns of Keel to come in the full run:</p>
+<ul>
+<li>Every time argument takes a trailing " UTC".</li>
+<li><code>search(detail="count")</code> returns <code>[{"count": n}]</code>, no cap, nothing listed.</li>
+<li><code>search(as_known_at=...)</code>, as <code>context</code> and <code>history</code> have it.</li>
+<li>A deployment's ceiling on one listing (<code>max_list</code>, <code>keel serve --max-list</code>), off by default: a report or an export may want everything, and the operator decides; the paper measures Keel with it off.</li>
+</ul>
+<p><strong>Extraction refused (2026-10-20).</strong> OpenAI's content filter (through OfoxAI) refused Mem0's extraction prompt for harmless Jira text: the same prompt passes on Haiku and DeepSeek, no single line of it is refused alone, and Mem0 carries its last 10 messages in every prompt, so one flagged record refused the next several. A burst of refusals then tripped the gateway's circuit breaker for Luna. Not to charge Mem0 (or Graphiti) for OpenAI's filter, a refused event is retried once with Haiku 5.5 (same price) after a 30 s cool-down and recorded as <code>fallback</code>; refused by both, it is recorded as not stored. The counts go in the paper: an LLM extraction pipeline can decline to store a record, which a deterministic one cannot.
+- <code>history()</code> with no subject and <code>since</code>/<code>until</code>: the tenant's facts that started in that world-time window (a fifth change, decided with Angel after the pilot showed Keel had no primitive for "which issues changed X between A and B": the agent dumped every issue, 245k tokens, and got 1 of 3). The four MariaDB change questions are answered by one such call each, 450 to 1,000 tokens, all correct (checked without an agent). The pilot's runs with the earlier Keel stay as the "before".</p>
+<h3 id="tgms-on-the-pilot-only-2026-10-20-decided-with-angel-no-budget-for-more">TGMS, on the pilot only (2026-10-20, decided with Angel: no budget for more)<a class="headerlink" href="#tgms-on-the-pilot-only-2026-10-20-decided-with-angel-no-budget-for-more" title="Permanent link">&para;</a></h3>
+<p>TGMS 0.8.0 (<code>evals/jira/tgms_system.py</code>) answered 18 of MariaDB's 24 tenant questions with Luna before the spending brake stopped it: 7 correct (39%), 1.22M input tokens a question on average (one question 4.4M), 2.22 USD for the 18 (the brake was 1.50; runs in flight finished). By subtype: status at an instant 4/6, counts 1/4, rule listings 1/6, changes 1/2. Keel with the 200 ceiling on the same questions: 22/24, 21k tokens a question. TGMS loads MariaDB in 2 s with no LLM, as Keel does; its cost is on the read side, its tools return large results. It is not run further (no Haiku, no other tenant, no full run) for lack of budget; the paper reports this pilot as a bounded comparison, says the load was ours (offered to its author for review), and that "as recorded by" questions cannot be answered natively by it.</p>
+<h3 id="the-full-run-plan-b-decided-with-angel-2026-10-20">The full run: plan B (decided with Angel, 2026-10-20)<a class="headerlink" href="#the-full-run-plan-b-decided-with-angel-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>Costs per question measured in the pilot, times 3 tenants and 2 agents (Luna, Haiku). Three repetitions where the comparison is close, one where the gap is far larger than run-to-run noise; confidence intervals by bootstrap over questions. MariaDB pilot runs of systems that did not change since count as their first repetition.</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Questions</th>
+<th>Reps</th>
+<th>USD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keel with --max-list 200</td>
+<td>one-issue and tenant</td>
+<td>3</td>
+<td>3.33</td>
+</tr>
+<tr>
+<td>API (JQL)</td>
+<td>one-issue and tenant</td>
+<td>3</td>
+<td>4.74</td>
+</tr>
+<tr>
+<td>RAG</td>
+<td>one-issue</td>
+<td>3</td>
+<td>1.06</td>
+</tr>
+<tr>
+<td>RAG</td>
+<td>tenant</td>
+<td>1</td>
+<td>6.57</td>
+</tr>
+<tr>
+<td>Keel without a ceiling (ablation, Luna only)</td>
+<td>tenant</td>
+<td>1</td>
+<td>0.98</td>
+</tr>
+<tr>
+<td>Graphiti, Mem0</td>
+<td>one-issue</td>
+<td>1</td>
+<td>0.70</td>
+</tr>
+<tr>
+<td>Closed book</td>
+<td>all</td>
+<td>1</td>
+<td>0.10</td>
+</tr>
+</tbody>
+</table>
+<p>About 18 USD, plus ~4 USD to finish the Graphiti and Mem0 ingests; ~10.5 USD spent by 2026-10-20 (TGMS 2.22 of it, not run further). Plan A (three repetitions of everything) was 39.60 USD; plan C (one of everything) 13.20.</p>
+<h3 id="claude-through-the-anthropic-endpoint-2026-10-20">Claude through the Anthropic endpoint (2026-10-20)<a class="headerlink" href="#claude-through-the-anthropic-endpoint-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>OfoxAI stopped serving Claude on its OpenAI-compatible endpoint on 2026-10-20 (<code>protocol_not_supported</code>). The harness now sends <code>anthropic/*</code> models to the gateway's Anthropic messages endpoint with the same system prompt, turns and tools, thinking off (<code>evals/efficiency/run.py</code>, <code>to_anthropic</code>/<code>from_anthropic</code>). The pilot's Haiku "before" rows went through the OpenAI endpoint; every Haiku row of the full run goes through the Anthropic one, so the paper compares Haiku runs from one route only. The gateway bills a Claude prompt above 100K input tokens at 5x, and the cost accounting does too. A 429 now waits the gateway's <code>retry-after</code> (at least 1 s) or 1–3 s with jitter; only an outage waits long.</p>
+<h3 id="keel-runs-with-the-200-ceiling-decided-with-angel-2026-10-20">Keel runs with the 200 ceiling (decided with Angel, 2026-10-20)<a class="headerlink" href="#keel-runs-with-the-200-ceiling-decided-with-angel-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>In the MariaDB pilot the ceiling kept accuracy and cut cost: on the tenant questions Haiku answered 10/12 uncapped (1.82 USD, 311k tokens a question; two runs overflowed its context) and 10/12 with <code>--max-list 200</code> (0.07 USD, 53k tokens; both misses were reasoning over correct data); Luna 23/24 uncapped, 22/24 capped (24/24 in content). Uncapped, a single listing reached 257k tokens and the gateway's 5x rate for Claude prompts above 100K made three questions cost 1.80 USD. So the full run uses the ceiling (the bench's default, <code>--keel-max-list 200</code>); the uncapped ablation runs with Luna only (<code>--keel-max-list 0</code>), and Haiku uncapped is reported from the 12 pilot rows. Keel's per-question costs from the pilot: Luna 0.0005 USD one-issue and 0.0025 tenant; Haiku 0.0010 and 0.0060. Haiku's costs for the other systems were measured on the OpenAI route, without the 5x rate, so the full run sets <code>--max-usd</code> per invocation.</p>
+<h3 id="claude-straight-from-anthropic-and-what-the-credit-buys-decided-with-angel-2026-10-20">Claude straight from Anthropic, and what the credit buys (decided with Angel, 2026-10-20)<a class="headerlink" href="#claude-straight-from-anthropic-and-what-the-credit-buys-decided-with-angel-2026-10-20" title="Permanent link">&para;</a></h3>
+<p>Angel has 100 USD of Anthropic credit, usable only for Claude. Three uses, all approved:</p>
+<ol>
+<li><strong>Every Haiku run goes to Anthropic directly</strong>, not through OfoxAI: the gateway's Claude access failed twice on 2026-10-20, its Anthropic endpoint is served from Bedrock, and its 100 requests a minute are shared with Graphiti and Luna. The Gateway takes this route whenever <code>ANTHROPIC_API_KEY</code> or <code>~/.anthropic_key</code> is set (run with <code>--with anthropic</code>), through the official SDK; each result records its <code>route</code>. Same list prices as the gateway (Haiku 0.10/0.50 USD per million, five times above 100K prompt tokens); the conversation is cached, so each turn's resent history is billed at 0.1x. Straight from Anthropic, Haiku 5.5 and Sonnet 5.5 refuse a non-default temperature, so their runs use the default; Sonnet turns thinking off with <code>between_tools</code>, Haiku with <code>disabled</code>.</li>
+<li><strong>Haiku moves from plan B to plan A</strong>: three repetitions of every system, for narrower intervals.</li>
+<li><strong>A frontier subset with Sonnet 5.5</strong> (2/10 USD per million): the tenant questions, Keel with the 200 ceiling and the API, one repetition, three tenants, about 25–30 USD. RAG is left out at that price. It answers the "no frontier model" limitation.</li>
+</ol>
+<p>Expected draw on the credit: about 45–55 USD. Luna stays on OfoxAI.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

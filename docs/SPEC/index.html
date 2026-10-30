@@ -1,0 +1,2564 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/docs/SPEC/">
+      
+      
+        <link rel="prev" href="../operate/">
+      
+      
+        <link rel="next" href="../roadmap/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Specification - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#keel-specification" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Specification
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first pilot in a day
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Send your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serve the tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope-and-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope and terms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-event-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Event envelope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-graph-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Graph model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Graph model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-entity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Entity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-relation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Relation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Fact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-store-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Store protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-ingestion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Ingestion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Ingestion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Adapters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-handlers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Handlers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cartridge-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cartridge format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cartridge format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-cartridgeyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 cartridge.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-handlerspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 handlers.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-validation-keel-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Validation (keel validate)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-rules-semantic-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Rules (semantic layer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-payload-notation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Payload notation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-the-generality-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 The generality test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-memory-scopes-and-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Memory scopes and policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Memory scopes and policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-agent-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Agent registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-tools-five-core-one-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. The tools: five core, one optional
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. The tools: five core, one optional">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-contextsubject-as_ofnone-depth0-as_known_atnone-tasknone-detailfull-excludenone-onlynone-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 context(subject, as_of=None, depth=0, as_known_at=None, task=None, detail="full", exclude=None, only=None) -&gt; object
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-historysubjectnone-sincenone-untilnone-predicatenone-scopenone-as_known_atnone-tasknone-changed_sincenone-limit50-detailfull-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None, limit=50, detail="full") -&gt; [Fact]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-searchtext-kindnone-or-a-list-rulenone-limitnone-afternone-modetext-min_scorenone-related_tonone-vianone-detailentity-depth0-per_kindnone-excludenone-as_ofnone-wherenone-as_known_atnone-entity-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 search(text="", kind=None (or a list), rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None, detail="entity", depth=0, per_kind=None, exclude=None, as_of=None, where=None, as_known_at=None) -&gt; [Entity | Fact]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-annotatesubject-predicate-value-scopetask-evidencenone-bynone-tasknone-keynone-statusnone-detailfull-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None, status=None, detail="full") -&gt; Fact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-relatedsubject-relationnone-as_ofnone-depth1-limit50-relation-direction-subject-since" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 related(subject, relation=None, as_of=None, depth=1, limit=50) -&gt; [{relation, direction, subject, since}]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-two-time-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 Two time axes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#77-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.7 Transport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#78-querysql-limitnone-row-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.8 query(sql, limit=None) -&gt; [row] (optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-invariants-what-a-conformance-test-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Invariants (what a conformance test checks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/hosted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/showcase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The support showcase
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope-and-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope and terms
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-event-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Event envelope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-graph-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Graph model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Graph model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-entity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Entity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-relation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Relation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Fact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-store-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Store protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-ingestion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Ingestion
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Ingestion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Adapters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-handlers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Handlers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cartridge-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cartridge format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cartridge format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-cartridgeyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 cartridge.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-handlerspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 handlers.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-validation-keel-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Validation (keel validate)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-rules-semantic-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Rules (semantic layer)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-payload-notation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Payload notation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-the-generality-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 The generality test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-memory-scopes-and-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Memory scopes and policy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Memory scopes and policy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-agent-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Agent registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-tools-five-core-one-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. The tools: five core, one optional
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. The tools: five core, one optional">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-contextsubject-as_ofnone-depth0-as_known_atnone-tasknone-detailfull-excludenone-onlynone-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 context(subject, as_of=None, depth=0, as_known_at=None, task=None, detail="full", exclude=None, only=None) -&gt; object
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-historysubjectnone-sincenone-untilnone-predicatenone-scopenone-as_known_atnone-tasknone-changed_sincenone-limit50-detailfull-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None, limit=50, detail="full") -&gt; [Fact]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-searchtext-kindnone-or-a-list-rulenone-limitnone-afternone-modetext-min_scorenone-related_tonone-vianone-detailentity-depth0-per_kindnone-excludenone-as_ofnone-wherenone-as_known_atnone-entity-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 search(text="", kind=None (or a list), rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None, detail="entity", depth=0, per_kind=None, exclude=None, as_of=None, where=None, as_known_at=None) -&gt; [Entity | Fact]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-annotatesubject-predicate-value-scopetask-evidencenone-bynone-tasknone-keynone-statusnone-detailfull-fact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None, status=None, detail="full") -&gt; Fact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-relatedsubject-relationnone-as_ofnone-depth1-limit50-relation-direction-subject-since" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 related(subject, relation=None, as_of=None, depth=1, limit=50) -&gt; [{relation, direction, subject, since}]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-two-time-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 Two time axes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#77-transport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.7 Transport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#78-querysql-limitnone-row-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.8 query(sql, limit=None) -&gt; [row] (optional)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Jobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-invariants-what-a-conformance-test-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Invariants (what a conformance test checks)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="keel-specification">Keel specification<a class="headerlink" href="#keel-specification" title="Permanent link">&para;</a></h1>
+<p>Version 0.35 · 2026-10-29 · Status: normative for the 0.35.x line; anything marked <em>planned</em> is not implemented yet.</p>
+<p>This document is the contract. <code>CLAUDE.md</code> says how to work on the code; <code>README.md</code> says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.</p>
+<p>The key words MUST, MUST NOT, SHOULD and MAY are used as in RFC 2119.</p>
+<hr />
+<h2 id="1-scope-and-terms">1. Scope and terms<a class="headerlink" href="#1-scope-and-terms" title="Permanent link">&para;</a></h2>
+<p>Keel is a context layer for the AI agents inside a product: a vertical SaaS, a consumer app, an internal tool. It turns <strong>domain events</strong> into a <strong>bitemporal context graph</strong> per <strong>tenant</strong>, declared by a <strong>cartridge</strong>, and exposes it to agents through <strong>five tools</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Product</strong></td>
+<td>What runs Keel: a SaaS, a consumer app, an internal tool. Has its own database and its own tenants.</td>
+</tr>
+<tr>
+<td><strong>Tenant</strong></td>
+<td>The product's unit of data: one end-customer of a SaaS, a household, a team. Every graph is partitioned by tenant.</td>
+</tr>
+<tr>
+<td><strong>Event</strong></td>
+<td>A fact that happened in the product, with world time and source, in the standard envelope (§2).</td>
+</tr>
+<tr>
+<td><strong>Subject</strong></td>
+<td>The entity an event or fact is about, as <code>&lt;kind&gt;:&lt;id&gt;</code>.</td>
+</tr>
+<tr>
+<td><strong>Entity</strong></td>
+<td>A node in the graph: a kind, an id, a pointer (<code>ref</code>) to the system of record, and a few label attributes.</td>
+</tr>
+<tr>
+<td><strong>Relation</strong></td>
+<td>A typed, time-bounded edge between two entities.</td>
+</tr>
+<tr>
+<td><strong>Fact</strong></td>
+<td>A time-bounded (predicate, value) about a subject, with provenance.</td>
+</tr>
+<tr>
+<td><strong>Cartridge</strong></td>
+<td>The declaration of a domain: ontology, event catalog, handlers, rules, memory policy (§5).</td>
+</tr>
+<tr>
+<td><strong>Handler</strong></td>
+<td>Cartridge code that maps one event type's payload to store primitives (§4).</td>
+</tr>
+<tr>
+<td><strong>Scope</strong></td>
+<td>The sharing level of a fact: global, tenant, task, agent (§6).</td>
+</tr>
+<tr>
+<td><strong>Tool</strong></td>
+<td>One of the five operations agents use to read and write the graph (§7).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-event-envelope">2. Event envelope<a class="headerlink" href="#2-event-envelope" title="Permanent link">&para;</a></h2>
+<p>Every event, from any adapter, MUST be an envelope with these fields.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Req.</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>no</td>
+<td>The source's own id when it has one. Otherwise a content hash of tenant, type, subject, occurred_at, source and payload, so the same stream yields the same ids on replay and a duplicate is recognizable. Used as <code>evidence</code> on derived facts.</td>
+</tr>
+<tr>
+<td><code>tenant</code></td>
+<td>string</td>
+<td>yes</td>
+<td>Tenant key. Opaque to Keel.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>string</td>
+<td>yes</td>
+<td>Dotted lowercase event type from the cartridge catalog, e.g. <code>inspection.created</code>.</td>
+</tr>
+<tr>
+<td><code>subject</code></td>
+<td>string</td>
+<td>yes</td>
+<td><code>&lt;kind&gt;:&lt;id&gt;</code>. <code>kind</code> MUST be an entity kind declared in the cartridge.</td>
+</tr>
+<tr>
+<td><code>occurred_at</code></td>
+<td>datetime (tz-aware)</td>
+<td>yes</td>
+<td>When it happened in the world. Valid time.</td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td>datetime (tz-aware)</td>
+<td>no</td>
+<td>When the source recorded it: transaction time. When the event declares it, what its handler writes carries it (a replay rebuilds the same history, a late event keeps its own time); when it does not, it defaults to now (UTC) and the facts carry the time they are ingested.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>string</td>
+<td>yes</td>
+<td>System of record or adapter, e.g. <code>fleet.vehicles</code>, <code>webhook:telematics</code>.</td>
+</tr>
+<tr>
+<td><code>payload</code></td>
+<td>object</td>
+<td>no</td>
+<td>Event-specific data. The core MUST NOT read it. Only handlers do.</td>
+</tr>
+</tbody>
+</table>
+<p>Rules:</p>
+<ul>
+<li>A naive datetime is UTC, wherever a time enters: the envelope (a naive datetime never reaches a handler), the store primitives and every time argument of the tools.</li>
+<li><code>occurred_at</code> MAY be in the past relative to earlier events (late-arriving data). Handlers MUST use <code>occurred_at</code> as <code>valid_from</code>, never <code>recorded_at</code>.</li>
+<li>Envelopes are immutable. An error in an event is corrected by a later event or by an <code>annotate</code> with <code>corrected_by</code>, never by editing the log.</li>
+<li>Serialized form is JSON, one object per event. The reference development adapter reads one envelope per line (<code>.jsonl</code>), ignoring blank lines and lines starting with <code>#</code>.</li>
+</ul>
+<hr />
+<h2 id="3-graph-model">3. Graph model<a class="headerlink" href="#3-graph-model" title="Permanent link">&para;</a></h2>
+<p>The store holds three kinds of records, each partitioned by <code>tenant</code>. There is no record that spans tenants.</p>
+<h3 id="31-entity">3.1 Entity<a class="headerlink" href="#31-entity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant</code></td>
+<td>string</td>
+<td>Partition key.</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td>string</td>
+<td>Entity kind from the cartridge ontology.</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>Id within the kind. <code>key</code> = <code>&lt;kind&gt;:&lt;id&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>ref</code></td>
+<td>string?</td>
+<td>Pointer to the row in the system of record (<code>&lt;source&gt;#&lt;id&gt;</code> by convention).</td>
+</tr>
+<tr>
+<td><code>attrs</code></td>
+<td>object</td>
+<td>Label attributes a tool needs to show the entity (plate, name). Never a copy of the row.</td>
+</tr>
+</tbody>
+</table>
+<p><code>upsert_entity</code> creates or updates in place. Entities are not bitemporal; their history is carried by facts and relations.</p>
+<h3 id="32-relation">3.2 Relation<a class="headerlink" href="#32-relation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant</code>, <code>src</code>, <code>rel</code>, <code>dst</code></td>
+<td>string</td>
+<td>Edge from entity key <code>src</code> to entity key <code>dst</code> of type <code>rel</code>.</td>
+</tr>
+<tr>
+<td><code>valid_from</code></td>
+<td>datetime</td>
+<td>World time the relation started.</td>
+</tr>
+<tr>
+<td><code>valid_to</code></td>
+<td>datetime?</td>
+<td>World time it ended. <code>null</code> = open.</td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td>datetime</td>
+<td>When Keel learned it: the event's declared <code>recorded_at</code>, else when it was ingested.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>string?</td>
+<td>Provenance.</td>
+</tr>
+<tr>
+<td><code>changed_at</code></td>
+<td>datetime?</td>
+<td>Bookkeeping: the ingest clock of the link or unlink, the cursor of <code>relation_changes</code>.</td>
+</tr>
+<tr>
+<td><code>closed_at</code></td>
+<td>datetime?</td>
+<td>Transaction time of the unlink: when Keel learned <code>valid_to</code> (the event's declared <code>recorded_at</code>, else when it was ingested). <code>as_known_at</code> counts the unlink only from then.</td>
+</tr>
+</tbody>
+</table>
+<p><code>link</code> is idempotent on an open edge with the same <code>(src, rel, dst)</code>. <code>unlink</code> closes the open edge by setting <code>valid_to</code> and <code>closed_at</code>. Edges are never deleted.</p>
+<h3 id="33-fact">3.3 Fact<a class="headerlink" href="#33-fact" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tenant</code>, <code>subject</code></td>
+<td>string</td>
+<td>Partition and entity key.</td>
+</tr>
+<tr>
+<td><code>predicate</code></td>
+<td>string</td>
+<td>What is asserted, e.g. <code>depth_mm</code>, <code>status</code>, <code>damage:D2</code>.</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>any JSON</td>
+<td>The asserted value.</td>
+</tr>
+<tr>
+<td><code>valid_from</code></td>
+<td>datetime</td>
+<td>World time the fact became true.</td>
+</tr>
+<tr>
+<td><code>valid_to</code></td>
+<td>datetime?</td>
+<td>World time it stopped being true. <code>null</code> = open.</td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td>datetime</td>
+<td>When Keel learned it: the event's declared <code>recorded_at</code>, else when it was ingested (or when <code>annotate</code> wrote it).</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td>string?</td>
+<td>Adapter or <code>annotate:&lt;by&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>scope</code></td>
+<td>enum</td>
+<td><code>global</code>, <code>tenant</code>, <code>task</code>, <code>agent</code> (§6). Default <code>tenant</code>.</td>
+</tr>
+<tr>
+<td><code>evidence</code></td>
+<td>string?</td>
+<td>Event id, row ref, photo URL or other pointer that justifies the fact.</td>
+</tr>
+<tr>
+<td><code>corrected_by</code></td>
+<td>string?</td>
+<td>A person or agent id when the fact is a correction or an annotation.</td>
+</tr>
+<tr>
+<td><code>expires_at</code></td>
+<td>datetime?</td>
+<td>Memory lifetime (not world time). Set from the scope's TTL, or to the close time when its task closes.</td>
+</tr>
+<tr>
+<td><code>closed_at</code></td>
+<td>datetime?</td>
+<td>Transaction time of the close: when Keel learned <code>valid_to</code>. With <code>recorded_at</code> it makes "as known at" queries possible.</td>
+</tr>
+<tr>
+<td><code>changed_at</code></td>
+<td>datetime?</td>
+<td>Bookkeeping, never a query time: the ingest clock of the fact's last write (open or close), the cursor of <code>changes</code> and the watermark. An event declaring an old <code>recorded_at</code> is still a new change. Not in tool answers.</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td>string?</td>
+<td>The job a task-scope annotation belongs to (<code>annotate(task=)</code>).</td>
+</tr>
+<tr>
+<td><code>idempotency_key</code></td>
+<td>string?</td>
+<td><code>annotate(key=)</code>: a retried write with the same key returns this fact. A key is its author's: <code>annotate</code> stores it as <code>annotate:&lt;author&gt;/&lt;key&gt;</code>, so another author's key never finds or returns this fact.</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td>string?</td>
+<td><code>null</code> = accepted (the truth rules and <code>context.facts</code> read); <code>proposed</code> = waiting for a decision; <code>rejected</code> = a decision, closed at once.</td>
+</tr>
+<tr>
+<td><code>trace</code></td>
+<td>string?</td>
+<td>The caller's W3C <code>traceparent</code> and tool call id at write time (HTTP <code>traceparent</code> / <code>X-Keel-Tool-Call</code> headers, MCP <code>_meta</code>), so a Langfuse or LangSmith trace joins the audit export.</td>
+</tr>
+<tr>
+<td><code>cartridge</code></td>
+<td>string?</td>
+<td>Annotations and consolidations: the cartridge they were made under, <code>name@version#rules</code> (<code>Cartridge.ident</code>; the hash covers the rules and the calendar, so a rule edited without bumping <code>version</code> still shows). To replay a decision under its rules, check out that cartridge and replay the log. Facts from events leave it empty: the event log is their record.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bitemporal rule.</strong> <code>open_fact(subject, predicate, value, valid_from)</code> MUST place the new fact in the predicate's history by <code>valid_from</code>: it closes the fact current at that instant (<code>valid_to = valid_from</code>) and, when a later fact already exists, closes itself at that fact's start. Arrival order does not change the result (§4). Facts that start at the same instant follow one another by <code>recorded_at</code>, then by evidence and value. <code>recorded_at</code> is the event's own when its source declares one, so the history is then the same in any arrival order; when the source declares none it is the ingest clock, which is when Keel did learn it, and two such facts at one instant follow the order they were ingested in. A source that can deliver out of order and has same-instant changes should declare <code>recorded_at</code>. A predicate's history is one slot per memory scope: a fact never closes one of another scope, so a private note does not end a shared diagnosis and a promotion leaves the narrower fact to its own lifetime. Task memory has one slot per task, agent memory one per writing agent, and with <code>per_source=True</code> (multi-valued predicates and proposals) one per author. Facts are never mutated or deleted by handlers.</p>
+<p><strong>Explicit closes.</strong> <code>close_fact(subject, predicate, valid_to)</code> is part of the predicate's history too: the store keeps it as a close mark (a row with <code>source</code> <code>keel:close</code> that no read returns) and it ends every fact of its predicate, status and scope (any author) that started before <code>valid_to</code> and still runs through it, including a fact that arrives later. With <code>value=v</code> it ends only facts whose value is <code>v</code>, so the end of one term never ends an overlapping later one. At one instant the close goes first: a close never ends a fact that starts at its own <code>valid_to</code> (closing a term and opening the next at one instant leaves the next open, even with the same value), so it never leaves an empty fact. As with <code>open_fact</code>, arrival order does not change the result. <code>scope=None</code> (every scope, how a decision settles proposals) closes only what is open at the call and takes no <code>value</code>. The store MAY physically drop facts whose <code>expires_at</code> has passed (consolidation, §8).</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant H as Handler
+    participant S as Store
+    participant Q as Tool
+    H-&gt;&gt;S: open_fact(tire:T-9001, depth_mm, 5.2, valid_from=Sep 10)
+    Note over S: depth_mm=5.2 valid [Sep 10, open)
+    H-&gt;&gt;S: open_fact(tire:T-9001, depth_mm, 2.6, valid_from=Oct 3)
+    Note over S: close 5.2 with valid_to=Oct 3, append 2.6 valid [Oct 3, open)
+    Q-&gt;&gt;S: facts(at=Sep 20)
+    S--&gt;&gt;Q: depth_mm=5.2
+    Q-&gt;&gt;S: facts(at=now)
+    S--&gt;&gt;Q: depth_mm=2.6</code></pre>
+<p><strong>Queries the store MUST answer:</strong></p>
+<ul>
+<li>facts true <strong>at</strong> a world time <code>t</code>: <code>valid_from &lt;= t &lt; valid_to</code> (or open).</li>
+<li>facts <strong>between</strong> <code>since</code> and <code>until</code> (overlap).</li>
+<li>facts <strong>as known at</strong> a transaction time <code>t</code> (<code>facts(known_at=t)</code>): recorded by <code>t</code>, with closes counted only when <code>closed_at &lt;= t</code> (§7.6).</li>
+</ul>
+<p><strong>Values are for what a tool compares or shows.</strong> A long text (a comment body, a description, a document) belongs in the system of record: store a short label or a classification as the value and the pointer as <code>evidence</code> or in the entity's <code>ref</code>, not the text itself. The graph holds pointers and semantics (design rule 2).</p>
+<h3 id="34-store-protocol">3.4 Store protocol<a class="headerlink" href="#34-store-protocol" title="Permanent link">&para;</a></h3>
+<p>Writes (the only write path; handlers call these and nothing else):</p>
+<div class="highlight"><pre><span></span><code>upsert_entity(tenant, kind, id, ref=None, **attrs) -&gt; Entity
+link(tenant, src, rel, dst, valid_from, source=None, recorded_at=None) -&gt; Relation
+unlink(tenant, src, rel, dst, valid_to, recorded_at=None) -&gt; None
+open_fact(tenant, subject, predicate, value, valid_from, **provenance) -&gt; Fact
+close_fact(tenant, subject, predicate, valid_to, status=None, scope="tenant", recorded_at=None, value=ANY) -&gt; None
+    # status: only proposals, or only rejections; scope: only that scope's facts (None: every scope).
+    # The tenant default is what a handler means: it never closes agent or task memory.
+    # value: only facts with that value (§3.3, explicit closes).
+</code></pre></div>
+<p><code>recorded_at</code> (on <code>link</code>, <code>close_fact</code>, and <code>open_fact</code>'s provenance) is the transaction time to write, <code>closed_at</code> for a close; <code>None</code> is now. Handlers do not pass it: for an event that declares <code>recorded_at</code>, the Ingestor hands its handler a store that fills it in, so the whole event is learned at the source's time. Every write also stamps <code>changed_at</code> from the ingest clock (§3.2, §3.3).</p>
+<p><code>open_fact</code> provenance keywords: <code>source</code>, <code>scope</code>, <code>evidence</code>, <code>corrected_by</code>, <code>expires_at</code>, <code>recorded_at</code>, <code>task</code>, <code>idempotency_key</code>, <code>status</code>, <code>trace</code>, <code>cartridge</code>, and <code>per_source</code> (one history per author, §3.3). A store MUST reject a second fact with the same <code>idempotency_key</code> on a subject by raising <code>DuplicateKey</code> (carrying the fact already written), atomically, so two writers racing on one key write once; the SQL stores do it with a unique index.</p>
+<p>Reads:</p>
+<div class="highlight"><pre><span></span><code>entity(tenant, key) -&gt; Entity | None
+facts(tenant, subject, at=None, since=None, until=None, known_at=None) -&gt; [Fact]
+entities(tenant, kind=None) -&gt; [Entity]
+relations(tenant, key, rel=None, at=None) -&gt; [Relation]
+search(tenant, text) -&gt; [Entity | Fact]
+changes(tenant, after) -&gt; [Fact]               # written (changed_at) after a watermark, oldest change first
+watermark(tenant) -&gt; datetime | None           # optional: latest changed_at of facts and relations
+relation_changes(tenant, after) -&gt; [Relation]  # optional: links and unlinks after a watermark (keel index)
+facts_of(tenant, subjects, **filters) -&gt; {subject: [Fact]}   # optional: facts() for many subjects at once
+entities_of(tenant, keys) -&gt; {key: Entity | None}           # optional: entity() for many keys at once
+relations_of(tenant, keys, at=None) -&gt; {key: [Relation]}    # optional: relations() for many keys at once
+</code></pre></div>
+<p><code>Tools</code> calls <code>entities</code> and <code>changes</code> on every store. <code>known_at</code> is passed only when a caller asks for transaction time, so a store without it still serves every other read. Global-scope memory is stored under the reserved tenant <code>__global__</code>, or <code>&lt;account&gt;/__global__</code> for a tenant <code>&lt;account&gt;/&lt;t&gt;</code> (§6); a store needs nothing special for it. API keys (optional, for the HTTP transport): <code>put_key(ApiKey)</code>, <code>api_key(sha256) -&gt; ApiKey | None</code>, <code>api_keys(account=None) -&gt; [ApiKey]</code> and <code>revoke_key(id, at) -&gt; bool</code>; they are not tenant data, so <code>forget</code> and <code>reset</code> leave them. Accounts (optional, for the HTTP transport's quotas): <code>put_account(Account)</code> (insert or replace), <code>account(id) -&gt; Account | None</code> and <code>accounts() -&gt; [Account]</code>, with <code>rps</code>, <code>events_month</code>, <code>store</code> and <code>retention</code>. Metering (optional): <code>meter([(tenant, day, item, n)])</code> adds to daily counters and <code>usage(since, until) -&gt; [(tenant, day, item, n)]</code> reads them; the Ingestor meters <code>events</code> applied for the first time after each commit (never on <code>replay</code>), and <code>Tools(meter=)</code> counts each tool call. <code>Tools(clock=)</code> sets what "now" is for reads without <code>as_of</code> and for the <code>valid_from</code> of what <code>annotate</code> writes: <code>running_from(instant)</code> starts a clock there and lets it run, for a demo or a test pinned to a day (<code>keel serve --clock</code>, <code>KEEL_CLOCK</code>). Retention (<code>expires_at</code>) and ingest keep real time.</p>
+<p>Ingest bookkeeping (called by the Ingestor, never by handlers): <code>seen(tenant, event_id)</code> and <code>remember(tenant, event_id)</code>, the dedupe behind at-least-once delivery; <code>reset</code> forgets them too. A store MAY offer <code>transaction()</code>, a context manager the Ingestor wraps each event or batch in. Maintenance (jobs and operators): <code>expire(tenant, now)</code>, <code>close_task(tenant, task, now)</code> (expires a task's task-scope memory at once), <code>reset(tenant)</code>, <code>dump(tenant)</code> (everything about one tenant, closed facts included; <code>keel export</code> writes it as JSONL), and, optionally, <code>tenants()</code> (every tenant with something stored, never a global partition; <code>--all-tenants</code> on the jobs) and <code>backup(tenant)</code> / <code>restore(tenant, backup)</code>: everything a restore needs (rows as stored, close marks included, applied event ids, the retention cutoff) and writing it as it was into an empty tenant, behind <code>keel export</code>, <code>keel import</code> and <code>keel replay --check</code>. Erasure, optional but required by the Ingestor when the cartridge declares an event that <code>forgets: tenant</code>: <code>forget(tenant) -&gt; {entities, relations, facts, annotations, ingested}</code> deletes, in one transaction, everything stored for the tenant (facts of every scope, annotations, dedupe marks) and leaves a tombstone (the tenant and the time); it is idempotent, keeps the first tombstone's time and refuses a global partition. <code>forgotten(tenant) -&gt; datetime | None</code> reads the tombstone and <code>forgotten_tenants() -&gt; {tenant: datetime}</code> lists them. Retention, optional but required by the Ingestor when the cartridge declares an event that <code>forgets: before</code>: <code>forget_before(tenant, before) -&gt; {facts, annotations, relations}</code> deletes, in one transaction, the tenant's facts (annotations included) and relations with <code>valid_to &lt;= before</code>, keeps open ones and entities, and keeps the cutoff (the latest wins); it is idempotent and refuses a global partition. <code>cutoff(tenant) -&gt; datetime | None</code> reads it.</p>
+<p>A store implementation MUST pass <code>tests/test_core.py</code> and <code>tests/test_store.py</code> unchanged. Run the suite against your own store with <code>KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py</code>, where <code>factory</code> is a zero-argument callable (or class) returning a fresh, empty store. Reference: <code>keel/store/memory.py</code> (in memory). Durable: <code>keel/store/sql.py</code> holds one plain-SQL implementation with the same filters as the reference, and <code>keel/store/sqlite.py</code> (one file, WAL) and <code>keel/store/mysql.py</code> (MySQL or MariaDB, <code>mysql://</code> URL) are its dialects; all answer identically and the conformance suite runs on SQLite and MySQL in CI. A Graphiti-backed store remains planned for graph-native queries.</p>
+<hr />
+<h2 id="4-ingestion">4. Ingestion<a class="headerlink" href="#4-ingestion" title="Permanent link">&para;</a></h2>
+<p>The ingestor reads envelopes from an adapter and dispatches each to the handlers registered for its <code>type</code>.</p>
+<ul>
+<li>The event log is the source of truth. Keel's own copy of the log (<code>Ingestor.log</code>, opt-in with <code>keep_log=True</code>) is a development convenience that grows with every event; in production the bus holds it.</li>
+<li>Dispatch is <strong>deterministic</strong>: no network, no LLM, no randomness in the ingest path. Replaying the same log in the same order MUST produce an identical graph.</li>
+<li>An event with no handler is reported as unhandled; in strict mode it raises. A handler exception is reported with the event id and does not stop the stream, unless strict.</li>
+<li>An event is atomic: when its handler raises (not strict), whatever it wrote is rolled back and the event is not remembered, so it applies when it comes again with the handler fixed; the other events of its batch still land (the chunk is rolled back and applied again one event per commit). A store without transactions cannot roll back, and there the failed event's writes stay.</li>
+<li>An event whose subject is not the kind its catalog entry declares (<code>tire.depth_measured</code> about a <code>unit:</code>) is refused before it is remembered: reported as an error, or raised in strict mode; <code>keel validate --events</code> finds the same ahead of time.</li>
+<li><code>replay(tenant, events=None)</code> wipes that tenant's event-derived subgraph (entities, relations, facts from handlers, dedupe marks) and re-dispatches its events from the external log given (the bus, the outbox table, a stream) or, without one, from the in-memory log (only kept with <code>Ingestor(..., keep_log=True)</code>; otherwise replay without <code>events</code> is an error). It keeps annotations (facts whose <code>source</code> is <code>annotate:...</code> or <code>consolidate:...</code>, closed history included): they are earned memory, not in the log, and the events land around them as they did the first time (a store's <code>reset(tenant, keep_annotations=True)</code>). It is the recovery path, not the update path.</li>
+<li>Ordering: adapters SHOULD deliver events in <code>occurred_at</code> order per subject, but the result MUST NOT depend on it for facts: <code>open_fact</code> places a fact in its predicate's history by <code>valid_from</code>, closing the fact current at that instant and closing itself at the next fact's start, so a late event lands in its slot instead of closing a newer fact backwards. Relations (<code>link</code>/<code>unlink</code>) still assume order per subject.</li>
+<li>Transactions: when the store has them (the SQL stores do), each event is applied in one, so the handler's primitives and the dedupe mark land together (<code>remember</code> runs first, in the same transaction, and is one statement); a bulk caller passes <code>batch=</code> to commit every n events (the CLI and the HTTP batch do), and a chunk that raises in strict mode is rolled back whole and redelivered whole. A streaming adapter is never buffered.</li>
+<li>Batches: a store MAY offer <code>bulk(events)</code>, a context manager the Ingestor uses for chunks larger than one event. The SQL stores read the state of the chunk's subjects in a few statements, serve the handlers from memory, and write back in a few multi-row statements; the result is the same as event by event (the conformance suite checks it on every store, forwards and shuffled), about a thousand times fewer round trips.</li>
+<li>Batch reads: a store MAY offer <code>facts_of</code>, <code>entities_of</code> and <code>relations_of</code>, the same answers as <code>facts</code> and <code>entity</code> for many subjects. <code>context(depth=1)</code> reads its neighbours with them, <code>search(rule=)</code> its candidates in chunks, and a rule that follows a relation its neighbours: a few statements whatever the neighbourhood's size, where one per subject would be a round trip each on a networked database. Without them Tools reads one subject at a time.</li>
+<li>Threads: a store shared by a server's threads MUST keep a transaction, its read cache and a batch in flight to the thread that opened them: another thread waits for it or reads committed state, and never writes into it (a write that joined a batch would be lost with its rollback). The MySQL store reads on one connection per thread, so reads never queue behind a writer.</li>
+<li>Erasure: an event whose type the cartridge declares <code>forgets: tenant</code> runs no handler; the Ingestor calls <code>store.forget(tenant)</code> in that event's transaction (a chunk holding one is applied event by event, never through <code>bulk</code>) and lists what was deleted in <code>IngestReport.forgotten</code>. Every later event for a forgotten tenant, a late redelivery included, is skipped without being applied and counted in <code>IngestReport.skipped</code>, so nothing revives it, and a replay of it yields nothing. Keel deletes only what it stores: the external log (the bus, the outbox table) belongs to the product, and global memory (§6) is every tenant's and is kept.</li>
+<li>Retention: an event whose type the cartridge declares <code>forgets: before</code> runs no handler; the Ingestor marks it applied and calls <code>store.forget_before(tenant, event.occurred_at)</code> in its transaction (never through <code>bulk</code>), listing the cutoff and what was deleted in <code>IngestReport.retained</code>. <code>replay</code> applies the tenant's kept cutoff again after rebuilding. Events are not skipped by the cutoff: one arriving later with an earlier valid time stays until the next retention run.</li>
+<li>Duplicates: an event whose <code>id</code> the store has already applied for that tenant is skipped and counted in <code>IngestReport.duplicates</code>. With content-hash ids this makes at-least-once adapters and client retries safe; a source that can emit two identical events at the same instant MUST give them ids.</li>
+</ul>
+<h3 id="41-adapters">4.1 Adapters<a class="headerlink" href="#41-adapters" title="Permanent link">&para;</a></h3>
+<p>An adapter is any iterable of envelopes. It MUST NOT interpret payloads.</p>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JSONL file</td>
+<td>shipped</td>
+<td>Development and tests.</td>
+</tr>
+<tr>
+<td>Postgres table + polling</td>
+<td>shipped</td>
+<td><code>PostgresTableAdapter</code>: a <code>seq</code> cursor in a file, so restarts resume; it moves only after the Ingestor commits (<code>ack()</code>). At-least-once.</td>
+</tr>
+<tr>
+<td>Webhook (HTTP)</td>
+<td>shipped</td>
+<td><code>build_app</code>: validates the envelope, ingests, returns the report; bearer token.</td>
+</tr>
+<tr>
+<td>HTTP API and typed SDKs</td>
+<td>shipped</td>
+<td><code>POST /v1/events</code> on <code>keel serve --transport http</code>, called directly or through <code>events()</code> in the generated clients (§7.7); one envelope or a list, the ingest report back.</td>
+</tr>
+<tr>
+<td>Kafka</td>
+<td>shipped</td>
+<td><code>KafkaAdapter</code> (<code>keel.adapters.bus</code>): offset committed after the Ingestor commits the batch (<code>ack()</code>). At-least-once; <code>dead_letter</code> for poison messages.</td>
+</tr>
+<tr>
+<td>SQS</td>
+<td>shipped</td>
+<td><code>SqsAdapter</code> (<code>keel.adapters.bus</code>): message deleted after the Ingestor commits the batch (<code>ack()</code>). Same semantics. <code>keel consume --queue &lt;url&gt;</code> runs it, a batch per transaction (<code>--batch</code>, default 100), retried one message at a time when it fails; a failed message stays for the queue's dead-letter queue, and a store that stops answering ends the process (exit 2).</td>
+</tr>
+<tr>
+<td>Postgres CDC</td>
+<td>shipped</td>
+<td><code>PostgresCdcAdapter</code>, <code>keel cdc</code>: logical replication with <code>pgoutput</code> read through SQL functions; each mapped row change is <code>&lt;kind&gt;.created|updated|deleted</code>, id <code>pgcdc:&lt;commit lsn&gt;:&lt;n&gt;</code>; the slot advances only after the store commits.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-handlers">4.2 Handlers<a class="headerlink" href="#42-handlers" title="Permanent link">&para;</a></h3>
+<p>A handler is <code>fn(event, store) -&gt; None</code>, registered for one event type with <code>@registry.on("&lt;type&gt;")</code>. It:</p>
+<ul>
+<li>MUST only call store primitives (§3.4).</li>
+<li>MUST use <code>event.occurred_at</code> for <code>valid_from</code>/<code>valid_to</code>.</li>
+<li>SHOULD pass <code>source=event.source</code> and <code>evidence=event.id</code> on every fact.</li>
+<li>MUST NOT contain business definitions (what "critical" means). Those are <code>rules</code> (§5.4).</li>
+<li>SHOULD be about ten lines.</li>
+</ul>
+<hr />
+<h2 id="5-cartridge-format">5. Cartridge format<a class="headerlink" href="#5-cartridge-format" title="Permanent link">&para;</a></h2>
+<p>A cartridge is a directory with <code>cartridge.yaml</code> and <code>handlers.py</code>.</p>
+<h3 id="51-cartridgeyaml">5.1 <code>cartridge.yaml</code><a class="headerlink" href="#51-cartridgeyaml" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;slug&gt;</span><span class="w">            </span><span class="c1"># required</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;semver&gt;</span><span class="w">       </span><span class="c1"># optional, recommended</span>
+
+<span class="nt">entities</span><span class="p">:</span><span class="w">               </span><span class="c1"># required: kind -&gt; spec</span>
+<span class="w">  </span><span class="nt">&lt;kind&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;text&gt;</span>
+<span class="w">    </span><span class="nt">ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;table.column&gt;</span><span class="w"> </span><span class="c1"># optional, documents where `ref` points</span>
+<span class="w">    </span><span class="nt">attrs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;attr&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># optional: attributes its handlers set, columns of the generated SQL views (keel/sqlgen.py)</span>
+<span class="w">    </span><span class="nt">facts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;predicate&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># optional: its predicates, for the generated views; or &lt;predicate&gt;: &lt;hint&gt; | {type: &lt;hint&gt;, description: &lt;text&gt;}</span>
+<span class="w">                                </span><span class="c1">#   (no type: the hint of the payload field of the same name in the kind's events)</span>
+
+<span class="nt">relations</span><span class="p">:</span><span class="w">              </span><span class="c1"># optional: rel -&gt; {from: &lt;kind&gt;, to: &lt;kind&gt;}</span>
+<span class="w">  </span><span class="nt">&lt;rel&gt;</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">&lt;rel&gt;</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="nt"> symmetric</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># recorded from either end, shown once (direction `both`)</span>
+<span class="w">  </span><span class="nt">&lt;rel&gt;</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> from</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="nt"> to</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="nt"> one</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">         </span><span class="c1"># at most one target per source at a time: a column of the generated views</span>
+
+<span class="nt">events</span><span class="p">:</span><span class="w">                 </span><span class="c1"># required: type -&gt; spec</span>
+<span class="w">  </span><span class="nt">&lt;type&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;kind&gt;</span><span class="w">     </span><span class="c1"># required: the kind of event.subject</span>
+<span class="w">    </span><span class="nt">owner</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;team&gt;</span><span class="w">       </span><span class="c1"># recommended: who owns this event's shape</span>
+<span class="w">    </span><span class="nt">payload</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> &lt;field&gt;</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;hint&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># the notation in §5.5; `| null` = optional</span>
+<span class="w">    </span><span class="nt">forgets</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tenant</span><span class="w">     </span><span class="c1"># optional: this event erases its tenant (§4), or `before`: deletes what closed before it; it takes no handler</span>
+
+<span class="nt">rules</span><span class="p">:</span><span class="w">                  </span><span class="c1"># optional: name -&gt; definition</span>
+<span class="w">  </span><span class="nt">&lt;rule&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">applies_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;kind&gt;</span><span class="w">  </span><span class="c1"># optional; absent = applies to every subject</span>
+<span class="w">    </span><span class="nt">definition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;text&gt;</span><span class="w">  </span><span class="c1"># human-readable, versioned with the cartridge</span>
+<span class="w">    </span><span class="nt">&lt;param&gt;</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;value&gt;</span><span class="w">    </span><span class="c1"># machine-readable parameters agents read</span>
+<span class="w">    </span><span class="nt">when</span><span class="p">:</span><span class="w">               </span><span class="c1"># optional: a condition the core evaluates in `context` (§5.4)</span>
+<span class="w">      </span><span class="nt">predicate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;predicate&gt;</span>
+<span class="w">      </span><span class="nt">&lt;op&gt;</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;operand&gt;</span><span class="w">   </span><span class="c1"># leaf operators in §5.4; compose with all / any / not; follow relations with via</span>
+
+<span class="nt">predicates</span><span class="p">:</span><span class="w">             </span><span class="c1"># optional: write policy per predicate, for annotations</span>
+<span class="w">  </span><span class="nt">&lt;predicate&gt;</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> multi</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">,</span><span class="nt"> description</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;text&gt;</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># multi: one open value per author (the `by`, else the agent) instead of last-writer-wins; context lists conflicts</span>
+
+<span class="nt">semantic</span><span class="p">:</span><span class="w">               </span><span class="c1"># optional: what `keel index` puts in each subject's document (§7.3)</span>
+<span class="w">  </span><span class="nt">kinds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">           </span><span class="c1"># absent: every kind</span>
+<span class="w">  </span><span class="nt">predicates</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;predicate&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># what to include; or exclude: [&lt;predicate&gt;, ...]</span>
+<span class="w">  </span><span class="nt">attrs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                    </span><span class="c1"># entity attributes (default); false, or a list of names</span>
+<span class="w">  </span><span class="nt">relations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;rel&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w">        </span><span class="c1"># open relations: the other side's key and one label</span>
+<span class="w">  </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">name</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">nombre</span><span class="p p-Indicator">]</span><span class="w">         </span><span class="c1"># the attribute that labels the other side (first present wins); default: name, nombre, title, titulo, label, plate, model</span>
+<span class="w">  </span><span class="nt">lexical_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span><span class="w">            </span><span class="c1"># hybrid search: weight of the lexical leg (0 = dense only)</span>
+<span class="w">  </span><span class="nt">min_score</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.4</span><span class="w">                 </span><span class="c1"># optional cosine floor; model-specific, calibrate with evals/semantic</span>
+<span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> &lt;kind&gt;</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;predicate&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">  </span><span class="c1"># also one document per open fact of these predicates, and per element of a list value (each field of a visual), not only one per subject</span>
+
+<span class="nt">consolidate</span><span class="p">:</span><span class="w">            </span><span class="c1"># optional: episodic memory summarized into durable facts (§8)</span>
+<span class="w">  </span><span class="nt">&lt;name&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">from</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> predicate</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;p&gt;</span><span class="p p-Indicator">,</span><span class="nt"> scopes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># default [task]; agent memory is read only when listed</span>
+<span class="w">    </span><span class="nt">applies_to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;kind&gt;</span><span class="w">             </span><span class="c1"># optional</span>
+<span class="w">    </span><span class="nt">within</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30d</span><span class="w">                    </span><span class="c1"># optional window on valid_from (world time)</span>
+<span class="w">    </span><span class="nt">min_count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span><span class="w">                   </span><span class="c1"># default 2</span>
+<span class="w">    </span><span class="nt">reduce</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mode</span><span class="w">                   </span><span class="c1"># mode | latest | count | min | max | avg | distinct | summary</span>
+<span class="w">    </span><span class="nt">into</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> predicate</span><span class="p">:</span><span class="w"> </span><span class="nv">&lt;q&gt;</span><span class="p p-Indicator">,</span><span class="nt"> scope</span><span class="p">:</span><span class="w"> </span><span class="nv">tenant</span><span class="w"> </span><span class="p p-Indicator">}</span>
+
+<span class="nt">context</span><span class="p">:</span><span class="w">                </span><span class="c1"># optional: how much `context` carries (§7.1), per relation and direction</span>
+<span class="w">  </span><span class="nt">relations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w">                  </span><span class="c1"># relations listed, the most recent; the rest counted in relations_more (default 10)</span>
+<span class="w">  </span><span class="nt">neighbors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span><span class="w">                   </span><span class="c1"># neighbours read with depth=1, the most recent; the rest counted in neighbors_more (default 5)</span>
+
+<span class="nt">calendar</span><span class="p">:</span><span class="w">               </span><span class="c1"># optional: business days for `open_for_business_days` (§5.4)</span>
+<span class="w">  </span><span class="nt">weekend</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">saturday</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sunday</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">holidays</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2026-12-25</span><span class="p p-Indicator">]</span>
+
+<span class="nt">agents</span><span class="p">:</span><span class="w">                 </span><span class="c1"># optional: the agent registry (§6.1). Absent = no registry, any caller</span>
+<span class="w">  </span><span class="nt">&lt;id&gt;</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;text&gt;</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent</span><span class="w">                                  </span><span class="c1"># or human: a person, signed human:&lt;id&gt; (§6.1)</span>
+<span class="w">    </span><span class="nt">writes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">agent</span><span class="p p-Indicator">]</span><span class="w">                        </span><span class="c1"># scopes it may annotate; never global; absent = [task, agent]</span>
+<span class="w">    </span><span class="nt">reads</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> kinds</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;kind&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">],</span><span class="nt"> relations</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">&lt;rel&gt;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">...</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span><span class="w">   </span><span class="c1"># optional; absent = everything</span>
+<span class="w">    </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                                  </span><span class="c1"># optional: may call the optional query tool (§7.8); absent = false</span>
+
+<span class="nt">memory</span><span class="p">:</span><span class="w">                 </span><span class="c1"># optional; defaults in §6</span>
+<span class="w">  </span><span class="nt">ttl</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">global</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">never | forever | &lt;n&gt;d | &lt;n&gt;h | &lt;n&gt;m | &lt;n&gt;</span><span class="w">   </span><span class="c1"># a bare number is days</span>
+<span class="w">    </span><span class="nt">tenant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">never | ...</span>
+<span class="w">    </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14d</span>
+<span class="w">    </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1d</span>
+<span class="w">  </span><span class="nt">requires_evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">global</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">tenant</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">evidence</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">event</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"photo:"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"human:"</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># optional; what counts as evidence there. Absent: any non-empty string</span>
+</code></pre></div>
+<h3 id="52-handlerspy">5.2 <code>handlers.py</code><a class="headerlink" href="#52-handlerspy" title="Permanent link">&para;</a></h3>
+<p>MUST define <code>registry = HandlerRegistry()</code> at module level with one or more <code>@registry.on(...)</code> functions.</p>
+<h3 id="53-validation-keel-validate">5.3 Validation (<code>keel validate</code>)<a class="headerlink" href="#53-validation-keel-validate" title="Permanent link">&para;</a></h3>
+<p>A cartridge is valid when:</p>
+<ol>
+<li>every relation's <code>from</code> and <code>to</code> are declared entity kinds;</li>
+<li>every event's <code>subject</code> is a declared entity kind;</li>
+<li>every cataloged event type has at least one handler, except one that <code>forgets</code>, which has none (<code>forgets</code> takes <code>tenant</code> or <code>before</code>);</li>
+<li>every handler's event type is in the catalog;</li>
+<li>every rule's <code>when</code> names a <code>predicate</code> and uses only the operators in §5.4;</li>
+<li>every agent's <code>kind</code> is <code>agent</code> or <code>human</code>, its <code>writes</code> are known scopes other than <code>global</code>, and its <code>reads</code> name declared kinds and relations;</li>
+<li>every event's payload hints use the notation in §5.5;</li>
+<li><code>predicates</code>, <code>semantic</code>, <code>consolidate</code> and <code>context</code> use only known keys, with values in range (a weight between 0 and 1, a known reducer, a known scope, a whole number of at least 1);</li>
+<li>every <code>via</code> names a declared relation with a valid <code>direction</code>, and duration operators (<code>open_for_*</code>, <code>held_for_*</code>) take a comparison mapping.</li>
+</ol>
+<p><code>keel validate &lt;cartridge&gt; --events &lt;stream.jsonl&gt;</code> also checks every envelope in the stream against the catalog: the type is cataloged, the subject's kind is the event's <code>subject</code>, and each declared payload field is present with its declared shape (§5.5; <code>| null</code> makes it optional). It looks at payload keys and types, never at values; it is the one place the core looks at a payload at all.</p>
+<h3 id="54-rules-semantic-layer">5.4 Rules (semantic layer)<a class="headerlink" href="#54-rules-semantic-layer" title="Permanent link">&para;</a></h3>
+<p>Rules are authored by product, versioned with the cartridge, and returned by the <code>context</code> tool for the subject's kind. Agents MUST read definitions from rules rather than hard-code them. The core interprets two keys: <code>applies_to</code> and <code>when</code>. <code>context</code> evaluates every applicable rule that has a <code>when</code> at <code>as_of</code> and returns <code>true</code>, <code>false</code>, or <code>null</code> (undecidable). A rule without <code>when</code> (an aggregate, a count over time) is returned as a definition only and the agent applies it.</p>
+<p>A <code>when</code> is a condition:</p>
+<ul>
+<li><strong>Leaf</strong>: <code>{ predicate: &lt;p&gt;, &lt;op&gt;: &lt;operand&gt;, ... }</code>. Operators on the subject's open fact for <code>&lt;p&gt;</code>: <code>lt</code>, <code>lte</code>, <code>gt</code>, <code>gte</code>, <code>eq</code>, <code>ne</code>, <code>in</code> (value in a list), <code>within_days</code> (a date predicate on or before <code>as_of + n days</code>, so dates already past count), <code>open_for_days</code> and <code>open_for_business_days</code> (how long the open fact has been open: a mapping of <code>lt</code>/<code>lte</code>/<code>gt</code>/<code>gte</code>/<code>eq</code>, e.g. <code>{ gte: 7 }</code>; business days skip the cartridge <code>calendar</code> weekend and holidays), <code>held_for_days</code> and <code>held_for_business_days</code> (how long the leaf's comparison has held across consecutive facts of the predicate: a waiting clock that survives a change from one waiting status to another; without a comparison, how long the predicate has had any value without a gap). <code>ci: true</code> compares strings case-insensitively. No open fact for the predicate: <code>null</code>.</li>
+<li><strong>Composition</strong>: <code>{ all: [...] }</code>, <code>{ any: [...] }</code>, <code>{ not: &lt;condition&gt; }</code>. A bare list is <code>all</code>. <code>null</code> propagates unless another branch decides: a <code>false</code> in <code>all</code>, a <code>true</code> in <code>any</code>.</li>
+<li><strong>Neighbours</strong>: <code>{ via: &lt;relation&gt;, direction: out | in | any, any: &lt;condition&gt; }</code> or <code>all:</code>. The condition is evaluated on each neighbour reached by that relation at <code>as_of</code> (<code>direction</code> defaults to <code>any</code>; symmetric relations ignore it). No neighbours: <code>any</code> is <code>false</code>, <code>all</code> is <code>true</code>. This is how an inherited state is expressed: <code>{ any: [ { predicate: status, eq: paused }, { via: relates_to, any: { predicate: status, eq: paused } } ] }</code>.</li>
+</ul>
+<p>Rules see the whole tenant's graph: they are the product's semantics, not the calling agent's view, so the agent registry's read slice does not apply inside a <code>when</code>.</p>
+<h3 id="55-payload-notation">5.5 Payload notation<a class="headerlink" href="#55-payload-notation" title="Permanent link">&para;</a></h3>
+<p>The <code>payload:</code> mapping of an event is a schema in a short notation. Keel checks streams against it (<code>keel validate --events</code>) and prints it as JSON Schema draft 2020-12 (<code>keel schema &lt;cartridge&gt;</code>), which is what SDK templates read.</p>
+<table>
+<thead>
+<tr>
+<th>Written as</th>
+<th>Means</th>
+<th>JSON Schema</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>string</code>, <code>int</code>, <code>number</code>, <code>bool</code></td>
+<td>a scalar</td>
+<td><code>type</code> string / integer / number / boolean</td>
+</tr>
+<tr>
+<td><code>date</code>, <code>datetime</code></td>
+<td>an ISO 8601 string</td>
+<td><code>type: string</code> with <code>format</code></td>
+</tr>
+<tr>
+<td><code>any</code></td>
+<td>anything</td>
+<td><code>{}</code></td>
+</tr>
+<tr>
+<td><code>&lt;hint&gt; \| null</code></td>
+<td>optional and nullable</td>
+<td><code>type: [&lt;type&gt;, "null"]</code>, not in <code>required</code></td>
+</tr>
+<tr>
+<td><code>string[]</code> (any scalar)</td>
+<td>array of scalars</td>
+<td><code>type: array</code>, <code>items</code></td>
+</tr>
+<tr>
+<td><code>[pending, paid]</code></td>
+<td>enum of literals</td>
+<td><code>enum</code></td>
+</tr>
+<tr>
+<td><code>[new, done, null]</code></td>
+<td>optional enum (<code>null</code> is a literal in the list; <code>| null</code> is not YAML here)</td>
+<td><code>enum</code> with <code>null</code>, not in <code>required</code></td>
+</tr>
+<tr>
+<td><code>[ { id: string, qty: int } ]</code></td>
+<td>array of objects</td>
+<td><code>type: array</code>, <code>items: object</code></td>
+</tr>
+<tr>
+<td><code>{ source: string, score: number }</code></td>
+<td>nested object</td>
+<td><code>type: object</code>, <code>properties</code>, <code>required</code></td>
+</tr>
+</tbody>
+</table>
+<p>Extra fields in a payload are allowed: the catalog documents what handlers need, not everything the source sends. An unknown hint is a validation error, so a typo never passes as <code>any</code>; <code>[string]</code> is rejected in favour of <code>string[]</code>.</p>
+<h3 id="56-the-generality-test">5.6 The generality test<a class="headerlink" href="#56-the-generality-test" title="Permanent link">&para;</a></h3>
+<p>Adding or changing a cartridge MUST require no change under <code>keel/</code>. The repository keeps four cartridges (<code>fleet</code>, <code>crm</code>, <code>finance</code>, <code>clinics</code>) and all MUST pass the test suite after any core change.</p>
+<hr />
+<h2 id="6-memory-scopes-and-policy">6. Memory scopes and policy<a class="headerlink" href="#6-memory-scopes-and-policy" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Who reads</th>
+<th>Who writes</th>
+<th>Default TTL</th>
+<th>Evidence required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>global</code></td>
+<td>every tenant's agents</td>
+<td>a privileged process (a <code>Tools</code> bound to no registry agent; never an agent, never an event)</td>
+<td>never</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>tenant</code></td>
+<td>that tenant's agents</td>
+<td>handlers (from events); agents/humans via <code>annotate</code></td>
+<td>never</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>task</code></td>
+<td>calls that pass the fact's task (<code>context(task=)</code>, <code>history(task=)</code>); a task fact with no task id is the tenant's</td>
+<td>agents via <code>annotate</code></td>
+<td>14 days</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>the agent that wrote it (a <code>Tools</code> bound to no agent id reads none)</td>
+<td>that agent</td>
+<td>1 day</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid"><code>flowchart LR
+    g["global&lt;br/&gt;every tenant · never expires · evidence"] --&gt; t["tenant&lt;br/&gt;one end-customer · never expires · evidence"] --&gt; k["task&lt;br/&gt;agents on one task · 14 d"] --&gt; a["agent&lt;br/&gt;one agent · 1 d"]
+    w["annotate(subject, predicate, value, scope, evidence, by)"] --&gt; p{"MemoryPolicy.check_write"}
+    p -- "scope requires evidence, none given" --&gt; e["PermissionError"]
+    p -- "ok" --&gt; f["open_fact with scope, evidence, corrected_by=by&lt;br/&gt;expires_at = now + ttl"]</code></pre>
+<p>Rules:</p>
+<ul>
+<li>Policy is enforced in <code>Tools.annotate</code> via <code>MemoryPolicy.check_write</code>; the calling agent is not trusted to self-police.</li>
+<li>A write to a scope that requires evidence without <code>evidence</code> MUST raise <code>PermissionError</code>.</li>
+<li>Facts written by handlers from events are <code>tenant</code> scope with <code>evidence = event.id</code>.</li>
+<li>Promotion to a wider scope is a new <code>annotate</code> with evidence and <code>by</code>; the narrower fact keeps its own lifetime.</li>
+<li><code>expires_at = now + ttl</code> at write time; <code>null</code> when TTL is <code>never</code>. Reads MUST exclude expired facts even before a job physically removes them.</li>
+<li>Reads are enforced in <code>Tools</code>, on every path that returns facts (<code>context</code> and its neighbours, rule evaluation, <code>history</code> with or without a subject, text <code>search</code>): an <code>agent</code> fact is returned only to a caller bound to its author (its <code>source</code> is <code>annotate:&lt;author&gt;</code>); a <code>task</code> fact tied to a task only to calls passing that task; a <code>task</code> fact with no task id to the whole tenant. Rules evaluate on the same view, so another agent's or another task's memory never decides a verdict.</li>
+<li>Global memory lives in the reserved partition <code>__global__</code>: <code>annotate(scope="global")</code> writes there and every tenant's reads merge it, so one fact is seen by every tenant. No event may carry that tenant and no <code>Tools</code> may be bound to it. Over HTTP and MCP (bound to a tenant or per request) only the operator's secret or an account's <code>--global</code> key may write it: <code>Tools(writes_global=False)</code> refuses it below every transport. It is the one deliberate exception to invariant 1, and it holds only what a privileged process wrote. A tenant whose name has an account prefix (<code>acme/t</code>, given by the HTTP transport's API keys) reads and writes <code>acme/__global__</code> instead, which no other account sees; over HTTP only the account's global key writes it.</li>
+</ul>
+<h3 id="61-agent-registry">6.1 Agent registry<a class="headerlink" href="#61-agent-registry" title="Permanent link">&para;</a></h3>
+<p>A cartridge MAY declare <code>agents:</code> (§5.1). Without it there is no registry: any caller, any scope with evidence, and an <code>agent</code> id passed to <code>Tools</code> is attribution only. With it:</p>
+<ul>
+<li>A <code>Tools</code> instance MUST be bound to a declared agent (<code>Tools(..., agent=&lt;id&gt;)</code>, <code>keel serve --agent &lt;id&gt;</code>). A missing or unknown id raises <code>PermissionError</code> at construction. An id never contains <code>:</code> (<code>human:ana</code> would sign as the person <code>ana</code>): <code>keel validate</code> reports it and binding to it is refused. Agents read only the kinds and relations their entry allows, and a bare-id hint ("did you mean ...?") and the MCP <code>instructions</code> name only those.</li>
+<li><strong>Writes.</strong> <code>annotate</code> to a scope outside the agent's <code>writes</code> raises <code>PermissionError</code>. <code>global</code> is never writable by an agent. The scope policy (evidence, TTL) applies after the registry check. <code>source</code> is <code>annotate:&lt;agent&gt;</code>; <code>corrected_by</code> is <code>by</code> when given (a human correcting through the agent), else the agent id.</li>
+<li><strong>People.</strong> An entry with <code>kind: human</code> is a person: it is enforced like any agent, and its annotations are signed <code>annotate:human:&lt;id&gt;</code> with <code>corrected_by = human:&lt;id&gt;</code>. Approvals are writes by a declared person, so the audit export shows who approved.</li>
+<li><strong>Reads.</strong> <code>context</code>, <code>history</code>, <code>related</code> and <code>annotate</code> on a subject whose kind is outside <code>reads.kinds</code> raise <code>PermissionError</code>. Relations outside <code>reads.relations</code>, or whose other end is a hidden kind, are left out of <code>context</code> and <code>related</code>. <code>search</code> drops hits on hidden kinds. <code>query</code> (§7.8) reads past <code>reads</code>, so an agent may call it only with <code>query: true</code>; otherwise it raises <code>PermissionError</code> and a server does not list it to that agent.</li>
+<li>Authentication is the host's job. Keel takes the agent id as given and enforces what that id may do; it never trusts the agent to police itself (rule 5).</li>
+</ul>
+<hr />
+<h2 id="7-the-tools-five-core-one-optional">7. The tools: five core, one optional<a class="headerlink" href="#7-the-tools-five-core-one-optional" title="Permanent link">&para;</a></h2>
+<p>A <code>Tools</code> instance is bound to one cartridge, one tenant and, when the cartridge declares agents, one agent (§6.1). Cross-tenant access does not exist at this layer. The five core tools (§7.1-7.5) and the optional sixth, <code>query</code> (§7.8), with their names and argument orders, are part of the public standard; adding another is a spec change.</p>
+<p>A wrong name is an error, not an empty answer: a subject without a <code>&lt;kind&gt;:</code> prefix (with a suggested key when one exists), a kind, relation, rule or scope the cartridge does not declare (with the closest name and the valid ones) and a time that is not ISO 8601 (with the expected format) raise <code>ValueError</code>. A list a tool cuts short says so in its first element, <code>{"more": {...}}</code>, with how many were shown, the total and how to read the rest (<code>next</code>); a caller iterating the list skips the entry that has <code>more</code>. Without <code>as_of</code> or <code>as_known_at</code>, <code>context</code> answers as of the current time rounded up to the next whole second, so the same question asked twice answers in the same bytes, and a write made earlier in that second is still read.</p>
+<h3 id="71-contextsubject-as_ofnone-depth0-as_known_atnone-tasknone-detailfull-excludenone-onlynone-object">7.1 <code>context(subject, as_of=None, depth=0, as_known_at=None, task=None, detail="full", exclude=None, only=None) -&gt; object</code><a class="headerlink" href="#71-contextsubject-as_ofnone-depth0-as_known_atnone-tasknone-detailfull-excludenone-onlynone-object" title="Permanent link">&para;</a></h3>
+<p><code>subject</code> may be a list: the answers come back in order, one per subject, in one call. <code>exclude</code> (a list of predicates) leaves those predicates out of <code>facts</code>, <code>proposals</code> and the neighbours' facts, for an evaluation in which the agent must not see the answer; rules still evaluate on the whole truth, so a verdict can reveal it. <code>only</code> (a non-empty list of predicates) is the opposite: just those predicates, in the same places, for the evidence a reviewer checks across many subjects without the rest of their facts; <code>exclude</code> still hides what it names. A list of subjects is read in a few statements (facts, proposals, relations and entities in batches), not one or more per subject. A <code>search</code> with a list of texts shares those reads too: each subject's facts are read once for every text, so checking many names against one subject's neighbours (<code>search(names, kind=[...], related_to=s)</code>) is one call.</p>
+<p><code>facts</code> holds accepted facts only. <code>proposals</code> (present when any) holds the open proposals; <code>conflicts</code> (present when any) maps each predicate that has more than one open value to those values and their authors, which happens for <code>multi</code> predicates (§5.1) written by several agents. <code>detail="concise"</code> returns the same answer for a prompt in about a third of the tokens: <code>attrs</code>, <code>facts</code> as <code>{predicate: value}</code> (a list of <code>{value, by}</code> for a multi-valued one), <code>relations</code> as <code>{relation, direction, subject}</code> (direction <code>both</code> for a symmetric relation, as everywhere else), <code>evaluation</code>, <code>as_of</code>, <code>watermark</code>, proposals and conflicts, and compact neighbours, plus <code>since</code>, <code>{predicate: valid_from}</code> of each current value (when it became true, without a <code>history</code> call); rule definitions are left out (their names are in <code>evaluation</code>).</p>
+<p>What is true about a subject now, or at <code>as_of</code> (world time). <code>detail="brief"</code> (the cheapest, for an agent; the default over MCP and HTTP, §7.7) is <code>concise</code> with relations grouped as <code>{relation: [subjects]}</code>, an incoming one written <code>&lt;-relation</code>. Relations are listed up to 10 per relation and direction (the cartridge's <code>context.relations</code>, §5.1), the most recent ones, ordered by relation, link time and key; past that, <code>relations_more</code> gives each one's <code>relation</code>, <code>direction</code>, <code>shown</code> and <code>total</code>, and <code>related</code> or <code>search(related_to=...)</code> reads the rest, so an account with hundreds of tickets does not put all of them in every answer. With <code>depth=1</code> the answer also carries <code>neighbors</code>: for up to 5 open relations per relation and direction (the cartridge's <code>context.neighbors</code>), the most recent, the other subject's entity, open facts and rule evaluation, so one call brings a card and the cards it is linked to; <code>neighbors_more</code> counts the rest per relation and direction (<code>relation</code>, <code>direction</code>, <code>shown</code>, <code>total</code>), and past 50 neighbours in all, <code>neighbors_truncated: true</code>. A well-formed subject Keel knows nothing about (no entity, facts, relations or proposals) returns <code>{subject, found: false, as_of, watermark}</code> at any <code>detail</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"subject"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unit:MXK-4821"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"entity"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"unit"</span><span class="p">,</span><span class="w"> </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"MXK-4821"</span><span class="p">,</span><span class="w"> </span><span class="nt">"ref"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fleet.vehicles#MXK-4821"</span><span class="p">,</span><span class="w"> </span><span class="nt">"attrs"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">"facts"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...ope</span><span class="kc">n</span><span class="w"> </span><span class="kc">fa</span><span class="err">c</span><span class="kc">ts</span><span class="w"> </span><span class="err">a</span><span class="kc">t</span><span class="w"> </span><span class="kc">n</span><span class="err">ow</span><span class="p">,</span><span class="w"> </span><span class="err">expired</span><span class="w"> </span><span class="err">excluded...</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"relations"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...ope</span><span class="kc">n</span><span class="w"> </span><span class="err">rela</span><span class="kc">t</span><span class="err">io</span><span class="kc">ns</span><span class="w"> </span><span class="err">a</span><span class="kc">t</span><span class="w"> </span><span class="kc">n</span><span class="err">ow</span><span class="p">,</span><span class="w"> </span><span class="err">bo</span><span class="kc">t</span><span class="err">h</span><span class="w"> </span><span class="err">direc</span><span class="kc">t</span><span class="err">io</span><span class="kc">ns</span><span class="err">...</span><span class="w"> </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"rules"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"&lt;rule&gt;"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="err">...</span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w">      </span><span class="c1">// rules with applies_to == subject kind or absent</span>
+<span class="w">  </span><span class="nt">"evaluation"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"&lt;rule&gt;"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span><span class="w">  </span><span class="c1">// true | false | null, for the rules above that carry a `when`</span>
+<span class="w">  </span><span class="nt">"as_of"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-10-14T18:41:07Z"</span><span class="w">    </span><span class="c1">// now, or the `as_of` asked for</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="72-historysubjectnone-sincenone-untilnone-predicatenone-scopenone-as_known_atnone-tasknone-changed_sincenone-limit50-detailfull-fact">7.2 <code>history(subject=None, since=None, until=None, predicate=None, scope=None, as_known_at=None, task=None, changed_since=None, limit=50, detail="full") -&gt; [Fact]</code><a class="headerlink" href="#72-historysubjectnone-sincenone-untilnone-predicatenone-scopenone-as_known_atnone-tasknone-changed_sincenone-limit50-detailfull-fact" title="Permanent link">&para;</a></h3>
+<p>Facts over time, oldest first, including closed ones. <code>predicate</code>, <code>scope</code> and <code>task</code> filter (<code>task</code> returns only what that task wrote; without it, task memory tied to a task is not returned, §6); <code>limit</code> keeps the most recent n, still oldest first (<code>0</code> or <code>None</code>: all); when it cuts, the first element is <code>{"more": {shown, total, omitted, next}}</code>. <code>as_known_at</code> returns the facts as Keel knew them then (§7.6). With no <code>subject</code> and <code>since</code>/<code>until</code> (and no <code>changed_since</code>), it returns the tenant's facts that started (<code>valid_from</code>) in that window, in world time, oldest first, with <code>predicate</code> and <code>scope</code> as filters: "what changed this week", "whose assignee changed"; each fact's <code>evidence</code> says which event set it. Every fact that replaced a value carries <code>was</code>, the value of the accepted fact of its predicate and scope that ended exactly when it started (<code>null</code> included), read from the subject's whole history even when the window leaves that fact out; a first value, a value after a gap, a proposal and a multi-valued predicate carry no <code>was</code>, so "changed" is the facts with <code>was</code>. <code>changed_since</code> keeps the facts written (opened or closed) after a watermark, by the ingest clock; with no <code>subject</code> it spans the tenant (subjects the caller may read), ordered by the time of the change: the "since my last run" read of an incremental agent. Each fact carries <code>valid_from</code>, <code>valid_to</code>, <code>recorded_at</code>, <code>closed_at</code>, <code>source</code>, <code>evidence</code>, <code>scope</code>, <code>corrected_by</code>, <code>task</code>. <code>detail="concise"</code> (the default over MCP and HTTP, §7.7) returns lean facts, about a quarter of the tokens: no null fields, no <code>tenant</code>, no transaction-time bookkeeping (<code>recorded_at</code>, <code>closed_at</code>, <code>idempotency_key</code>, <code>trace</code>, <code>cartridge</code>), <code>scope</code> only when it is not <code>tenant</code>, and <code>subject</code> only when no subject was given; world time and provenance stay. <code>detail</code> is <code>"full"</code> or <code>"concise"</code>.</p>
+<h3 id="73-searchtext-kindnone-or-a-list-rulenone-limitnone-afternone-modetext-min_scorenone-related_tonone-vianone-detailentity-depth0-per_kindnone-excludenone-as_ofnone-wherenone-as_known_atnone-entity-fact">7.3 <code>search(text="", kind=None (or a list), rule=None, limit=None, after=None, mode="text", min_score=None, related_to=None, via=None, detail="entity", depth=0, per_kind=None, exclude=None, as_of=None, where=None, as_known_at=None) -&gt; [Entity | Fact]</code><a class="headerlink" href="#73-searchtext-kindnone-or-a-list-rulenone-limitnone-afternone-modetext-min_scorenone-related_tonone-vianone-detailentity-depth0-per_kindnone-excludenone-as_ofnone-wherenone-as_known_atnone-entity-fact" title="Permanent link">&para;</a></h3>
+<p><code>where</code> without <code>text</code> returns only the entities it keeps (with no text, no fact is a hit). <code>as_of</code> evaluates rules, <code>where</code>, neighbours and the facts returned at that instant (a text search's fact hits too: given <code>as_of</code>, only facts that held then; without it, every match in the history); <code>as_known_at</code> reads them as Keel knew them then (transaction time, §7.6; <code>as_of</code> defaults to it). <code>detail="count"</code> returns <code>[{"count": n}]</code>: the number of results, each subject once, with no cap and nothing listed (not with <code>depth</code>, <code>after</code> or <code>per_kind</code>), so "how many are blocked" costs a few tokens. A deployment may set a ceiling on one listing (<code>Tools(max_list=n)</code>, <code>keel serve --max-list</code>, <code>KEEL_MAX_LIST</code>): a request for all (<code>limit=0</code>) or for more than the ceiling returns the ceiling and a leading <code>{"more": ...}</code> that says so; <code>search</code>, <code>related</code> and <code>history</code> take it, a count never does. <code>per_kind</code> adds up under the ceiling too, a negative <code>limit</code> or <code>per_kind</code> raises, and a list of subjects or texts holds at most the ceiling (1000 without one). Unset, there is no ceiling: a report or an export may want everything. Every time argument also takes <code>"2026-10-03 08:00 UTC"</code>, as people and agents write times.</p>
+<p>What each entity result carries (<code>detail="brief"</code>, for an agent: the key, attrs, score and current facts as <code>{predicate: value}</code>, without tenant, kind, id or ref, which the key carries): <code>detail="key"</code> only the keys, as strings (a fact hit gives its subject; each key once; not with <code>depth</code>), the cheapest listing; <code>detail="entity"</code> (the default) the entity; <code>"concise"</code> also its current facts as <code>{predicate: value}</code>, <code>"full"</code> as facts, so a result needs no <code>context</code> call to be understood. <code>depth=1</code> adds <code>neighbors</code> (relation, direction, subject, and their facts when <code>detail</code> asks for them; up to 50, then <code>neighbors_truncated</code>). Facts and neighbours of a page are read in a few statements whatever its size. <code>per_kind=n</code> returns the best <code>n</code> of every kind instead of one ranking (in semantic mode one ranking per kind, <code>rule</code> or <code>kind</code> narrowing the kinds; in text mode the text ranking cut per kind; not with <code>after</code>): with <code>related_to</code> for the scope, <code>mode="semantic"</code> and <code>detail="concise"</code>, the context a task needs in one call. <code>exclude</code> leaves predicates out of what is returned and drops fact hits on them. <code>as_of</code> evaluates <code>rule</code>, walks <code>related_to</code> and reads the facts and neighbours at that instant (entities are not bitemporal; the semantic index is as of its last <code>keel index</code>). <code>text</code> may be a list: one result list per text, in order. <code>kind</code> may be a list: the listing covers those kinds, ordered by key (<code>after</code> is then a full key), a semantic ranking only them, and <code>per_kind</code> the best <code>n</code> of each (in text mode, the first <code>n</code> of each listing; one kind with <code>per_kind</code> in text mode is an error, that is <code>limit</code>).</p>
+<p><code>where={name: value}</code> keeps the entities whose attribute <code>name</code>, or current accepted fact <code>name</code> (at <code>as_of</code>), is <code>value</code>, or a list holding it; a list of values against a single value means any of them (<code>where={"status": ["In Progress", "In Review"]}</code>: "a status among" in one call), while a list-valued attribute or fact still matches the same list or one holding the wanted value; strings compare without case, and the whole value, not a part of it: <code>search(kind="visual", where={"title": "Detalhe Ociosidade"})</code> finds a visual by its exact title, which a semantic search blurs. It applies in every mode, after the other filters; a name that <code>exclude</code> hides is an error. With <code>detail</code> <code>brief</code> or <code>concise</code>, each hit carries <code>since</code>: <code>{predicate: valid_from}</code> for the facts the filter matched (attributes have no time), so "in this status for 30 days or more" needs no <code>history</code> per hit. A name that is a relation or a kind also matches as a neighbour: <code>where={"in_project": "project:P"}</code> keeps the subjects linked to <code>project:P</code> through <code>in_project</code>, <code>where={"project": "P"}</code> those linked to that subject of kind <code>project</code> (by key or id; a list: any of them), with the other entries, in one call; an attribute or fact of that name still matches. <code>facts.&lt;name&gt;</code>, as the compact tables name a column, is <code>&lt;name&gt;</code>. Each ranked entity says why it is a result: <code>matched</code> is the attribute or predicate whose value matched (or <code>"key"</code>), and <code>snippet</code> the part of that value around the match (up to 160 characters; of a list, the element). In text mode that is the substring; in semantic mode, the split document that ranked it (below) or else the field sharing most words with the query; nothing when no field does, and never a hidden predicate. A listing without <code>text</code> carries neither.</p>
+<p><code>related_to</code> (a subject key the caller may read) keeps only that subject's current neighbours, through relation <code>via</code> when given, in every mode: <code>search(kind="card", rule="en_pausa", related_to="cliente:BAT", via="de_cliente")</code> is the paused cards of one client in one call, walking the client's neighbours rather than the whole kind. <code>after</code> has one format, the key of the last entity received (<code>tire:T-9002</code>); an id alone is accepted when the listing has one kind. It pages the <code>kind</code>/<code>rule</code> listing only: with <code>mode="semantic"</code> or a plain text search it is an error, since those rank and page with <code>limit</code>.</p>
+<p>With <code>detail="brief"</code> or <code>"concise"</code> a fact hit is a lean fact (§7.2), with its <code>subject</code>; with <code>"entity"</code> and <code>"full"</code> it is the whole fact (over MCP, <code>"entity"</code> returns lean fact hits too, §7.7). Without <code>limit</code> (and without <code>per_kind</code>), a text search returns its first 20 results and a <code>kind</code>/<code>rule</code> listing its first 50; when more exist, the first element is <code>{"more": {shown, total, next}}</code>, <code>next</code> saying how to continue (the <code>after</code> key for a listing). A given <code>limit</code> is honoured without a marker (<code>0</code>: the whole listing); semantic ranking keeps its default of 10. Every <code>kind</code> must be declared, and <code>rule</code> must exist with a <code>when</code> (§7). A plain text search (no <code>kind</code>, no <code>rule</code>) of more than one word that nothing contains whole, and <code>mode="semantic"</code> with text on a server without an embedder and index, rank subjects instead by how many of the query's words (three letters or more, common stop words left out) their key, attributes or current facts contain, then by key; <code>related_to</code>, <code>via</code>, <code>kind</code> and <code>rule</code> still filter, and the list leads with <code>{"note": ...}</code> saying the ranking changed.</p>
+<p>Every entity the tools return (here, in <code>context.entity</code>, in <code>neighbors</code>, and in <code>keel export</code>) carries <code>key</code>, the <code>&lt;kind&gt;:&lt;id&gt;</code> that every other call takes and that <code>after</code> expects.</p>
+<p>Without <code>kind</code> and <code>rule</code>: case-insensitive substring match over entity keys and attrs, and fact predicates and values. With <code>kind</code>, or <code>rule</code> (whose <code>applies_to</code> gives the kind, and which must carry a <code>when</code>): the entities of that kind whose key, attrs or current facts' values match <code>text</code> (since 0.20; before, key and attrs only), and with <code>rule</code> only those where the rule evaluates true now, ordered by key; <code>limit</code> caps the page and <code>after</code> (the last key received) continues it. This is the work list of a sweep, a router or an orchestrator.</p>
+<p><code>mode="semantic"</code> ranks subjects by meaning: subjects whose id appears verbatim in the query come first (<code>match: "key"</code>, score 1); then a dense leg (the embedded query against the vector index) and, when the index offers <code>text_query</code>, a lexical leg (BM25 over the same documents) are fused by a convex combination of min-max normalized scores, weighted by the cartridge's <code>semantic.lexical_weight</code> (default 0.3; 0 is dense only); then the optional reranker reorders the top candidates. The tenant, the agent's read slice, <code>kind</code> and <code>rule</code> always apply, inside the index when its <code>query</code> takes <code>where</code>; with <code>related_to</code>, <code>where</code> also carries <code>subject</code> (the neighbours' keys; a split document belongs to its subject), which an index MAY apply and Keel checks after retrieval either way. Each entity carries <code>score</code> and <code>similarity</code> (the cosine); <code>min_score</code> (or the cartridge's <code>semantic.min_score</code>) drops results below that cosine, and is model-specific. Default <code>limit</code> 10. Three adapter contracts make it pluggable (<code>keel.semantic</code>): <code>VectorIndex</code> (<code>upsert</code>, <code>delete</code>, <code>query</code>, <code>clear</code>, always by tenant, an index never returns another tenant's keys; optional <code>where</code> on <code>query</code> and an optional <code>text_query</code>), <code>Embedder</code> (<code>embed(texts)</code>, optionally <code>role="query"|"document"</code> for asymmetric models) and <code>Reranker</code> (<code>rerank(query, docs)</code>; bundled: the Cohere/Jina/Voyage <code>/rerank</code> shape and an LLM reranker over any <code>/chat/completions</code>). Keel ships <code>MemoryIndex</code>, <code>ChromaIndex</code> (extra <code>chroma</code>), <code>WeaviateIndex</code> (extra <code>weaviate</code>), <code>OpenAIEmbedder</code> (any <code>/v1/embeddings</code> API) and <code>HashEmbedder</code> (tests); any other is a <code>pkg.module:factory?param=value</code> spec, checked by <code>tests/test_semantic.py</code> with <code>KEEL_VECTOR_INDEX</code> / <code>KEEL_EMBEDDER</code>. The index is built by <code>keel index</code>, outside ingest (rule 10): one document per subject with its key, attributes, open accepted facts of tenant and global scope and the open relations the cartridge names, as chosen by the cartridge's <code>semantic:</code> section (§5.1); task and agent memory and proposals are never indexed; with <code>semantic.split</code>, each open fact of the listed predicates is also a document of its own (a list value, one per element), a hit on it ranks its subject (which keeps its best document, and says which predicate in <code>matched</code> and which value or element in <code>snippet</code>), and a changed value replaces its document; incremental from a watermark (subjects whose facts changed, and both ends of new links), <code>--full</code> rebuilds. A <code>rule</code> or <code>kind</code> filter never cuts the page: candidates are fetched in widening windows until <code>limit</code> results pass or the index runs out.</p>
+<h3 id="74-annotatesubject-predicate-value-scopetask-evidencenone-bynone-tasknone-keynone-statusnone-detailfull-fact">7.4 <code>annotate(subject, predicate, value, scope="task", evidence=None, by=None, task=None, key=None, status=None, detail="full") -&gt; Fact</code><a class="headerlink" href="#74-annotatesubject-predicate-value-scopetask-evidencenone-bynone-tasknone-keynone-statusnone-detailfull-fact" title="Permanent link">&para;</a></h3>
+<p>Writes earned memory. Applies the agent registry (§6.1) and the scope policy (§6); refused for a forgotten tenant (§4). <code>source</code> is <code>annotate:&lt;agent, or by, or 'agent'&gt;</code> (<code>annotate:human:&lt;id&gt;</code> for a person); <code>corrected_by</code> is <code>by</code>, else the caller. <code>task</code> ties the fact to one job: <code>history(task=)</code> and <code>context(task=)</code> read it, and closing the task (<code>store.close_task</code>, <code>keel expire --task</code>) expires its task-scope memory at once (<code>task</code> on a tenant or agent fact is provenance: the fact keeps its scope's lifetime). <code>key</code> makes the write idempotent, for durable-execution engines that replay steps: the same key on the same subject returns the fact it wrote; the same key with a different predicate, value, task, status or scope raises. <code>status="proposed"</code> writes a proposal: it never touches accepted facts, waits in <code>context.proposals</code>, and needs only some write right (not the right on <code>scope</code>), so an agent can propose a tenant fact a person accepts; the evidence policy of <code>scope</code> still applies. An accepted write (no <code>status</code>) or <code>status="rejected"</code> is a decision: it needs the right on <code>scope</code> and closes the predicate's open proposals of that scope (a private or task note settles no tenant proposal); a rejection is recorded closed at once, in <code>history</code> only. Proposals are kept one open per author per predicate, in their own history beside the accepted facts; the author is the writer and the <code>by</code> it named together, so an agent naming a person with <code>by=</code> never takes that person's slot (the same holds for multi-valued predicates). A value is at most 64 KB serialized: a label and a pointer, never the document. Store <code>close_fact</code> takes <code>status</code> so handlers never close proposals. Returns the stored fact including <code>expires_at</code>, <code>status</code>, <code>trace</code> and <code>cartridge</code> (the cartridge's <code>ident</code>). <code>detail="ack"</code> (the default over MCP and HTTP, §7.7) returns only what was written where: <code>subject</code>, <code>predicate</code>, <code>scope</code>, <code>valid_from</code>, and <code>valid_to</code>, <code>expires_at</code>, <code>task</code>, <code>status</code> when set. <code>detail</code> is <code>"full"</code> or <code>"ack"</code>; an unknown <code>scope</code> raises with the valid ones.</p>
+<h3 id="75-relatedsubject-relationnone-as_ofnone-depth1-limit50-relation-direction-subject-since">7.5 <code>related(subject, relation=None, as_of=None, depth=1, limit=50) -&gt; [{relation, direction, subject, since}]</code><a class="headerlink" href="#75-relatedsubject-relationnone-as_ofnone-depth1-limit50-relation-direction-subject-since" title="Permanent link">&para;</a></h3>
+<p>Open relations at now or at <code>as_of</code>, optionally filtered by type (one, or a list; each must be declared), with direction relative to the subject (<code>out</code>, <code>in</code>, or <code>both</code> for a symmetric relation, which is reported once even when the source recorded it from both ends). <code>depth</code> 2 or 3 keeps walking through the same relations, nearest first and each subject once: every entry then carries <code>hops</code> and <code>via</code>, the subject it was reached from, to which its direction is relative. Entries are ordered by hop, relation, link time (<code>since</code>, oldest first) and key, whatever the store's order. At most <code>limit</code> entries (<code>0</code> or <code>None</code>: all), keeping the nearest hops and within them the most recent links; when more exist, the first element is <code>{"more": {shown, total, omitted, by_relation, next}}</code>, <code>by_relation</code> counting every entry per relation and <code>next</code> pointing at <code>relation=</code> or a <code>search(related_to=, via=, limit=, after=)</code> page.</p>
+<h3 id="76-two-time-axes">7.6 Two time axes<a class="headerlink" href="#76-two-time-axes" title="Permanent link">&para;</a></h3>
+<p><code>as_of</code> is world time: what was true then. <code>as_known_at</code> is transaction time: what Keel knew then, which is what an agent saw when it decided. A fact counts as known at <code>t</code> when <code>recorded_at &lt;= t</code>. It ends where the next fact of its slot (same predicate, status and scope; per author for a multi-valued predicate or a proposal) known by <code>t</code> starts, or at a close learned by <code>t</code> (<code>closed_at &lt;= t</code>, or an explicit close recorded by <code>t</code>), whichever is earlier: closes are rebuilt from what was known then, so a late fact that later moved a close never reopens the fact before it. Memory counts when it had not expired by <code>t</code>. <code>context(as_known_at=t)</code> defaults <code>as_of</code> to <code>t</code>, and also evaluates the rules on that view; relations count when <code>recorded_at &lt;= t</code>, and an unlink only once <code>closed_at &lt;= t</code>. Every <code>context</code> carries <code>watermark</code>, the tenant's latest write (by the ingest clock, so a late event with an old <code>recorded_at</code> is still past it), which is the cursor an agent stores for its next <code>history(changed_since=)</code>, passed back exactly as received. Every time argument of the five tools takes a datetime or ISO 8601 text, in every transport. Entities are not bitemporal and are shown as they are now. Facts written before 0.9 have no <code>closed_at</code>; their closes count as always known.</p>
+<h3 id="77-transport">7.7 Transport<a class="headerlink" href="#77-transport" title="Permanent link">&para;</a></h3>
+<p>The tools are plain functions first. <code>keel serve</code> exposes the same five over MCP (stdio, or streamable HTTP at <code>/mcp</code> with <code>--transport http --tenant</code>) and as a JSON API (<code>POST /v1/&lt;tool&gt;</code>, one process for many tenants, tenant and agent from <code>X-Keel-Tenant</code> and <code>X-Keel-Agent</code> behind a shared bearer secret or per-account API keys that prefix the tenant with the account). The names and semantics MUST NOT change per transport: <code>annotate</code>'s <code>value</code> is any JSON over MCP, HTTP and in Python alike.</p>
+<p>Defaults differ by caller. Over MCP and HTTP the caller is usually an agent, so <code>context</code> defaults to <code>detail="brief"</code>, <code>history</code> to <code>"concise"</code> and <code>annotate</code> to <code>"ack"</code>; Python <code>Tools</code> and the SDK clients keep <code>"full"</code>. Over MCP, <code>search</code> with <code>detail="entity"</code> (its default) also returns fact hits lean. The list caps of §7.2, §7.3 and §7.5 apply in every transport; the TypeScript, Go and PHP runtimes ask for every entry (<code>limit</code> 0) unless the caller sets one, and drop a leading <code>{"more"}</code> or <code>{"note"}</code> element so a list keeps its declared type.</p>
+<p>Over MCP, a result is one text block of compact JSON (no indentation, a list in one block, not one per element), and <code>structuredContent</code> carries the same data (a list under <code>result</code>) for programmatic clients. Tools publish no <code>outputSchema</code> (it would only say "an object" or "a list", in tokens a client may hand the model on every call). Parameters with a closed set of values (<code>detail</code>, <code>mode</code>, <code>scope</code>, <code>status</code>) are declared as enums. Tool descriptions are shared with <code>Tools.spec()</code> (<code>keel.tools.DESCRIPTIONS</code>) and fixed, so a prompt cache holds them. A server may be read-only (<code>build_server(read_only=True)</code>, <code>keel serve --read-only</code>): it lists <code>context</code>, <code>history</code>, <code>search</code> and <code>related</code> and refuses <code>annotate</code> with the reason; a server bound to an agent whose registry entry writes no scope (<code>writes: []</code>) is read-only without the flag. The default lists all five; <code>query=True</code> adds the optional <code>query</code> (§7.8), read-only too, and puts the schema it reads in the instructions. A server bound to one tenant states once per session, in its <code>instructions</code>, what every call would otherwise repeat: the kinds, the relations (<code>from-&gt;to</code>) and each rule's <code>applies_to</code> and definition, and that <code>search(rule=)</code> lists where a rule holds. A kind with at most three subjects (a project, a site, an account) is named with its subjects, as the server starts (<code>Kinds: issue, project (project:INDY)</code>): an agent filters by it without looking its key up first. Experimental, MCP only: <code>detail="text"</code> on <code>context</code> and <code>history</code> renders the <code>brief</code> context or the <code>concise</code> history as lines for the model (one fact per line with its time and provenance), with the JSON in <code>structuredContent</code>.</p>
+<p>A server writes that text compact by default (<code>build_server(compact=False)</code>, <code>keel serve --plain</code> or <code>KEEL_COMPACT=0</code> send the JSON text instead): the same data, lossless (<code>keel.mcp_server.unpack</code> restores it), in about a third fewer tokens on the Jira benchmark's calls, with the same accuracy (<code>evals/jira/results/ab-compact-*.jsonl</code>). A client that parses the text block as JSON should read <code>structuredContent</code>, or unpack the text. UTC times drop <code>+00:00</code> for <code>Z</code> and zero seconds (<code>2026-10-03T08:00Z</code>; fractions kept, so a <code>watermark</code> is still exact); a list of two or more records becomes one table, <code>{"all": {fields every record shares}, "cols": [...], "rows": [[...]]}</code>, each row a record's values in the order of <code>cols</code>, followed by an object of its other fields when it has some (a field absent from a record stays absent: a first value still has no <code>was</code>), a map every record has written as <code>map.key</code> fields, and the list's leading <code>more</code>, <code>note</code> or <code>initial</code> as keys of the table. An object of data with both <code>cols</code> and <code>rows</code> travels as <code>{"~": object}</code>. The session <code>instructions</code> then say how to read a table; <code>structuredContent</code> and <code>/v1</code> keep the JSON.</p>
+<h3 id="78-querysql-limitnone-row-optional">7.8 <code>query(sql, limit=None) -&gt; [row]</code> (optional)<a class="headerlink" href="#78-querysql-limitnone-row-optional" title="Permanent link">&para;</a></h3>
+<p>Read-only SQL over the schema generated from the cartridge (<code>keel/sqlgen.py</code>): the per-kind views (<code>&lt;kind&gt;_state_at</code>, <code>&lt;kind&gt;_state_known_at</code>, <code>&lt;kind&gt;_changes</code>), <code>state_at</code>/<code>state_known_at</code>, <code>keel_facts</code>, <code>relations_at</code>/<code>relations_known_at</code>, <code>&lt;rule&gt;_at</code>/<code>&lt;rule&gt;_verdicts</code>, and the tables <code>facts</code>, <code>entities</code>, <code>relations</code>. One <code>SELECT</code> (or <code>WITH ... SELECT</code>). Off unless the host enables it (<code>keel serve --query</code>, <code>KEEL_QUERY</code>, <code>build_server(query=True)</code>, <code>build_http_app(query=True)</code>, <code>Tools(query=True)</code>); it is served by <code>SqliteStore</code>, <code>DuckdbStore</code>, <code>PostgresStore.from_url</code>; not <code>MemoryStore</code> or <code>MysqlStore</code>, which raise a clear error and are never listed). Rows are objects keyed by column, instants as ISO 8601 text in UTC; at most <code>limit</code> rows (default 200; <code>0</code> or more than the deployment's <code>max_list</code>: that ceiling, else 1000), a cut list leading with <code>{"more": {"shown", "next"}}</code>. A query runs at most <code>query_timeout</code> seconds (default 5, <code>--query-timeout</code>). An answer carries at most 8 MB of values (cut, led by <code>{"more"}</code>); a row over 1 MB is refused.</p>
+<p>Tenant isolation is the store's, never a check of the agent's SQL: the query runs where only the bound tenant's readable rows exist (SQLite and DuckDB: a per-tenant sandbox copy; Postgres: a login role per tenant reading views bound to it), so another tenant's id in a macro argument, a base table, a catalog, a file or network function, a second statement or a write reads or changes nothing (<code>tests/test_query_security.py</code>). What it reads: the tenant's accepted (no <code>status</code>) tenant-scope facts, unexpired, the global partition's global facts (as §6 lets every tenant read them), its entities and relations. Never agent or task memory, never proposals: a store cannot apply a caller's per-agent and per-task visibility to arbitrary SQL, so it leaves them out. With an agent registry (§6.1), an agent may call <code>query</code> only if its entry says <code>query: true</code>: SQL reads past <code>reads.kinds</code> and <code>reads.relations</code>.</p>
+<p>Over MCP its description is fixed text (prompt caches hold) and the schema it reads, generated for the tenant and the store's dialect, rides in the server's instructions; <code>Tools.spec()</code> appends it to the description. Over HTTP it is <code>POST /v1/query {sql, limit?}</code> (404 when not enabled; a read, so a <code>--read-only</code> server may still offer it).</p>
+<hr />
+<h2 id="8-jobs">8. Jobs<a class="headerlink" href="#8-jobs" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Expiry</strong>: drop facts past <code>expires_at</code>, per tenant. Shipped: <code>store.expire(tenant)</code> on both stores and <code>keel expire &lt;tenant&gt; --db</code>; the schedule is the operator's cron. Reads exclude expired facts regardless.</li>
+<li><strong>Consolidation</strong>: <code>keel consolidate</code> (or <code>keel expire --consolidate</code>, which consolidates before dropping, so nothing is lost unsummarized) runs the cartridge's <code>consolidate:</code> entries for a tenant: per subject, the matching episodic facts (predicate, scopes, kind, a window on <code>valid_from</code>; expired-but-not-dropped ones count; agent memory only when <code>from.scopes</code> lists it, since consolidating it promotes private memory) are reduced into one durable fact when there are at least <code>min_count</code>. Reducers are deterministic (<code>mode</code> with ties to the latest, <code>latest</code>, <code>count</code>, <code>min</code>, <code>max</code>, <code>avg</code>, <code>distinct</code>); <code>summary</code> asks a <code>Summarizer</code> adapter (<code>LLMSummarizer</code> over any <code>/chat/completions</code>, or yours) for one sentence. The fact carries <code>source=consolidate:&lt;name&gt;</code>, evidence naming the count, the span of their <code>valid_from</code> and the originals' evidence, and an idempotency key over its inputs: the same inputs never write twice, new inputs write a new value that closes the old. Proposals are never consolidated, and the written fact carries <code>corrected_by=job:consolidate:&lt;name&gt;</code>. The summarizer is chosen with <code>--summarizer llm|join|pkg.module:factory</code>; <code>llm</code> reads <code>KEEL_SUMMARIZER_BASE_URL</code>, <code>KEEL_SUMMARIZER_MODEL</code> and <code>KEEL_SUMMARIZER_API_KEY</code>. The originals are kept until their TTL. A job, never part of ingest.</li>
+<li><strong>Every tenant</strong>: <code>keel index</code>, <code>keel consolidate</code> and <code>keel expire</code> take <code>--all-tenants</code> instead of one tenant and run over <code>store.tenants()</code> one after another.</li>
+<li><strong>Erasure</strong>: <code>keel forget &lt;tenant&gt; --db --yes [--index]</code> erases one tenant (§3.4) and prints what it deleted as JSON; with <code>--index</code> its semantic documents go too. <code>index_tenant</code> clears a forgotten tenant's documents, and <code>keel index --all-tenants</code> does so for every tenant forgotten since its last run (its cursor file marks it as not yet cleared). <code>annotate</code> on a forgotten tenant raises. <code>keel forget &lt;tenant&gt; --before &lt;date&gt; --db --yes</code> (or <code>--all-tenants</code>) runs retention instead and prints one JSON line per tenant.</li>
+<li><strong>Replay</strong>: rebuild a tenant from the external log. Shipped: <code>Ingestor.replay(tenant, events=adapter)</code> and <code>keel replay &lt;cartridge&gt; &lt;stream&gt; &lt;tenant&gt; --db</code>.</li>
+</ul>
+<hr />
+<h2 id="9-invariants-what-a-conformance-test-checks">9. Invariants (what a conformance test checks)<a class="headerlink" href="#9-invariants-what-a-conformance-test-checks" title="Permanent link">&para;</a></h2>
+<ol>
+<li>No record spans tenants; every read is partitioned by tenant (global memory is read from its own partition, §6).</li>
+<li><code>open_fact</code> never overwrites: after two writes to the same predicate, both facts exist and the first is closed at the second's <code>valid_from</code>.</li>
+<li>A fact query <code>at=t</code> returns exactly the facts valid at <code>t</code>.</li>
+<li>Replay produces a graph equal to the one built incrementally.</li>
+<li><code>annotate</code> to a scope in <code>requires_evidence</code> without evidence raises; when <code>evidence</code> is declared, so does evidence that is neither an event id the tenant's log applied (<code>event</code>) nor a declared ref prefix; an <code>event</code> must have set a fact on the subject written about.</li>
+<li><code>task</code>/<code>agent</code> annotations carry <code>expires_at</code>; <code>tenant</code>/<code>global</code> with <code>never</code> TTL do not.</li>
+<li>The core imports nothing from <code>cartridges/</code> or <code>examples/</code>; every example cartridge validates and passes after any core change.</li>
+<li>Ingest performs no I/O other than reading the adapter and writing the store.</li>
+<li>Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.</li>
+<li>Scope reads hold (§6): agent memory reaches only its author, task memory only its task, global memory every tenant.</li>
+</ol>
+<hr />
+<h2 id="10-non-goals">10. Non-goals<a class="headerlink" href="#10-non-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Document or conversation ingestion (RAG memory). Keel can hold a pointer to such a store's output as a fact.</li>
+<li>Agent orchestration, planning or tool routing.</li>
+<li>A query language exposed to agents beyond the five tools and the optional, read-only, tenant-bound <code>query</code> (§7.8): no writes, no cross-tenant reads.</li>
+<li>Cross-tenant analytics (do that on the product's warehouse).</li>
+</ul>
+<hr />
+<h2 id="11-versioning">11. Versioning<a class="headerlink" href="#11-versioning" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The envelope, the cartridge format and the tool signatures (five core, one optional) are versioned together as the <strong>Keel standard</strong>; breaking changes bump the minor version while pre-1.0.</li>
+<li><strong>The public contract</strong> is what a caller builds on: the exports of <code>keel/__init__.py</code>, the envelope, the cartridge schema (<code>docs/cartridge.schema.json</code>), the five tools and the optional <code>query</code> in Python, over MCP and over HTTP (names, parameters, defaults, enums, read-only annotations), the store protocol (<code>keel/store/base.py</code>) and the Python client. <code>tests/contract.json</code> freezes it and <code>tests/test_contract.py</code> fails on any difference, telling an addition from a break.</li>
+<li><strong>Additions</strong> (a new optional parameter, a new enum value, a new field in an answer) ship in any minor version.</li>
+<li><strong>Breaks</strong> (a removed or renamed parameter or tool, a changed default, a new required parameter, a removed enum value) need a deprecation first: the old form keeps working for at least one minor version, warns (<code>DeprecationWarning</code> in Python; a <code>{"note": ...}</code> element or field over MCP and HTTP) and is named in the release notes with its replacement; only then may a release remove it, with <code>--allow-breaking</code> when refreshing the snapshot. Pieces marked <em>experimental</em> (MCP <code>detail="text"</code>) may change without a deprecation, still named in the release notes.</li>
+<li>A cartridge declares its own <code>version</code>; the core records which cartridge version built a tenant's graph (<em>planned</em>).</li>
+<li>Store implementations are versioned independently; all MUST pass the conformance invariants (§9).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../operate/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Operate">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Operate
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../roadmap/" class="md-footer__link md-footer__link--next" aria-label="Next: Roadmap">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Roadmap
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

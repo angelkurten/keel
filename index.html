@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keel: the context layer for the agents inside your product</title>
+<meta name="description" content="Keel turns your product's events into one graph per customer that remembers what was true and when. Every agent reads it through the same five tools. Open source, Apache 2.0.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f766e'/%3E%3Cpath d='M9 8v16M9 16l9-8M12 13l8 11' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0e12; --bg-2: #0f1318; --panel: #12171d; --panel-2: #171d24; --line: #222a33; --line-2: #2c3540;
+  --ink: #e8edf2; --muted: #9aa8b6; --dim: #8391a0;
+  --accent: #2dd4bf; --accent-ink: #04201c; --accent-soft: rgba(45, 212, 191, .12);
+  --warn: #f5a524; --warn-soft: rgba(245, 165, 36, .12); --bad: #f87171;
+  --st-open: #334155; --st-prog: #155e63; --st-block: #7c4a12;
+  --code-key: #7dd3fc; --code-str: #a7f3d0; --code-com: #8391a0;
+  --sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+  --r: 12px; --r-sm: 8px; --max: 1200px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg: #ffffff; --bg-2: #f7f8fa; --panel: #ffffff; --panel-2: #f3f5f7; --line: #e4e8ec; --line-2: #d5dbe1;
+    --ink: #0d1117; --muted: #57606a; --dim: #646e79;
+    --accent: #0f766e; --accent-ink: #ffffff; --accent-soft: rgba(15, 118, 110, .09);
+    --warn: #b45309; --warn-soft: rgba(180, 83, 9, .09); --bad: #b91c1c;
+    --st-open: #cbd5e1; --st-prog: #99d6d0; --st-block: #f2c38b;
+    --code-key: #0b5cad; --code-str: #0f766e; --code-com: #646e79;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff; --bg-2: #f7f8fa; --panel: #ffffff; --panel-2: #f3f5f7; --line: #e4e8ec; --line-2: #d5dbe1;
+  --ink: #0d1117; --muted: #57606a; --dim: #646e79;
+  --accent: #0f766e; --accent-ink: #ffffff; --accent-soft: rgba(15, 118, 110, .09);
+  --warn: #b45309; --warn-soft: rgba(180, 83, 9, .09); --bad: #b91c1c;
+  --st-open: #cbd5e1; --st-prog: #99d6d0; --st-block: #f2c38b;
+  --code-key: #0b5cad; --code-str: #0f766e; --code-com: #646e79;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, pre { font-family: var(--mono); font-size: 13.5px; }
+pre { margin: 0; white-space: pre; overflow-x: auto; line-height: 1.65; }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.025em; text-wrap: balance; }
+h2 { font-size: clamp(28px, 2.2vw + 14px, 40px); line-height: 1.15; }
+h3 { font-size: 20px; line-height: 1.3; }
+p { margin: 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+section { padding: 112px 0 0; }
+.lead { color: var(--muted); font-size: 18px; max-width: 60ch; margin-top: 14px; }
+.k { color: var(--code-key); } .s { color: var(--code-str); } .c { color: var(--code-com); }
+/* Grid children never grow past their column because of a long line of code. */
+.session > *, .plot > *, .compare > *, .feature > *, .duo > *, .ref > *, .bench > *, .paper > *, .steps > li, .lanes > * { min-width: 0; }
+
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: var(--r-sm); border: 1px solid var(--line-2);
+  background: var(--panel); color: var(--ink); font: 500 15px var(--sans); text-decoration: none; cursor: pointer; transition: border-color .15s, filter .15s, transform .1s; }
+.btn:hover { border-color: var(--dim); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn code { font-size: 14px; }
+.btn svg { flex: none; opacity: .8; }
+.btn .copied { font: 500 12px var(--sans); }
+
+/* nav */
+header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent); border-bottom: 1px solid var(--line); backdrop-filter: saturate(1.4) blur(8px); }
+nav { display: flex; align-items: center; gap: 28px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 17px; text-decoration: none; letter-spacing: -0.02em; }
+.brand svg { display: block; }
+nav .links { display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+nav .links a { text-decoration: none; } nav .links a:hover { color: var(--ink); }
+nav .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.lang { display: flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.lang button { background: none; border: 0; color: var(--muted); font: 500 13px var(--sans); padding: 8px 11px; cursor: pointer; min-height: 34px; }
+.lang button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); }
+nav .btn { height: 34px; padding: 0 12px; font-size: 14px; }
+
+/* hero */
+.hero { padding: 88px 0 0; text-align: center; }
+.pill { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 12px 4px 6px; text-decoration: none; }
+.pill b { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.pill:hover { border-color: var(--dim); }
+.hero h1 { font-size: clamp(38px, 4vw + 16px, 68px); line-height: 1.05; letter-spacing: -0.04em; margin: 22px auto 0; max-width: 17ch; }
+.hero .lead { margin: 20px auto 0; font-size: 19px; max-width: 60ch; }
+.hero .acts { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 32px; }
+.hero .acts a.link { font-weight: 500; font-size: 15px; color: var(--muted); text-underline-offset: 3px; }
+.hero .acts a.link:hover { color: var(--ink); }
+
+/* the session panel */
+.panel { margin: 56px auto 0; max-width: 1080px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.panel .bar { display: flex; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--bg-2); overflow-x: auto; }
+.tab { background: none; border: 0; color: var(--muted); font: 500 13px var(--sans); padding: 7px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--ink); }
+.panel .bar .meta { margin-left: auto; font: 12px var(--mono); color: var(--dim); padding-right: 6px; white-space: nowrap; }
+.pane[hidden] { display: none; }
+.session { display: grid; grid-template-columns: 1.15fr 1fr; min-height: 440px; }
+.chat { padding: 22px 24px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+.msg { max-width: 92%; font-size: 15px; }
+.msg.user { align-self: flex-end; background: var(--panel-2); border: 1px solid var(--line); padding: 10px 14px; border-radius: 12px 12px 4px 12px; }
+.msg .who { display: block; font: 500 12px var(--sans); color: var(--dim); margin-bottom: 4px; }
+.call { font: 12.5px/1.55 var(--mono); border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
+.call .q { padding: 8px 12px; background: var(--bg-2); display: flex; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+.call .q i { font-style: normal; color: var(--accent); }
+.call .a { padding: 8px 12px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.typing::after { content: "▍"; color: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.trace { padding: 22px 24px; background: var(--bg-2); font-size: 13px; }
+.trace h3 { margin: 0 0 12px; font: 500 12px var(--sans); color: var(--dim); letter-spacing: 0; }
+.trace .row { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); color: var(--dim); }
+.trace .row b { color: var(--muted); font-weight: 500; font-family: var(--mono); font-size: 12.5px; }
+.trace .row.on b { color: var(--accent); } .trace .row.on span { color: var(--ink); }
+.trace .stat { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; background: var(--panel); }
+.trace .stat b { display: block; font: 600 20px var(--sans); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.trace .stat span { font-size: 12px; color: var(--dim); }
+.trace .note { font-size: 12px; color: var(--dim); margin-top: 12px; }
+.replay { background: none; border: 1px solid var(--line-2); color: var(--muted); font: 500 12px var(--sans); border-radius: 6px; padding: 5px 10px; cursor: pointer; margin-top: 14px; }
+.replay:hover { color: var(--ink); }
+
+/* bitemporal plot */
+.plot { padding: 20px; display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: start; }
+.plot svg { width: 100%; height: auto; display: block; touch-action: none; cursor: crosshair; user-select: none; }
+.plot .ax { font: 500 11px var(--sans); fill: var(--dim); }
+.plot .lbl { font: 600 12px var(--sans); fill: var(--ink); pointer-events: none; }
+.plot .cross { stroke: var(--ink); stroke-width: 1.2; stroke-dasharray: 4 4; pointer-events: none; opacity: .7; }
+.plot .late { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 6 4; pointer-events: none; }
+.plot .dot { fill: var(--ink); stroke: var(--panel); stroke-width: 3; }
+.plot .side h3 { font-size: 15px; letter-spacing: -0.01em; }
+.plot .side p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.plot .sl { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center; font-size: 13px; margin-top: 16px; color: var(--muted); }
+.plot .sl input { width: 100%; accent-color: var(--accent); }
+.plot .sl output { font-weight: 600; color: var(--ink); min-width: 4.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.plot .answer { display: block; margin-top: 14px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; font: 12px/1.6 var(--mono); }
+.plot .answer b { font-weight: 500; padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+.plot .presets { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.plot .presets button { text-align: left; font: 500 13px var(--sans); color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; cursor: pointer; }
+.plot .presets button:hover { border-color: var(--dim); }
+
+/* works with */
+.works { padding: 64px 0 0; }
+.works .rows { display: grid; gap: 14px; justify-items: center; }
+.works .row { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 8px 28px; }
+.works .row span { font-size: 13px; color: var(--dim); }
+.works ul { list-style: none; padding: 0; margin: 0; display: contents; }
+.works li { font-weight: 600; color: var(--muted); font-size: 16px; letter-spacing: -0.01em; }
+
+/* problem */
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+.card h3 { font-size: 16px; display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em; }
+.tag { font: 500 12px var(--sans); padding: 2px 8px; border-radius: 999px; }
+.before .tag, .lane.without .tag { background: var(--warn-soft); color: var(--warn); }
+.after .tag, .lane.with .tag { background: var(--accent-soft); color: var(--accent); }
+.card > p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.card svg { width: 100%; height: auto; display: block; margin-top: 18px; }
+.d-box { fill: var(--panel-2); stroke: var(--line-2); }
+.d-pipe { fill: var(--warn-soft); stroke: var(--warn); }
+.d-keel { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.d-wire { stroke: var(--dim); stroke-width: 1; fill: none; opacity: .7; }
+.d-wire.k { stroke: var(--accent); stroke-width: 1.5; opacity: 1; }
+.d-t { font: 500 12px var(--sans); fill: var(--ink); }
+.d-s { font: 400 11px var(--sans); fill: var(--muted); }
+.d-kt { font: 700 15px var(--sans); fill: var(--ink); }
+.d-km { font: 500 11.5px var(--mono); fill: var(--accent); }
+
+/* pipeline strip */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; counter-reset: f; }
+.flow li { counter-increment: f; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; position: relative; }
+.flow li::before { content: counter(f); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); font: 500 12px var(--mono); color: var(--muted); }
+.flow li:not(:last-child)::after { content: "→"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--dim); background: var(--bg); line-height: 1; padding: 2px 0; z-index: 1; }
+.flow h3 { font-size: 15px; margin-top: 10px; letter-spacing: -0.01em; }
+.flow p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+/* feature rows */
+.feature { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; padding-top: 96px; }
+.feature.flip > :first-child { order: 2; }
+.feature.wide { grid-template-columns: 1fr; gap: 28px; }
+.duo { display: grid; grid-template-columns: 0.9fr 1.4fr; gap: 16px; align-items: start; }
+.kicker { font: 500 13px var(--mono); color: var(--accent); }
+.feature h2 { margin-top: 10px; }
+.feature ul { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; color: var(--muted); font-size: 15px; }
+.feature.wide ul { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.feature li { padding-left: 22px; position: relative; }
+.feature li::before { content: ""; position: absolute; left: 2px; top: 9px; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+.feature li b { color: var(--ink); font-weight: 600; }
+.code { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.code .file { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--line); background: var(--bg-2); font: 12px var(--mono); color: var(--dim); }
+.code pre { padding: 14px 16px; }
+.code + .code { margin-top: 12px; }
+.code .legend { padding: 0 16px 14px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.code .legend b { font: 500 12.5px var(--mono); color: var(--ink); }
+.err { color: var(--bad); }
+
+/* sdk tabs */
+.sdk .bar { display: flex; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--bg-2); overflow-x: auto; }
+.sdk .cmd { border-bottom: 1px solid var(--line); color: var(--muted); }
+.sdk .cmd .p { color: var(--dim); user-select: none; }
+.sdk pre { font-size: 12.5px; }
+.sdk pre.use { min-height: 236px; }
+
+/* rule play */
+.rp { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+.rp .q { font-size: 14px; color: var(--muted); }
+.rp .q b { color: var(--ink); font-weight: 600; }
+.lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.lane { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 14px; background: var(--bg-2); display: flex; flex-direction: column; }
+.lane h3 { font-size: 13px; letter-spacing: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.lane h3 .tag { font-size: 11px; }
+.lane canvas { width: 100%; height: 170px; display: block; margin-top: 10px; }
+.lane .phase { font-size: 12px; color: var(--muted); min-height: 3.2em; margin-top: 6px; }
+.meter .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--dim); }
+.meter .row b { font: 600 18px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter .track { height: 6px; border-radius: 3px; background: var(--line); margin-top: 6px; overflow: hidden; }
+.meter .fill { height: 100%; border-radius: 3px; background: var(--warn); }
+.lane.with .meter .fill { background: var(--accent); }
+.verdict { margin-top: 10px; font: 600 15px var(--sans); transition: opacity .4s; }
+.js .verdict { opacity: 0; } .js .verdict.in { opacity: 1; }
+.lane.without .verdict { color: var(--warn); } .lane.with .verdict { color: var(--accent); }
+.rp .foot { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-top: 14px; }
+.rp .sum { font-weight: 600; font-size: 15px; }
+.rp .foot .replay { margin: 0; }
+.rp .note { font-size: 12px; color: var(--dim); margin-top: 8px; }
+
+/* tools reference */
+.ref { display: grid; grid-template-columns: 240px 1fr; margin-top: 40px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.ref .list { border-right: 1px solid var(--line); padding: 10px; background: var(--bg-2); }
+.ref .list button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--muted); font: 500 14px var(--mono); padding: 10px 12px; border-radius: 6px; cursor: pointer; }
+.ref .list button span { display: block; font: 400 12px var(--sans); color: var(--dim); margin-top: 2px; }
+.ref .list button[aria-selected="true"] { background: var(--panel-2); color: var(--ink); }
+.ref .list button[aria-selected="true"] span { color: var(--muted); }
+.ref .body { padding: 22px 24px; min-height: 340px; }
+.ref .body h3 { font: 600 18px var(--mono); }
+.ref .body > p { color: var(--muted); margin-top: 6px; font-size: 15px; }
+.ref .body .code { margin-top: 16px; }
+
+/* benchmark */
+.bench { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin-top: 40px; }
+.chart .agent + .agent { margin-top: 18px; }
+.chart h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.bar-row { display: grid; grid-template-columns: 54px 1fr 44px; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); margin: 5px 0; }
+.bar-row .track { height: 10px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar-row .fill { height: 100%; border-radius: 3px; background: var(--dim); }
+@media (prefers-reduced-motion: no-preference) { .js .bar-row .fill { transition: width 900ms cubic-bezier(.2, .7, .2, 1); } .js #chart:not(.grown) .fill { width: 0 !important; } }
+.bar-row.keel { color: var(--ink); } .bar-row.keel .fill { background: var(--accent); }
+.bar-row b { text-align: right; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.chart .note { font-size: 12px; color: var(--dim); margin-top: 16px; }
+.stats { display: grid; gap: 16px; }
+.stat-card b { display: block; font: 600 30px var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat-card p { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.paper { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; align-items: start; }
+.paper h3 { font-size: 18px; }
+.paper .meta { color: var(--muted); font-size: 14px; margin-top: 8px; }
+.paper .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.honest { font-size: 14px; color: var(--muted); margin-top: 14px; }
+
+/* get started */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; counter-reset: s; list-style: none; padding: 0; }
+.steps li { counter-increment: s; }
+.steps h3 { font-size: 16px; display: flex; gap: 10px; align-items: center; letter-spacing: -0.01em; }
+.steps h3::before { content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); font: 500 12px var(--mono); color: var(--muted); }
+.steps p { color: var(--muted); font-size: 14px; margin: 6px 0 12px; }
+.steps .code pre { font-size: 12.5px; }
+.cta { margin-top: 96px; text-align: center; padding: 56px 24px; }
+.cta p { color: var(--muted); margin: 12px auto 0; max-width: 56ch; }
+.cta .acts { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+
+/* footer */
+footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 48px 0 40px; font-size: 14px; color: var(--muted); }
+.fcols { display: grid; grid-template-columns: 1.6fr repeat(4, 1fr); gap: 24px; }
+.fcols b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 10px; }
+.fcols a { display: block; text-decoration: none; padding: 3px 0; }
+.fcols a:hover { color: var(--ink); }
+.fcols a.brand { display: flex; color: var(--ink); padding: 0; }
+.fcols .about p { margin-top: 10px; max-width: 34ch; }
+.fbottom { display: flex; justify-content: space-between; gap: 16px; margin-top: 40px; font-size: 13px; color: var(--dim); flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .js .rise { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .2, 1); transition-delay: var(--d, 0ms); }
+  .js .rise.is-in { opacity: 1; transform: none; }
+}
+@media (max-width: 900px) {
+  nav { gap: 18px; }
+  nav .links a:not(.keep) { display: none; }
+  .session, .plot, .compare, .feature, .duo, .bench, .paper, .steps, .lanes { grid-template-columns: minmax(0, 1fr); }
+  .feature.flip > :first-child { order: 0; }
+  .feature { gap: 28px; padding-top: 72px; }
+  .feature.wide ul { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr 1fr; }
+  .flow li::after { display: none; }
+  .chat { border-right: 0; border-bottom: 1px solid var(--line); }
+  .ref { grid-template-columns: minmax(0, 1fr); }
+  .ref .list { border-right: 0; border-bottom: 1px solid var(--line); display: flex; overflow-x: auto; gap: 4px; }
+  .ref .list button { width: auto; white-space: nowrap; }
+  .ref .list button span { display: none; }
+  .fcols { grid-template-columns: 1fr 1fr; }
+  .fcols .about { grid-column: 1 / 3; }
+  section { padding-top: 88px; }
+}
+@media (max-width: 520px) {
+  .wrap { padding: 0 16px; }
+  .hero { padding-top: 56px; }
+  nav .right .btn { display: none; }
+  .panel .bar .meta { display: none; }
+  .chat, .trace, .plot, .ref .body { padding: 16px; }
+  .flow { grid-template-columns: 1fr; }
+  .rp .foot { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <nav aria-label="Main">
+      <a class="brand" href="./"><svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 8v16M9 16l9-8M12 13l8 11" stroke="var(--accent-ink)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>Keel</a>
+      <div class="links">
+        <a href="#how" data-i18n="nav.how">How it works</a>
+        <a href="#tools" data-i18n="nav.tools">Tools</a>
+        <a href="#benchmark" data-i18n="nav.bench">Benchmark</a>
+        <a href="https://doi.org/10.5281/zenodo.23571090" data-i18n="nav.paper">Paper</a>
+        <a class="keep" href="docs/" data-i18n="nav.docs">Docs</a>
+      </div>
+      <div class="right">
+        <div class="lang" role="group" aria-label="Language" data-i18n-aria="aria.lang"><button type="button" data-lang="en" aria-pressed="true">EN</button><button type="button" data-lang="es" aria-pressed="false">ES</button></div>
+        <a class="btn" href="https://github.com/angelkurten/keel">GitHub</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <a class="pill rise" href="#benchmark"><b data-i18n="hero.pillB">Paper</b><span data-i18n="hero.pill">387 questions on real Jira projects, open results</span></a>
+    <h1 class="rise" style="--d:60ms" data-i18n="hero.title">The context layer for the agents inside your product</h1>
+    <p class="lead rise" style="--d:120ms" data-i18n="hero.lede">Keel turns your product's events into one graph per customer that remembers what was true and when. Every agent you build reads it through the same five tools, over MCP, HTTP or a typed SDK, so you stop rebuilding the pipeline for each one.</p>
+    <div class="acts rise" style="--d:180ms">
+      <button class="btn primary" type="button" data-copy="pip install keel-context" aria-label="Copy: pip install keel-context"><code>pip install keel-context</code><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span class="copied" aria-live="polite"></span></button>
+      <a class="btn" href="docs/" data-i18n="hero.docs">Read the docs</a>
+      <a class="link" href="https://doi.org/10.5281/zenodo.23571090" data-i18n="hero.paper">Read the paper</a>
+    </div>
+
+    <div class="panel rise" style="--d:240ms" id="panel">
+      <div class="bar" role="tablist" aria-label="Demo" data-i18n-aria="aria.demo">
+        <button class="tab" role="tab" id="t-session" aria-controls="p-session" aria-selected="true" tabindex="0" data-i18n="tab.session">Agent session</button>
+        <button class="tab" role="tab" id="t-cart" aria-controls="p-cart" aria-selected="false" tabindex="-1" data-i18n="tab.cart">Cartridge</button>
+        <span class="meta">tenant: spring · mcp</span>
+      </div>
+      <div class="pane" id="p-session" role="tabpanel" aria-labelledby="t-session">
+        <div class="session">
+          <div class="chat" id="chat">
+            <div class="msg user"><span class="who">You</span>Which issues in Spring are blocked, and was SPR-142 already blocked when we triaged on Oct 5?</div>
+            <div class="call"><div class="q"><i>→</i><span>search(kind="issue", rule="blocked")</span></div><div class="a">7 issues: issue:SPR-142, issue:SPR-311, issue:SPR-407, …</div></div>
+            <div class="msg agent"><span class="who">Agent</span>7 issues are blocked. SPR-142 has been blocked by SPR-17 since Oct 4, but Keel only learned it on Oct 6 from a late event: the Oct 5 triage saw it as In progress.</div>
+          </div>
+          <div class="trace">
+            <h3 data-i18n="tr.h">Tool calls</h3>
+            <div id="trace"></div>
+            <div class="stat"><b id="tr-calls">3</b><span data-i18n="tr.calls">tool calls, no rows pasted into the prompt</span></div>
+            <p class="note" data-i18n="tr.note">An illustrative session over the benchmark's Spring tenant.</p>
+            <button class="replay" type="button" id="replay-chat" data-i18n="tr.replay">Replay</button>
+            <p class="vh" aria-live="polite" id="chat-live"></p>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="p-cart" role="tabpanel" aria-labelledby="t-cart" hidden>
+        <div class="code" style="border:0;border-radius:0"><div class="file"><span>cartridges/jira/cartridge.yaml</span><span>YAML</span></div>
+<pre><span class="k">entities</span>:
+  <span class="k">issue</span>:   { <span class="k">ref</span>: issues.id }
+  <span class="k">project</span>: { <span class="k">ref</span>: projects.key }
+<span class="k">relations</span>:
+  <span class="k">blocks</span>: { <span class="k">from</span>: issue, <span class="k">to</span>: issue }
+<span class="k">events</span>:
+  <span class="k">issue.status_changed</span>:
+    <span class="k">subject</span>: issue
+    <span class="k">payload</span>: { <span class="k">status</span>: string, <span class="k">status_category</span>: [new, indeterminate, done] }
+<span class="k">rules</span>:
+  <span class="k">blocked</span>:
+    <span class="k">applies_to</span>: issue
+    <span class="k">definition</span>: <span class="s">"Blocked while an issue that blocks it is not done."</span>
+    <span class="k">when</span>:
+      <span class="k">all</span>:
+        - { <span class="k">not</span>: { <span class="k">predicate</span>: status_category, <span class="k">eq</span>: done } }
+        - { <span class="k">via</span>: blocks, <span class="k">direction</span>: in, <span class="k">any</span>: { <span class="k">not</span>: { <span class="k">predicate</span>: status_category, <span class="k">eq</span>: done } } }
+<span class="k">memory</span>:
+  <span class="k">ttl</span>: { <span class="k">tenant</span>: never, <span class="k">task</span>: 14d, <span class="k">agent</span>: 1d }
+  <span class="k">requires_evidence</span>: [global, tenant]
+  <span class="k">evidence</span>: [event]   <span class="c"># an event this tenant's log applied to the same subject</span></pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="works" aria-label="Works with" data-i18n-aria="aria.works">
+  <div class="wrap rows">
+    <div class="row"><span data-i18n="works.a">Agents, over MCP or HTTP</span><ul><li>Claude Code</li><li>Codex</li><li>LangGraph</li><li>Claude Agent SDK</li><li>Google ADK</li></ul></div>
+    <div class="row"><span data-i18n="works.e">Events from</span><ul><li>Postgres CDC</li><li>Kafka</li><li>SQS</li><li>Webhooks</li><li>Outbox</li></ul></div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="wrap">
+    <h2 class="rise" data-i18n="pb.h">Four agents shouldn't mean four pipelines</h2>
+    <p class="lead rise" style="--d:60ms" data-i18n="pb.p">Every new agent repeats the same work: extract the customer's data, decide what "blocked" or "at risk" means, keep its own memory. Keel does it once, from your events.</p>
+    <div class="compare">
+      <div class="card before rise"><h3><span data-i18n="pb.bt">Without Keel</span><span class="tag" data-i18n="pb.btag">N pipelines</span></h3><p data-i18n="pb.bp">Each agent has its own pipeline, its own rules and its own memory.</p><svg id="d-before" viewBox="0 0 520 280" role="img" aria-label="Three sources wired into four separate pipelines, one per agent"></svg></div>
+      <div class="card after rise" style="--d:80ms"><h3><span data-i18n="pb.at">With Keel</span><span class="tag" data-i18n="pb.atag">one layer</span></h3><p data-i18n="pb.ap">One deterministic ingest. Every agent reads the same graph through the same five tools.</p><svg id="d-after" viewBox="0 0 520 280" role="img" aria-label="Three sources into one Keel layer, read by four agents through five tools"></svg></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2 class="rise" data-i18n="how.h">How it works</h2>
+    <ol class="flow" style="margin-top:32px">
+      <li class="rise"><h3 data-i18n="how.1">Send your events</h3><p data-i18n="how.1p">From Postgres CDC, an outbox, Kafka, SQS, webhooks or the SDK.</p></li>
+      <li class="rise" style="--d:60ms"><h3 data-i18n="how.2">Declare a cartridge</h3><p data-i18n="how.2p">Your entities, events and rules in YAML, plus ten-line handlers. Typed SDKs come out of it.</p></li>
+      <li class="rise" style="--d:120ms"><h3 data-i18n="how.3">Keel builds the graph</h3><p data-i18n="how.3p">One bitemporal graph per tenant. No LLM in ingest; replay gives the same graph.</p></li>
+      <li class="rise" style="--d:180ms"><h3 data-i18n="how.4">Agents read five tools</h3><p data-i18n="how.4p">context, history, search, related, annotate. Rules arrive evaluated.</p></li>
+    </ol>
+
+    <div class="feature">
+      <div class="rise">
+        <span class="kicker">rules</span>
+        <h2 data-i18n="f1.h">Define "blocked" once. Every agent gets the verdict.</h2>
+        <p class="lead" data-i18n="f1.p">Rules live in the cartridge, not in prompts. Keel evaluates them over the whole graph, so the model receives the answer instead of working it out from raw facts.</p>
+        <ul>
+          <li data-i18n="f1.l1"><b>26 points more right</b> on whole-project rule questions with both GPT-6 Luna and Claude Haiku 5.5.</li>
+          <li data-i18n="f1.l2"><b>Fewer tokens:</b> 77k against 149k a question with Luna, 60k against 78k with Haiku.</li>
+          <li data-i18n="f1.l3"><b>Rules compose:</b> all, any, not, follow relations with via, measure durations.</li>
+        </ul>
+      </div>
+      <div class="rp rise" style="--d:80ms" id="ruleplay">
+        <p class="q" data-i18n="rp.q"><b>"Which issues in the project are blocked right now?"</b> The same model and the same tools, with and without the cartridge's rule.</p>
+        <div class="lanes">
+          <div class="lane without">
+            <h3><span data-i18n="rp.without">No rule</span><span class="tag" data-i18n="rp.wtag">the model applies the definition</span></h3>
+            <canvas aria-hidden="true"></canvas>
+            <p class="phase" aria-live="off"></p>
+            <div class="meter"><div class="row"><span data-i18n="rp.tokens">input tokens</span><b>149k</b></div><div class="track"><div class="fill" style="width:100%"></div></div></div>
+            <div class="verdict" data-i18n="rp.av">67% correct</div>
+          </div>
+          <div class="lane with">
+            <h3><span data-i18n="rp.with">rule: blocked</span><span class="tag" data-i18n="rp.ytag">Keel evaluates</span></h3>
+            <canvas aria-hidden="true"></canvas>
+            <p class="phase" aria-live="off"></p>
+            <div class="meter"><div class="row"><span data-i18n="rp.tokens">input tokens</span><b>77k</b></div><div class="track"><div class="fill" style="width:52%"></div></div></div>
+            <div class="verdict" data-i18n="rp.bv">93% correct</div>
+          </div>
+        </div>
+        <div class="foot"><span class="sum" data-i18n="rp.sum">1.6–2.7× cheaper per correct answer</span><button class="replay" type="button" id="rp-replay" data-i18n="tr.replay">Replay</button></div>
+        <p class="note" data-i18n="rp.note">Illustrative graph; numbers shown are GPT-6 Luna's. Source: the paper's rules ablation, 18 whole-project questions that use the blocked, stalled and urgent_unassigned rules, three repetitions.</p>
+      </div>
+    </div>
+
+    <div class="feature wide">
+      <div class="rise">
+        <span class="kicker">bitemporal</span>
+        <h2 data-i18n="f2.h">Know what was true, and when you knew it</h2>
+        <p class="lead" data-i18n="f2.p">Every fact carries when it was true and when Keel learned it. Late events and corrections close facts instead of overwriting them, so an agent can audit what another agent saw when it decided.</p>
+        <ul>
+          <li data-i18n="f2.l1"><b>as_of</b> and <b>as_known_at</b> on every read.</li>
+          <li data-i18n="f2.l2"><b>Deterministic replay:</b> the same log gives the same graph, in any arrival order.</li>
+          <li data-i18n="f2.l3"><b>Provenance</b> on every fact: source, evidence, who corrected it.</li>
+        </ul>
+      </div>
+      <div class="duo rise" style="--d:80ms">
+        <div class="code"><div class="file"><span>events.jsonl</span><span data-i18n="f2.late">arrives Oct 6</span></div>
+<pre>{ <span class="k">"id"</span>: <span class="s">"spr-142-st-7"</span>,
+  <span class="k">"tenant"</span>: <span class="s">"spring"</span>,
+  <span class="k">"type"</span>: <span class="s">"issue.status_changed"</span>,
+  <span class="k">"subject"</span>: <span class="s">"issue:SPR-142"</span>,
+  <span class="k">"occurred_at"</span>: <span class="s">"2026-10-04T09:12:00Z"</span>,
+  <span class="k">"recorded_at"</span>: <span class="s">"2026-10-06T16:40:00Z"</span>,
+  <span class="k">"source"</span>: <span class="s">"jira"</span>,
+  <span class="k">"payload"</span>: { <span class="k">"status"</span>: <span class="s">"Blocked"</span>,
+               <span class="k">"status_category"</span>: <span class="s">"indeterminate"</span> } }</pre>
+          <div class="legend"><span><b>occurred_at</b> <span data-i18n="f2.oa">true since Oct 4</span></span><span><b>recorded_at</b> <span data-i18n="f2.ra">learned on Oct 6</span></span></div></div>
+        <div class="code"><div class="plot" data-plot></div><noscript><p style="padding:16px;color:var(--muted)">Asked as of Oct 5 as known on Oct 5, Keel answers In progress; as known today, Blocked.</p></noscript></div>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="rise">
+        <span class="kicker">memory</span>
+        <h2 data-i18n="f3.h">Memory with scopes, enforced by the layer</h2>
+        <p class="lead" data-i18n="f3.p">Agents write what they learn with annotate. The cartridge says who may write which scope, how long it lives and what counts as evidence. The prompt can't talk its way past it.</p>
+        <ul>
+          <li data-i18n="f3.l1"><b>0% of answers</b> repeat a poisoned write with Keel's checks (the evidence check as fixed after the run), against 91–98% without.</li>
+          <li data-i18n="f3.l2"><b>0 leaks</b> in 26,666 random reads across tenants, scopes and agents.</li>
+          <li data-i18n="f3.l3"><b>One graph per tenant:</b> no tool can return another tenant's facts.</li>
+        </ul>
+      </div>
+      <div class="rise" style="--d:80ms">
+        <div class="code"><div class="file"><span>agent.py</span><span>Python</span></div>
+<pre>tools.annotate(<span class="s">"issue:SPR-142"</span>, <span class="s">"root_cause"</span>, <span class="s">"vendor patch"</span>,
+               scope=<span class="s">"tenant"</span>)   <span class="c"># no evidence</span></pre></div>
+        <div class="code"><div class="file"><span data-i18n="f3.out">raises</span><span class="err">PermissionError</span></div>
+<pre><span class="err">writing to scope 'tenant' requires evidence
+(an event id, a row ref, or a human correction)</span></pre></div>
+        <div class="code"><div class="file"><span>agent.py</span><span>Python</span></div>
+<pre>tools.annotate(<span class="s">"issue:SPR-142"</span>, <span class="s">"root_cause"</span>, <span class="s">"vendor patch"</span>,
+               scope=<span class="s">"tenant"</span>, evidence=late_event.id)
+<span class="c"># stored; every agent of this tenant can read it</span></pre></div>
+      </div>
+    </div>
+
+    <div class="feature flip">
+      <div class="rise">
+        <span class="kicker">sdk</span>
+        <h2 data-i18n="f4.h">Your cartridge, as a typed client in your language</h2>
+        <p class="lead" data-i18n="f4.p">keel sdk writes one file for your product's repo, the way protoc does: a type per event payload, a constructor per event, subject helpers, the rules, and a client for the five tools. Your compiler catches a payload that drifts from the catalog before Keel ever sees it.</p>
+        <ul>
+          <li data-i18n="f4.l1"><b>TypeScript, Python, Go and PHP,</b> each with a small published runtime and tested end to end against keel serve.</li>
+          <li data-i18n="f4.l2"><b>--check in CI</b> fails the build when the cartridge moves on and the generated file is stale.</li>
+          <li data-i18n="f4.l3"><b>One contract:</b> the same cartridge drives ingest, the tools and every client.</li>
+        </ul>
+      </div>
+      <div class="code sdk rise" style="--d:80ms">
+        <div class="bar" role="tablist" aria-label="SDK language" id="sdk-tabs">
+          <button class="tab" role="tab" id="sdk-t-ts" aria-controls="sdk-ts" aria-selected="true" tabindex="0">TypeScript</button>
+          <button class="tab" role="tab" id="sdk-t-py" aria-controls="sdk-py" aria-selected="false" tabindex="-1">Python</button>
+          <button class="tab" role="tab" id="sdk-t-go" aria-controls="sdk-go" aria-selected="false" tabindex="-1">Go</button>
+          <button class="tab" role="tab" id="sdk-t-php" aria-controls="sdk-php" aria-selected="false" tabindex="-1">PHP</button>
+        </div>
+        <div class="pane" id="sdk-ts" role="tabpanel" aria-labelledby="sdk-t-ts">
+<pre class="cmd"><span class="p">$ </span>keel sdk typescript cartridges/jira -o src/keel-jira.ts</pre>
+<pre class="use"><span class="k">import</span> { client, emit, subjects } <span class="k">from</span> <span class="s">"./keel-jira"</span>;
+
+<span class="k">const</span> keel = client({ baseUrl, tenant: <span class="s">"spring"</span>, agent: <span class="s">"triage"</span> });
+
+<span class="k">await</span> keel.events([emit.issueStatusChanged({
+  tenant: <span class="s">"spring"</span>, subject: subjects.issue(<span class="s">"SPR-142"</span>),
+  occurredAt: <span class="k">new</span> Date(), source: <span class="s">"jira"</span>,
+  payload: { status: <span class="s">"Blocked"</span>, status_category: <span class="s">"blocked"</span> },
+})]);   <span class="err">// ✗ Type '"blocked"' is not assignable to
+        //   '"new" | "indeterminate" | "done" | null'</span>
+
+<span class="k">const</span> ctx = <span class="k">await</span> keel.context(subjects.issue(<span class="s">"SPR-142"</span>));
+ctx.evaluation.blocked;   <span class="c">// true</span></pre>
+        </div>
+        <div class="pane" id="sdk-py" role="tabpanel" aria-labelledby="sdk-t-py" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk python cartridges/jira -o app/keel_jira.py</pre>
+<pre class="use"><span class="k">from</span> app <span class="k">import</span> keel_jira <span class="k">as</span> kj
+
+keel = kj.client(<span class="s">"http://keel.internal:8000"</span>, <span class="s">"spring"</span>, secret=SECRET, agent=<span class="s">"triage"</span>)
+
+keel.events([kj.emit.issue_status_changed(
+    <span class="s">"spring"</span>, kj.subjects.issue(<span class="s">"SPR-142"</span>), datetime.now(timezone.utc), <span class="s">"jira"</span>,
+    {<span class="s">"status"</span>: <span class="s">"Blocked"</span>, <span class="s">"status_category"</span>: <span class="s">"indeterminate"</span>},
+)])   <span class="c"># payloads are TypedDicts: your editor checks the keys</span>
+
+keel.context(kj.subjects.issue(<span class="s">"SPR-142"</span>))[<span class="s">"evaluation"</span>][<span class="s">"blocked"</span>]   <span class="c"># True</span></pre>
+        </div>
+        <div class="pane" id="sdk-go" role="tabpanel" aria-labelledby="sdk-t-go" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk go cartridges/jira -o internal/keeljira/keel_jira.go --package keeljira</pre>
+<pre class="use">c := keeljira.NewClient(keel.Options{BaseURL: url, Tenant: <span class="s">"spring"</span>, Agent: <span class="s">"triage"</span>})
+
+cat := keeljira.IssueStatusChangedPayloadStatusCategoryIndeterminate
+env := keeljira.EmitIssueStatusChanged(<span class="s">"spring"</span>, keeljira.SubjectIssue(<span class="s">"SPR-142"</span>),
+    time.Now(), <span class="s">"jira"</span>,
+    keeljira.IssueStatusChangedPayload{Status: <span class="s">"Blocked"</span>, StatusCategory: &amp;cat})
+_, err := c.Events(ctx, []keel.Envelope{env})   <span class="c">// enums are typed constants</span>
+
+issue, err := c.Context(ctx, <span class="k">string</span>(keeljira.SubjectIssue(<span class="s">"SPR-142"</span>)), <span class="k">nil</span>)</pre>
+        </div>
+        <div class="pane" id="sdk-php" role="tabpanel" aria-labelledby="sdk-t-php" hidden>
+<pre class="cmd"><span class="p">$ </span>keel sdk php cartridges/jira -o src/Keel/Jira.php --package 'App\Keel\Jira'</pre>
+<pre class="use"><span class="k">use</span> App\Keel\Jira\{Keel, Emit, Subjects, IssueStatusChangedPayload};
+
+$keel = Keel::client($url, <span class="s">'spring'</span>, $secret, <span class="s">'triage'</span>);
+
+$keel-&gt;events([Emit::issueStatusChanged(
+    <span class="s">'spring'</span>, Subjects::issue(<span class="s">'SPR-142'</span>), <span class="k">new</span> \DateTimeImmutable(), <span class="s">'jira'</span>,
+    <span class="k">new</span> IssueStatusChangedPayload(status: <span class="s">'Blocked'</span>),
+)]);   <span class="c">// payloads are readonly value objects, enums are PHP enums</span>
+
+$keel-&gt;context(Subjects::issue(<span class="s">'SPR-142'</span>));</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tools">
+  <div class="wrap">
+    <h2 class="rise" data-i18n="tools.h">Five tools. Only five.</h2>
+    <p class="lead rise" style="--d:60ms" data-i18n="tools.p">The names and signatures are part of the public standard. New capabilities go into these five, never into a sixth, so your agents' prompts don't change when Keel does.</p>
+    <div class="ref rise" style="--d:120ms">
+      <div class="list" role="tablist" aria-label="Tools" data-i18n-aria="aria.tools" aria-orientation="vertical" id="tool-list"></div>
+      <div class="body" id="tool-body" role="tabpanel">
+        <h3>context</h3><p>What Keel knows about a subject now, or at a past moment, with every rule's verdict.</p>
+        <div class="code"><div class="file"><span>call</span><span>MCP · HTTP · SDK</span></div><pre>context("issue:SPR-142")</pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="benchmark">
+  <div class="wrap">
+    <h2 class="rise" data-i18n="bm.h">Measured, with the results public</h2>
+    <p class="lead rise" style="--d:60ms" data-i18n="bm.p">387 questions over three Public Jira Dataset projects, with late arrivals and corrections injected, graded against an independent oracle. Three agents.</p>
+    <div class="bench">
+      <div class="card chart rise" id="chart">
+        <h3 style="font-size:15px;margin-bottom:18px">Accuracy on whole-project questions</h3>
+        <div class="agent"><h4>GPT-6 Luna</h4><div class="bar-row keel"><span>Keel</span><div class="track"><div class="fill" style="width:92.6%"></div></div><b>93%</b></div><div class="bar-row"><span>API</span><div class="track"><div class="fill" style="width:60.6%"></div></div><b>61%</b></div><div class="bar-row"><span>RAG</span><div class="track"><div class="fill" style="width:20.8%"></div></div><b>21%</b></div></div>
+        <div class="agent"><h4>Claude Haiku 5.5</h4><div class="bar-row keel"><span>Keel</span><div class="track"><div class="fill" style="width:93.1%"></div></div><b>93%</b></div><div class="bar-row"><span>API</span><div class="track"><div class="fill" style="width:64.8%"></div></div><b>65%</b></div><div class="bar-row"><span>RAG</span><div class="track"><div class="fill" style="width:14.4%"></div></div><b>14%</b></div></div>
+        <div class="agent"><h4>Claude Sonnet 5.5</h4><div class="bar-row keel"><span>Keel</span><div class="track"><div class="fill" style="width:98.6%"></div></div><b>99%</b></div><div class="bar-row"><span>API</span><div class="track"><div class="fill" style="width:77.8%"></div></div><b>78%</b></div><div class="bar-row"><span>RAG</span><div class="track"><div class="fill" style="width:26.5%"></div></div><b>27%</b></div></div>
+        <p class="note" data-i18n="bm.note">Sonnet ran once, and so did Luna's RAG; the rest are three repetitions. Sonnet's RAG run is partial (34 of 72 questions).</p>
+      </div>
+      <div class="stats">
+        <div class="card stat-card rise" style="--d:60ms"><b data-i18n="bm.s1b">+21 to +32 points</b><p data-i18n="bm.s1">over the product's own API on whole-project questions, with all three agents (p &lt; 0.001), at the lowest cost per correct answer.</p></div>
+        <div class="card stat-card rise" style="--d:120ms"><b>19%</b><p data-i18n="bm.s2">for TGMS on the same questions with GPT-6 Luna, reading 741k tokens a question.</p></div>
+        <div class="card stat-card rise" style="--d:180ms"><b data-i18n="bm.s3b">+3 points</b><p data-i18n="bm.s3">over the API on single-issue questions with Luna and Haiku (p &lt; 0.001), a tie with Sonnet; every system that reads the log scores 0.95 to 0.99 there.</p></div>
+      </div>
+    </div>
+    <div class="card paper rise">
+      <div>
+        <h3>Keel: one deterministic context layer for product agents</h3>
+        <p class="meta">Angel Kürten, 2026 · Zenodo · CC BY 4.0</p>
+        <p class="honest" data-i18n="bm.honest">Where Keel does not win is in the paper too: a few small tables that fit in a prompt do as well pasted in.</p>
+        <div class="acts">
+          <a class="btn primary" href="https://doi.org/10.5281/zenodo.23571090" data-i18n="bm.pdf">Read the paper</a>
+          <a class="btn" href="https://github.com/angelkurten/keel/tree/master/evals/jira" data-i18n="bm.repro">Reproduce it</a>
+        </div>
+      </div>
+      <div class="code"><div class="file"><span>BibTeX</span><button class="replay" style="margin:0" type="button" data-copy-from="bib" data-i18n="bm.copy">Copy</button></div>
+<pre id="bib">@misc{kurten2026keel,
+  author    = {K{\"u}rten, Angel},
+  title     = {Keel: one deterministic context layer
+               for product agents},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.23571090}
+}</pre></div>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2 class="rise" data-i18n="st.h">Running in three commands</h2>
+    <p class="lead rise" style="--d:60ms" data-i18n="st.p">An example cartridge and its events ship with the repository. Point Claude Code, Codex or any MCP client at it.</p>
+    <ol class="steps">
+      <li class="rise"><h3 data-i18n="st.1">Install</h3><p data-i18n="st.1p">Python 3.10+, or run the container.</p>
+        <div class="code"><pre>git clone https://github.com/angelkurten/keel
+cd keel && pip install keel-context</pre></div></li>
+      <li class="rise" style="--d:60ms"><h3 data-i18n="st.2">Validate and load</h3><p data-i18n="st.2p">Check the events against the cartridge, then build the graph.</p>
+        <div class="code"><pre>keel validate examples/fleet \
+  --events examples/fleet/events.jsonl
+keel ingest examples/fleet \
+  examples/fleet/events.jsonl</pre></div></li>
+      <li class="rise" style="--d:120ms"><h3 data-i18n="st.3">Serve the five tools</h3><p data-i18n="st.3p">Over MCP for your agent, or HTTP for your backend.</p>
+        <div class="code"><pre>claude mcp add keel -- keel serve \
+  examples/fleet --tenant acme-logistics \
+  --events examples/fleet/events.jsonl</pre></div></li>
+    </ol>
+    <div class="card cta rise">
+      <h2 data-i18n="cta.h">Pilot it on your own events</h2>
+      <p data-i18n="cta.p">Your events, your agents, one day to the first answer. We help you through the cartridge and fix what blocks you in the core.</p>
+      <div class="acts">
+        <a class="btn primary" href="https://calendar.app.google/3oKUSqXTQPYmjya56" data-i18n="cta.book">Book 30 minutes</a>
+        <a class="btn" href="docs/pilot/" data-i18n="cta.guide">Read the pilot guide</a>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="fcols">
+      <div class="about"><a class="brand" href="./"><svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--accent)"/><path d="M9 8v16M9 16l9-8M12 13l8 11" stroke="var(--accent-ink)" stroke-width="3" fill="none" stroke-linecap="round"/></svg>Keel</a><p data-i18n="ft.about">A deterministic, bitemporal context layer for the agents inside your product.</p></div>
+      <div><b data-i18n="ft.product">Product</b><a href="docs/" data-i18n="nav.docs">Docs</a><a href="docs/first-cartridge/" data-i18n="ft.first">First cartridge</a><a href="docs/SPEC/" data-i18n="ft.spec">Specification</a><a href="docs/roadmap/" data-i18n="ft.road">Roadmap</a></div>
+      <div><b data-i18n="ft.code">Code</b><a href="https://github.com/angelkurten/keel">GitHub</a><a href="https://pypi.org/project/keel-context/">PyPI</a><a href="docs/sdks/">SDKs</a><a href="https://github.com/angelkurten/keel/tree/master/examples" data-i18n="ft.ex">Examples</a></div>
+      <div><b data-i18n="ft.research">Research</b><a href="https://doi.org/10.5281/zenodo.23571090" data-i18n="ft.paper">Paper</a><a href="https://github.com/angelkurten/keel/tree/master/evals/jira" data-i18n="ft.bench">Benchmark</a></div>
+      <div><b data-i18n="ft.try">Try it</b><a href="https://demo.angelkurten.com" data-i18n="ft.demo">Live demo</a><a href="docs/pilot/" data-i18n="ft.pilot">Pilot</a><a href="https://keel.angelkurten.com" data-i18n="ft.hosted">Hosted console</a><a href="mailto:angel@angelkurten.com" data-i18n="ft.contact">Contact</a></div>
+    </div>
+    <div class="fbottom"><span data-i18n="ft.license">Apache 2.0. The event envelope, the cartridge format and the five tools are the standard.</span><span>© 2026 Angel Kürten</span></div>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add("js");
+const ES = {
+  "nav.how": "Cómo funciona", "nav.tools": "Herramientas", "nav.bench": "Benchmark", "nav.paper": "Paper", "nav.docs": "Documentación",
+  "aria.lang": "Idioma", "aria.demo": "Demostración", "aria.works": "Funciona con", "aria.tools": "Herramientas",
+  "hero.pillB": "Paper", "hero.pill": "387 preguntas sobre proyectos reales de Jira, resultados abiertos",
+  "hero.title": "La capa de contexto para los agentes de tu producto",
+  "hero.lede": "Keel convierte los eventos de tu producto en un grafo por cliente que recuerda qué era cierto y cuándo. Cada agente que construyas lo lee con las mismas cinco herramientas, por MCP, HTTP o un SDK tipado, y dejas de rehacer el pipeline para cada uno.",
+  "hero.docs": "Leer la documentación", "hero.paper": "Leer el paper",
+  "tab.session": "Sesión de agente", "tab.cart": "Cartridge",
+  "tr.h": "Llamadas a herramientas", "tr.calls": "llamadas, sin pegar filas en el prompt", "tr.replay": "Repetir",
+  "tr.note": "Una sesión ilustrativa sobre el tenant Spring del benchmark.",
+  "works.a": "Agentes, por MCP o HTTP", "works.e": "Eventos desde",
+  "pb.h": "Cuatro agentes no deberían ser cuatro pipelines",
+  "pb.p": "Cada agente nuevo repite el mismo trabajo: extraer los datos del cliente, decidir qué significa \"bloqueado\" o \"en riesgo\", llevar su propia memoria. Keel lo hace una vez, desde tus eventos.",
+  "pb.bt": "Sin Keel", "pb.btag": "N pipelines", "pb.bp": "Cada agente tiene su propio pipeline, sus propias reglas y su propia memoria.",
+  "pb.at": "Con Keel", "pb.atag": "una capa", "pb.ap": "Una ingesta determinista. Todos los agentes leen el mismo grafo con las mismas cinco herramientas.",
+  "how.h": "Cómo funciona",
+  "how.1": "Envía tus eventos", "how.1p": "Desde CDC de Postgres, un outbox, Kafka, SQS, webhooks o el SDK.",
+  "how.2": "Declara un cartridge", "how.2p": "Tus entidades, eventos y reglas en YAML, más handlers de diez líneas. De ahí salen SDKs tipados.",
+  "how.3": "Keel construye el grafo", "how.3p": "Un grafo bitemporal por tenant. Sin LLM en la ingesta; el replay da el mismo grafo.",
+  "how.4": "Los agentes usan cinco herramientas", "how.4p": "context, history, search, related, annotate. Las reglas llegan evaluadas.",
+  "f1.h": "Define \"bloqueado\" una vez. Cada agente recibe el veredicto.",
+  "f1.p": "Las reglas viven en el cartridge, no en los prompts. Keel las evalúa sobre todo el grafo, así que el modelo recibe la respuesta en vez de deducirla de los hechos crudos.",
+  "f1.l1": "<b>26 puntos más de aciertos</b> en preguntas de reglas sobre todo un proyecto, tanto con GPT-6 Luna como con Claude Haiku 5.5.",
+  "f1.l2": "<b>Menos tokens:</b> 77k contra 149k por pregunta con Luna, 60k contra 78k con Haiku.",
+  "f1.l3": "<b>Las reglas se componen:</b> all, any, not, siguen relaciones con via, miden duraciones.",
+  "rp.q": "<b>\"¿Qué issues del proyecto están bloqueadas ahora?\"</b> El mismo modelo y las mismas herramientas, con y sin la regla del cartridge.",
+  "rp.without": "Sin regla", "rp.wtag": "el modelo aplica la definición", "rp.with": "regla: blocked", "rp.ytag": "Keel la evalúa",
+  "rp.tokens": "tokens de entrada", "rp.av": "67 % correctas", "rp.bv": "93 % correctas",
+  "rp.sum": "Cada respuesta correcta cuesta entre 1,6 y 2,7 veces menos",
+  "rp.note": "Grafo ilustrativo; los números son los de GPT-6 Luna. Fuente: la ablación de reglas del paper, 18 preguntas sobre todo el proyecto que usan las reglas blocked, stalled y urgent_unassigned, tres repeticiones.",
+  "f2.h": "Qué era cierto, y cuándo lo supiste",
+  "f2.p": "Cada hecho guarda cuándo fue cierto y cuándo lo supo Keel. Los eventos tardíos y las correcciones cierran hechos en vez de sobrescribirlos, así un agente puede auditar lo que vio otro cuando decidió.",
+  "f2.l1": "<b>as_of</b> y <b>as_known_at</b> en cada lectura.",
+  "f2.l2": "<b>Replay determinista:</b> el mismo log da el mismo grafo, en cualquier orden de llegada.",
+  "f2.l3": "<b>Procedencia</b> en cada hecho: fuente, evidencia, quién lo corrigió.",
+  "f2.late": "llega el 6 de oct.", "f2.oa": "cierto desde el 4 de oct.", "f2.ra": "sabido el 6 de oct.",
+  "f3.h": "Memoria con alcances, impuesta por la capa",
+  "f3.p": "Los agentes escriben lo que aprenden con annotate. El cartridge dice quién puede escribir en qué alcance, cuánto dura y qué cuenta como evidencia. El prompt no puede saltárselo.",
+  "f3.l1": "<b>0 % de las respuestas</b> repiten una escritura envenenada con los controles de Keel (el control de evidencia tal como quedó corregido después de la corrida), frente a 91–98 % sin ellos.",
+  "f3.l2": "<b>0 fugas</b> en 26.666 lecturas aleatorias entre tenants, alcances y agentes.",
+  "f3.l3": "<b>Un grafo por tenant:</b> ninguna herramienta puede devolver hechos de otro tenant.",
+  "f3.out": "lanza",
+  "f4.h": "Tu cartridge, como un cliente tipado en tu lenguaje",
+  "f4.p": "keel sdk escribe un archivo para el repo de tu producto, como hace protoc: un tipo por payload de evento, un constructor por evento, helpers de sujetos, las reglas y un cliente para las cinco herramientas. Tu compilador detecta un payload que se desvía del catálogo antes de que llegue a Keel.",
+  "f4.l1": "<b>TypeScript, Python, Go y PHP,</b> cada uno con un runtime pequeño publicado y probado de punta a punta contra keel serve.",
+  "f4.l2": "<b>--check en CI</b> rompe el build cuando el cartridge cambia y el archivo generado quedó viejo.",
+  "f4.l3": "<b>Un solo contrato:</b> el mismo cartridge define la ingesta, las herramientas y cada cliente.",
+  "tools.h": "Cinco herramientas. Solo cinco.",
+  "tools.p": "Los nombres y las firmas son parte del estándar público. Lo nuevo entra en estas cinco, nunca en una sexta, así los prompts de tus agentes no cambian cuando cambia Keel.",
+  "bm.h": "Medido, con los resultados públicos",
+  "bm.p": "387 preguntas sobre tres proyectos del Public Jira Dataset, con llegadas tardías y correcciones inyectadas, calificadas contra un oráculo independiente. Tres agentes.",
+  "bm.note": "Sonnet corrió una vez, igual que el RAG de Luna; el resto son tres repeticiones. La corrida RAG de Sonnet quedó parcial (34 de 72 preguntas).",
+  "bm.s1b": "+21 a +32 puntos", "bm.s1": "sobre la API del propio producto en preguntas de todo el proyecto, con los tres agentes (p < 0,001), al menor costo por respuesta correcta.",
+  "bm.s2": "para TGMS en las mismas preguntas con GPT-6 Luna, leyendo 741k tokens por pregunta.",
+  "bm.s3b": "+3 puntos", "bm.s3": "sobre la API en preguntas de una sola issue con Luna y Haiku (p < 0,001), empate con Sonnet; todo sistema que lee el log saca entre 0,95 y 0,99 ahí.",
+  "bm.honest": "Donde Keel no gana también está en el paper: unas pocas tablas pequeñas que caben en un prompt funcionan igual de bien pegadas.",
+  "bm.pdf": "Leer el paper", "bm.repro": "Reproducirlo", "bm.copy": "Copiar",
+  "st.h": "Funcionando en tres comandos",
+  "st.p": "El repositorio trae un cartridge de ejemplo con sus eventos. Conecta Claude Code, Codex o cualquier cliente MCP.",
+  "st.1": "Instala", "st.1p": "Python 3.10+, o usa el contenedor.",
+  "st.2": "Valida y carga los eventos", "st.2p": "Verifica los eventos contra el cartridge y construye el grafo.",
+  "st.3": "Sirve las cinco herramientas", "st.3p": "Por MCP para tu agente, o HTTP para tu backend.",
+  "cta.h": "Pruébalo con tus propios eventos", "cta.p": "Tus eventos, tus agentes, un día hasta la primera respuesta. Te ayudamos con el cartridge y arreglamos lo que te bloquee en el núcleo.",
+  "cta.book": "Agendar 30 minutos", "cta.guide": "Leer la guía del piloto",
+  "ft.about": "Una capa de contexto determinista y bitemporal para los agentes de tu producto.",
+  "ft.product": "Producto", "ft.first": "Primer cartridge", "ft.spec": "Especificación", "ft.road": "Hoja de ruta", "ft.code": "Código", "ft.ex": "Ejemplos",
+  "ft.research": "Investigación", "ft.paper": "Paper", "ft.bench": "Benchmark", "ft.try": "Pruébalo", "ft.demo": "Demo en vivo", "ft.pilot": "Piloto", "ft.hosted": "Consola alojada", "ft.contact": "Contacto",
+  "ft.license": "Apache 2.0. El sobre de eventos, el formato de cartridge y las cinco herramientas son el estándar."
+};
+const X = {
+  en: {
+    title: "Keel: the context layer for the agents inside your product",
+    desc: "Keel turns your product's events into one graph per customer that remembers what was true and when. Every agent reads it through the same five tools. Open source, Apache 2.0.",
+    copied: "copied", copy: "Copy", done: "Copied", months: "Oct", none: "nothing known yet", call: "call", result: "result",
+    statuses: { open: "Open", prog: "In progress", block: "Blocked" }, late: "late event", axV: "true on (day of Oct)", axK: "known on",
+    plot: { h: "One issue, two timelines", p: "On Oct 6 a late event says it was blocked since Oct 4. Drag the point.", v: "True on", k: "Known on", p1: "What the agent saw on Oct 5", p2: "What we know now about Oct 5", aria: "The issue's status by the day it was true (across) and the day Keel knew it (up)" },
+    d: { agents: ["Support agent", "Billing agent", "Ops agent", "Sales agent"], pipe: "pipeline + rules", pipeS: "+ its own memory", cart: "cartridge", graph: "graph per tenant" },
+    chat: { q: "Which issues in Spring are blocked, and was SPR-142 already blocked when we triaged on Oct 5?",
+            a: "7 issues are blocked. SPR-142 has been blocked by SPR-17 since Oct 4, but Keel only learned it on Oct 6 from a late event: the Oct 5 triage saw it as In progress.", user: "You", agent: "Agent",
+            r: ["7 issues: issue:SPR-142, issue:SPR-311, issue:SPR-407, …", "Open from Oct 1, In progress from Oct 3, Blocked from Oct 4 (recorded Oct 6)", "facts: { status: In progress }, evaluation: { blocked: false }"] },
+    ph: { read: "Reading issues and their links one by one…", judge: "Applying the definition itself…", doneA: "Some right, some missed, some wrong",
+          rule: "Evaluating the rule over the graph…", walk: "Following blocks edges…", doneB: "The 7 blocked issues reach the model with their verdict" },
+    tools: [
+      { d: "Current or past truth", p: "What Keel knows about a subject now, or at a past moment, with every rule's verdict." },
+      { d: "How it changed, and when", p: "The subject's facts over time, in world time and in transaction time." },
+      { d: "Which subjects match", p: "By text, kind, rule, attribute value or meaning. A rule is a filter, already evaluated." },
+      { d: "What it's connected to", p: "Neighbours through the cartridge's relations, up to three hops." },
+      { d: "Write what an agent learned", p: "Earned memory with a scope, evidence and a lifetime, checked against the cartridge's policy." }
+    ],
+    chartH: "Accuracy on whole-project questions"
+  },
+  es: {
+    title: "Keel: la capa de contexto para los agentes de tu producto",
+    desc: "Keel convierte los eventos de tu producto en un grafo por cliente que recuerda qué era cierto y cuándo. Cada agente lo lee con las mismas cinco herramientas. Código abierto, Apache 2.0.",
+    copied: "copiado", copy: "Copiar", done: "Copiado", months: "oct.", none: "sin datos todavía", call: "llamada", result: "resultado",
+    statuses: { open: "Abierta", prog: "En progreso", block: "Bloqueada" }, late: "evento tardío", axV: "cierto el (día de oct.)", axK: "sabido el",
+    plot: { h: "Una issue, dos líneas de tiempo", p: "El 6 de oct. un evento tardío dice que estaba bloqueada desde el 4. Arrastra el punto.", v: "Cierto el", k: "Sabido el", p1: "Lo que vio el agente el 5 de oct.", p2: "Lo que sabemos hoy del 5 de oct.", aria: "El estado de la issue según el día en que fue cierto (horizontal) y el día en que Keel lo supo (vertical)" },
+    d: { agents: ["Agente de soporte", "Agente de cobros", "Agente de operaciones", "Agente de ventas"], pipe: "pipeline + reglas", pipeS: "+ su propia memoria", cart: "cartridge", graph: "grafo por tenant" },
+    chat: { q: "¿Qué issues de Spring están bloqueadas, y SPR-142 ya lo estaba cuando hicimos el triage el 5 de oct.?",
+            a: "Hay 7 issues bloqueadas. SPR-142 está bloqueada por SPR-17 desde el 4 de oct., pero Keel no lo supo hasta el 6, por un evento tardío: el triage del 5 la vio En progreso.", user: "Tú", agent: "Agente",
+            r: ["7 issues: issue:SPR-142, issue:SPR-311, issue:SPR-407, …", "Abierta desde el 1 de oct., En progreso desde el 3, Bloqueada desde el 4 (registrado el 6)", "facts: { status: In progress }, evaluation: { blocked: false }"] },
+    ph: { read: "Leyendo las issues y sus vínculos una por una…", judge: "Aplicando la definición por su cuenta…", doneA: "Algunas bien, otras omitidas, otras mal",
+          rule: "Evaluando la regla sobre el grafo…", walk: "Siguiendo las aristas blocks…", doneB: "Las 7 issues bloqueadas llegan al modelo con su veredicto" },
+    tools: [
+      { d: "La verdad actual o pasada", p: "Lo que Keel sabe de un sujeto ahora, o en un momento pasado, con el veredicto de cada regla." },
+      { d: "Cómo cambió, y cuándo", p: "Los hechos del sujeto en el tiempo, en tiempo del mundo y en tiempo de transacción." },
+      { d: "Qué sujetos coinciden", p: "Por texto, tipo, regla, valor o significado. Una regla es un filtro, ya evaluado." },
+      { d: "Con qué está conectado", p: "Vecinos por las relaciones del cartridge, hasta tres saltos." },
+      { d: "Escribir lo que aprendió", p: "Memoria ganada con alcance, evidencia y vida útil, verificada contra la política del cartridge." }
+    ],
+    chartH: "Precisión en preguntas sobre todo el proyecto"
+  }
+};
+const EN = {}, EN_ARIA = {};
+document.querySelectorAll("[data-i18n]").forEach(n => EN[n.dataset.i18n] = n.innerHTML);
+document.querySelectorAll("[data-i18n-aria]").forEach(n => EN_ARIA[n.dataset.i18nAria] = n.getAttribute("aria-label"));
+let lang = "en";
+const t = k => X[lang][k];
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ns = "http://www.w3.org/2000/svg";
+const el = (n, a, txt) => { const e = document.createElementNS(ns, n); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+function setLang(l) {
+  lang = l; document.documentElement.lang = l;
+  const d = l === "es" ? ES : EN;
+  document.querySelectorAll("[data-i18n]").forEach(n => { if (d[n.dataset.i18n] != null) n.innerHTML = d[n.dataset.i18n]; });
+  document.querySelectorAll("[data-i18n-aria]").forEach(n => n.setAttribute("aria-label", (l === "es" ? ES : EN_ARIA)[n.dataset.i18nAria]));
+  document.title = t("title"); document.querySelector('meta[name="description"]').content = t("desc");
+  document.querySelectorAll(".lang button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lang === l));
+  try { localStorage.setItem("keel-lang", l); } catch (e) {}
+  const u = new URL(location); l === "es" ? u.searchParams.set("lang", "es") : u.searchParams.delete("lang"); history.replaceState(null, "", u);
+  render();
+}
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+
+// Accessible tabs: click, arrow keys, Home/End; only the selected tab is in the tab order.
+function tablist(list, onSelect) {
+  const tabs = () => [...list.querySelectorAll('[role="tab"]')];
+  const select = (b, focus) => { tabs().forEach(x => { const on = x === b; x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; }); if (focus) b.focus(); onSelect(b); };
+  list.addEventListener("click", e => { const b = e.target.closest('[role="tab"]'); if (b) select(b); });
+  list.addEventListener("keydown", e => {
+    const all = tabs(), i = all.indexOf(document.activeElement); if (i < 0) return;
+    const next = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: all.length - 1 }[e.key];
+    if (next == null) return; e.preventDefault(); select(all[(next + all.length) % all.length], true);
+  });
+}
+tablist(document.querySelector(".panel .bar"), b => document.querySelectorAll(".panel > .pane").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls")));
+
+tablist(document.getElementById("sdk-tabs"), b => document.querySelectorAll(".sdk .pane").forEach(p => p.hidden = p.id !== b.getAttribute("aria-controls")));
+
+// Agent session: an illustrative run of one question against the tools.
+const CALLS = ['search(kind="issue", rule="blocked")', 'history("issue:SPR-142", predicate="status")', 'context("issue:SPR-142", as_of="2026-10-05", as_known_at="2026-10-05")'];
+let chatTimers = [], chatStarted = false;
+function playChat(instant) {
+  chatStarted = true;
+  chatTimers.forEach(clearTimeout); chatTimers = [];
+  const chat = document.getElementById("chat"), trace = document.getElementById("trace"), C = t("chat"), live = document.getElementById("chat-live");
+  chat.innerHTML = ""; trace.innerHTML = ""; live.textContent = "";
+  CALLS.forEach(c => trace.insertAdjacentHTML("beforeend", `<div class="row"><b>${esc(c.split("(")[0])}</b><span>…</span></div>`));
+  let calls = 0; const count = document.getElementById("tr-calls"); count.textContent = 0;
+  const later = (f, at) => instant ? f() : chatTimers.push(setTimeout(f, at));
+  later(() => chat.insertAdjacentHTML("beforeend", `<div class="msg user"><span class="who">${C.user}</span>${esc(C.q)}</div>`), 200);
+  CALLS.forEach((c, i) => later(() => {
+    chat.insertAdjacentHTML("beforeend", `<div class="call"><div class="q"><i>→</i><span>${esc(c)}</span></div><div class="a">${esc(C.r[i])}</div></div>`);
+    count.textContent = ++calls;
+    const row = trace.children[i]; row.classList.add("on"); row.lastElementChild.textContent = "ok";
+  }, 1100 + i * 900));
+  later(() => {
+    const m = document.createElement("div"); m.className = "msg agent"; m.innerHTML = `<span class="who">${C.agent}</span><span class="txt"></span>`;
+    chat.append(m);
+    const txt = m.querySelector(".txt"), done = () => { txt.classList.remove("typing"); live.textContent = C.a; };
+    if (instant) { txt.textContent = C.a; done(); return; }
+    txt.classList.add("typing"); let i = 0;
+    const step = () => { i += 3; txt.textContent = C.a.slice(0, i); if (i < C.a.length) chatTimers.push(setTimeout(step, 18)); else done(); };
+    step();
+  }, 1100 + CALLS.length * 900 + 300);
+}
+document.getElementById("replay-chat").onclick = () => playChat(false);
+
+// Bitemporal plot.
+const R = [{ s: "open", v: [1, 11], k: [1, 3] }, { s: "open", v: [1, 3], k: [3, 11] }, { s: "prog", v: [3, 11], k: [3, 6] }, { s: "prog", v: [3, 4], k: [6, 11] }, { s: "block", v: [4, 11], k: [6, 11] }];
+const FILL = { open: "var(--st-open)", prog: "var(--st-prog)", block: "var(--st-block)" };
+const at = (v, k) => R.find(r => v >= r.v[0] && v < r.v[1] && k >= r.k[0] && k < r.k[1]);
+const plots = [...document.querySelectorAll("[data-plot]")].map((root, n) => {
+  root.innerHTML = `<svg viewBox="0 0 440 290" role="img"></svg><div class="side"><h3></h3><p></p>
+    <div class="sl"><label for="pv${n}"></label><input id="pv${n}" type="range" min="1" max="10" step="1" value="5"><output for="pv${n}"></output><label for="pk${n}"></label><input id="pk${n}" type="range" min="1" max="10" step="1" value="5"><output for="pk${n}"></output></div>
+    <code class="answer" aria-live="polite"></code><div class="presets"><button type="button" data-v="5" data-k="5"></button><button type="button" data-v="5" data-k="10"></button></div></div>`;
+  const svg = root.querySelector("svg"), [vIn, kIn] = root.querySelectorAll("input"), [vo, ko] = root.querySelectorAll("output");
+  const X0 = 46, Y0 = 252, W = 380, H = 230, sx = d => X0 + (d - 1) * W / 10, sy = d => Y0 - (d - 1) * H / 10;
+  function draw() {
+    const v = +vIn.value, k = +kIn.value, P = t("plot");
+    root.querySelector("h3").textContent = P.h; root.querySelector(".side p").textContent = P.p; svg.setAttribute("aria-label", P.aria);
+    const labels = root.querySelectorAll("label"); labels[0].textContent = P.v; labels[1].textContent = P.k;
+    const pb = root.querySelectorAll(".presets button"); pb[0].textContent = P.p1; pb[1].textContent = P.p2;
+    svg.replaceChildren();
+    R.forEach(r => svg.append(el("rect", { x: sx(r.v[0]), y: sy(r.k[1]), width: sx(r.v[1]) - sx(r.v[0]), height: sy(r.k[0]) - sy(r.k[1]), fill: FILL[r.s] })));
+    [["open", 2, 2], ["prog", 8.5, 3.6], ["block", 7, 8.6], ["open", 2, 8.6]].forEach(([s, x, y]) => svg.append(el("text", { class: "lbl", x: sx(x), y: sy(y) + 4, "text-anchor": "middle" }, t("statuses")[s])));
+    svg.append(el("line", { class: "late", x1: X0, x2: X0 + W, y1: sy(6), y2: sy(6) }));
+    svg.append(el("text", { class: "ax", x: X0 + W - 4, y: sy(6) - 5, "text-anchor": "end", style: "fill:var(--warn)" }, t("late")));
+    for (let d = 1; d <= 10; d++) {
+      svg.append(el("text", { class: "ax", x: sx(d + 0.5), y: Y0 + 15, "text-anchor": "middle" }, d));
+      svg.append(el("text", { class: "ax", x: X0 - 8, y: sy(d + 0.5) + 4, "text-anchor": "end" }, d));
+    }
+    svg.append(el("text", { class: "ax", x: X0 + W, y: Y0 + 32, "text-anchor": "end" }, t("axV")));
+    svg.append(el("text", { class: "ax", x: 4, y: 10 }, t("axK")));
+    const cx = sx(v + 0.5), cy = sy(k + 0.5);
+    svg.append(el("line", { class: "cross", x1: cx, x2: cx, y1: sy(11), y2: Y0 }));
+    svg.append(el("line", { class: "cross", x1: X0, x2: X0 + W, y1: cy, y2: cy }));
+    svg.append(el("circle", { class: "dot", cx, cy, r: 6 }));
+    const m = t("months"); vo.textContent = lang === "es" ? `${v} ${m}` : `${m} ${v}`; ko.textContent = lang === "es" ? `${k} ${m}` : `${m} ${k}`;
+    const r = at(v, k), p = n => String(n).padStart(2, "0");
+    root.querySelector(".answer").innerHTML = `context("issue:SPR-142",<br>&nbsp; as_of="2026-10-${p(v)}",<br>&nbsp; as_known_at="2026-10-${p(k)}")<br>→ status: ` + (r ? `<b style="background:${FILL[r.s]}">${t("statuses")[r.s]}</b>` : t("none"));
+  }
+  vIn.oninput = kIn.oninput = draw;
+  root.querySelectorAll(".presets button").forEach(b => b.onclick = () => { vIn.value = b.dataset.v; kIn.value = b.dataset.k; draw(); });
+  const pick = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    vIn.value = Math.min(10, Math.max(1, Math.floor((q.x - X0) / (W / 10)) + 1)); kIn.value = Math.min(10, Math.max(1, Math.floor((Y0 - q.y) / (H / 10)) + 1)); draw();
+  };
+  svg.addEventListener("pointerdown", e => { svg.setPointerCapture(e.pointerId); pick(e); });
+  svg.addEventListener("pointermove", e => { if (svg.hasPointerCapture(e.pointerId)) pick(e); });
+  return { draw };
+});
+
+// Before / after diagrams.
+function diagrams() {
+  const D = t("d"), SRC = ["Postgres", "Webhooks", "Kafka"], sy3 = [50, 125, 200], ay = [16, 80, 144, 208];
+  const box = (g, x, y, w, h, cls, a, b) => {
+    g.append(el("rect", { class: cls, x, y, width: w, height: h, rx: 6 }));
+    g.append(el("text", { class: "d-t", x: x + 10, y: y + (b ? 18 : 24) }, a));
+    if (b) g.append(el("text", { class: "d-s", x: x + 10, y: y + 32 }, b));
+  };
+  const wire = (g, x1, y1, x2, y2, k) => g.append(el("path", { class: "d-wire" + (k ? " k" : ""), d: `M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}` }));
+  const bf = document.getElementById("d-before"), af = document.getElementById("d-after");
+  bf.replaceChildren(); af.replaceChildren();
+  for (const g of [bf, af]) { SRC.forEach((n, i) => box(g, 4, sy3[i], 90, 38, "d-box", n)); D.agents.forEach((n, i) => box(g, 370, ay[i] + (g === af ? 10 : 0), 146, 38, "d-box", n)); }
+  ay.forEach(y => SRC.forEach((_, i) => wire(bf, 94, sy3[i] + 19, 196, y + 21)));
+  ay.forEach(y => { box(bf, 196, y, 150, 42, "d-pipe", D.pipe, D.pipeS); wire(bf, 346, y + 21, 370, y + 19); });
+  SRC.forEach((_, i) => wire(af, 94, sy3[i] + 19, 150, sy3[i] + 19, true));
+  af.append(el("rect", { class: "d-keel", x: 150, y: 16, width: 186, height: 248, rx: 10 }));
+  af.append(el("text", { class: "d-kt", x: 166, y: 44 }, "Keel"));
+  [D.cart, D.graph].forEach((l, i) => af.append(el("text", { class: "d-s", x: 166, y: 66 + i * 17 }, l)));
+  ["context", "history", "search", "related", "annotate"].forEach((n, i) => af.append(el("text", { class: "d-km", x: 166, y: 130 + i * 24 }, n)));
+  ay.forEach(y => wire(af, 336, 140, 370, y + 29, true));
+}
+
+// Tools reference; results are the brief shapes keel/tools.py returns.
+const TOOLS = [
+  { n: "context", c: 'context("issue:SPR-142")', r: '{ "subject": "issue:SPR-142",\n  "facts": { "status": "Blocked", "assignee": "ana" },\n  "since": { "status": "2026-10-04T09:12:00+00:00" },\n  "relations": { "<-blocks": ["issue:SPR-17"],\n                 "in_project": ["project:SPR"] },\n  "evaluation": { "blocked": true, "stalled": false } }' },
+  { n: "history", c: 'history("issue:SPR-142", predicate="status")', r: '[ { "value": "Open",        "valid_from": "2026-10-01…", "valid_to": "2026-10-03…" },\n  { "value": "In progress", "valid_from": "2026-10-03…", "valid_to": "2026-10-04…" },\n  { "value": "Blocked",     "valid_from": "2026-10-04…", "valid_to": null,\n    "recorded_at": "2026-10-06T16:40:00+00:00" } ]' },
+  { n: "search", c: 'search(kind="issue", rule="blocked")', r: '[ { "key": "issue:SPR-142", "kind": "issue", "attrs": { "summary": "…" } },\n  { "key": "issue:SPR-311", "kind": "issue", "attrs": { "summary": "…" } },\n  … 7 issues ]' },
+  { n: "related", c: 'related("issue:SPR-142", "blocks", depth=2)', r: '[ { "relation": "blocks", "direction": "in", "subject": "issue:SPR-17",\n    "since": "2026-10-04…", "hops": 1, "via": "issue:SPR-142" },\n  { "relation": "blocks", "direction": "in", "subject": "issue:SPR-9",\n    "since": "2026-09-30…", "hops": 2, "via": "issue:SPR-17" } ]' },
+  { n: "annotate", c: 'annotate("issue:SPR-142", "waiting_on", "vendor patch",\n         scope="task", evidence=late_event.id, detail="ack")', r: '{ "subject": "issue:SPR-142", "predicate": "waiting_on",\n  "valid_from": "2026-10-22T10:05:00+00:00", "scope": "task",\n  "expires_at": "2026-11-05T10:05:00+00:00" }' },
+];
+let tool = 0;
+const toolList = document.getElementById("tool-list");
+function renderTools() {
+  const T = t("tools");
+  if (!toolList.children.length) {
+    toolList.innerHTML = TOOLS.map((x, i) => `<button role="tab" id="tool-${i}" aria-controls="tool-body" aria-selected="${i === tool}" tabindex="${i === tool ? 0 : -1}" data-i="${i}">${x.n}<span></span></button>`).join("");
+    tablist(toolList, b => { tool = +b.dataset.i; renderTools(); });
+  }
+  [...toolList.children].forEach((b, i) => b.querySelector("span").textContent = T[i].d);
+  const x = TOOLS[tool], B = document.getElementById("tool-body");
+  B.setAttribute("aria-labelledby", "tool-" + tool);
+  B.innerHTML = `<h3>${x.n}</h3><p>${T[tool].p}</p><div class="code"><div class="file"><span>${t("call")}</span><span>MCP · HTTP · SDK</span></div><pre>${esc(x.c)}</pre></div><div class="code"><div class="file"><span>${t("result")}</span><span>JSON</span></div><pre>${esc(x.r)}</pre></div>`;
+}
+
+// The chart is static HTML; translate its title and grow the bars once in view.
+function chart() { document.querySelector("#chart > h3").textContent = t("chartH"); }
+
+// Rule play.
+const rp = document.getElementById("ruleplay");
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const NODES = Array.from({ length: 70 }, (_, i) => ({ x: 0.05 + 0.9 * ((i % 14) + 0.5 + (rnd() - 0.5) * 0.7) / 14, y: 0.1 + 0.8 * (Math.floor(i / 14) + 0.5 + (rnd() - 0.5) * 0.6) / 5 }));
+const BLOCKED = [5, 18, 30, 41, 52, 63, 24], EDGES = [], BLOCKERS = new Set();
+BLOCKED.forEach(tg => { for (let k = 0; k < 1 + (tg % 2); k++) { let f; do { f = Math.floor(rnd() * 70); } while (BLOCKED.includes(f) || Math.abs(NODES[f].x - NODES[tg].x) > 0.25 || Math.abs(NODES[f].y - NODES[tg].y) > 0.4); EDGES.push([f, tg, true]); BLOCKERS.add(f); } });
+for (let k = 0; k < 40; k++) { const f = Math.floor(rnd() * 70), g = Math.floor(rnd() * 70); if (f !== g && Math.hypot(NODES[f].x - NODES[g].x, NODES[f].y - NODES[g].y) < 0.2) EDGES.push([f, g, false]); }
+const PICKS = { right: [5, 30, 41, 63, 24], wrong: [22, 58] };
+function lane(root, mode) {
+  const cv = root.querySelector("canvas"), ctx = cv.getContext("2d"), phase = root.querySelector(".phase"), b = root.querySelector(".meter b"),
+        fill = root.querySelector(".fill"), v = root.querySelector(".verdict"), target = mode === "with" ? 77 : 149, total = mode === "with" ? 3000 : 5800;
+  let t0 = 0, raf = 0, parts = [], ran = false, paused = false; const sent = new Set();
+  function frame(now) {
+    const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+    if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const Wd = r.width, Hd = r.height, tt = still ? total : !ran ? 0 : now - t0, P = t("ph");
+    const C = { ink: css("--ink"), dim: css("--dim"), hot: mode === "with" ? css("--accent") : css("--warn"), bad: css("--bad") };
+    ctx.clearRect(0, 0, Wd, Hd);
+    const Xn = n => NODES[n].x * Wd, Yn = n => NODES[n].y * Hd;
+    const ring = (i, c, cross, dash) => { ctx.strokeStyle = c; ctx.lineWidth = 1.6; if (dash) ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(Xn(i), Yn(i), 7, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+      if (cross) { ctx.beginPath(); ctx.moveTo(Xn(i) - 3.5, Yn(i) - 3.5); ctx.lineTo(Xn(i) + 3.5, Yn(i) + 3.5); ctx.moveTo(Xn(i) + 3.5, Yn(i) - 3.5); ctx.lineTo(Xn(i) - 3.5, Yn(i) + 3.5); ctx.stroke(); } ctx.lineWidth = 1; };
+    let tokens, text;
+    if (mode === "without") {
+      const sweep = Math.min(1, tt / 3900), bx = sweep * Wd * 1.05;
+      ctx.globalAlpha = .3; ctx.strokeStyle = C.dim; EDGES.forEach(([f, s]) => { ctx.beginPath(); ctx.moveTo(Xn(f), Yn(f)); ctx.lineTo(Xn(s), Yn(s)); ctx.stroke(); }); ctx.globalAlpha = 1;
+      if (sweep > 0 && sweep < 1) { ctx.fillStyle = C.hot; ctx.globalAlpha = .2; ctx.fillRect(bx - 18, 0, 18, Hd); ctx.globalAlpha = 1; ctx.fillRect(bx - 2, 0, 2, Hd); }
+      NODES.forEach((_, i) => { const read = Xn(i) < bx;
+        if (read && ran && !still && !sent.has(i)) { sent.add(i); parts.push({ x: Xn(i), y: Yn(i), t: now }); }
+        ctx.fillStyle = read ? C.hot : C.dim; ctx.globalAlpha = read ? .9 : .5; ctx.beginPath(); ctx.arc(Xn(i), Yn(i), 2.8, 0, 7); ctx.fill(); ctx.globalAlpha = 1; });
+      if (tt > 4100 && tt < 5000) NODES.forEach((_, i) => { if (Math.sin(i * 12.9 + tt / 60) > 0.96) ring(i, C.ink); });
+      if (tt >= 5000) { PICKS.right.forEach(i => ring(i, C.ink)); PICKS.wrong.forEach(i => ring(i, C.bad, true)); BLOCKED.filter(i => !PICKS.right.includes(i)).forEach(i => ring(i, C.dim, false, true)); }
+      tokens = target * Math.min(1, tt / 4400); text = sweep < 1 ? P.read : tt < 5000 ? P.judge : P.doneA;
+    } else {
+      const pulse = Math.min(1, tt / 600), walk = Math.max(0, Math.min(1, (tt - 600) / 1200));
+      EDGES.forEach(([f, s, isB]) => { const live = isB && walk > 0; ctx.strokeStyle = live ? C.hot : C.dim; ctx.globalAlpha = live ? 1 : .25; ctx.lineWidth = live ? 1.8 : 1;
+        ctx.beginPath(); ctx.moveTo(Xn(f), Yn(f)); if (isB) ctx.lineTo(Xn(f) + (Xn(s) - Xn(f)) * walk, Yn(f) + (Yn(s) - Yn(f)) * walk); else ctx.lineTo(Xn(s), Yn(s)); ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 1; });
+      NODES.forEach((_, i) => { const on = BLOCKED.includes(i) && walk >= 1, src = BLOCKERS.has(i) && pulse >= 1;
+        ctx.fillStyle = on ? C.hot : src ? C.ink : C.dim; ctx.globalAlpha = on || src ? 1 : .4; ctx.beginPath(); ctx.arc(Xn(i), Yn(i), on ? 4.5 : 2.8, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        if (on) { ring(i, C.hot); if (ran && !still && !sent.has(i)) { sent.add(i); parts.push({ x: Xn(i), y: Yn(i), t: now }); } } });
+      tokens = target * Math.min(1, tt / 2400); text = tt < 600 ? P.rule : walk < 1 ? P.walk : P.doneB;
+    }
+    parts = parts.filter(p => now - p.t < 600);
+    parts.forEach(p => { const f = (now - p.t) / 600, e = f * f; ctx.fillStyle = C.hot; ctx.globalAlpha = 1 - f * .5; ctx.beginPath(); ctx.arc(p.x + (Wd * .5 - p.x) * e, p.y + (Hd + 8 - p.y) * e, 2.2, 0, 7); ctx.fill(); ctx.globalAlpha = 1; });
+    b.textContent = Math.round(tokens) + "k"; fill.style.width = tokens / 149 * 100 + "%"; phase.textContent = text;
+    v.classList.toggle("in", tt >= total - 300);
+    raf = !paused && ran && (tt < total || parts.length) ? requestAnimationFrame(frame) : 0;
+  }
+  return {
+    play() { cancelAnimationFrame(raf); paused = false; sent.clear(); parts = []; ran = true; t0 = performance.now(); raf = requestAnimationFrame(frame); },
+    // Back to the first frame and hold, so the next time it comes into view it runs from the start.
+    reset() { cancelAnimationFrame(raf); raf = 0; paused = true; sent.clear(); parts = []; ran = true; t0 = performance.now(); requestAnimationFrame(frame); },
+    redraw() { if (!raf) requestAnimationFrame(frame); }
+  };
+}
+const lanes = [lane(rp.querySelector(".lane.without"), "without"), lane(rp.querySelector(".lane.with"), "with")];
+document.getElementById("rp-replay").onclick = () => lanes.forEach(l => l.play());
+addEventListener("resize", () => lanes.forEach(l => l.redraw()));
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => lanes.forEach(l => l.redraw()));
+
+// Entrances, the chart and the session, once each as they come into view.
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add("is-in"); io.unobserve(e.target);
+  if (e.target.id === "chart") e.target.classList.add("grown");
+  if (e.target.id === "panel") playChat(still);
+}), { threshold: 0.2 });
+document.querySelectorAll(".rise").forEach(n => io.observe(n));
+
+// The rule play runs only while it is on screen: it starts when most of it is visible and resets when it leaves.
+new IntersectionObserver(([e]) => lanes.forEach(l => e.isIntersecting ? l.play() : l.reset()), { threshold: 0.6 }).observe(rp);
+
+// Copy buttons.
+document.querySelectorAll("[data-copy], [data-copy-from]").forEach(b => b.onclick = async () => {
+  const text = b.dataset.copy || document.getElementById(b.dataset.copyFrom).textContent;
+  try { await navigator.clipboard.writeText(text); } catch (e) { return; }
+  if (b.dataset.copy) { const n = b.querySelector(".copied"); n.textContent = t("copied"); setTimeout(() => n.textContent = "", 1500); }
+  else { b.textContent = t("done"); setTimeout(() => b.textContent = t("copy"), 1500); }
+});
+
+function render() { plots.forEach(p => p.draw()); diagrams(); renderTools(); chart(); lanes.forEach(l => l.redraw()); if (chatStarted) playChat(true); }
+let saved = null; try { saved = localStorage.getItem("keel-lang"); } catch (e) {}
+const want = new URLSearchParams(location.search).get("lang") || saved || (navigator.language.startsWith("es") ? "es" : "en");
+if (want === "es") setLang("es"); else render();
+</script>
+</body>
+</html>
