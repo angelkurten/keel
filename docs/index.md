@@ -7,7 +7,7 @@ Keel is a context layer for the AI agents inside a product: a vertical SaaS, a c
 You describe your vertical once, in a *cartridge*: ontology, event catalog, semantic rules, memory policies. Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
 !!! note "Status"
-    0.34.0, alpha. Runs embedded in Python, as a container (`ghcr.io/angelkurten/keel`), or hosted during the pilots. See the [roadmap](roadmap.md).
+    0.35.0, alpha. Runs embedded in Python, as a container (`ghcr.io/angelkurten/keel`), or hosted during the pilots. See the [roadmap](roadmap.md).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
