@@ -107,7 +107,8 @@ class DuckdbStore(SqlStore):
 
     def _execmany(self, sql: str, rows: list[tuple[Any, ...]], size: int = 0) -> None:
         """Multi-row writes (a bulk batch's flush) in one statement, column by column: DuckDB's executemany runs
-        a statement per row (~900 events/s). `VALUES (?, ...)` becomes `SELECT UNNEST(?), ...` over one list per
+        a statement per row (~900 events/s). DuckDB 1.x (the last for Python 3.10) tries to import pandas for every
+        value it converts, so without pandas installed this runs ~40x slower there; 2.0 does not. `VALUES (?, ...)` becomes `SELECT UNNEST(?), ...` over one list per
         column; rows keep their order, so the sequence hands out seq as the batch wrote them. DuckDB's ON CONFLICT
         does not keep that order, so the entity upsert updates the rows that exist and inserts the others."""
         if not rows:

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 
 import pytest
 from test_query import TENANT, T, cartridge, populate
@@ -119,6 +120,7 @@ def test_serve_takes_query_flags():
     from keel.cli import app
 
     out = CliRunner().invoke(app, ["serve", "--help"], env={"COLUMNS": "200"}).output
+    out = re.sub(r"\x1b\[[0-9;]*m", "", out)  # rich colours the help on CI (GITHUB_ACTIONS), splitting the names
     assert "--query" in out and "--query-timeout" in out
 
 

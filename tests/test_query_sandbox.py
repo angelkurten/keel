@@ -185,7 +185,7 @@ def test_the_copy_counts_against_the_querys_timeout(kind, tmp_path, monkeypatch)
     start = _time.monotonic()
     with pytest.raises(ValueError, match="timed out"):
         t.query("SELECT 1 AS one")
-    assert _time.monotonic() - start < 2.5
+    assert _time.monotonic() - start < 4  # the 1.2 s sleep plus a real copy, on a loaded 2-core CI runner
     monkeypatch.setattr(box_type, "load", real_load)
     assert t.query("SELECT 1 AS one") == [{"one": 1}]
 

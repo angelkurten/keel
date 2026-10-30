@@ -14,6 +14,7 @@ to one statement (`rule_subjects`) instead of evaluating every entity of its kin
 from __future__ import annotations
 
 import sqlite3
+import sys
 import threading
 import time
 from datetime import datetime
@@ -217,6 +218,11 @@ def _authorize(action: int, a: str | None, b: str | None, db: str | None, source
     return sqlite3.SQLITE_OK
 
 
+def _allow(*_: Any) -> int:
+    """Python 3.10 cannot clear an authorizer (None denies everything there): the sandbox's own loads use this one."""
+    return sqlite3.SQLITE_OK
+
+
 class _Sandbox(q.Box):
     """One tenant's readable rows in a private in-memory SQLite database (SqliteStore.query_rows)."""
 
@@ -257,6 +263,6 @@ class _Sandbox(q.Box):
         except (sqlite3.Error, sqlite3.Warning, OverflowError, MemoryError) as exc:
             raise ValueError(f"query failed: {q.clean_error(exc)}") from exc
         finally:
-            self.conn.set_authorizer(None)
+            self.conn.set_authorizer(None if sys.version_info >= (3, 11) else _allow)  # None clears it from 3.11 only
             self.conn.set_progress_handler(None, 0)
         return cols, got, more

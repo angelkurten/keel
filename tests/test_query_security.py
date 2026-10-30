@@ -11,6 +11,7 @@ own tables (keys, metering). Writes leave the store and the next answer unchange
 from __future__ import annotations
 
 import json
+import sys
 import time
 from typing import Any
 
@@ -266,6 +267,8 @@ def test_a_huge_value_is_refused_not_fetched(attacked, n):
     import resource
 
     _, store = attacked
+    if _kind(store) == "sqlite" and sys.version_info < (3, 11):
+        pytest.skip("SQLite's length limit needs Python 3.11 (setlimit): an accepted risk, docs/serve.md")
     tools = tools_of(attacked)
     f = WIDE[_kind(store)]
     before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

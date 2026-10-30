@@ -55,6 +55,12 @@ def test_a_restore_writes_every_row_in_its_order(tmp_path):
 
 def test_bulk_ingest_is_within_a_small_factor_of_sqlite(tmp_path):
     """Row-by-row executemany made DuckDB ~12x slower than SQLite on the same batch (~900 vs ~11,000 events/s)."""
+    import importlib.util
+
+    import duckdb
+
+    if int(duckdb.__version__.split(".")[0]) < 2 and importlib.util.find_spec("pandas") is None:
+        pytest.skip("DuckDB 1.x imports pandas per value when it is missing (~40x slower): see DuckdbStore._execmany")
     events = list(harness.read_events(_log(tmp_path, 6000, seed=3)))
     times = {}
     for name, store in (("sqlite", SqliteStore(tmp_path / "t.db")), ("duckdb", DuckdbStore(tmp_path / "t.duckdb"))):
