@@ -241,6 +241,14 @@ def test_the_sqlite_schema_says_how_sqlite_reads_instants():
     assert sqlgen.describe(cartridge(), TENANT) == sqlgen.describe(cartridge(), TENANT, "duckdb")  # as before
 
 
+def test_now_reads_as_keel_now_on_sqlite(tmp_path):
+    """Held-out set: agents wrote now() on SQLite, which has none; it answers as keel_now() does (UTC ISO text)."""
+    c = cartridge()
+    t = Tools(c, populate(SqliteStore(tmp_path / "k.db"), c), TENANT, query=True)
+    (row,) = t.query("SELECT now() AS n, keel_now() AS k")
+    assert row["n"][:16] == row["k"][:16] and row["n"].endswith("+00:00")
+
+
 def test_query_answers_only_where_the_host_enabled_it(tmp_path):
     """The switch is the tool's own: Tools without query=True refuses, whatever the store could do."""
     c = cartridge()

@@ -581,6 +581,7 @@ class SQLite(DuckDB):
                             ("keel_casefold", 1, lambda x: None if x is None else str(x).casefold())):
             conn.create_function(name, n, fn, deterministic=True)
         conn.create_function("keel_now", 0, lambda: utcnow().isoformat())
+        conn.create_function("now", 0, lambda: utcnow().isoformat())  # agents write DuckDB's and Postgres's now() here too
         conn.create_aggregate("keel_arg_max", 2, ArgMax)
 
 
@@ -824,7 +825,8 @@ def describe(cartridge: Any, tenant: str | None = None, dialect: str = "duckdb")
         lines.append(
             f"- {kind}_state_at(tenant, t), {kind}_state_known_at(tenant, t, k := k): one row per {kind}{about} with a fact at t. "
             f"Columns: subject ('{kind}:<id>'), id, ref" + "".join(f", {a}" for a in attrs) + "; " + ", ".join(cols)
-            + "; <fact>_since for each (when that value began)" + (f"; {', '.join(ends)}" if ends else "") + ". NULL: empty or unknown.")
+            + "; <fact>_since for each (when that value began; no valid_from or recorded_at here)" + (f"; {', '.join(ends)}" if ends else "")
+            + ". NULL: empty or unknown.")
         lines.append(
             f"- {kind}_changes(tenant, since, until, k := k): one row per change of a fact above that began in [since, until) "
             f"(NULL: open-ended): {', '.join(CHANGE_COLUMNS)} (values as text). Not a change: a first value, a value recorded "
@@ -839,11 +841,13 @@ def describe(cartridge: Any, tenant: str | None = None, dialect: str = "duckdb")
                      "'src <rel> dst', ends as '<kind>:<id>'. rel: " + ", ".join(links) + ".")
     rules = [(r, spec) for r, spec in cartridge.rules.items() if spec.get("when")]
     if rules:
-        lines.append("Rules, as table macros listing the subject of each entity a rule holds for at t (trust them; each also takes k := k; "
-                     "<rule>_verdicts(tenant, t) gives subject, verdict true, false or null):")
+        lines.append("Rules (trust them; every macro also takes k := k): <rule>_at(tenant, t) lists only subject, one row per entity the "
+                     "rule holds for at t (join a state view on subject for anything else); <rule>_verdicts(tenant, t) gives "
+                     "subject and verdict (true, false or null) for every entity of its kind:")
         for r, spec in rules:
             of = f" ({spec['applies_to']})" if spec.get("applies_to") else ""
-            lines.append(f"- {rule_macro(r)}_at(tenant, t){of}: {str(spec.get('definition') or '').strip()}")
+            m = rule_macro(r)
+            lines.append(f"- {m}_at(tenant, t), {m}_verdicts(tenant, t){of}: {str(spec.get('definition') or '').strip()}")
     lines.append("Lower level: state_at(tenant, t) and state_known_at(tenant, t, k := k) (subject, predicate, value as JSON text, "
                  "instants as ISO text), keel_facts(tenant, k := k) (every fact's history), tables entities, facts, relations.")
     return "\n".join(lines)

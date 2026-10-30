@@ -299,6 +299,19 @@ def test_describe_documents_every_generated_view_column_relation_and_rule():
     assert "indeterminate means in progress" in text  # a declared description
 
 
+def test_describe_names_what_agents_got_wrong_on_the_held_out_set():
+    """keel+query on the held-out set (Haiku 5.5): 47 of 158 failed calls were the schema misread. A rule macro was read as
+    returning the entity's columns, its verdicts as `<rule>_at_verdicts`, and the state views as having valid_from or
+    recorded_at. The paragraph names each rule's two macros, says what they return, and what the state views lack."""
+    c = load_cartridge(JIRA)
+    text = sqlgen.describe(c, "acme")
+    for rule in c.rules:
+        assert f"{rule}_at(tenant, t)" in text and f"{rule}_verdicts(tenant, t)" in text, rule
+        assert f"{rule}_at_verdicts" not in text
+    assert "only subject" in text and "join" in text  # a rule's rows carry nothing else: join the state view on subject
+    assert "no valid_from or recorded_at" in text  # the state views: <fact>_since instead
+
+
 @pytest.mark.parametrize("backend", [b for b in BACKENDS if b != "sqlite"])
 def test_views_take_a_timestamp_or_iso_text_whatever_the_session_time_zone(backend):
     """An agent writes TIMESTAMP '2020-01-10 00:00' (UTC) or ISO text, for t and k alike, in a session in another zone."""
