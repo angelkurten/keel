@@ -109,3 +109,12 @@ most one per instance, the tie-breaks), the conditions, the commands, the budget
 What it costs: if a selected project shares an instance with the held-out set, it shares that instance's workflow,
 status names and people, so this set is disjoint from the held-out set in projects, issues and questions, and from
 the development set in instances too, but not from the held-out set in instances. The results say which.
+
+## Outcome of the amended screening, 2026-11-01: no set
+
+`screen.json`: of 94 candidates, 6 passed rules 1 to 4 (as the held-out screening found 9, three of them now used)
+and none passed rule 5. Short on links questions (at least 8 of 15 needed): JiraEcosystem CE 121 questions with 7
+links, RedHat APIMAN 113 with 1, ERRAI 104 with none, JBJCA 103 with 1; ERRAI and JBJCA also under half of the
+rule or tenant-wide counts; Mindville ICS and RedHat CS: `inject.py` raised, no questions. As registered, no paid
+run happens. A second amendment was not made: these counts were seen, and any rule written now would be written
+knowing which projects it lets in. `sqlgen2` and `keel+query` stay exploratory.
