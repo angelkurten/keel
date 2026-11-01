@@ -2,6 +2,8 @@
 
 Status: week 1 of 16 (plan at https://claude.ai/artifact/L1ZYTBKwJqx16z8uSKfyyZ). Decided 2026-10-20: a benchmark of our own over the Public Jira Dataset (MSR 2022, Zenodo, CC BY 4.0); five systems (Keel, RAG, the product's API as tools, Graphiti, Mem0); agents `openai/gpt-6-luna` and `anthropic/claude-haiku-5.5`; no judge (answers are structured and graded by exact match; decided in week 5); a preprint on arXiv in early February 2027; about 110–140 USD of API.
 
+Update 2026-11-01: the arXiv preprint is no longer the plan; the paper is drafted for PVLDB in its Vol. 20 template (`docs/paper-pvldb/`, since 2026-10-25). The weekly sections below are the record as it was.
+
 ## What is not ours to claim
 
 Related work already has these, so the paper cites them and builds on them:

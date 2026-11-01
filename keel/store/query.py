@@ -105,7 +105,7 @@ def fingerprint(store: Any, tenant: str, now: str) -> tuple[Any, ...]:
 
 
 # rows (facts, relations, entities) a sandbox copies of one tenant; a larger tenant is refused. A copy is a full one (entities
-# carry no change time to copy them incrementally), about 1 s for 100,000 rows, and counts against the query's timeout.
+# carry no change time to copy them incrementally), about 1 s for 100,000 rows; this ceiling, not the query's timeout, bounds it.
 COPY_MAX = 100_000
 
 

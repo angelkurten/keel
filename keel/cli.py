@@ -63,7 +63,7 @@ def _config(
     elif env_file != Path(".env"):  # the default is optional; a file you named is not
         raise typer.BadParameter(f"{env_file} does not exist", param_hint="--env-file")
 
-DB = typer.Option(None, "--db", envvar="KEEL_DB", help="A durable graph: a SQLite file, or mysql://user:pass@host:3306/db (uv sync --extra mysql). Without it the graph lives in memory and ends with the command.")
+DB = typer.Option(None, "--db", envvar="KEEL_DB", help="A durable graph: a SQLite file, mysql://user:pass@host:3306/db (uv sync --extra mysql) or postgresql://user:pass@host:5432/db (uv sync --extra postgres). Without it the graph lives in memory and ends with the command.")
 
 
 def _store(db: str | None):
@@ -269,7 +269,7 @@ def cdc(
     cartridge: Path,
     dsn: str = typer.Option(..., "--dsn", envvar="KEEL_PG_DSN", help="The Postgres to read: postgresql://user:pass@host:5432/db (wal_level = logical)."),
     map_file: Path = typer.Option(..., "--map", help="YAML mapping tables to kinds: `table: {kind, id, tenant, columns?}`."),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     slot: str = typer.Option("keel", "--slot", help="The logical replication slot."),
     publication: str = typer.Option("keel", "--publication", help="The publication listing the mapped tables."),
     tenant: str | None = typer.Option(None, "--tenant", help="A fixed tenant, for tables with no tenant column."),
@@ -374,7 +374,7 @@ def _follow_in_background(c: Any, store: Any, dsn: str, map_file: Path, account:
 def consume(
     cartridge: Path,
     queue: str = typer.Option(..., "--queue", envvar="KEEL_QUEUE", help="An SQS queue URL, AWS or SQS-compatible like ElasticMQ (AWS_* variables for credentials and region)."),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     once: bool = typer.Option(False, "--once", help="Drain what is queued now and stop, instead of consuming forever."),
     batch: int = typer.Option(100, "--batch", min=1, help="Messages stored per transaction: one long poll, topped up with what is already queued."),
 ):
@@ -478,7 +478,7 @@ def _replay_check(cartridge: Path, events: Path, tenant: str, db: str | None) ->
 @app.command()
 def expire(
     tenant: str | None = typer.Argument(None, envvar="KEEL_TENANT", help="The end-customer (KEEL_TENANT when omitted).", show_default=False),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to clean: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to clean: a SQLite file, or a mysql:// or postgresql:// URL."),
     task: str | None = typer.Option(None, "--task", help="Close one task first: its memory expires now."),
     consolidate: Path | None = typer.Option(None, "--consolidate", help="Consolidate first, with this cartridge's `consolidate:` section, so nothing is dropped unsummarized."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="With --consolidate: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
@@ -509,7 +509,7 @@ def _consolidate(c, store, tenant: str, summarizer: str | None) -> None:
 def consolidate_cmd(
     cartridge: Path,
     tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer to consolidate."),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     summarizer: str | None = typer.Option(None, "--summarizer", help="For `reduce: summary`: llm (KEEL_SUMMARIZER_* env vars), join, or pkg.module:factory."),
     all_tenants: bool = ALL,
 ):
@@ -567,7 +567,7 @@ def _backup(lines: Iterable[str]) -> dict[str, Any]:
 @app.command()
 def export(
     tenant: str = TENANT,
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to export from: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to export from: a SQLite file, or a mysql:// or postgresql:// URL."),
     out: Path | None = typer.Option(None, "--out", help="Write here instead of stdout."),
 ):
     """One tenant as JSONL: every entity, relation and fact, closed ones included, with provenance, scope, evidence and who corrected what (the audit trail), plus what `keel import` needs to restore it as it was: close marks, applied event ids and the retention cutoff."""
@@ -588,7 +588,7 @@ def export(
 def import_cmd(
     file: Path = typer.Argument(..., help="A JSONL file written by `keel export`."),
     tenant: str = TENANT,
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to import into: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph to import into: a SQLite file, or a mysql:// or postgresql:// URL."),
 ):
     """Restore a tenant from `keel export` into an empty tenant, as it was: transaction times, close marks and applied event ids included, so redelivered events stay duplicates. Moves a tenant between stores (SQLite to MySQL) or databases."""
     with file.open(encoding="utf-8") as fh:
@@ -605,7 +605,7 @@ def import_cmd(
 def index_cmd(
     cartridge: Path,
     tenant: str | None = typer.Option(None, envvar="KEEL_TENANT", help="The end-customer to index."),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     index: str = typer.Option(..., "--index", envvar="KEEL_INDEX", help="memory, chroma:///path, chroma://host:port, weaviate://host:port, or your adapter: pkg.module:factory?k=v"),
     embedder: str = typer.Option("openai", "--embedder", envvar="KEEL_EMBEDDER", help="openai (KEEL_EMBEDDINGS_* env vars), hash, or pkg.module:factory?k=v"),
     full: bool = typer.Option(False, "--full", help="Rebuild the tenant's index instead of updating it from the cursor."),
@@ -656,7 +656,7 @@ def _index_one(c, store, vectors, emb, tenant: str, path: Path, full: bool, work
 @app.command()
 def forget(
     tenant: str | None = typer.Argument(None, help="The end-customer to erase. Never read from KEEL_TENANT: name it.", show_default=False),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     index: str | None = typer.Option(None, "--index", envvar="KEEL_INDEX", help="Also delete its documents from this semantic index."),
     yes: bool = typer.Option(False, "--yes", help="Required to erase: it cannot be undone."),
     before: str | None = typer.Option(None, "--before", help="Retention: delete only facts and relations that closed at or before this ISO date or time (UTC); open ones and entities stay."),
@@ -707,7 +707,7 @@ def forget(
 
 @app.command()
 def usage(
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL."),
     month: str | None = typer.Option(None, "--month", help="Only this month, YYYY-MM. Default: every month metered."),
     account: str | None = typer.Option(None, "--account", help="Only this account's tenants (acme/...)."),
 ):
@@ -734,7 +734,7 @@ def _account_row(a: Any) -> dict[str, Any]:
 @accounts_app.command("set")
 def accounts_set(
     account: str = typer.Argument(..., help="The account (the same slug its keys carry).", show_default=False),
-    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file or a mysql:// URL."),
+    db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file, or a mysql:// or postgresql:// URL."),
     rps: int | None = typer.Option(None, "--rps", min=0, help="Requests per second through the HTTP API; 0 removes the limit."),
     events_month: int | None = typer.Option(None, "--events-month", min=0, help="Events applied per calendar month (UTC); 0 removes the limit."),
     store: str | None = typer.Option(None, "--store", help="Its own database (a SQLite path or mysql:// URL); \"\" goes back to the shared one."),
@@ -751,7 +751,7 @@ def accounts_set(
 
 
 @accounts_app.command("list")
-def accounts_list(db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file or a mysql:// URL.")):
+def accounts_list(db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph: a SQLite file, or a mysql:// or postgresql:// URL.")):
     """Every account with limits, as JSON lines. Accounts with keys but no row are not limited."""
     for a in _store(db).accounts():
         typer.echo(json.dumps(_account_row(a)))
@@ -759,7 +759,7 @@ def accounts_list(db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="Th
 
 keys_app = typer.Typer(help="API keys: one account per product on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
 app.add_typer(keys_app, name="keys")
-KEYS_DB = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file or a mysql:// URL.")
+KEYS_DB = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file, or a mysql:// or postgresql:// URL.")
 
 
 def _key_row(k: Any) -> dict[str, Any]:
@@ -881,7 +881,7 @@ def serve(
     max_list: int | None = typer.Option(None, "--max-list", envvar="KEEL_MAX_LIST", help="The most entries one listing returns (search, related, history) when a caller asks for all or for more; the rest is paged, and the answer says so. Unset: no ceiling, as a report or an export may want everything."),
     compact: bool = typer.Option(True, "--compact/--plain", envvar="KEEL_COMPACT", help="MCP: what the model reads is compact (the default), the same data in fewer tokens: lists of records as tables (fields they share said once), short UTC times; --plain (KEEL_COMPACT=0) sends the JSON text. structuredContent and /v1 keep the JSON."),
     read_only: bool = typer.Option(False, "--read-only", envvar="KEEL_READ_ONLY", help="Serve the four read tools only (context, history, search, related): agents that never write skip annotate's definition on every request, and a call to it is refused (over HTTP, /v1/annotate too). An agent declared with `writes: []` is served so without it."),
-    query: bool = typer.Option(False, "--query", envvar="KEEL_QUERY", help="Also serve the optional sixth tool, query: read-only SQL over the schema generated from the cartridge, bound to the tenant by the store (SQLite, DuckDB, Postgres). Over MCP the schema rides in the instructions; over HTTP, POST /v1/query. A registry agent needs `query: true`."),
+    query: bool = typer.Option(False, "--query", envvar="KEEL_QUERY", help="Also serve the optional sixth tool, query: read-only SQL over the schema generated from the cartridge, bound to the tenant by the store (SQLite or Postgres). Over MCP the schema rides in the instructions; over HTTP, POST /v1/query. A registry agent needs `query: true`."),
     query_timeout: float = typer.Option(5.0, "--query-timeout", envvar="KEEL_QUERY_TIMEOUT", help="With --query: seconds one query may run before the store stops it."),
     index_every: int = typer.Option(0, "--index-every", envvar="KEEL_INDEX_EVERY", help="With --index and --db: bring the index up to date every N seconds in a thread of this server, every tenant (as `keel index --all-tenants`). Needed with chroma:///path, which only the process that opened it sees; /health shows its state."),
 ):

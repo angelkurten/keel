@@ -149,11 +149,21 @@ From exploring the hosted product ([design note](https://github.com/angelkurten/
 - [x] Metering: daily counters in a `metering` table, events applied for the first time (the billing unit; duplicates and replays not counted) and tool calls per tool (not billed), and `keel usage --month --account` (0.27.0)
 - [x] Retention as a dated forget: `forgets: before` in the catalog and `keel forget <tenant> --before` (or `--all-tenants`, a policy to schedule) delete facts, annotations and relations closed by the cutoff; the cutoff is kept and `replay` applies it again (0.27.0)
 
+## 0.34–0.35 — from the paper's evaluation (0.34.0 on 2026-10-22, 0.35.0 on 2026-10-29)
+
+From reading every wrong answer in the Jira benchmark, and from the decision of 2026-10-26 to allow an optional sixth tool.
+
+- [x] `history` says which value each fact replaced (`was`), so "which issues changed" is the facts with `was`; `search(where=)` with no text returns no fact hits (0.34.0)
+- [x] The optional sixth tool, `query(sql, limit?)`: read-only SQL over the schema generated from the cartridge (`keel/sqlgen.py`), off unless the host enables it (`keel serve --query`, `Tools(query=True)`; a registry agent also needs `query: true`), bound to the tenant by the store, never by the agent's SQL (SQLite and DuckDB: a per-tenant sandbox copy of at most 100,000 rows; Postgres: a login role per tenant over security-barrier views); over MCP, HTTP, the Python client and the TypeScript SDK; three adversarial reviews, every finding fixed test-first (0.35.0)
+- [x] DuckDB and Postgres stores (`keel/store/duckdb.py`, `keel/store/postgres.py`), dialects of the shared `SqlStore`; `search(rule=)` and `where` pushed down to SQL on SQLite, DuckDB and Postgres; cartridge `facts`, `attrs` and `one` generate per-kind views and the paragraph that describes them to an agent (`sqlgen.describe`) (0.35.0)
+- [x] MCP replies in a compact text form by default (lossless; `--plain` or `KEEL_COMPACT=0` for the JSON text), `keel serve --read-only`, shorter tool descriptions (0.35.0)
+- [x] The suite runs in parallel (`uv run pytest -n auto`, pytest-xdist in the `dev` extra; CI and the release workflow use it); with Postgres about 42 to 10 minutes (0.35.0)
+
 ## Exit to beta (set 2026-10-22)
 
-Beta is not a feature list: it is a contract that stops moving, no known wrong answers, and real use outside our own products. It can stay 0.x; the classifier moves to `Development Status :: 4 - Beta`. Not required for beta: 1.0, a Postgres or Graphiti store, multi-cartridge tenants; experimental pieces (MCP `detail="text"`) stay marked experimental.
+Beta is not a feature list: it is a contract that stops moving, no known wrong answers, and real use outside our own products. It can stay 0.x; the classifier moves to `Development Status :: 4 - Beta`. Not required for beta: 1.0, a Graphiti store (a Postgres store shipped in 0.35.0), multi-cartridge tenants; experimental pieces (MCP `detail="text"`) stay marked experimental.
 
-- [ ] A frozen contract: the envelope, the cartridge format, the five tool signatures and defaults, and the store protocol change only through a deprecation that lasts at least one minor version; four weeks in a row without a breaking change
+- [ ] A frozen contract: the envelope, the cartridge format, the five tool signatures and defaults (and the optional `query`'s, since 0.35.0), and the store protocol change only through a deprecation that lasts at least one minor version; four weeks in a row without a breaking change
   - [x] The contract written down and checked (SPEC §11): `tests/contract.json` snapshots it and `tests/test_contract.py` fails on any change, refusing a break unless `--allow-breaking` (0.33.0, 2026-10-22). The four weeks count from the last snapshot refreshed with `--allow-breaking`
 - [x] No known correctness bug: the open SPEC questions decided and tested (naive datetimes coerced or rejected; an undeclared subject kind at ingest; whether `close_task` expires tenant-scope facts written with that task; `unlink` without transaction time; partial handler failure without `strict`; reusing an `annotate` key with another scope; text `search` with `as_known_at`), and the SPEC battery and the store conformance suite green on memory, SQLite and MySQL in CI
   - [x] The seven decided and tested (`tests/test_spec_decisions.py`): naive datetimes are UTC everywhere; an event about the wrong kind is refused; `close_task` expires task-scope memory only; `unlink` records `closed_at`; an event is atomic (a failing handler leaves nothing and the event comes again); a reused key with another scope raises; text `search` reads facts at `as_of`. The conformance suite and the whole SPEC battery run on MySQL in CI (0.33.0, 2026-10-22). Same-instant facts without a declared `recorded_at` follow ingest order, documented in SPEC §3.3 as intended
@@ -178,4 +188,4 @@ Goal: the hosted product and the cartridge catalog.
 ## Not planned
 
 - Document/RAG ingestion (plenty of good tools exist; Keel points at their output if needed)
-- A sixth tool
+- A seventh tool (the optional sixth, `query`, was decided on 2026-10-26)

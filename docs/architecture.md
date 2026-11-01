@@ -68,8 +68,10 @@ The graph is partitioned **one subgraph per tenant**. No read crosses tenants; t
 | --- | --- | --- |
 | `MemoryStore` | Tests, demos, a process that rebuilds from JSONL at start. | `MemoryStore()`, `keel serve --events events.jsonl` |
 | `SqliteStore` | The default durable store. One file, nothing to run. | `--db keel.db` or `KEEL_DB=keel.db` |
-| `MysqlStore` | Several processes, production. | `--db mysql://user:pass@host:3306/keel` |
-| Your own | Postgres, a graph database, anything else. | Implement the protocol in `keel/store/base.py` and pass the conformance suite: `KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py` |
+| `MysqlStore` | Several processes, production. | `--db mysql://user:pass@host:3306/keel` (`uv sync --extra mysql`) |
+| `PostgresStore` | Several processes, production, on a Postgres you already run; the one store that serves `query` past 100,000 rows per tenant. | `--db postgresql://user:pass@host:5432/keel` (`uv sync --extra postgres`) |
+| `DuckdbStore` | One file, rules pushed down to SQL; from Python. | `DuckdbStore("keel.duckdb")` (`uv sync --extra duckdb`) |
+| Your own | A graph database, anything else. | Implement the protocol in `keel/store/base.py` and pass the conformance suite: `KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py` |
 
 ## 5. The five tools, and an optional sixth
 
@@ -102,9 +104,9 @@ Details in [Serve the tools](serve.md) and [SDKs](sdks.md).
 | Surface | For | Start it with |
 | --- | --- | --- |
 | Python, in process | An agent that is already Python; no network. | `Tools(cartridge, store, tenant="acme", agent="tires-bot")` |
-| HTTP JSON API | A backend in any language, many tenants from one process. | `keel serve --transport http --db ...`: `POST /v1/{context,history,search,related,annotate}`, `POST /v1/events`, `GET /health`; headers `Authorization: Bearer`, `X-Keel-Tenant`, `X-Keel-Agent` |
+| HTTP JSON API | A backend in any language, many tenants from one process. | `keel serve --transport http --db ...`: `POST /v1/{context,history,search,related,annotate}` (and `/v1/query` with `--query`), `POST /v1/events`, `GET /health`; headers `Authorization: Bearer`, `X-Keel-Tenant`, `X-Keel-Agent` |
 | MCP | Claude Code, Claude Desktop, Codex, any MCP client. | `keel serve --tenant acme` (stdio), or `/mcp` on the HTTP server |
-| Typed SDKs | TypeScript, Python, Go and PHP backends: the five tools and `events()` with types from your cartridge. | `keel sdk <language> <cartridge> -o <file>` |
+| Typed SDKs | TypeScript, Python, Go and PHP backends: the five tools and `events()` with types from your cartridge (TypeScript and Python also `query`). | `keel sdk <language> <cartridge> -o <file>` |
 | Console | People: browse the graph, try the tools, watch events, download SDKs. | `keel serve --transport http --ui`, at `/ui` |
 | Semantic search | Finding subjects by meaning; optional. | `keel index` fills a vector index (Chroma, Weaviate or yours); `keel serve --index ... --embedder ...` |
 
@@ -116,8 +118,9 @@ They run outside ingest, from the CLI or cron, so they may call the network or a
 | --- | --- | --- |
 | `keel expire --consolidate` | Consolidates episodic memory into durable facts, then drops expired `task` and `agent` memory. | Daily |
 | `keel index` | Incremental indexing for semantic search. | Every few minutes |
-| `keel replay` | Rebuilds a tenant's graph from its log, keeping annotations. | After changing handlers |
+| `keel replay` | Rebuilds a tenant's graph from its log, keeping annotations; `--check` compares without writing. | After changing handlers |
 | `keel export` | One tenant's audit trail as JSONL, closed facts and provenance included. | On demand |
+| `keel import` | Restores a tenant from `keel export` into an empty tenant of any store. | To move or restore a tenant |
 | `keel forget` | Erases a tenant for good, or with `--before`, what closed before a date (retention). | On demand, or scheduled |
 | `keel usage` | Events ingested and calls per tool, read from the log. | For metering |
 
@@ -125,7 +128,7 @@ They run outside ingest, from the CLI or cron, so they may call the network or a
 
 | Mode | What it looks like | Pick it when |
 | --- | --- | --- |
-| Embedded | `pip install keel-context`; the Ingestor and the Tools inside your Python service, on SQLite or MySQL. | Your agents are Python and you want the fewest moving parts. |
+| Embedded | `pip install keel-context`; the Ingestor and the Tools inside your Python service, on SQLite, MySQL or Postgres. | Your agents are Python and you want the fewest moving parts. |
 | Self-hosted service | The `ghcr.io/angelkurten/keel` container: `keel serve --transport http --db mysql://... --cdc cdc.yaml --ui`, plus `keel consume` if you use SQS, plus cron for the jobs. | Agents in several languages, or several products sharing one deployment ([run it in a container](operate.md#run-it-in-a-container)). |
 | Hosted | One Keel container and one database per account, with a console to upload or generate the cartridge, set up CDC, issue keys per tenant and try an agent. | You would rather not run it. During the pilots, by invitation: [pilot request](pilot.md#start-one). |
 

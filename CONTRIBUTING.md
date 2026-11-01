@@ -6,7 +6,7 @@ Keel is built in the open, part-time. Small, focused pull requests land fastest.
 
 ```bash
 uv sync --extra dev
-uv run pytest -n auto   # parallel (pytest-xdist); each worker gets its own Postgres database when KEEL_POSTGRES_URL is set
+uv run pytest -q -n auto   # parallel (pytest-xdist, in the dev extra); each worker gets its own Postgres database when KEEL_POSTGRES_URL is set
 uv run keel validate examples/fleet --events examples/fleet/events.jsonl && uv run keel validate examples/crm --events examples/crm/events.jsonl && uv run keel validate examples/finance --events examples/finance/events.jsonl && uv run keel validate examples/clinics --events examples/clinics/events.jsonl
 ```
 
@@ -23,14 +23,15 @@ uv run keel validate examples/fleet --events examples/fleet/events.jsonl && uv r
 1. No domain names under `keel/`: no entity kind, relation, predicate, rule or event type.
 2. Pointers, not copies. Never copy a row or a table into the graph.
 3. Facts close. Handlers never mutate or delete them.
-4. Five tools. New capability goes into the semantics of the existing five.
+4. Five core tools, plus the optional read-only `query`. New capability goes into the semantics of the existing five; no seventh.
 5. Deterministic ingest: no network, no LLM, no randomness.
 6. Every core change comes with a test. Every cartridge change comes with events and assertions.
 
 ## Process
 
 - Open an issue before a large change. For a cartridge or a small fix, a pull request is fine.
-- Run `uv run ruff check .` and `uv run pytest` before pushing.
+- Run `uv run ruff check .` and `uv run pytest -q -n auto` before pushing.
+- The public contract is frozen in `tests/contract.json`: an addition refreshes it with `uv run python tests/test_contract.py --update`; a break needs a deprecation first (SPEC §11).
 - Commit messages and all user-facing text in English.
 - If `examples/fleet/agent_minimal.py` output changes, say why in the pull request.
 
@@ -56,9 +57,19 @@ KEEL_MYSQL_URL=mysql://root:keel@127.0.0.1:3307/keel uv run --extra mysql pytest
 docker rm -f keel-mysql
 ```
 
+## Against a Postgres store
+
+The store conformance suite, the `query` isolation tests and the rest of the `store` fixture's tests run on `PostgresStore` too when `KEEL_POSTGRES_URL` points at a database whose user may create databases and roles; under `-n auto` each worker gets its own database:
+
+```bash
+docker run -d --rm --name keel-pgstore -e POSTGRES_PASSWORD=keel -e POSTGRES_DB=keel -p 127.0.0.1:5499:5432 postgres:16-alpine
+KEEL_POSTGRES_URL=postgresql://postgres:keel@127.0.0.1:5499/keel uv run --extra postgres pytest -q -n auto
+docker rm -f keel-pgstore
+```
+
 ## Your own store
 
-The core talks to a `Store` protocol (`keel/store/base.py`); `MemoryStore` is the reference and `SqliteStore` the default durable one. A third store (Postgres, Graphiti, anything) is a separate package, never a core change. Run the conformance suite against it:
+The core talks to a `Store` protocol (`keel/store/base.py`); `MemoryStore` is the reference and `SqliteStore` the default durable one; MySQL, Postgres and DuckDB stores ship as dialects of `keel/store/sql.py`. Another store (Graphiti, anything) is a separate package, never a core change. Run the conformance suite against it:
 
 ```bash
 KEEL_STORE=your_pkg.module:factory uv run pytest tests/test_store.py

@@ -20,7 +20,7 @@ keel init fleet --example fleet          # also crm, clinics, finance
 keel context fleet fleet/events.jsonl unit:MXK-4821
 ```
 
-> Status: 0.35.0, alpha. Container: `ghcr.io/angelkurten/keel`. The five tools (plus `query`, an optional read-only SQL sixth, off by default) over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run) or MySQL (`--db mysql://...`).
+> Status: 0.35.0, alpha. Container: `ghcr.io/angelkurten/keel`. The five tools (plus `query`, an optional read-only SQL sixth, off by default) over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run), MySQL (`--db mysql://...`), Postgres (`--db postgresql://...`) or DuckDB (from Python).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -120,7 +120,7 @@ cartridges/      your own cartridges (empty here)
 examples/        fleet (reference), crm, finance and clinics: four domains, one core, no core change between them;
                  each a cartridge, its events and its test; fleet also has a minimal agent and a multi-agent workflow
 sdk/             SDK runtimes: typescript, go, php (the Python client ships in keel)
-evals/           the semantic-search eval bench
+evals/           benchmarks: Jira questions (the paper), TDBench, semantic search, scale and efficiency
 docs/            site sources (mkdocs.yml at the root): architecture, first-cartridge, ingest, serve, sdks, operate, SPEC
 tests/
 ```
@@ -132,7 +132,7 @@ A summary; the full plan, with what each release shipped, is in [ROADMAP.md](ROA
 Shipped:
 
 - [x] Event envelope, handler registry, deterministic ingest with dedupe by event id and replay
-- [x] Bitemporal store: in memory, SQLite and MySQL, behind a store protocol with a conformance suite
+- [x] Bitemporal store: in memory, SQLite, MySQL, Postgres and DuckDB, behind a store protocol with a conformance suite
 - [x] Memory scopes with TTL, evidence policy, expiry and consolidation into durable facts (`keel expire`, `keel consolidate`)
 - [x] The five tools over MCP (stdio and HTTP) and a JSON API, with an agent registry (people included)
 - [x] Adapters: Postgres outbox, webhook, Kafka, SQS
@@ -142,6 +142,7 @@ Shipped:
 - [x] Bulk ingest (a million events in under a minute and a half on MySQL)
 - [x] Semantic search: hybrid, ids first, rerankers, pluggable vector index and embedder, with an eval bench
 - [x] Postgres CDC: follow your own tables through logical replication (0.28.0)
+- [x] `query`, the optional sixth tool: read-only SQL generated from the cartridge, bound to one tenant by the store (0.35.0)
 
 Open:
 

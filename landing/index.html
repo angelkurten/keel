@@ -591,8 +591,8 @@ $keel-&gt;context(Subjects::issue(<span class="s">'SPR-142'</span>));</pre>
 
 <section id="tools">
   <div class="wrap">
-    <h2 class="rise" data-i18n="tools.h">Five tools. Only five.</h2>
-    <p class="lead rise" style="--d:60ms" data-i18n="tools.p">The names and signatures are part of the public standard. New capabilities go into these five, never into a sixth, so your agents' prompts don't change when Keel does.</p>
+    <h2 class="rise" data-i18n="tools.h">Five tools, plus an optional sixth.</h2>
+    <p class="lead rise" style="--d:60ms" data-i18n="tools.p">The names and signatures are part of the public standard. New capabilities go into these five first, so your agents' prompts don't change when Keel does. The sixth, query, is read-only SQL over the schema Keel generates from the cartridge: off unless the host turns it on, and bound to one tenant by the store, never by the agent's SQL.</p>
     <div class="ref rise" style="--d:120ms">
       <div class="list" role="tablist" aria-label="Tools" data-i18n-aria="aria.tools" aria-orientation="vertical" id="tool-list"></div>
       <div class="body" id="tool-body" role="tabpanel">
@@ -683,7 +683,7 @@ keel ingest examples/fleet \
       <div><b data-i18n="ft.research">Research</b><a href="https://doi.org/10.5281/zenodo.23571090" data-i18n="ft.paper">Paper</a><a href="https://github.com/angelkurten/keel/tree/master/evals/jira" data-i18n="ft.bench">Benchmark</a></div>
       <div><b data-i18n="ft.try">Try it</b><a href="https://demo.angelkurten.com" data-i18n="ft.demo">Live demo</a><a href="docs/pilot/" data-i18n="ft.pilot">Pilot</a><a href="https://keel.angelkurten.com" data-i18n="ft.hosted">Hosted console</a><a href="mailto:angel@angelkurten.com" data-i18n="ft.contact">Contact</a></div>
     </div>
-    <div class="fbottom"><span data-i18n="ft.license">Apache 2.0. The event envelope, the cartridge format and the five tools are the standard.</span><span>© 2026 Angel Kürten</span></div>
+    <div class="fbottom"><span data-i18n="ft.license">Apache 2.0. The event envelope, the cartridge format, the five tools and the optional query are the standard.</span><span>© 2026 Angel Kürten</span></div>
   </div>
 </footer>
 
@@ -736,8 +736,8 @@ const ES = {
   "f4.l1": "<b>TypeScript, Python, Go y PHP,</b> cada uno con un runtime pequeño publicado y probado de punta a punta contra keel serve.",
   "f4.l2": "<b>--check en CI</b> rompe el build cuando el cartridge cambia y el archivo generado quedó viejo.",
   "f4.l3": "<b>Un solo contrato:</b> el mismo cartridge define la ingesta, las herramientas y cada cliente.",
-  "tools.h": "Cinco herramientas. Solo cinco.",
-  "tools.p": "Los nombres y las firmas son parte del estándar público. Lo nuevo entra en estas cinco, nunca en una sexta, así los prompts de tus agentes no cambian cuando cambia Keel.",
+  "tools.h": "Cinco herramientas, más una sexta opcional.",
+  "tools.p": "Los nombres y las firmas son parte del estándar público. Lo nuevo entra primero en estas cinco, así los prompts de tus agentes no cambian cuando cambia Keel. La sexta, query, es SQL de solo lectura sobre el esquema que Keel genera desde el cartridge: apagada salvo que el host la active, y atada a un tenant por el store, nunca por el SQL del agente.",
   "bm.h": "Medido, con los resultados públicos",
   "bm.p": "387 preguntas sobre tres proyectos del Public Jira Dataset, con llegadas tardías y correcciones inyectadas, calificadas contra un oráculo independiente. Tres agentes.",
   "bm.note": "Sonnet corrió una vez, igual que el RAG de Luna; el resto son tres repeticiones. La corrida RAG de Sonnet quedó parcial (34 de 72 preguntas).",
@@ -756,7 +756,7 @@ const ES = {
   "ft.about": "Una capa de contexto determinista y bitemporal para los agentes de tu producto.",
   "ft.product": "Producto", "ft.first": "Primer cartridge", "ft.spec": "Especificación", "ft.road": "Hoja de ruta", "ft.code": "Código", "ft.ex": "Ejemplos",
   "ft.research": "Investigación", "ft.paper": "Paper", "ft.bench": "Benchmark", "ft.try": "Pruébalo", "ft.demo": "Demo en vivo", "ft.pilot": "Piloto", "ft.hosted": "Consola alojada", "ft.contact": "Contacto",
-  "ft.license": "Apache 2.0. El sobre de eventos, el formato de cartridge y las cinco herramientas son el estándar."
+  "ft.license": "Apache 2.0. El sobre de eventos, el formato de cartridge, las cinco herramientas y la query opcional son el estándar."
 };
 const X = {
   en: {
@@ -776,7 +776,8 @@ const X = {
       { d: "How it changed, and when", p: "The subject's facts over time, in world time and in transaction time." },
       { d: "Which subjects match", p: "By text, kind, rule, attribute value or meaning. A rule is a filter, already evaluated." },
       { d: "What it's connected to", p: "Neighbours through the cartridge's relations, up to three hops." },
-      { d: "Write what an agent learned", p: "Earned memory with a scope, evidence and a lifetime, checked against the cartridge's policy." }
+      { d: "Write what an agent learned", p: "Earned memory with a scope, evidence and a lifetime, checked against the cartridge's policy." },
+      { d: "Optional: read-only SQL", p: "Off unless the host enables it (keel serve --query). One SELECT over the tenant's own facts, entities and relations and the views generated from the cartridge, for counts, joins and windows the five tools answer in many calls. Exploratory, on the held-out Jira set with Claude Haiku 5.5: 99.1% with query, 95.9% with the five tools." }
     ],
     chartH: "Accuracy on whole-project questions"
   },
@@ -797,7 +798,8 @@ const X = {
       { d: "Cómo cambió, y cuándo", p: "Los hechos del sujeto en el tiempo, en tiempo del mundo y en tiempo de transacción." },
       { d: "Qué sujetos coinciden", p: "Por texto, tipo, regla, valor o significado. Una regla es un filtro, ya evaluado." },
       { d: "Con qué está conectado", p: "Vecinos por las relaciones del cartridge, hasta tres saltos." },
-      { d: "Escribir lo que aprendió", p: "Memoria ganada con alcance, evidencia y vida útil, verificada contra la política del cartridge." }
+      { d: "Escribir lo que aprendió", p: "Memoria ganada con alcance, evidencia y vida útil, verificada contra la política del cartridge." },
+      { d: "Opcional: SQL de solo lectura", p: "Apagada salvo que el host la active (keel serve --query). Un SELECT sobre los hechos, entidades y relaciones del propio tenant y las vistas generadas desde el cartridge, para conteos, joins y ventanas que con las cinco herramientas llevan muchas llamadas. Exploratorio, en el conjunto held-out de Jira con Claude Haiku 5.5: 99,1 % con query, 95,9 % con las cinco herramientas." }
     ],
     chartH: "Precisión en preguntas sobre todo el proyecto"
   }
@@ -940,10 +942,11 @@ function diagrams() {
 // Tools reference; results are the brief shapes keel/tools.py returns.
 const TOOLS = [
   { n: "context", c: 'context("issue:SPR-142")', r: '{ "subject": "issue:SPR-142",\n  "facts": { "status": "Blocked", "assignee": "ana" },\n  "since": { "status": "2026-10-04T09:12:00+00:00" },\n  "relations": { "<-blocks": ["issue:SPR-17"],\n                 "in_project": ["project:SPR"] },\n  "evaluation": { "blocked": true, "stalled": false } }' },
-  { n: "history", c: 'history("issue:SPR-142", predicate="status")', r: '[ { "value": "Open",        "valid_from": "2026-10-01…", "valid_to": "2026-10-03…" },\n  { "value": "In progress", "valid_from": "2026-10-03…", "valid_to": "2026-10-04…" },\n  { "value": "Blocked",     "valid_from": "2026-10-04…", "valid_to": null,\n    "recorded_at": "2026-10-06T16:40:00+00:00" } ]' },
+  { n: "history", c: 'history("issue:SPR-142", predicate="status")', r: '[ { "value": "Open",        "valid_from": "2026-10-01…", "valid_to": "2026-10-03…" },\n  { "value": "In progress", "valid_from": "2026-10-03…", "valid_to": "2026-10-04…",\n    "was": "Open" },\n  { "value": "Blocked",     "valid_from": "2026-10-04…", "valid_to": null,\n    "was": "In progress", "recorded_at": "2026-10-06T16:40:00+00:00" } ]' },
   { n: "search", c: 'search(kind="issue", rule="blocked")', r: '[ { "key": "issue:SPR-142", "kind": "issue", "attrs": { "summary": "…" } },\n  { "key": "issue:SPR-311", "kind": "issue", "attrs": { "summary": "…" } },\n  … 7 issues ]' },
   { n: "related", c: 'related("issue:SPR-142", "blocks", depth=2)', r: '[ { "relation": "blocks", "direction": "in", "subject": "issue:SPR-17",\n    "since": "2026-10-04…", "hops": 1, "via": "issue:SPR-142" },\n  { "relation": "blocks", "direction": "in", "subject": "issue:SPR-9",\n    "since": "2026-09-30…", "hops": 2, "via": "issue:SPR-17" } ]' },
   { n: "annotate", c: 'annotate("issue:SPR-142", "waiting_on", "vendor patch",\n         scope="task", evidence=late_event.id, detail="ack")', r: '{ "subject": "issue:SPR-142", "predicate": "waiting_on",\n  "valid_from": "2026-10-22T10:05:00+00:00", "scope": "task",\n  "expires_at": "2026-11-05T10:05:00+00:00" }' },
+  { n: "query", c: 'query("SELECT status, count(*) AS n\n       FROM issue_state_at(\'spring\', \'2026-10-05T00:00Z\')\n       GROUP BY status ORDER BY n DESC")', r: '[ { "status": "In Progress", "n": 41 },\n  { "status": "Open", "n": 23 },\n  { "status": "Blocked", "n": 7 } ]' },
 ];
 let tool = 0;
 const toolList = document.getElementById("tool-list");

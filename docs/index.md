@@ -63,7 +63,7 @@ Then:
 - [Architecture](architecture.md): the whole map, and your first day with Keel.
 - [Your first cartridge in 20 minutes](first-cartridge.md): declare your own vertical.
 - [Send your events](ingest.md): Postgres CDC, the typed SDK, an outbox table, a webhook, Kafka, SQS or a `.jsonl` file.
-- [Serve the tools](serve.md): MCP, the HTTP JSON API, semantic search.
+- [Serve the tools](serve.md): MCP, the HTTP JSON API, read-only SQL (`query`), semantic search.
 - [SDKs](sdks.md): a typed client generated from your cartridge (TypeScript, Python, Go, PHP), the way protoc does.
 - [Operate](operate.md): configuration, the container, and the jobs to schedule.
 - [Specification](SPEC.md): the normative contract for the envelope, the graph model, cartridges, tools and scopes.

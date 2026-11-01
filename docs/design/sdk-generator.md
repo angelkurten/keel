@@ -1,6 +1,6 @@
 # Design note: SDKs generated from the cartridge
 
-Status: decided on 2026-10-14, in progress. The cartridge is the interface definition, the way a `.proto` is for gRPC; Keel generates the client code for the languages a product is written in.
+Status: decided on 2026-10-14; the milestones below shipped. Update 2026-11-01: two of the open items are done too: `/mcp` without `--tenant` serves many tenants from one process, per request from the key and headers (`keel/http.py`), and CI regenerates the clients with `keel sdk ... --check`. The cartridge is the interface definition, the way a `.proto` is for gRPC; Keel generates the client code for the languages a product is written in.
 
 ## Decisions
 
@@ -8,7 +8,7 @@ Status: decided on 2026-10-14, in progress. The cartridge is the interface defin
 2. **Payload notation: a subset of JSON Schema.** The short hints stay (`id: string`, `amount: number | null`) and grow enums, nested objects and arrays. Keel translates them to JSON Schema draft 2020-12. Every existing cartridge remains valid. See [SPEC §5.5](../SPEC.md#55-payload-notation).
 3. **Our own generator, with templates.** `keel sdk <language> <cartridge> -o <dir>`. Templates are plain Python modules (f-strings), no new dependency; a template engine only if they get hairy.
 4. **Languages: TypeScript, Python, Go and PHP.** TypeScript first, validated against Toche, then the other three from the same intermediate model.
-5. **Consumer transport: Keel's own HTTP JSON API**, described by OpenAPI, next to MCP over HTTP on the same server. Same five operations, two transports; the names and semantics never change per transport (SPEC §7.6).
+5. **Consumer transport: Keel's own HTTP JSON API**, described by OpenAPI, next to MCP over HTTP on the same server. Same five operations, two transports; the names and semantics never change per transport (SPEC §7.7).
 6. **Distribution: a published runtime per language, generated code vendored in the product.** The runtime holds the HTTP client and the envelope; the generated file holds the cartridge's types, constructors and constants, and lives in the product's repo like protoc output.
 7. **Tenant and agent per request from the product, with a shared secret.** `Authorization: Bearer <secret>`, `X-Keel-Tenant`, `X-Keel-Agent`. The product authenticates its users; Keel takes the ids as given (same stance as the agent registry).
 

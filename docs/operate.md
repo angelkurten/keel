@@ -20,11 +20,14 @@ Every setting the CLI reads from the environment can live in a `.env` file: `kee
 
 | Variable | Used by | What |
 | --- | --- | --- |
-| `KEEL_DB` | every command with `--db` | the durable graph: a SQLite file or `mysql://user:pass@host:3306/db` |
+| `KEEL_DB` | every command with `--db` | the durable graph: a SQLite file, `mysql://user:pass@host:3306/db` or `postgresql://user:pass@host:5432/db` |
 | `KEEL_TENANT` | every command that takes a tenant; `serve` (`--tenant`) | the default tenant; with `serve --transport http` it is used when `X-Keel-Tenant` is absent |
 | `KEEL_AGENT` | `serve`, `context`... (`--agent`) | the declared agent acting here |
 | `KEEL_CERTFILE`, `KEEL_KEYFILE` | `serve --transport http` | TLS certificate and key (PEM) to serve https (`--certfile`, `--keyfile`) |
 | `KEEL_SECRET` | `serve --transport http` | the shared bearer secret, the operator's credential (`--secret-env` names another variable); per-account API keys: `keel keys` |
+| `KEEL_QUERY`, `KEEL_QUERY_TIMEOUT` | `serve` | serve the optional sixth tool, `query`, and how many seconds one query may run (`--query`, `--query-timeout`, 5) |
+| `KEEL_COMPACT`, `KEEL_READ_ONLY`, `KEEL_MAX_LIST`, `KEEL_CLOCK` | `serve` | MCP text compact (the default) or JSON with `KEEL_COMPACT=0`; the four read tools only; the ceiling of one listing; a pinned clock (`--compact`/`--plain`, `--read-only`, `--max-list`, `--clock`) |
+| `KEEL_CDC_MAP`, `KEEL_PG_DSN` | `serve` (`--cdc`); `cdc` reads `KEEL_PG_DSN` (`--dsn`) | the CDC table map and the Postgres to follow |
 | `KEEL_INDEX`, `KEEL_EMBEDDER` | `index`, `serve` | the vector index and embedder specs (`--index`, `--embedder`) |
 | `KEEL_INDEX_CURSOR`, `KEEL_INDEX_WORKERS` | `index` | where the cursor of the last run is kept (on a volume) and how many embedding batches go out at once (`--cursor`, `--workers`) |
 | `KEEL_EMBEDDINGS_BASE_URL`, `_MODEL`, `_API_KEY`, `_QUERY_PREFIX`, `_DOCUMENT_PREFIX` | `--embedder openai` | any OpenAI-compatible `/v1/embeddings` endpoint |
@@ -93,7 +96,7 @@ uv run keel import acme-logistics.jsonl acme-logistics --db mysql://user:pass@ho
 `keel replay --check` rebuilds the tenant in memory from its log, around the annotations the db holds, and compares world time and provenance with the db, without writing. It prints `identical`, or what only the db has and what only a replay would have, and exits 1: state that no event explains (a hand edit, a handler that changed since) shows up before a real replay would drop it.
 
 ```bash
-uv run keel replay cartridges/fleet events.jsonl acme-logistics --db keel.db --check
+uv run keel replay examples/fleet examples/fleet/events.jsonl acme-logistics --db keel.db --check
 ```
 
 ## Erase a tenant

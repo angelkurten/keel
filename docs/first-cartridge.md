@@ -124,6 +124,8 @@ uv run keel serve cartridges/clinics --tenant clinic-centro --events examples/cl
 
 Any MCP client now sees `context`, `history`, `search`, `annotate`, `related`. Your second agent uses the same five tools; there is no second pipeline.
 
+`--query` (with `--db` on SQLite or Postgres) adds the optional sixth tool, read-only SQL over views generated from the cartridge ([how](serve.md#query-read-only-sql)). Listing an entity kind's `facts:` (and its `attrs:`) gives that kind its own views there (`appointment_state_at`, `appointment_changes`); `one: true` on a relation adds its target's id as a column of the `from` kind's views.
+
 ## 8. Declare your agents (optional)
 
 When more than one agent shares the graph, say who they are and what each may do. The layer enforces it; the agent never polices itself.

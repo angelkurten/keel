@@ -24,7 +24,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Event envelope (keel/envelope.py)        tenant, type, subject, occurred_at, recorded_at, source, payload
    -> Ingestor (keel/ingest.py)                 reads an adapter, dispatches by event.type
    -> HandlerRegistry (keel/handlers.py)        cartridge handlers map payload -> store primitives
-   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory, sqlite or mysql: dialects of sql.py)
+   -> Store (keel/store/)                       bitemporal: entities, relations, facts; one subgraph per tenant (memory; sqlite, mysql, duckdb or postgres: dialects of sql.py)
    -> Tools (keel/tools.py)                     context / history / search / annotate / related (+ optional query: read-only SQL); bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools (and query when enabled)
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers (your own; empty here)
@@ -68,7 +68,7 @@ If `examples/fleet/agent_minimal.py` output changes, say why in the PR.
 
 ## Open decisions (do not resolve silently)
 
-- **Durable store.** Decided 2026-10-14: pluggable by design, never a core change. `Store` protocol (`keel/store/base.py`), `MemoryStore` as reference, `SqliteStore` as the default durable one, and a conformance suite any store can run (`KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py`). Graphiti or Postgres would be third implementations; if Graphiti forces an LLM in the ingest path, use only its graph store and keep our deterministic ingest.
+- **Durable store.** Decided 2026-10-14: pluggable by design, never a core change. `Store` protocol (`keel/store/base.py`), `MemoryStore` as reference, `SqliteStore` as the default durable one, and a conformance suite any store can run (`KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py`). Postgres and DuckDB shipped as further implementations (0.35); Graphiti would be another; if Graphiti forces an LLM in the ingest path, use only its graph store and keep our deterministic ingest.
 - **Consolidation/decay.** Decided 2026-10-15 and shipped in 0.14.0 (`keel/consolidate.py`): a cartridge-declared job with deterministic reducers and an optional `Summarizer` adapter (an LLM is allowed there because it is a job, never ingest); originals kept until their TTL; `keel consolidate` and `keel expire --consolidate`.
 - **Multi-cartridge tenants.** One tenant, one cartridge for now. Composing cartridges is a later decision.
 - **Pricing unit** (hosted): events ingested per month. Not a code concern yet, but metering must be possible from the log.
