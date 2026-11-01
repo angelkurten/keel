@@ -149,7 +149,7 @@ From exploring the hosted product ([design note](https://github.com/angelkurten/
 - [x] Metering: daily counters in a `metering` table, events applied for the first time (the billing unit; duplicates and replays not counted) and tool calls per tool (not billed), and `keel usage --month --account` (0.27.0)
 - [x] Retention as a dated forget: `forgets: before` in the catalog and `keel forget <tenant> --before` (or `--all-tenants`, a policy to schedule) delete facts, annotations and relations closed by the cutoff; the cutoff is kept and `replay` applies it again (0.27.0)
 
-## 0.34–0.35 — from the paper's evaluation (0.34.0 on 2026-10-22, 0.35.0 on 2026-10-29)
+## 0.34–0.36 — from the paper's evaluation (0.34.0 on 2026-10-22, 0.35.0 on 2026-10-29, 0.36.0 on 2026-11-01)
 
 From reading every wrong answer in the Jira benchmark, and from the decision of 2026-10-26 to allow an optional sixth tool.
 
@@ -158,6 +158,7 @@ From reading every wrong answer in the Jira benchmark, and from the decision of 
 - [x] DuckDB and Postgres stores (`keel/store/duckdb.py`, `keel/store/postgres.py`), dialects of the shared `SqlStore`; `search(rule=)` and `where` pushed down to SQL on SQLite, DuckDB and Postgres; cartridge `facts`, `attrs` and `one` generate per-kind views and the paragraph that describes them to an agent (`sqlgen.describe`) (0.35.0)
 - [x] MCP replies in a compact text form by default (lossless; `--plain` or `KEEL_COMPACT=0` for the JSON text), `keel serve --read-only`, shorter tool descriptions (0.35.0)
 - [x] The suite runs in parallel (`uv run pytest -n auto`, pytest-xdist in the `dev` extra; CI and the release workflow use it); with Postgres about 42 to 10 minutes (0.35.0)
+- [x] `query` confirmed on the development set; a sandbox copy no longer counts against the query's timeout (bounded by its 100,000-row ceiling); the schema paragraph names each rule's two macros, what the state views lack and that macros take no schema prefix; `now()` on SQLite (0.36.0, 2026-11-01)
 
 ## Exit to beta (set 2026-10-22)
 
