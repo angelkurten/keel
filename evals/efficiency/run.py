@@ -131,7 +131,7 @@ class Gateway:
         r = self.http.get(f"{self.base.removesuffix('/v1')}/anthropic/v1/models", headers={"x-api-key": self.key, "anthropic-version": "2023-06-01"})
         models += r.json()["data"] if r.is_success else []  # Claude is listed only there
         self.prices = {m["id"]: (float(m["pricing"]["prompt"]), float(m["pricing"]["completion"])) for m in models if m.get("pricing")}
-        key = os.environ.get("ANTHROPIC_API_KEY") or (KEY_FILE.read_text().strip() if KEY_FILE.exists() else "")
+        key = anthropic_key()
         if key:  # Claude straight from Anthropic, not through the gateway (run with `--with anthropic`)
             import anthropic
 
@@ -187,6 +187,13 @@ class Gateway:
 
 
 KEY_FILE = Path.home() / ".anthropic_key"
+
+
+def anthropic_key() -> str:
+    """The key for Claude straight from Anthropic; empty (Claude through the gateway) when EVAL_ANTHROPIC_DIRECT=0."""
+    if os.environ.get("EVAL_ANTHROPIC_DIRECT") == "0":
+        return ""
+    return os.environ.get("ANTHROPIC_API_KEY") or (KEY_FILE.read_text().strip() if KEY_FILE.exists() else "")
 # Anthropic's list prices (2026-10-06), per token: input, output. Haiku bills a prompt above 100K tokens at 5x; a cache
 # read costs 0.1x the input rate, a 5-minute cache write 1.25x.
 DIRECT_PRICES = {"anthropic/claude-haiku-5.5": (0.10e-6, 0.50e-6), "anthropic/claude-sonnet-5.5": (2.00e-6, 10.00e-6),

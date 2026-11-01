@@ -252,3 +252,23 @@ the same questions with a tenant-then-question bootstrap (B = 10,000, seed 0, no
 keel+query − keel +3.3 points [+1.7, +5.2] (30 questions better, 0 worse); − sql +0.4 [+0.0, +0.9]; − sqlgen2 +0.1
 [−0.3, +0.6]. Haiku made 1,457 `query` calls against 576 to the five core tools; 158 calls of 2,033 failed (timeouts,
 unknown columns or macros) and the agent recovered from almost all of them. Links questions were the weakest type (93%).
+
+Confirmation on the development set (run 2026-11-01 on 74e7079, Haiku 5.5 through the OfoxAI gateway with
+`EVAL_ANTHROPIC_DIRECT=0` since the direct account had no credit, keel+query and sqlgen2, 3 repetitions, 2,322 runs,
+2.52 USD; `results/dev-haiku-query-sqlgen2.jsonl`):
+
+```bash
+E=~/datasets/public-jira/export; R=evals/jira/results
+EVAL_ANTHROPIC_DIRECT=0 uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench \
+   --data $E --tenants hyperledger,mariadb,spring --keel-compact --keel-read-only --systems keel+query,sqlgen2 \
+   --models anthropic/claude-haiku-5.5 --reps 3 --max-usd 2.5 --out $R/dev-haiku-query-sqlgen2.jsonl
+```
+
+keel+query **99.2%** (one-issue 99.4, tenant-wide 98.6), 10,705 input tokens per run; sqlgen2 99.4 (6,283 tokens).
+Against the earlier development runs (older code: keel 97.1 on 784630f, sql 99.3 on e8ae81e), paired, cluster
+bootstrap: keel+query − keel +2.2 points [+0.8, +3.8] (20 better, 2 worse); − sql −0.1 [−0.6, +0.3]; − sqlgen2 −0.2
+[−0.7, +0.2]. The direction of the held-out result holds; costs are not comparable with it (gateway prices). 281 of
+1,534 `query` calls failed, none behind a wrong answer: 250 were timeouts that each run in at most 0.21 s alone, 185
+of them while the tenant's sandbox was copied (0.17 s alone, past 5 s with 6 bench workers in one process; the
+copy no longer counts against the timeout since this run); 31 were SQL errors, 17 of them the tenant written as a
+schema (`spring.issue_state_at`), which the schema paragraph now names.
