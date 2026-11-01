@@ -19,7 +19,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-INSTANCES = ("IntelDAOS", "JFrog", "Jira", "Mindville", "MongoDB", "Qt", "SecondLife", "Sonatype")
+INSTANCES = ("IntelDAOS", "JFrog", "Jira", "Mindville", "MongoDB", "Qt", "SecondLife", "Sonatype")  # as registered; none passed
+USED = {"JiraEcosystem-AC", "Sakai-GRBK", "RedHat-PROJQUAY"}  # the held-out set's (development's instances were never exported here)
 COUNTS = {"current": 20, "as_of": 25, "known_at": 25, "links": 15, "rule": 15, "abstain": 5, "tenant": 24}
 URGENT = {"Blocker", "Critical", "Highest"}
 SEED = 47
@@ -55,6 +56,11 @@ def select(passing: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if c["instance"] not in {x["instance"] for x in out}:
             out.append(c)
     return out[:3]
+
+
+def candidates(exports: Path) -> list[Path]:
+    """Amendment 2026-11-01: every exported project (<Instance>-<KEY>.json) but the held-out set's three."""
+    return sorted(p for p in exports.glob("*-*.json") if re.fullmatch(r"[A-Za-z]+-[A-Z0-9]+", p.stem) and p.stem not in USED)
 
 
 def run(*args: Any) -> subprocess.CompletedProcess[str]:
@@ -97,7 +103,7 @@ def main() -> None:
     ap.add_argument("--out", dest="report", type=Path, required=True)
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
-    cands = sorted(p for p in a.exports.glob("*-*.json") if p.stem.split("-", 1)[0] in INSTANCES)
+    cands = candidates(a.exports)
     report = []
     for p in cands:
         m = measure(p, a.out)

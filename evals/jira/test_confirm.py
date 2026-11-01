@@ -87,3 +87,13 @@ def test_the_three_hypotheses_and_their_decision_rules():
     assert [(x["a"], x["b"]) for x in only] == [("sqlgen2", "sql")]  # a hypothesis without its conditions is left out
     assert not only[0]["confirmed"]
     assert "H1" in ca.markdown(res) and "not confirmed" in ca.markdown(res)
+
+
+def test_amended_candidates_are_every_project_neither_set_used(tmp_path):
+    """Amendment 2026-11-01: no candidate of the eight unused instances passed; every project of the restored instances
+    but the held-out set's three is a candidate."""
+    names = ["RedHat-PROJQUAY", "RedHat-ARQ", "Sakai-GRBK", "Sakai-EVALSYS", "JiraEcosystem-AC", "JiraEcosystem-UPM", "Qt-QBS"]
+    for n in names:
+        (tmp_path / f"{n}.json").write_text("[]")
+    (tmp_path / "sakai-grbk.questions.json").write_text("[]")  # generated files are not exports
+    assert [p.stem for p in screen.candidates(tmp_path)] == ["JiraEcosystem-UPM", "Qt-QBS", "RedHat-ARQ", "Sakai-EVALSYS"]

@@ -1,0 +1,370 @@
+{
+ "seed": 47,
+ "candidates": [
+  {
+   "instance": "IntelDAOS",
+   "key": "CART",
+   "tenant": "inteldaos-cart",
+   "issues": 941,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.15246015246015246,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "HAP",
+   "tenant": "jfrog-hap",
+   "issues": 1274,
+   "mismatched": 662,
+   "urgent_priority": false,
+   "uncategorised": 0.2126727334007415,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "TCAP",
+   "tenant": "jfrog-tcap",
+   "issues": 1063,
+   "mismatched": 128,
+   "urgent_priority": false,
+   "uncategorised": 0.09709425939050319,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "CLOV",
+   "tenant": "jira-clov",
+   "issues": 1501,
+   "mismatched": 21,
+   "urgent_priority": true,
+   "uncategorised": 0.11897155028145444,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "ID",
+   "tenant": "jira-id",
+   "issues": 1310,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.12032332563510392,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "JPOSERVER",
+   "tenant": "jira-jposerver",
+   "issues": 2180,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.08177570093457943,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Mindville",
+   "key": "ICS",
+   "tenant": "mindville-ics",
+   "issues": 1847,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CDRIVER",
+   "tenant": "mongodb-cdriver",
+   "issues": 3410,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.002250562640660165,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "COMPASS",
+   "tenant": "mongodb-compass",
+   "issues": 2603,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.0029422148993762504,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CSHARP",
+   "tenant": "mongodb-csharp",
+   "issues": 3752,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.014848017929682029,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CXX",
+   "tenant": "mongodb-cxx",
+   "issues": 2298,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.00786468433527257,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "GODRIVER",
+   "tenant": "mongodb-godriver",
+   "issues": 2161,
+   "mismatched": 1,
+   "urgent_priority": false,
+   "uncategorised": 0.0273224043715847,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "NODE",
+   "tenant": "mongodb-node",
+   "issues": 3621,
+   "mismatched": 5,
+   "urgent_priority": false,
+   "uncategorised": 0.02704198077322083,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PHPC",
+   "tenant": "mongodb-phpc",
+   "issues": 1600,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.006602735418959283,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PYTHON",
+   "tenant": "mongodb-python",
+   "issues": 2872,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.1323131552248901,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUBY",
+   "tenant": "mongodb-ruby",
+   "issues": 2689,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.11706906232453677,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUST",
+   "tenant": "mongodb-rust",
+   "issues": 1046,
+   "mismatched": 3,
+   "urgent_priority": false,
+   "uncategorised": 0.010053948013732222,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "SWIFT",
+   "tenant": "mongodb-swift",
+   "issues": 1338,
+   "mismatched": 4,
+   "urgent_priority": false,
+   "uncategorised": 0.005266981474754813,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "TOOLS",
+   "tenant": "mongodb-tools",
+   "issues": 2452,
+   "mismatched": 13,
+   "urgent_priority": false,
+   "uncategorised": 0.04394457099468489,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "AUTOSUITE",
+   "tenant": "qt-autosuite",
+   "issues": 1521,
+   "mismatched": 102,
+   "urgent_priority": false,
+   "uncategorised": 0.019579254322016248,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "PYSIDE",
+   "tenant": "qt-pyside",
+   "issues": 1595,
+   "mismatched": 53,
+   "urgent_priority": false,
+   "uncategorised": 0.0014098690835850957,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QBS",
+   "tenant": "qt-qbs",
+   "issues": 1634,
+   "mismatched": 95,
+   "urgent_priority": false,
+   "uncategorised": 0.0008981498113885396,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QSR",
+   "tenant": "qt-qsr",
+   "issues": 1248,
+   "mismatched": 151,
+   "urgent_priority": false,
+   "uncategorised": 0.0007524454477050414,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTIFW",
+   "tenant": "qt-qtifw",
+   "issues": 2178,
+   "mismatched": 54,
+   "urgent_priority": false,
+   "uncategorised": 0.02569356872635561,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTMOBILITY",
+   "tenant": "qt-qtmobility",
+   "issues": 1926,
+   "mismatched": 28,
+   "urgent_priority": false,
+   "uncategorised": 0.0279842080817464,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTVSADDINBUG",
+   "tenant": "qt-qtvsaddinbug",
+   "issues": 967,
+   "mismatched": 87,
+   "urgent_priority": false,
+   "uncategorised": 0.0002949852507374631,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "SecondLife",
+   "key": "STORM",
+   "tenant": "secondlife-storm",
+   "issues": 1547,
+   "mismatched": 22,
+   "urgent_priority": false,
+   "uncategorised": 0.2590994218711831,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Sonatype",
+   "key": "MVNCENTRAL",
+   "tenant": "sonatype-mvncentral",
+   "issues": 1641,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.15815085158150852,
+   "failed": [
+    4
+   ]
+  }
+ ],
+ "selected": []
+}

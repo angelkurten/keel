@@ -91,3 +91,21 @@ uv run --with numpy python -m evals.jira.confirm_analysis $R/confirm-haiku.jsonl
 - **Secondary**: cost per correct answer and mean input tokens per run, overall and by scope (one-issue,
   tenant-wide); descriptive.
 - Reported whatever they show, beside the development and held-out numbers, never in place of them.
+
+## Amendment, 2026-11-01, after screening and before any question was generated
+
+The registered screening (`screen-registered.json`, commit b51b725's `screen.py`) passed no candidate. Of the 28,
+rule 3 failed 21: MongoDB, Qt, JFrog and IntelDAOS name their priorities `Blocker - P1` or `P1-Urgent`, and the
+benchmark's urgent rule asks for Blocker, Critical or Highest by name. Rule 4 failed the rest but one (Jira's three
+projects and Sonatype's: 8 to 16% uncategorised status values). Mindville ICS passed 1 to 4 and failed 5:
+`inject.py` raised an IndexError at seed 47, so no question was generated. As registered, no paid run happened on
+that list.
+
+What the author saw before writing this amendment: those per-rule outcomes, and nothing else; no question of any
+candidate, no model run. What changes: **the candidates are every exported project but the held-out set's three**
+(`screen.candidates`), so projects of the held-out instances (JiraEcosystem, Sakai, RedHat) that the held-out set
+did not use enter, alongside the eight instances above. Rules 1 to 5, the seed, the selection (most questions, at
+most one per instance, the tie-breaks), the conditions, the commands, the budget and the analysis are unchanged.
+What it costs: if a selected project shares an instance with the held-out set, it shares that instance's workflow,
+status names and people, so this set is disjoint from the held-out set in projects, issues and questions, and from
+the development set in instances too, but not from the held-out set in instances. The results say which.
