@@ -312,6 +312,12 @@ def test_describe_names_what_agents_got_wrong_on_the_held_out_set():
     assert "no valid_from or recorded_at" in text  # the state views: <fact>_since instead
 
 
+def test_describe_says_macros_take_no_schema_prefix():
+    """keel+query on the dev set: 17 of 31 SQL errors wrote `spring.issue_state_at(...)`, the tenant as a schema."""
+    text = sqlgen.describe(load_cartridge(JIRA), "spring")
+    assert "no schema prefix" in text and "never spring.project_state_at(" in text  # named as what not to write
+
+
 @pytest.mark.parametrize("backend", [b for b in BACKENDS if b != "sqlite"])
 def test_views_take_a_timestamp_or_iso_text_whatever_the_session_time_zone(backend):
     """An agent writes TIMESTAMP '2020-01-10 00:00' (UTC) or ISO text, for t and k alike, in a session in another zone."""

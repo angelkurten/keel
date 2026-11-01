@@ -172,8 +172,10 @@ def test_a_large_tenant_is_refused_from_counts_alone(kind, tmp_path, monkeypatch
     assert not any("FROM entities" in s and "count(" not in s for s in read)
 
 
-def test_the_copy_counts_against_the_querys_timeout(kind, tmp_path, monkeypatch):
-    """A copy that runs past the timeout ends the query as timed out (the copy is kept: the next query is quick)."""
+def test_a_slow_copy_does_not_end_the_query(kind, tmp_path, monkeypatch):
+    """The copy is bounded by COPY_MAX, not by the query's timeout: on the Jira dev set (6 bench workers, one process)
+    185 first queries ended while their tenant was copied (0.17 s alone), each costing the agent a turn. A copy slower
+    than the timeout no longer ends the query; the query itself still gets the whole timeout after it."""
     import time as _time
 
     c = cartridge()
@@ -182,11 +184,6 @@ def test_the_copy_counts_against_the_querys_timeout(kind, tmp_path, monkeypatch)
     real_load = box_type.load
     monkeypatch.setattr(box_type, "load", lambda self, *a: _time.sleep(1.2) or real_load(self, *a))
     t = tools(c, store, query_timeout=1)
-    start = _time.monotonic()
-    with pytest.raises(ValueError, match="timed out"):
-        t.query("SELECT 1 AS one")
-    assert _time.monotonic() - start < 4  # the 1.2 s sleep plus a real copy, on a loaded 2-core CI runner
-    monkeypatch.setattr(box_type, "load", real_load)
     assert t.query("SELECT 1 AS one") == [{"one": 1}]
 
 

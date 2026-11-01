@@ -217,9 +217,8 @@ class DuckdbStore(SqlStore):
         now = _ts(utcnow())
         box = self._sandboxes.acquire(tenant)
         try:
-            deadline = time.monotonic() + timeout  # the copy counts against the query's timeout
-            q.refresh(self, box, tenant, cartridge, self._writes, now, deadline)
-            return box.run(sql, cap, max(0.05, deadline - time.monotonic()))
+            q.refresh(self, box, tenant, cartridge, self._writes, now)  # bounded by COPY_MAX, outside the timeout
+            return box.run(sql, cap, timeout)
         finally:
             box.lock.release()
 

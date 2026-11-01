@@ -151,11 +151,11 @@ class Sandboxes:
             box.closed, box.mark, box.gate = True, None, None
 
 
-def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: str, deadline: float | None = None) -> None:
+def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: str) -> None:
     """Bring a sandbox (its lock held) up to date with the store: nothing to do while nothing was written anywhere
     (`gate`, the store's change counter) and no copied fact expired; else a fingerprint of the tenant, and a copy only
-    when it changed. A tenant larger than COPY_MAX rows is refused. Never under the store's main lock. A copy that ends
-    past `deadline` (a monotonic clock) ends the query as timed out; the copy is kept, so the next query does not repeat it."""
+    when it changed. A tenant larger than COPY_MAX rows is refused, which bounds the copy; it does not count against the
+    query's timeout (under load it outlasted it and cost the agent a turn). Never under the store's main lock."""
     if box.mark is not None and box.gate == gate and (box.expiry is None or now < box.expiry):
         return
     mark = (fingerprint(store, tenant, now), getattr(cartridge, "ident", None), repr(getattr(cartridge, "rules", None)),
@@ -167,8 +167,6 @@ def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: s
         expiries = [r[FACT_COLUMNS.index("expires_at")] for r in tables["facts"][1]]
         box.expiry = min((e for e in expiries if e), default=None)
     box.gate = gate
-    if deadline is not None and clock.monotonic() > deadline:
-        raise ValueError("query timed out while this tenant's rows were copied for it: ask again")
 
 
 class Box:

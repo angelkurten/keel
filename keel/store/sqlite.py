@@ -148,16 +148,15 @@ class SqliteStore(SqlStore):
 
         compiled = self.install(cartridge)
         now = _ts(utcnow())
-        deadline = time.monotonic() + timeout  # the sweep and the copy count against the query's timeout
-        self._sweep(now, deadline)
+        self._sweep(now, time.monotonic() + timeout)  # the sweep counts against the timeout; the copy is bounded by COPY_MAX
         box = self._sandboxes.acquire(tenant)
         try:
-            q.refresh(self, box, tenant, cartridge, self._changes(), now, deadline)
+            q.refresh(self, box, tenant, cartridge, self._changes(), now)
             try:
                 expanded = compiled.expand(sql, budget=[self.EXPANDED_MAX])
             except (ValueError, IndexError) as exc:  # an unbalanced quote or parenthesis
                 raise ValueError(f"query does not parse: {exc}") from exc
-            return box.run(expanded, cap, max(0.05, deadline - time.monotonic()))
+            return box.run(expanded, cap, timeout)
         finally:
             box.lock.release()
 
