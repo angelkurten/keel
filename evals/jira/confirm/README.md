@@ -118,3 +118,27 @@ links, RedHat APIMAN 113 with 1, ERRAI 104 with none, JBJCA 103 with 1; ERRAI an
 rule or tenant-wide counts; Mindville ICS and RedHat CS: `inject.py` raised, no questions. As registered, no paid
 run happens. A second amendment was not made: these counts were seen, and any rule written now would be written
 knowing which projects it lets in. `sqlgen2` and `keel+query` stay exploratory.
+
+## Second amendment, 2026-11-02, before Apache or Mojang was restored
+
+The held-out screening left out the dataset's two largest instances, Apache and Mojang, for size; nothing about
+their projects has been seen by the author (no issue count, no rule outcome). They are restored now and their
+projects join the candidates: `screen.candidates` already takes every export in the directory but the held-out
+set's three, so the code is unchanged. Each project with 900 to 4,000 issues (rule 1, applied with a count in
+Mongo before export, the rule unchanged) is exported as `<Instance>-<KEY>.json`, as the held-out screening did:
+
+```bash
+D=~/datasets/public-jira; H=$D/heldout
+docker run -d --rm --name jira-mongo-confirm -v "$D/ThePublicJiraDataset/3. DataDump":/dump:ro mongo:7
+docker exec jira-mongo-confirm mongorestore --gzip --archive=/dump/mongodump-JiraReposAnon.archive \
+    --nsInclude JiraReposAnon.Apache --nsInclude JiraReposAnon.Mojang
+# per instance: project keys with 900-4,000 issues, then for each
+docker exec jira-mongo-confirm mongoexport --quiet --db JiraReposAnon --collection Apache --jsonArray \
+    --query '{"fields.project.key":"<KEY>"}' > $H/Apache-<KEY>.json
+uv run --with pymongo python -m evals.jira.screen $H ~/datasets/public-jira/confirm --out evals/jira/confirm/screen.json
+```
+
+One rule is added, written before any of their numbers exist, because two instances can give at most two
+tenants under "at most one per instance": **if fewer than three instances pass, the set is filled to three with the
+next projects by the same ranking, at most two per instance.** Rules 1 to 5, the seed, the ranking and tie-breaks,
+the conditions, the commands, the budget and the analysis are unchanged. If no project passes, no paid run happens.

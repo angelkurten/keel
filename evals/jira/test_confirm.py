@@ -44,7 +44,7 @@ def test_select_takes_the_most_questions_one_per_instance_with_the_tie_breaks():
         {"instance": "JFrog", "key": "F", "questions": 101, "mismatched": 0, "issues": 3000},
     ]
     assert [(x["instance"], x["key"]) for x in screen.select(c)] == [("MongoDB", "B"), ("Qt", "D"), ("Jira", "E")]
-    assert [x["key"] for x in screen.select(c[:2])] == ["B"]  # fewer than three instances: what passes
+    assert [x["key"] for x in screen.select(c[:2])] == ["B", "A"]  # one instance: filled, two at most (second amendment)
     assert screen.select([]) == []
 
 
@@ -97,3 +97,11 @@ def test_amended_candidates_are_every_project_neither_set_used(tmp_path):
         (tmp_path / f"{n}.json").write_text("[]")
     (tmp_path / "sakai-grbk.questions.json").write_text("[]")  # generated files are not exports
     assert [p.stem for p in screen.candidates(tmp_path)] == ["JiraEcosystem-UPM", "Qt-QBS", "RedHat-ARQ", "Sakai-EVALSYS"]
+
+
+def test_fewer_than_three_instances_fill_to_three_at_most_two_per_instance():
+    """Second amendment, 2026-11-02, before Apache and Mojang were restored."""
+    c = [{"instance": "Apache", "key": k, "questions": q, "mismatched": 0, "issues": 1000}
+         for k, q in (("A", 129), ("B", 128), ("C", 127))] + [{"instance": "Mojang", "key": "M", "questions": 110, "mismatched": 0, "issues": 1000}]
+    assert [x["key"] for x in screen.select(c)] == ["A", "M", "B"]
+    assert [x["key"] for x in screen.select(c[:3])] == ["A", "B"]  # one instance: two at most

@@ -50,10 +50,15 @@ def rule_five(by_type: dict[str, int], checks_passed: bool) -> bool:
 
 
 def select(passing: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The three with the most questions, at most one per instance; ties: fewer mismatches, then more issues."""
+    """The three with the most questions, at most one per instance; ties: fewer mismatches, then more issues. With
+    fewer than three instances, filled to three by the same ranking, at most two per instance (second amendment)."""
+    ranked = sorted(passing, key=lambda c: (-c["questions"], c["mismatched"], -c["issues"]))
     out: list[dict[str, Any]] = []
-    for c in sorted(passing, key=lambda c: (-c["questions"], c["mismatched"], -c["issues"])):
+    for c in ranked:
         if c["instance"] not in {x["instance"] for x in out}:
+            out.append(c)
+    for c in ranked:
+        if len(out) < 3 and c not in out and sum(x["instance"] == c["instance"] for x in out) < 2:
             out.append(c)
     return out[:3]
 
