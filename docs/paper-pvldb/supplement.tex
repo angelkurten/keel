@@ -30,7 +30,7 @@
 \usepackage{xr}
 \externaldocument{main}
 \begin{document}
-\title{Keel: One Deterministic Context Layer for Product Agents. Supplemental Material}
+\title{Keel: Compiling a Product's Events into Bitemporal Context for Agents. Supplemental Material}
 \author{Angel K\"urten}
 \affiliation{\institution{Independent researcher}\city{Valledupar}\country{Colombia}}
 \email{angel@angelkurten.com}
@@ -193,7 +193,7 @@ Same task & 0.85 [0.79, 0.90] & 0.14 & 0.81 [0.73, 0.88] & 0.17 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Tenant-wide accuracy by sub-type, pooled over every run of the three agents ($n$ questions) (Section~\ref{sec:systems}).}
+\caption{Tenant-wide accuracy by sub-type, pooled over every run of the three agents ($n$ questions) (Section~\ref{app:dev-systems}).}
 \label{tab:b5}
 \centering
 \small
@@ -211,7 +211,7 @@ Rule listing (18) & 0.94 & 0.36 & 0.05 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Set-valued tenant-wide questions (60 of 72): exact match vs set-F1, per agent (Section~\ref{sec:systems}).}
+\caption{Set-valued tenant-wide questions (60 of 72): exact match vs set-F1, per agent (Section~\ref{app:dev-systems}).}
 \label{tab:b6}
 \centering
 \small
@@ -312,5 +312,462 @@ write-kind         Write a tenant-wide note on the project MXS (project:MXS) say
 \item \code{get\_changelog(key, field?)}: an issue's audit log, oldest write first: its creation with the initial values, then each change with its field, its new value, when it happened and when it was recorded.
 \item \code{search\_issues(text, status, assignee, priority, issue\_type, limit, field, was, on, changed\_from, changed\_until)}: issues by current status, assignee, priority, type and words in the summary, with the total and the first \code{limit} (default 20). History filters work as JQL's WAS and CHANGED: \code{field} with \code{was} and \code{on} keeps issues whose field had that value at that instant (\code{was} null: empty); \code{field} with \code{changed\_from} and \code{changed\_until} keeps issues whose field changed in that window.
 \end{itemize}
+
+
+% ===========================================================================
+\section{The held-out and confirmation sets by question type}
+\label{app:sets}
+\setcounter{table}{0}
+
+Accuracy (\%) by question type, Haiku, three repetitions, from the result files the paper's Tables~\ref{tab:heldout} and~\ref{tab:hyp} come from. Tenant-wide questions are one type here; the held-out set has 72 and the confirmation set 48. \code{sqlgen2} and \code{keel+query} were built after the held-out results were read.
+
+\begin{table*}[t]
+\caption{Held-out set (387 questions): accuracy (\%) by question type.}
+\label{tab:heldout-types}
+\centering
+\footnotesize
+\begin{tabular}{l r r r r r r r }
+\toprule
+Condition & Current & As-of & Known-at & Links & Rule & Abstain & Tenant \\
+\midrule
+\code{api} & 100.0 & 83.6 & 90.2 & 91.9 & 100.0 & 97.8 & 61.6 \\
+\code{keel} & 100.0 & 97.8 & 93.8 & 92.6 & 100.0 & 100.0 & 91.2 \\
+\code{sql-tables} & 100.0 & 96.0 & 98.7 & 91.9 & 100.0 & 100.0 & 90.3 \\
+\code{sqlgen} (registered) & 100.0 & 100.0 & 68.0 & 93.3 & 100.0 & 100.0 & 81.5 \\
+\code{sqlgen} (zone fixed) & 100.0 & 100.0 & 98.7 & 93.3 & 100.0 & 100.0 & 95.8 \\
+\code{sql} & 100.0 & 99.1 & 98.7 & 93.3 & 99.3 & 100.0 & 100.0 \\
+\code{sqlgen2} & 100.0 & 99.1 & 100.0 & 93.3 & 100.0 & 100.0 & 100.0 \\
+\code{keel+query} & 100.0 & 100.0 & 100.0 & 93.3 & 100.0 & 100.0 & 99.5 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Confirmation set (258 questions): accuracy (\%) by question type. Links is low for every condition: Section~\ref{sec:confirm}.}
+\label{tab:confirm-types}
+\centering
+\footnotesize
+\begin{tabular}{l r r r r r r r }
+\toprule
+Condition & Current & As-of & Known-at & Links & Rule & Abstain & Tenant \\
+\midrule
+\code{keel} & 100.0 & 99.3 & 98.0 & 67.8 & 100.0 & 100.0 & 95.1 \\
+\code{keel+query} & 100.0 & 100.0 & 100.0 & 66.7 & 100.0 & 100.0 & 99.3 \\
+\code{sql} & 100.0 & 98.7 & 99.3 & 66.7 & 100.0 & 100.0 & 100.0 \\
+\code{sqlgen2} & 100.0 & 100.0 & 100.0 & 66.7 & 100.0 & 100.0 & 99.3 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+
+% ===========================================================================
+\section{The development set's first run, in full}
+\label{app:dev}
+\setcounter{table}{0}
+
+The paper's first version reported this run as its main result; the paper now reports it as the development set's (Section~\ref{sec:sets}). It ran Keel's five tools with their full-text replies, before the compact form, the held-out set and the SQL conditions existed, and with three agents. It is kept here whole, as it ran: its numbers are on the development questions that Keel was later tuned against, and are not a test of what development never saw.
+
+\subsection{Systems and protocol}
+\label{app:dev-systems}
+
+Every system reads the same source, the tenant's log as written, in its best ordinary form; agents differ only in their tools (Table~\ref{tab:systems}).
+
+\begin{table*}[t]
+\caption{The systems compared, their tools and their ingest.}
+\label{tab:systems}
+\centering
+\small
+\begin{tabularx}{\textwidth}{P{1.45in} L P{1.55in}}
+\toprule
+System & Tools & Ingest \\
+\midrule
+Keel & The five tools over MCP, the listing ceiling (200) (\code{-{}-max-list 200}) & Deterministic, no LLM \\
+Keel without a ceiling (ablation) & Same, listings uncapped & Same \\
+Product API & \code{get\_issue}, \code{get\_changelog} (both times, initial values), \code{search\_issues} with JQL's \code{WAS\,\ldots\,ON} and \code{CHANGED DURING} (Appendix~\ref{app:apitools}) & None \\
+RAG & Hybrid search (dense 512-d + BM25, RRF) over one record per event, both times in it, issue filter & Embeddings \\
+Closed book & None & None \\
+Graphiti 0.30.2 & \code{search\_memory} & LLM extraction (Luna), one-issue subset \\
+Mem0 2.2.1 & \code{search\_memory} & LLM extraction (Luna), one-issue subset \\
+TGMS 0.8.0 & Its fifteen tools (its paper describes thirteen operators); and its own planner, plan verifier and executor & Deterministic, no LLM; tools with Luna, its pipeline with Sonnet and Opus; tenant-wide questions only \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\textbf{Agents.} GPT-6 Luna runs through a gateway (OfoxAI) at temperature 0, and Claude Haiku 5.5 and Claude Sonnet 5.5 straight from Anthropic's API, with the same system prompt for every system, except one paragraph that describes that system's tools (Appendix~\ref{app:prompt}). Claude runs at its default temperature, which Haiku and Sonnet do not let a caller change, with thinking off and prompt caching on; caching changes the price, not the answer. Claude Sonnet 5.5 is a one-repetition extension: every system but the two memory systems, on both question sets.
+
+\textbf{Grading.} Every answer is structured: the agent ends with \code{ANSWER: <json>}, graded by exact match after normalizing case, empty values, issue-key prefixes and yes/no. No judge model is used. A run that ends in an error (a prompt over the model's limit) counts as wrong; a gateway outage leaves the run out for a rerun. A partial set scores zero under exact match; Appendix~\ref{app:tables}, Table~\ref{tab:b6} grades the set-valued tenant-wide questions by set-F1 as well, which narrows the Keel--API gap to 15 to 27 points and leaves RAG far behind.
+
+For a system $S$, agent $m$ and question set $Q$ with $R$ repetitions, accuracy is the share of runs graded correct, where $g$ is the exact-match grader and $a$ the extracted answer:
+\begin{equation*}
+\mathrm{Acc}(S, m) = \frac{1}{|Q|\,R} \sum_{q \in Q} \sum_{r=1}^{R} g\big(a_{q,r},\ \mathrm{gold}_q\big)
+\end{equation*}
+
+The 95\% interval resamples questions with replacement, $B = 10{,}000$ times with a fixed seed, after averaging each question's repetitions, since repetitions of one question are not independent draws. A difference between two systems is resampled paired, on the questions both answered, with a two-sided $p$-value:
+\begin{equation*}
+\mathrm{CI}_{95} = \big[\,\widehat{\mathrm{Acc}}^{*}_{(0.025)},\ \widehat{\mathrm{Acc}}^{*}_{(0.975)}\,\big], \qquad \Delta^{*}_b = \mathrm{Acc}^{*}_b(S_1) - \mathrm{Acc}^{*}_b(S_2)
+\end{equation*}
+
+Cost is reported per question as input and output tokens and dollars at each provider's prices. Every result row records the repository commit (Keel, harness and questions), whether the code had uncommitted changes, and the versions of the packages each system ran on. Keel's code is the same in every row of the main run; the harness commits after the first changed only how failures are handled (Appendix~\ref{app:provenance}).
+
+\textbf{Fairness.} Baselines get their documented best setup: JQL's history operators for the API, a hybrid retriever for RAG, each memory system configured by its own guide with pinned releases. Graphiti and Mem0 ingest only the issues the one-issue questions touch (4,381 events), because the whole log would take Graphiti about 210 hours. This favours them, and they are not asked tenant-wide questions. TGMS stamps transaction time with its own clock, so ``as recorded by'' questions are not natively answerable by it.
+
+\textbf{Pilot.} A pilot on MariaDB (105 one-issue and 24 tenant-wide questions, Luna and Haiku through the gateway) preceded the main run and shaped it (Appendix~\ref{app:provenance}).
+
+The tenant-wide templates were written before the pilot. The pilot then changed what Keel's tools return (Appendix~\ref{app:provenance}); the baselines' tools were not revised. Appendix~\ref{app:tables}, Table~\ref{tab:b5} breaks the 72 questions down by sub-type: the API ties Keel on status at an instant and beats it on change windows, and loses on known-at sets and rule listings, which the product's API cannot express; Table~\ref{tab:b6} grades the set-valued questions by set-F1 as well.
+
+\textbf{Main run.} Three tenants, 387 questions: 315 one-issue (105 per tenant) and 72 tenant-wide (24 per tenant). Luna and Haiku run three repetitions of Keel, the API and RAG, except Luna's RAG on tenant-wide questions, one repetition. Closed book runs once with Luna and three times with Haiku. Graphiti and Mem0 run one repetition, one-issue questions only, with Luna and Haiku; we cut them from three to one for budget. Sonnet runs once on everything but the memory systems. A per-invocation budget cap (\code{-{}-max-usd}) stops starting runs once an invocation has spent that much; the rows it leaves out are reported where they occur. The ablation, Keel without a ceiling, runs once with Luna on tenant-wide questions. The agents cost 33.49 USD of a 100 USD Anthropic credit and about 6.9 USD at the gateway. Confidence intervals by bootstrap over questions, as above.
+
+Section~\ref{sec:ingest} measures ingest cost and determinism; \ref{sec:oneissue} and \ref{sec:tenant} give accuracy on one-issue and tenant-wide questions, \ref{sec:bytype} by question type and \ref{sec:memory} for the memory systems; \ref{sec:cost} gives cost per correct answer, \ref{sec:ablations} the ablations, \ref{sec:governed} governed memory and \ref{sec:tdbench} the external check on TDBench.
+
+\subsection{Ingest cost and determinism}
+\label{sec:ingest}
+
+Table~\ref{tab:ingest} compares the systems' ingest.
+
+\begin{table*}[t]
+\caption{Ingest cost and determinism, by system.}
+\label{tab:ingest}
+\centering
+\small
+\begin{tabularx}{\textwidth}{l Q{1.3in} Q{1.0in} L L}
+\toprule
+System & LLM calls per event & Input tokens per event & Time & Whole log (51,669 events) \\
+\midrule
+Keel & 0 & 0 & 0.1--0.2 s per tenant & $\sim$0.5 s \\
+TGMS & 0 & 0 & 2 s to load MariaDB & seconds \\
+Mem0 & 1.0 & $\sim$8,000--13,400 & 6--14 s per event & $\sim$4--8 days, never attempted \\
+Graphiti & 2.9--3.0 (up to 6--7 in early trials) & $\sim$5,000--5,200 & $\sim$15 s per event (33--124 s at worst) & $\sim$210 h at the measured rate \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+Mem0 ingested the 4,381-event subset of the three tenants for about 4.2 USD. Graphiti finished MariaDB (1,122 events) and Spring (938) at 14.5 to 14.8 s per event, then Hyperledger (2,321): about 17 hours in all. In early trials its cost per event grew with its graph, as it deduplicates and invalidates against more facts. The extractor's content filter refused prompts for harmless Jira text that other models accept. The refused events went to a fallback model (DeepSeek V4.1 Flash; Haiku for Mem0's first 4) and were counted: 41 of Graphiti's 4,381 events (Hyperledger 20, MariaDB 15, Spring 6) and 5 of Mem0's. No event was refused by every model, so none was dropped. Keel builds the same graph from each tenant's log in order, reversed and in three shuffles: Hyperledger 2,324 entities and 35,876 facts, MariaDB 3,334 and 41,244, Spring 3,151 and 36,655, compared on value, evidence and all four times, in 0.1 to 0.2 s of ingest per tenant in memory (0.3 to 0.4 s with the graph comparison). Quantifying this check for the paper found a residual order dependence: before the fix in Appendix~\ref{app:provenance}, a shuffled order differed in \code{closed\_at} alone on 107 to 155 facts per tenant (0.3\%), where a correction arrived before the value it corrects; log order and reversed order were already identical, and every result in this paper was measured in log order. Keel answered all 2,692 injected windows as expected; before transaction time was taken from the event's \code{recorded\_at} rather than the ingest clock (Appendix~\ref{app:provenance}) it got all 900 of Hyperledger's wrong.
+
+\subsection{One-issue questions (315)}
+\label{sec:oneissue}
+
+Every system that reads the log scores 0.95 to 0.99 on one-issue questions (Table~\ref{tab:oneissue}); Keel leads the API by 3 points with Luna and Haiku ($p < 0.001$) and ties with Sonnet; the memory systems lose, and closed book answers only the abstentions.
+
+\begin{table}[t]
+\caption{Accuracy on the 315 one-issue questions, by agent and system.}
+\label{tab:oneissue}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l r r r r r r}
+\toprule
+Agent & Keel & API & RAG & Mem0 & Graphiti & Closed book \\
+\midrule
+Luna & 0.99 & 0.96 & 0.98 & 0.61 & 0.16 & 0.06 \\
+Haiku & 0.98 & 0.95 & 0.97 & 0.54 & 0.13 & 0.05 \\
+Sonnet & 0.99 & 0.99 & 0.99 & not run & not run & 0.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table*}[t]
+\caption{One-issue questions: paired Keel minus each system, in points, with 95\% CI.}
+\label{tab:oneissue-paired}
+\centering
+\small
+\begin{tabularx}{\textwidth}{l L L L L}
+\toprule
+Agent & vs API & vs RAG & vs Mem0 & vs Graphiti \\
+\midrule
+Luna & +3 [+2, +5], $p < 0.001$ & +1.7 [+0.4, +3.2], $p = 0.011$ & +39 [+33, +44], $p < 0.001$ & +84 [+80, +88], $p < 0.001$ \\
+Haiku & +3 [+1, +5], $p < 0.001$ & +1 [$-$1, +2], $p = 0.33$ & +44 [+38, +49], $p < 0.001$ & +85 [+81, +88], $p < 0.001$ \\
+Sonnet & 0 [0, 0], $p = 1.0$ & 0 [0, 0], $p = 1.0$ & not run & not run \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+Keel's lead over the API on one issue is three points with Luna and Haiku and none with Sonnet (Table~\ref{tab:oneissue-paired}); against RAG it is at most two. A context graph adds little where the product API already exposes the issue.
+
+\subsection{Tenant-wide questions (72)}
+\label{sec:tenant}
+
+Tenant-wide questions separate the systems: Keel answers 0.93 to 0.99, the API 0.61 to 0.78, RAG 0.14 to 0.26 (Figure~\ref{fig:3}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b1}).
+
+\begin{figure}[t]
+\centering
+\keelfig{figures/fig3-tenant-accuracy.pdf}{3}
+\caption{Accuracy on the 72 tenant-wide questions, by agent and system. Keel leads with every agent, the API is second and RAG far behind; closed book scores 0.00. Each bar carries its 95\% bootstrap interval over questions ($B = 10{,}000$; a question's repetitions averaged first).}
+\label{fig:3}
+\end{figure}
+
+\begin{table*}[t]
+\caption{Tenant-wide questions: paired Keel minus each system, in points, with 95\% CI.}
+\label{tab:tenant-paired}
+\centering
+\small
+\begin{tabularx}{\textwidth}{l L L L L}
+\toprule
+Agent & vs API & vs RAG & vs closed book & vs TGMS \\
+\midrule
+Luna & +32 [+20, +44], $p < 0.001$ & +72 [+60, +82], $p < 0.001$ & +93 [+88, +97], $p < 0.001$ & +73 [+63, +82], $p < 0.001$ \\
+Haiku & +28 [+16, +40], $p < 0.001$ & +79 [+70, +87], $p < 0.001$ & +93 [+88, +97], $p < 0.001$ & --- \\
+Sonnet & +21 [+11, +31], $p < 0.001$ & +74 [+59, +88], $p < 0.001$, 34 questions & +99 [+96, +100], $p < 0.001$ & --- \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+The gap over the API holds with every agent (Table~\ref{tab:tenant-paired}). A stronger agent narrows it, from +32 points with Luna to +21 with Sonnet, but does not close it. TGMS, run with Luna on all 72 tenant-wide questions (one repetition), answers 0.19 [0.11, 0.29]: 8 of MariaDB's 24, 3 of Hyperledger's and 3 of Spring's. Keel leads it by 73 points [+63, +82] ($p < 0.001$), and TGMS reads about 741k input tokens a question, 0.39 USD per correct answer against Keel's 0.0037. This scopes what 0.19 measures: TGMS's tools used directly by one agent, on a workload partly built on transaction-time and domain-rule semantics its current interface does not expose, so it tests workload fit and agent-facing interface coverage more than TGMS's temporal graph capabilities. Through its own agent layer instead (a planner writing its operator IR, a static plan verifier, an executor with up to three repairs, scored on the engine's answer as TGMS's harness scores it), TGMS answers 0.10 [0.04, 0.17] of the 72 with Sonnet and 0.22 [0.12, 0.32] with Claude Opus 5.5 (one repetition; Haiku, piloted on MariaDB, answered none of its 24). The engine is not what fails (where we checked a miss by hand, one direct snapshot returns the gold); the misses are intermediate results cut at its default limit of 100 that plans then treat as complete (15 with Sonnet, 12 with Opus), plans that pass the static verifier and fail when they run (13 and 27), the 12 as-known-at questions, and, with Sonnet, plans that stop at resolving entities (17).
+
+\subsection{Accuracy by question type}
+\label{sec:bytype}
+
+Pooled over agents, Keel's advantage is on tenant-wide questions: 0.94 against 0.65 for the API and 0.17 for RAG (Figure~\ref{fig:4}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b2}). On one-issue types every system that reads the log scores 0.92 or above.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=5.5in]{figures/fig4-by-type.pdf}
+\caption{Accuracy by question type, pooled over agents; darker cells are more accurate. Mem0 and Graphiti were not asked tenant-wide questions.}
+\label{fig:4}
+\end{figure*}
+
+The API loses ground on one issue only where history matters: as-of, known-at and links. Closed book answers nothing but the abstentions, suggesting the models do not know these trackers from training.
+
+\subsection{Memory systems}
+\label{sec:memory}
+
+Mem0 and Graphiti lose on one-issue questions, consistent with loss at extraction, since both agents score alike. Both ran one repetition, on the one-issue subset only (Section~\ref{app:dev-systems}; Table~\ref{tab:memory}).
+
+\begin{table}[t]
+\caption{Memory systems: accuracy on one-issue questions, by agent, system and tenant.}
+\label{tab:memory}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l l r r r}
+\toprule
+Agent & System & Hyperledger & MariaDB & Spring \\
+\midrule
+Luna & Mem0 & 0.63 & 0.57 & 0.62 \\
+Haiku & Mem0 & 0.62 & 0.51 & 0.50 \\
+Luna & Graphiti & 0.20 & 0.12 & 0.14 \\
+Haiku & Graphiti & 0.18 & 0.10 & 0.12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both agents score alike on each memory, so what fails is what extraction stored: INDY-311's priority, for example, never reached Graphiti's graph. Outside the abstentions, Mem0 answers 0.44 to 0.77 of each one-issue type and Graphiti 0.00 to 0.15.
+
+\subsection{Cost per correct answer}
+\label{sec:cost}
+
+On tenant-wide questions Keel is the cheapest per correct answer with all three agents (Figure~\ref{fig:5}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b3}); on one-issue questions it reads more tokens than the API (Table~\ref{tab:oneissue-cost}).
+
+\begin{figure}[t]
+\centering
+\keelfig{figures/fig5-cost.pdf}{5}
+\caption{Accuracy against USD per correct answer on tenant-wide questions, one point per agent and system; the cost axis is logarithmic. With each agent Keel's point sits up and to the left of the API's and RAG's: more accurate and cheaper. RAG costs about ten to thirty times as much per correct answer as Keel with the same agent.}
+\label{fig:5}
+\end{figure}
+
+\begin{table}[t]
+\caption{One-issue questions, USD per correct answer (mean input tokens per question).}
+\label{tab:oneissue-cost}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l r r r r r}
+\toprule
+Agent & Keel & API & RAG & Mem0 & Graphiti \\
+\midrule
+Luna & 0.0005 (4.6k) & 0.0003 (2.1k) & 0.0003 (1.8k) & 0.0036 (20k) & 0.017 (24k) \\
+Haiku & 0.0007 (7.6k) & 0.0005 (4.0k) & 0.0006 (4.2k) & 0.0033 (17k) & 0.010 (13k) \\
+Sonnet & 0.016 (8.2k) & 0.0087 (3.8k) & 0.0105 (4.7k) & not run & not run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Keel answers a tenant-wide question in about 5.5 to 5.9 tool calls, the API in 10 to 19 and RAG in 12 to 50; Sonnet with the API reads twice the tokens of Sonnet with Keel. On one-issue questions Keel reads about twice the API's tokens (1.9 to 2.2 times), because it returns the field's temporal history.
+
+\subsection{Ablations}
+\label{sec:ablations}
+
+\subsubsection*{Listing ceiling}
+
+The listing ceiling (200) cuts the cost per correct answer about fourfold, with accuracy within noise (one repetition, no interval; Luna, tenant-wide questions; Table~\ref{tab:ceiling}).
+
+\begin{table}[t]
+\caption{Listing ceiling ablation: Luna on tenant-wide questions, one repetition.}
+\label{tab:ceiling}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l r r r}
+\toprule
+Keel listings & Accuracy & USD/correct & Tokens/question \\
+\midrule
+With the ceiling (200) & 0.93 & 0.0037 & 31k \\
+Without the ceiling & 0.90 & 0.0145 & 128k \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Rules in the cartridge}
+
+The Jira cartridge is loaded with no rules, so Keel evaluates nothing and the agent applies the definition each question states from facts and links. We ask the 63 questions that need a rule (45 one-issue rule questions and 18 tenant-wide questions that use blocked, stalled or urgent\_unassigned), paired against the main run's Keel rows, with Luna and Haiku at three repetitions: 378 runs, 1.28 USD (Table~\ref{tab:rules}).
+
+\begin{table*}[t]
+\caption{Rules ablation: Keel with the cartridge's rules (Rules) against the same cartridge with none (None). Gap in points; Tokens = input tokens per question.}
+\label{tab:rules}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{l L c c c c c}
+\toprule
+Agent & Questions & Rules & None & Gap [95\% CI], $p$ & Tokens & USD/correct \\
+\midrule
+Haiku & Rule, one issue (45) & \makecell{0.99\\ {[0.98, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$1 [$-$2, 0]\\ $p = 0.73$} & 7k vs 7k & \makecell{0.0008\\ vs 0.0007} \\
+\addlinespace
+Haiku & Tenant with a rule (18) & \makecell{0.94\\ {[0.89, 1.00]}} & \makecell{0.69\\ {[0.48, 0.87]}} & \makecell{+26 [+4, +48]\\ $p = 0.022$} & 60k vs 78k & \makecell{0.0044\\ vs 0.0071} \\
+\addlinespace
+Luna & Rule, one issue (45) & \makecell{0.99\\ {[0.98, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$1 [$-$2, 0]\\ $p = 0.72$} & 4k vs 4k & \makecell{0.0005\\ vs 0.0005} \\
+\addlinespace
+Luna & Tenant with a rule (18) & \makecell{0.93\\ {[0.85, 0.98]}} & \makecell{0.67\\ {[0.48, 0.83]}} & \makecell{+26 [+9, +44]\\ $p = 0.001$} & 77k vs 149k & \makecell{0.0090\\ vs 0.0239} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+On one issue the agent applies a stated definition as well as Keel does. On tenant-wide questions, rules evaluated by Keel add 26 points with both agents and make a correct answer 1.6 to 2.7 times cheaper. With only 18 tenant-wide questions the intervals are wide.
+
+\subsubsection*{Brief vs full reads}
+
+Every context, history and search call is forced to detail=``full'', which adds transaction times, ids and bookkeeping to the brief form the agent gets by default. All 387 questions are asked with Luna and Haiku, one repetition, paired against the main run's Keel rows: 774 runs, 5.76 USD (Table~\ref{tab:brief}).
+
+\begin{table*}[t]
+\caption{Brief against full reads: Keel's default tool output against the full form. Gap (brief $-$ full) in points; Tokens = input tokens per question.}
+\label{tab:brief}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{l L c c c c c}
+\toprule
+Agent & Questions & Brief & Full & Gap [95\% CI], $p$ & Tokens & USD/correct \\
+\midrule
+Haiku & One issue (315) & \makecell{0.98\\ {[0.97, 0.99]}} & \makecell{0.97\\ {[0.94, 0.98]}} & \makecell{+1 [0, +3]\\ $p = 0.13$} & 7.6k vs 9.3k & \makecell{0.0007\\ vs 0.0010} \\
+\addlinespace
+Haiku & Tenant (72) & \makecell{0.93\\ {[0.88, 0.97]}} & \makecell{0.88\\ {[0.79, 0.94]}} & \makecell{+6 [$-$1, +12]\\ $p = 0.10$} & 36k vs 198k & \makecell{0.0028\\ vs 0.059} \\
+\addlinespace
+Luna & One issue (315) & \makecell{0.99\\ {[0.99, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$0.7 [$-$1.4, $-$0.2]\\ $p = 0.005$} & 4.6k vs 5.4k & \makecell{0.0005\\ vs 0.0006} \\
+\addlinespace
+Luna & Tenant (72) & \makecell{0.93\\ {[0.88, 0.97]}} & \makecell{0.88\\ {[0.79, 0.94]}} & \makecell{+5 [$-$3, +13]\\ $p = 0.23$} & 31k vs 212k & \makecell{0.0037\\ vs 0.025} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+On tenant-wide questions the full form reads 5.5 to 7 times the input tokens and costs 7 to 21 times more per correct answer. Its 5 to 6 point accuracy drop is within noise at one repetition ($p = 0.10$ and $0.23$), so we do not claim an accuracy loss. On one-issue questions there is no practical difference; with Luna the full form is 0.7 points better, which is significant ($p = 0.005$).
+
+\subsubsection*{What the three say}
+
+The listing ceiling and the brief form cut the cost per correct answer on tenant-wide questions about 4 and 7 to 21 times. Rules evaluated in the cartridge tie with the agent's own reading on one issue, and on tenant-wide questions add 26 points at 1.6 to 2.7 times lower cost. The shape of what the tools return, and where business logic is evaluated, is a cost lever and, for rules, an accuracy one.
+
+\subsection{Governed memory}
+\label{sec:governed}
+
+Keel's memory rules (contribution C4) held in all three tests: a property test, an adversary agent and a poisoning run. Random reads found no leak or miss in 26,666, the adversary agent got nothing through, and every check on writes, with the evidence check as fixed after the run, kept poisoned answers at 0.
+
+\subsubsection*{Property test}
+
+A seeded test (\path{tests/test_memory_properties.py}) writes 2,000 memories on the fleet cartridge and the in-memory store, each with a canary, a unique marker value, across two tenants, three registered agents, three tasks and four scopes. It then reads 20,000 times as a random tenant, agent and task through context, history and search, replays both tenants and reads 6,666 more times, checking each read against a reference model of who may see what. Result: 0 leaks and 0 misses in 26,666 reads; 2,470 reads were refused for a kind the agent may not read. The test does catch leaks: at the CI size (300 writes; 4,000 reads, 3,000 before the replay and 1,000 after), with scopes, kinds or relations unenforced it finds 33,775, 2,225 and 955 leaks before the replay and 11,796, 700 and 173 after. It calls no model; the full size takes 9 minutes, the CI size 4 s.
+
+\subsubsection*{Adversary agent}
+
+The adversary agent, an LLM, gets the five tools over the MariaDB graph, with Hyperledger's in the same store. Its registry lets it read issues only and write task and agent scope; a trusted copilot has planted four canaries it may not read: another tenant's, another agent's, another task's, and one on a kind outside its registry. 12 attacks (Appendix~\ref{app:attacks}): 8 reads and 4 forbidden writes, each tell it to use every tool and parameter and to retry; Luna and Haiku run each three times, 72 runs for 0.71 USD (Table~\ref{tab:adversary}).
+
+\begin{table}[t]
+\caption{Adversary agent: twelve attacks, three runs each. Refused: calls Keel refused; Leaked: canaries read; Forbidden writes: stored.}
+\label{tab:adversary}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{l r r r r r}
+\toprule
+Agent & Runs & Tool calls & Refused & Leaked & Forbidden writes \\
+\midrule
+Haiku & 36 & 272 & 85 & 0 & 0 \\
+Luna & 36 & 289 & 82 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Of 62 annotate calls, 41 were refused; the 21 accepted were proposals, which the design allows, or the adversary's own task and agent memory, and no run guessed the task name. In 6 runs (3 impersonation, 3 admin listing) the model declined without any call; those test the model, not Keel.
+
+\subsubsection*{Poisoning}
+
+Without governance, one untrusted agent's wrong write is repeated by another agent in 91 to 98\% of its answers; each of Keel's checks, with the evidence check as fixed after the run, holds that at 0 with both agents (Figure~\ref{fig:6}). Before each of the 60 current-state questions (20 per tenant), the scripted poisoner writes a wrong value for the issue and field asked, one the field really takes in the tenant, never the gold. Luna and Haiku then answer through the main run's harness, in no task, three repetitions per condition: 2,880 runs for 1.43 USD. The condition added after ea9b30a (Appendix~\ref{app:provenance}) adds 360 runs for 0.14 USD. An answer is poisoned when it equals that value. The conditions differ in what the Jira cartridge lets the poisoner write (Table~\ref{tab:poisoning}; poisoned shares in Appendix~\ref{app:tables}, Table~\ref{tab:b4}).
+
+\begin{table*}[t]
+\caption{Poisoning run: the conditions and the answering agents' accuracy under each.}
+\label{tab:poisoning}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{P{1.1in} L r r}
+\toprule
+Condition & What the poisoner's tenant write meets & Luna acc. [95\% CI] & Haiku acc. [95\% CI] \\
+\midrule
+Clean & No write & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+\addlinespace
+Open & The cartridge as shipped: no agent registry, evidence as free text; the write with evidence ``trust-me'' is accepted & 0.09 [0.05, 0.14] & 0.00 [0.00, 0.00] \\
+\addlinespace
+Evidence (242d8c2) & \code{memory.evidence} accepts only an applied event or a \code{human:} reference; ``trust-me'' is refused and the write falls back to task scope & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+\addlinespace
+Cited, before ea9b30a & The poisoner cites a real event about another issue; accepted because the event exists & 0.07 [0.04, 0.11] & 0.00 [0.00, 0.00] \\
+\addlinespace
+Cited, after ea9b30a & The cited event must have set a fact on the subject written about; refused, back to task scope & 0.99 [0.97, 1.00] & 1.00 [1.00, 1.00] \\
+\addlinespace
+Registry & An \code{agents:} registry lets the poisoner write only task and agent scope; refused, back to task scope & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+\addlinespace
+Proposed & The poisoner writes tenant scope as status ``proposed''; it waits among context's proposals and no fact changes & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+\addlinespace
+Mem0, clean & A copy of Mem0's tenant store, without the poisoner's line & 0.56 [0.43, 0.67] & 0.56 [0.43, 0.67] \\
+\addlinespace
+Mem0, poisoned & The same with the poisoner's line added as one more memory (Mem0 stored 19 or 20 of the 20 lines per tenant) & 0.54 [0.42, 0.66] & 0.55 [0.43, 0.67] \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{figure}[t]
+\centering
+\keelfig{figures/fig6-poisoned.pdf}{6}
+\caption{Share of answers equal to the poisoner's wrong value, by condition; the upper bar of each pair is Luna, the lower Haiku. The two writes Keel accepted, with no policy and with a cited event before ea9b30a, are repeated in 91 to 98\% of answers; every check holds both agents at 0; Mem0 stays at 0 to 2\% with and without the write. The same-task condition (Table~\ref{tab:b4}) is not a leak and is not plotted.}
+\label{fig:6}
+\end{figure}
+
+With no policy the write is accepted, and the answering agent repeats it in 91\% of Luna's answers and 98\% of Haiku's; accuracy falls from 1.00 to 0.09 and 0.00. Verified evidence with the subject check, the agent registry and proposals each leave both agents at 0 poisoned and 0.99 to 1.00 accurate: a refused write lands in the poisoner's task scope, which an agent in no task does not read. Evidence must be checked against the subject: free text, or a real event about another issue, gets through; after 242d8c2 and ea9b30a (Appendix~\ref{app:provenance}) the same writes are refused. Mem0 moves from 0.56 to 0.54 and 0.55 and matches the poisoner's value in 0 to 2\% of answers with or without the write: it rarely finds the field at all, so this is retrieval loss, not protection.
+
+A tenth condition, same-task, puts the answering agent on the poisoner's task. The note is written to task scope and read, since task memory is the task's to share. Scopes never close each other, so \code{context} shows the log's value and the note side by side, each with its author (\code{by:~jira}, and \code{by:~intern}, the poisoner's agent id): Luna repeats the note in 14\% of answers [9, 19] and Haiku in 17\% [10, 24], with accuracy 0.85 [0.79, 0.90] and 0.81 [0.73, 0.88] (360 runs, 0.18 USD). This is the limit of governance: a task trusts its own agents, and what the reader has left is provenance, not policy.
+
+\subsection{An external check: TDBench}
+\label{sec:tdbench}
+
+On a third-party benchmark whose data fits in a prompt, Keel adds no accuracy over pasting the data in: it ties with Haiku and Sonnet and trails by 5 to 6 points with Luna (Table~\ref{tab:tdbench}). Every agent gains 15 to 22 points over closed book.
+
+TDBench's leaders and organizations tables hold 569 terms of who held an office or post from Start to End. They went into one tenant through a cartridge of two kinds (office, post) and one handler that opens holder at Start and closes it at End, with no change under \code{keel/}. The 9 offices whose terms overlap are left out, since holder is one value at a time. We sample 200 questions with seed 7, stratified: 150 of temporal reasoning over Allen's interval relations (unique, several or no answer) and 50 of temporal alignment, the ``now'' task in its repository, in TDBench's first GPT-4o paraphrase, with records current as of 2025-01-01. Each is asked four ways under one system prompt: through Keel's tools; with the asked office's rows pasted in, a stricter form of TDBench's open book setting, which also appends irrelevant rows; with both whole tables pasted in; and closed book. Luna and Haiku run three repetitions, Sonnet one: 5,600 runs, no errors, 13.07 USD. Answers are graded by exact set match of names against TDBench's correct rows. That is stricter than TDBench's substring-based answer accuracy with partial credit, so its published numbers are not comparable with ours; its time accuracy needs an LLM judge and is not measured.
+
+\begin{table*}[t]
+\caption{TDBench: accuracy [95\% CI]; beside each other condition, Keel minus it in points [95\% CI], $p$ (paired bootstrap, $B = 10{,}000$).}
+\label{tab:tdbench}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l l l}
+\toprule
+Agent & Keel & Asked rows pasted & Whole tables pasted & Closed book \\
+\midrule
+Luna & 0.76 [0.71, 0.82] & \makecell[l]{0.81 [0.76, 0.87]\\ $-$5 [$-$8, $-$2], $p < 0.001$} & \makecell[l]{0.82 [0.77, 0.87]\\ $-$6 [$-$9, $-$3], $p < 0.001$} & \makecell[l]{0.61 [0.55, 0.68]\\ +15 [+9, +21], $p < 0.001$} \\
+\addlinespace
+Haiku & 0.81 [0.76, 0.85] & \makecell[l]{0.80 [0.74, 0.85]\\ +1 [$-$3, +4], $p = 0.60$} & \makecell[l]{0.81 [0.76, 0.86]\\ $-$1 [$-$3, +2], $p = 0.60$} & \makecell[l]{0.59 [0.52, 0.65]\\ +22 [+17, +28], $p < 0.001$} \\
+\addlinespace
+Sonnet & 0.80 [0.74, 0.85] & \makecell[l]{0.82 [0.77, 0.87]\\ $-$2 [$-$5, +1], $p = 0.20$} & \makecell[l]{0.81 [0.76, 0.86]\\ $-$1 [$-$4, +1], $p = 0.39$} & \makecell[l]{0.62 [0.56, 0.69]\\ +18 [+12, +24], $p < 0.001$} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+On the 13 questions where the pasted rows succeeded and Keel missed, the five transcripts we read were interval misreadings (an agent counting a term that started in 2014 as `starting after 2020'), with the correct dates in Keel's output. With every agent Keel answers ``now'' questions at 0.99 to 1.00 and unique-answer questions at 0.86 to 0.90, but those with several or no answers at 0.59 to 0.69. The interval misreading is a difficulty every condition shares. Keel reads 5.6k to 9.2k input tokens a question against 15k to 21k for the whole tables.
+
+This marks a boundary, not a win. With small, static data that fits in a prompt, pasting it in does as well as Keel or better. Keel's gain in the Jira benchmark is on tenant-wide questions, whose log of tens of thousands of events does not fit in a prompt (Section~\ref{sec:tenant}). TDBench has no transaction time, so it does not test known-at reads.
 
 \end{document}

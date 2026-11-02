@@ -30,7 +30,7 @@
 \usepackage{xr}
 \externaldocument{supplement}
 \begin{document}
-\title{Keel: One Deterministic Context Layer for Product Agents}
+\title{Keel: Compiling a Product's Events into Bitemporal Context for Agents}
 
 \author{Angel K\"urten}
 \affiliation{%
@@ -41,7 +41,7 @@
 \email{angel@angelkurten.com}
 
 \begin{abstract}
-Keel is a context layer for product agents: a cartridge declares the product's events, entities and rules once; a deterministic ingest with no LLM compiles them into a bitemporal graph per tenant; agents read it through five tools. On tenant-wide questions over three real Jira projects, Keel leads the product's API by 21 to 32 points with three agents (GPT-6 Luna, Claude Haiku 5.5 and Claude Sonnet 5.5; $p < 0.001$) and is cheapest per correct answer. The benchmark takes three Public Jira Dataset tenants, injects late arrivals and corrections, and asks 387 questions whose gold an independent oracle computes from the log. On one-issue questions every log-reading system scores 0.95 to 0.99, and Keel leads the API by 3 points with Luna and Haiku and ties with Sonnet; LLM-extracted memories lose (Mem0 0.54 to 0.61, Graphiti 0.13 to 0.16; our configuration, one repetition). On tenant-wide questions Keel answers 0.93 to 0.99, the API 0.61 to 0.78, hybrid RAG 0.14 to 0.26 (Sonnet's RAG run partial). TDBench's small public tables fit in a prompt; pasting them in does as well or better. Without governance, one agent's wrong write is repeated in 91 to 98\% of another agent's answers; each Keel check (evidence check as later fixed) holds that at 0; property tests find 0 leaks in 26,666 random reads; an adversary agent told to break the rules leaks nothing and stores no forbidden write.
+Agents inside a product ask what holds now, what held at an instant, and what the product had recorded by then. Keel answers from the product's own events. A cartridge declares a domain's event types, entity kinds, facts, relations and rules once; a deterministic ingest with no LLM builds a bitemporal graph per tenant whose transaction time comes from the events, so replaying the log in any order rebuilds it identically. The same cartridge compiles to two interfaces: five tools an agent calls, and bitemporal SQL views and rule macros that an optional read-only \code{query} tool serves, bound to the tenant by the store. We evaluate on temporal questions over eight real Jira projects of seven instances, in three sets: a development set, a pre-registered held-out set and a pre-registered confirmation set (1,032 questions, gold computed by an independent oracle from the log). Hand-written bitemporal SQL over the log is the strongest baseline. On the held-out set, as registered, Keel's five tools trail it by 2.8 points (95\% CI $[-4.7, -1.4]$) while leading the product's API by 9.1. Two conditions built after that result, the SQL compiled from the cartridge and the five tools plus \code{query}, tied it there and on the development set. Registered in advance on the third set, both are not worse than hand-written SQL ($+0.3$ points, $[-0.3, +0.7]$, margin $-2$), and \code{query} adds 1.2 points to the five tools ($[+0.2, +2.5]$), at the lowest cost per correct answer. A domain declared once gives agents the accuracy of SQL a database engineer wrote by hand for it.
 \end{abstract}
 
 \maketitle
@@ -54,104 +54,41 @@ Keel is a context layer for product agents: a cartridge declares the product's e
 \section{Introduction}
 \label{sec:intro}
 
-Agents shipped inside products commonly rebuild the same context pipeline: what the customer has, what changed, what was true when something happened, which business rule applies. Memory systems for agents answer part of this, but they build memory from conversation: an LLM reads text and writes facts. A product already holds its facts as events with time. Event sourcing and change data capture already derive application state from domain events \cite{fowler-es,debezium}, but we found no published system that builds agent memory that way, through a declared cartridge with governed write-back, and no study that compares the two approaches on cost, write fidelity and reproducibility.
+An agent shipped inside a product, a support copilot or a planning assistant, needs the product's state: what a customer has, what changed, what was true when something happened, what the product had recorded at that moment, and which business rule applies. Each team that ships such an agent rebuilds the same pipeline from the product's database to the agent's prompt. Memory systems for agents answer part of this, but they build memory from conversation: an LLM reads text and writes facts \cite{mem0,zep}. A product already holds its facts as events with time. Event sourcing and change data capture derive application state from those events \cite{fowler-es,debezium}, and temporal databases have long answered as-of and as-known-at queries \cite{jensen-glossary,snodgrass-book}.
 
-Keel takes the product's events as the truth. A cartridge maps each event type to a handful of store primitives; the graph is bitemporal per tenant and, as in event sourcing, rebuilt identically by replay, here with transaction time included; agents read it through five tools and write governed memory back.
+Keel puts the two together for agents. A \emph{cartridge} declares a domain once: its event types, entity kinds and their facts, relations, rules and memory policy, plus handlers of about ten lines that map each event to five store primitives. A deterministic ingest, with no LLM and no network call, builds a bitemporal graph per tenant whose transaction time is the one the event's source declares, so a replay of the log in any order rebuilds the same graph, transaction time included. From the same cartridge Keel compiles two interfaces. One is five tools (\code{context}, \code{history}, \code{search}, \code{related}, \code{annotate}) whose results carry rule verdicts, counts and changes. The other is bitemporal SQL: point-in-time views per entity kind, a change view and one macro per rule, in three dialects, which an optional sixth tool, \code{query}, serves read-only and bound to one tenant by the store, never by the agent's SQL.
+
+Whether that is worth doing is an empirical question with an obvious baseline: a database engineer who models the same log in bitemporal tables and writes the point-in-time views and rule macros by hand. We built that baseline, and on the first question set Keel was tuned against it was the strongest system we ran. This paper reports how Keel fares against it on data development never saw, in three stages: a development set; a held-out set whose tenants, conditions, budget and analysis were registered before any run; and, because the two conditions that tied hand-written SQL on the held-out set were built after reading its results, a third, confirmation set registered in advance with three hypotheses and their decision rules. The registered held-out result was negative for Keel's five tools, and we report it as such.
 
 Contributions:
 
 \begin{enumerate}[leftmargin=*]
-\item \textbf{Deterministic ingest of product events (C1).} Cheaper, faithful to the adapter's output (checked against Jira's current fields) and reproducible in any arrival order, transaction time included, in a stored graph that answers point reads at any pair of world and recorded instants; measured against LLM extraction (Graphiti \cite{zep}, Mem0 \cite{mem0}).
-\item \textbf{A benchmark of temporal questions over real product data (C2).} 387 questions over three Jira projects in seven types, gold from the log, reviewed by independent agents and a person. One-issue questions saturate every system that reads the log; tenant-wide questions separate them.
-\item \textbf{One domain-agnostic core (C3).} Five example cartridges, a Jira cartridge and a two-kind cartridge that loads a third-party benchmark's data (TDBench \cite{tdbench}), with no domain-specific change under \code{keel/} for any cartridge, TDBench's included; the core changes made during the evaluation (Appendix~\ref{app:provenance}\footnote{The appendices are in the supplemental material.}) are domain-agnostic.
-\item \textbf{Governed agent memory (C4).} Scoped writes with server-enforced policy, which TGMS's paper \cite{tgms} reports as disabled pending provenance and authorization policies. Unchecked, one agent's wrong write is repeated in 91 to 98\% of another agent's answers; each of Keel's checks, with the evidence check as fixed after the run, holds it at 0. Property tests find 0 leaks in 26,666 random reads, and an adversary agent told to break the rules leaks nothing and stores no forbidden write.
-\item \textbf{Tool results shaped for agents (C5).} Counts, world-time change listings and a listing ceiling cut tokens several-fold; found by the pilot and measured in the ablations of Section~\ref{sec:ablations}. There the brief form of reads costs 7 to 21 times less per correct answer on tenant-wide questions than the full form, with accuracy within noise.
+\item \textbf{One declaration, two compiled interfaces (C1).} A cartridge compiles to agent tools and to bitemporal SQL (Section~\ref{sec:compile}); the SQL comes with the paragraph that documents it for an agent, generated from the same declaration. The core names no domain: five example cartridges, a Jira cartridge and a cartridge over a third-party benchmark's tables (TDBench \cite{tdbench}) run with no domain-specific code under \code{keel/}.
+\item \textbf{Source-declared transaction time, order-independent (C2).} A formal model (Section~\ref{sec:formal}) in which every fact's position in its history is a function of fields it carries, so any permutation of the log yields the same graph and the same answer to ``what held at $a$, as known at $k$''; checked on real and synthetic logs.
+\item \textbf{A benchmark and a staged protocol (C3).} Temporal questions over real Jira projects with injected late arrivals and corrections, gold from an oracle that imports nothing from Keel, and three sets: development, pre-registered held-out, pre-registered confirmation (Section~\ref{sec:benchmark}).
+\item \textbf{What the compiled interfaces buy (C4).} The SQL compiled from the cartridge is not worse than hand-written SQL, and Keel's tools with \code{query} are not worse either, both confirmed on the third set; the five tools alone trail hand-written SQL, lead the product's API, and gain from \code{query} on all three sets (Section~\ref{sec:results}).
 \end{enumerate}
 
-% ===========================================================================
-\section{Related work}
-\label{sec:related}
-
-\subsection{Agent memory}
-\label{sec:related-agents}
-
-Bitemporal agent memory and deterministic replay are not ours to claim, nor are the bitemporal model or order-independent replay of a log (Section~\ref{sec:related-db}). TGMS \cite{tgms} already offers a bitemporal graph an agent can ask ``what did we believe at date X'', keeps retract apart from correct, replays an append-only log to a byte-identical store, keeps the LLM out of the write path and serves tools over MCP (on our tenant-wide questions it answers 0.19 through its tools, and at most 0.22 through its own planner and verifier, Section~\ref{sec:tenant}). Zep/Graphiti \cite{zep} and TOKI \cite{toki} also predate us on bitemporal agent memory.
-
-Niksarli and Baheti \cite{niksarli} store conversational memories as versioned nodes with valid and transaction time in Neo4j and retrieve them by vector search filtered by time. Their transaction time is the database's write clock, so a replay cannot rebuild it. Their own results show the limit of filtering after a similarity search: time-travel retrieval lowers recall on temporal-reasoning questions from 50\% to 37.5\% (over 8 of the 10 such questions) in a sample of 60 LongMemEval \cite{longmemeval} questions. Keel answers temporal questions by exact reads over a subject and an instant instead of by similarity, and reaches 0.97 to 1.00 on as-of and known-at questions (the API reaches 0.94) in Section~\ref{sec:bytype}.
-
-\begin{table*}[t]
-\caption{Prior systems and benchmarks: how facts get in, the time model and the evaluation.}
-\label{tab:related}
-\centering
-\footnotesize
-\begin{tabularx}{\textwidth}{P{1.05in} L L L}
-\toprule
-System & How facts get in & Time model & Evaluation \\
-\midrule
-TGMS \cite{tgms} & Structured edge streams, no LLM & Valid + transaction time (its own clock) & Templated tasks, engine-computed gold, correction probes \\
-\addlinespace
-Zep/Graphiti \cite{zep} & Up to six LLM calls per episode in its pipeline; about three per event measured (Section~\ref{sec:ingest}) & Valid + transaction time; newest wins & LongMemEval \cite{longmemeval}, DMR \cite{memgpt}; no ingest cost reported \\
-\addlinespace
-Niksarli and Baheti \cite{niksarli} & Conversation turns as text + embeddings (Neo4j, HNSW), no LLM extraction; one agent, no tenants or write governance & Valid time (from the caller) + transaction time (DB write clock, no replay) & 60 LongMemEval questions; retrieval recall only \\
-\addlinespace
-Mem0 \cite{mem0} & LLM extraction + update decisions & Creation time only & LoCoMo \cite{locomo}; latency and tokens; no build cost \\
-\addlinespace
-STALE \cite{stale} & Benchmark (dialogue) & Implicit conflicts & Zep 6.0\%, Mem0 8.3\% overall across its six settings; 0 to 1\% on its stale-premise probes \\
-\addlinespace
-HaluMem \cite{halumem} & Stage-wise eval of memory systems & --- & Extraction recall under 60\% for every system but MemOS (74.1\%) \\
-\addlinespace
-Ground Truth First \cite{groundtruth} & Facts generated before text & --- & Badly written facts fail 24.2\% vs 1.6\% \\
-\addlinespace
-MemoryAgentBench \cite{memoryagentbench} & Benchmark & Selective forgetting & Mem0 up to 18,483 s to build memory; BM25 0.1 s \\
-\bottomrule
-\end{tabularx}
-\end{table*}
-
-What we claim against this work (Table~\ref{tab:related}): memory built from a product's structured event log rather than from conversation; one core across products through cartridges; governed write-back by agents; and a measured comparison of deterministic ingest with LLM extraction on cost and write fidelity, and a determinism check for Keel's own ingest. We found no such measured comparison in prior work. Benchmarks that ship as dialogue (LongMemEval, LoCoMo, STALE) are cited, not run: feeding them to Keel would need the LLM extraction Keel avoids.
-
-TDBench \cite{tdbench} builds time-sensitive questions from temporal databases, by SQL over Allen's interval relations \cite{allen}. It is uni-temporal, with no transaction time, and tests a model's parametric or in-prompt knowledge rather than a memory layer. We found no published results of memory systems on it, and run it as an external check (Section~\ref{sec:tdbench}).
-
-\subsection{Database foundations}
-\label{sec:related-db}
-
-Keel's time model is classical. Valid time, transaction time and their combination come from the temporal database literature \cite{jensen-glossary}. Keel's facts are an interval encoding of the Bitemporal Conceptual Data Model (BCDM) \cite{jensen-bcdm}; its as-of and known-at reads are TSQL2's valid and transaction timeslices \cite{snodgrass-tsql2}; a correction closes the earlier row in transaction time instead of deleting it, as in Snodgrass's bitemporal tables \cite{snodgrass-book}. SQL:2011 standardized application-time and system-versioned tables \cite{kulkarni-sql2011}, and commercial systems ship them \cite{sqlserver-temporal,mariadb-sysver}. There the DBMS stamps transaction time at commit; loading earlier system times is an administrative path, such as MariaDB's history insert for dumps. Datomic keeps an immutable log with as-of reads \cite{datomic}, and XTDB is bitemporal \cite{xtdb}. Both take transaction time from their own transaction log. Keel takes transaction time from the event's source and orders a history by fields every fact carries, so replaying the log in any order rebuilds it.
-
-That idea is not ours either. CEDR \cite{cedr} separates valid time and an occurrence time assigned by the event provider from the server's clock, and defines query semantics on the provider's times only, so delivery order and retractions do not change the answer. Out-of-order processing \cite{li-ooo}, the Dataflow model \cite{akidau-dataflow} and Flink \cite{carbone-flink} handle late data with event time, watermarks and refinements. Differential dataflow \cite{mcsherry-dd} and DBSP \cite{budiu-dbsp} maintain views incrementally, with outputs that are functions of the inputs at each logical time. These systems answer continuous queries over streams. Keel stores the result as a fact graph and answers point reads at any pair of world and recorded instants after the fact: CEDR's provider time becomes the transaction time of stored facts.
-
-Event sourcing rebuilds application state by replaying an event log, retroactive events included \cite{fowler-es}. Log-centric architectures treat tables and indexes as views derived from a log \cite{kreps-log,kleppmann-insideout,kleppmann-olep}, and change data capture turns a database's commit log into such a stream \cite{debezium}. Keel is an event-sourced projection in this sense, and a CDC connector is one way to feed it. What it adds is the projection's shape: a cartridge declares kinds, relations, events, rules and memory policy; handlers map each payload to five primitives; the core that stores, times and serves the result is the same for every domain. Rules are evaluated when a tool reads, not materialized at ingest.
-
-Temporal graph DBMSs store and query a graph's history. AeonG keeps current and historical versions under system-maintained transaction time \cite{aeong}; Clock-G stores temporal graphs space-efficiently \cite{clockg}; T-GQL gives a model and query language for graphs with time-stamped nodes and edges \cite{tgql}. Keel's graph holds pointers and a few labels, and its store is pluggable. It does not compete with these systems on storage or query processing; one of them could serve as its store.
-
-Multi-tenant schema mapping \cite{aulbach} and fine-grained access control by query rewriting \cite{rizvi-fgac} or row-level security \cite{pg-rls} precede Keel's tenant partitions and per-agent registry. Keel applies them to a new writer: an agent that writes memory back through \code{annotate}, with scope, TTL and evidence checked by the server. Section~\ref{sec:governed} measures what happens when that writer is not checked.
-
-Each fact names the event that set it. That is coarse-grained where-provenance \cite{buneman}; Keel does not compute the why- or how-provenance of query answers \cite{green}.
-
-Text-to-SQL benchmarks \cite{spider,bird,gao-text2sql} evaluate LLMs that write queries over a given schema. Keel's agents write no queries; they call five tools whose results carry counts and rule verdicts.
-
-What remains ours is the combination, for LLM agents inside products: source-declared transaction time rebuilt by replay in a stored graph, a declarative per-domain mapping over a domain-agnostic core, rules evaluated at query time, scoped write-back under server-side policy, a tool interface shaped for agents, and a measured comparison with memories built by LLM extraction.
+The first version of this work compared Keel's five tools with the product's API, retrieval and memory systems built by LLM extraction on the development set, and measured governed write-back by agents. Those results stand as development-set results; Section~\ref{sec:firstrun} summarizes them and Appendix~\ref{app:dev} gives them in full.
 
 % ===========================================================================
-\section{Keel}
-\label{sec:keel}
+\section{Model}
+\label{sec:model}
 
-Keel turns a product's events into a bitemporal graph per tenant, with no LLM, and serves it to agents through five tools (Figure~\ref{fig:1}).
+Keel turns a product's events into a bitemporal graph per tenant, with no LLM, and serves it through tools and SQL compiled from the same cartridge (Figure~\ref{fig:1}).
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=5.5in]{figures/fig1-architecture.pdf}
-\caption{Keel (top): product events through cartridge handlers into a bitemporal graph per tenant, read through five tools and written back only through annotate; memories built by LLM extraction (bottom) put a model between the event and what is stored.}
+\caption{Keel (top): product events through cartridge handlers into a bitemporal graph per tenant, read through tools and SQL compiled from the cartridge and written back only through annotate; memories built by LLM extraction (bottom) put a model between the event and what is stored.}
 \label{fig:1}
 \end{figure*}
 
-\textbf{Events and cartridges.} An event carries a tenant, a type, a subject, when it happened (\code{occurred\_at}), when its source recorded it (\code{recorded\_at}), a source and a payload. A cartridge declares the domain once: entity kinds, relations, the event catalog, rules and memory policy, plus handlers of about ten lines that map a payload to five store primitives (\code{upsert\_entity}, \code{link}, \code{unlink}, \code{open\_fact}, \code{close\_fact}). The core names no kind, relation, predicate or event type.
+\textbf{Events and cartridges.} An event carries a tenant, a type, a subject (\code{<kind>:<id>}), when it happened (\code{occurred\_at}), when its source recorded it (\code{recorded\_at}), a source and a payload. A cartridge declares the domain: entity kinds and, per kind, its facts and the few attributes a tool needs to label an entity; relations, with \code{one: true} for a relation an entity has at most one of; the event catalog with payload types; rules; and memory policy. Handlers map a payload to five primitives (\code{upsert\_entity}, \code{link}, \code{unlink}, \code{open\_fact}, \code{close\_fact}). The Jira cartridge of Section~\ref{sec:benchmark} is 104 lines of YAML and 58 of Python. The core, under \code{keel/}, names no kind, relation, predicate, rule or event type; an entity carries a pointer to its row in the system of record, not a copy of it.
 
-\textbf{Bitemporal facts, transaction time from the event.} Facts carry valid time (world time: \code{valid\_from}, \code{valid\_to}) and transaction time (\code{recorded\_at}, \code{closed\_at}). An event that declares \code{recorded\_at} writes with it, so replay rebuilds when Keel learned each fact and a late event keeps its own time; a separate ingest-clock stamp (\code{changed\_at}) drives the change feed. Facts close; their values are never overwritten.
+\textbf{Rules.} A rule applies to one kind and is a tree of conditions on facts (\code{eq}, \code{in}, comparisons, \code{null}), composed with \code{all}, \code{any} and \code{not}, following a relation in either direction (\code{via}) to a condition on the neighbour, and measuring how long a value has held (\code{open\_for\_days}). Rules are evaluated when a tool or a query reads, at the instant and knowledge time it reads at, and never materialized at ingest. What they cannot express, counts over time or aggregates, stays a definition the agent applies.
 
-\textbf{Determinism.} A predicate's history is ordered by valid time, then recorded time, then evidence and value, a total order on what facts carry. The same log in any arrival order builds the same graph, transaction time included; three defects that violated this were found by the replay check, two during development and one while quantifying the check for this paper, and fixed (Appendix~\ref{app:provenance}).
-
-\textbf{Five tools.} \code{context} reads a subject now, at \code{as\_of}, or as known at \code{as\_known\_at}, with its rule verdicts. \code{history} returns a subject's facts over time, or the tenant's changes in a world-time window. \code{search} lists by text, kind and rule at an instant, with counts. \code{related} returns neighbours by relation, and \code{annotate} writes governed memory. Rules declared in the cartridge compose, follow relations and measure durations; tools evaluate them, agents do not.
-
-\textbf{Governed memory.} Agent writes go through \code{annotate} into scopes (global, tenant, task, agent) whose TTL and evidence policy the server enforces; a per-agent registry limits what each agent reads and writes; tenants never see each other, as in multi-tenant databases \cite{aulbach}.
+\textbf{Bitemporal facts, transaction time from the event.} A fact carries valid time (when it held in the world) and transaction time (when the product recorded it). An event that declares \code{recorded\_at} writes with it, so replay rebuilds when each fact was learned and a late event keeps its own time; a separate ingest-clock stamp (\code{changed\_at}) drives the change feed and is never a query time. Facts close; a handler never overwrites or deletes one.
 
 \subsection{Formal model}
 \label{sec:formal}
@@ -172,9 +109,9 @@ with $\min \emptyset = \infty$. The answer to ``what held at world time $a$, as 
 \begin{equation*}
 F(a, k) = \{\, f \in K_k \mid t^{v}_f \le a < \mathit{end}_k(f) \,\},
 \end{equation*}
-and with $k$ omitted, $k = \infty$: every fact is known. The stored row caches $\mathit{end}_\infty(f)$ as \code{valid\_to}, and when that end was learned, $\max(t^{r}_f, t^{r}_g)$ for the fact $g$ that ends it, as \code{closed\_at}. A known-at read recomputes $\mathit{end}_k$ rather than read the cached end, since a fact recorded after $k$ may have moved it (a late fact landing between two known ones). A value recorded wrong and corrected later shares its valid start with the correction and precedes it in $\prec$, so its valid interval is empty under full knowledge and it answers only known-at reads before the correction, which corresponds to a logically deleted row in a bitemporal table \cite{snodgrass-book}. Values are never overwritten; only the cached end moves.
+and with $k$ omitted, $k = \infty$: every fact is known. The stored row caches $\mathit{end}_\infty(f)$ as \code{valid\_to}, and when that end was learned, $\max(t^{r}_f, t^{r}_g)$ for the fact $g$ that ends it, as \code{closed\_at}. A known-at read recomputes $\mathit{end}_k$ rather than read the cached end, since a fact recorded after $k$ may have moved it (a late fact landing between two known ones). A value recorded wrong and corrected later shares its valid start with the correction and precedes it in $\prec$, so its valid interval is empty under full knowledge and it answers only known-at reads before the correction, which corresponds to a logically deleted row in a bitemporal table \cite{snodgrass-book}.
 
-\textbf{Order independence.} This is the usual requirement of a deterministic projection \cite{cedr,mcsherry-dd}; what Keel adds is that transaction time is included, because the source declares it. \emph{For any permutation of a log, ingest builds the same graph, and $F(a,k)$ is the same for every $a$ and $k$.} $K_k$ is a set defined by the facts' own recording times; $\prec$ is a total order on fields every fact carries; so $\mathit{end}_k$ and $F$ are functions of the set of facts, and the cached ends are $\mathit{end}_\infty$ and the recording times of two facts of that set. Ingest skips event ids it has applied, so duplicates do not change the set. The store maintains the cache incrementally on each insert; the conformance suite checks that every arrival order of a late fact landing between two known ones gives the same known-at answers on every store (\code{tests/test\_store.py}), and the replay check compares whole graphs on each tenant's log (Section~\ref{sec:ingest}).
+\textbf{Order independence.} \emph{For any permutation of a log, ingest builds the same graph, and $F(a,k)$ is the same for every $a$ and $k$.} $K_k$ is a set defined by the facts' own recording times; $\prec$ is a total order on fields every fact carries; so $\mathit{end}_k$ and $F$ are functions of the set of facts, and the cached ends are $\mathit{end}_\infty$ and the recording times of two facts of that set. Ingest skips event ids it has applied, so duplicates do not change the set. Relations follow the same rule: a link's interval is a function of its link and unlink events, whatever order they arrive in. This is the usual requirement of a deterministic projection \cite{cedr,mcsherry-dd}; what Keel adds is that transaction time is included, because the source declares it. The store maintains the cache incrementally; a conformance suite every store runs checks that every arrival order of a late fact landing between two known ones gives the same known-at answers, and Section~\ref{sec:determinism} compares whole graphs.
 
 \begin{figure}[t]
 \centering
@@ -184,16 +121,55 @@ and with $k$ omitted, $k = \infty$: every fact is known. The stored row caches $
 \end{figure}
 
 % ===========================================================================
+\section{Compiling a cartridge}
+\label{sec:compile}
+
+\subsection{To tools}
+\label{sec:tools}
+
+\code{context} reads a subject now, at \code{as\_of}, or as known at \code{as\_known\_at}, with its facts, relations and rule verdicts. \code{history} returns a subject's facts over time, or the tenant's changes in a world-time window. \code{search} lists a kind by text, by fact values (\code{where}) or by rule at an instant, as known at an instant, with counts. \code{related} returns neighbours by relation at an instant, and \code{annotate} writes governed memory (Section~\ref{sec:memory-gov}). The tools are typed by the cartridge: a predicate, relation or rule the cartridge does not declare is refused with the names it does. Their replies are shaped for an agent's context: a brief form by default (a fuller one on request), a compact text rendering over MCP whose structured content stays the contract, counts before listings, and a listing ceiling that says what it cut. In the development set's ablations (Appendix~\ref{sec:ablations}) the brief form and the ceiling cut the cost per correct answer on tenant-wide questions 7 to 21 and about 4 times, with accuracy within noise.
+
+\subsection{To SQL}
+\label{sec:sql}
+
+\code{keel.sqlgen.generate} compiles a cartridge to SQL text, deterministically and with no model: the same cartridge always yields the same text. The tables are the SQL stores' own (\code{entities}, \code{facts}, \code{relations}); over them it emits, as table macros (DuckDB), set-returning functions (Postgres) or queries inlined at call time (SQLite, which has no table macros):
+
+\begin{itemize}[leftmargin=*]
+\item \code{facts\_known\_at(tenant, t, k)} and \code{state\_known\_at}, $F(t, k)$ of Section~\ref{sec:formal} with $\mathit{end}_k$ recomputed in SQL from the facts recorded by $k$, and the visibility rules for memory scopes; \code{state\_at} is the same with $k = \infty$.
+\item Per entity kind that declares its facts, \code{<kind>\_state\_at(tenant, t)} and \code{<kind>\_state\_known\_at(tenant, t, k)}: one row per entity, one decoded column per declared fact, \code{<fact>\_since} for each (when the value began), its attributes, and the target's id for each \code{one} relation.
+\item \code{<kind>\_changes(tenant, since, until, k)}: one row per change of a declared fact in a world-time window, with old and new value, as \code{history} reports a change (a first value is not a change, nor a value recorded wrong and corrected later).
+\item \code{relations\_at} and \code{relations\_known\_at}.
+\item Per rule, \code{<rule>\_verdicts(tenant, t, k)} (true, false or null for every entity of its kind) and \code{<rule>\_at(tenant, t, k)} (the entities it holds for), compiled from the rule tree: \code{all}/\code{any}/\code{not} to three-valued boolean expressions, \code{via} to a join over \code{relations\_known\_at}, durations to differences of \code{<fact>\_since}.
+\end{itemize}
+
+\code{keel.sqlgen.describe} writes, from the same cartridge, the paragraph that tells an agent what all of this is: the views and their columns with each fact's description, which arguments are valid and which transaction time, the relations with their direction, each rule with its definition, and that macros take the tenant first and no schema prefix. For Jira the generator emits 118 lines of DuckDB (17 kB) and a paragraph of 712 tokens; the hand-written baseline of Section~\ref{sec:conditions} is about 330 lines of Python and SQL written for Jira, with a 695-token paragraph. The compiled SQL answers every one of the held-out set's 387 gold answers with one query per question, and the stores answer tenant-wide tool calls through the same compiled rules (push-down): on all the tool calls behind the development set's 387 questions, the outputs are the same bytes on SQLite, DuckDB and Postgres as Keel's Python evaluation.
+
+\subsection{The query tool}
+\label{sec:query}
+
+\code{query} takes one read-only statement (\code{SELECT} or \code{WITH}) over the compiled views and returns at most 200 rows by default, saying when it cut, within a timeout (5 s by default). It is off unless the host enables it, and complements the five tools rather than replacing them. The agent's SQL never binds the tenant; the store does:
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{SQLite and DuckDB} answer from a per-tenant sandbox: a separate in-memory database holding a copy of only what the tenant may read (its accepted tenant-scope facts, its partition's share of global facts, its entities and relations), with the compiled views over it, rebuilt when the tenant's rows change. The copy is refused above 100,000 rows; such tenants are served from Postgres.
+\item \textbf{Postgres} gives each tenant a login role of its own that reads only security-barrier views filtered by \code{current\_user}, which a session logged in as that role cannot change; each query runs in a transaction rolled back after it, under a statement timeout.
+\end{itemize}
+
+Agent and task memory and proposals are never in what \code{query} reads: the store cannot apply \code{Tools}' per-caller visibility to arbitrary SQL, so it leaves them out. Sixty tests cover the tool, its sandboxes, its security and its transports, among them attempts to read another tenant through every generated view and macro and the base tables, and to reach the catalogs, file and network functions, extension loading and \code{ATTACH}.
+
+\subsection{Governed memory}
+\label{sec:memory-gov}
+
+Agents write back only through \code{annotate}, into scopes (global, tenant, task, agent) whose TTL and evidence policy the server enforces; a per-agent registry declared in the cartridge limits which scopes each agent writes and which kinds and relations it reads; a write to a wider scope can be filed as a proposal that changes no fact. Annotations are not events, so replay keeps them and rebuilds around them. Section~\ref{sec:firstrun} summarizes what this holds against; this paper's question sets do not exercise it (Section~\ref{sec:conditions}).
+
+% ===========================================================================
 \section{Benchmark}
 \label{sec:benchmark}
 
-The benchmark is 387 questions over three real Jira projects, each answer computed from the event log by an oracle that imports nothing from Keel.
+\textbf{Data.} The Public Jira Dataset of Montgomery, Lüders and Maalej \cite{jira} (MSR 2022, CC BY 4.0) holds 16 public Jira instances. A tenant is one whole project. An adapter turns each issue's changelog into events: it names field values by their id as it stands today, keeps a link only while its adds outnumber its removes, files moved issues under their final key and anonymizes people as \code{user-<8 hex>}. A check replays the events and compares every issue's status, assignee, priority, resolution, type and links with Jira's current fields.
 
-\textbf{Data.} The Public Jira Dataset of Montgomery, Lüders and Maalej (MSR 2022) \cite{jira}, CC BY 4.0, one whole project per instance as a tenant: Hyperledger INDY (2,323 issues, 18,036 events), MariaDB MXS (3,333 issues, 17,934 events) and Spring Security SEC (3,150 issues, 15,699 events). An adapter turns each issue's changelog into events. It names field values by their id as it stands today, keeps a link only while its adds outnumber its removes, files moved issues under their final key and anonymizes people as \code{user-<8 hex>}. A check replays the events and compares every issue's status, assignee, priority, resolution, type and links with Jira's current fields: no mismatch in any tenant.
+\textbf{Transaction time, injected.} Jira records when a change happened, not when anyone learned it. With a fixed seed, 5\% of eligible changes reach the log 1 hour to 30 days late, and 2\% are first recorded with a wrong value and corrected later; each injection leaves a window in which the value as recorded differs from the value as it happened.
 
-\textbf{Transaction time, injected.} Jira records when a change happened, not when anyone learned it. With a fixed seed, 5\% of eligible changes reach the log 1 hour to 30 days late, and 2\% are first recorded with a wrong value and corrected later. That makes 2,692 windows in all, each with the value an oracle expects before and after the record arrives.
-
-\textbf{Questions.} Templates (one template per type in Appendix~\ref{app:templates}) filled with a fixed seed, gold from the oracle, instants at least an hour from any change the question reads (Table~\ref{tab:questions}).
+\textbf{Questions.} Templates in seven types, filled with a fixed seed, with instants at least an hour from any change the question reads (Table~\ref{tab:questions}; templates in Appendix~\ref{app:templates}). Each tenant gets 129 questions: 105 about one issue and 24 tenant-wide. Gold comes from an oracle that rebuilds each tenant's history from the log alone and imports nothing from Keel. On the development set, three independent agents rebuilt 50 gold answers from the raw Jira export, not from the event log (46 ok, 3 ambiguous, 1 wrong, which exposed an adapter bug); after the fixes a second round of 24 and a person's review of 50 more were all correct. Every set's gold is also reached, with no agent, by Keel's primitives, by one hand-written SQL query per question over the baseline's tables, and by one query per question over the compiled SQL.
 
 \begin{table*}[t]
 \caption{Question types, with the number per tenant, what each asks and the form of its gold.}
@@ -207,456 +183,285 @@ Type & Per tenant & Asks & Gold \\
 Current & 20 & A field's value now & Value \\
 As-of & 25 & A field's value at an instant inside its history (80\% differ from today's) & Value \\
 Known-at & 25 & A field's value at an instant, as recorded by a later instant & Value \\
-Links & 15 & Of the issues linked by a relation at an instant, which were done & Set of keys \\
-Rule & 15 & blocked, stalled (the question text says idle) or urgent\_unassigned, the cartridge's rules at an instant, definition given & Yes/no \\
+Links & 15 & Of the issues linked to one by a relation at an instant, which were done & Set of keys \\
+Rule & 15 & blocked, stalled or urgent\_unassigned at an instant, the definition given & Yes/no \\
 Abstain & 5 & An issue that never existed, or one before it was created & Unknown \\
-Tenant & 24 & Tenant-wide: issues with a status, counts, rule listings, changes in a window, sets as recorded by a later instant & Set or count \\
+Tenant & 24 & Tenant-wide: issues with a status at an instant, counts, rule listings, changes in a window, sets as recorded by a later instant & Set or count \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-\textbf{Review.} Three independent agents rebuilt 50 gold answers from the raw Jira export, not from the event log: 46 ok, 3 ambiguous, 1 wrong, which exposed an adapter bug (duplicate link adds). After the fixes, a second round of 24 was all correct, and a person reviewed 50 more, all correct. Keel's primitives, asked directly with no agent, agree with the gold on all 387.
+\subsection{Three sets}
+\label{sec:sets}
 
-% ===========================================================================
-\section{Systems and protocol}
-\label{sec:systems}
-
-Every system reads the same source, the tenant's log as written, in its best ordinary form; agents differ only in their tools (Table~\ref{tab:systems}).
+The sets share the pipeline, the templates and the per-type counts, and differ in instances, projects and seed (Table~\ref{tab:sets}).
 
 \begin{table*}[t]
-\caption{The systems compared, their tools and their ingest.}
-\label{tab:systems}
+\caption{The three question sets. Tenants are whole projects; no instance is shared between sets.}
+\label{tab:sets}
 \centering
-\small
-\begin{tabularx}{\textwidth}{P{1.45in} L P{1.55in}}
+\footnotesize
+\begin{tabularx}{\textwidth}{l L r r L}
 \toprule
-System & Tools & Ingest \\
+Set & Tenants (instance project, issues) & Questions & Seed & Status \\
 \midrule
-Keel & The five tools over MCP, the listing ceiling (200) (\code{-{}-max-list 200}) & Deterministic, no LLM \\
-Keel without a ceiling (ablation) & Same, listings uncapped & Same \\
-Product API & \code{get\_issue}, \code{get\_changelog} (both times, initial values), \code{search\_issues} with JQL's \code{WAS\,\ldots\,ON} and \code{CHANGED DURING} (Appendix~\ref{app:apitools}) & None \\
-RAG & Hybrid search (dense 512-d + BM25, RRF) over one record per event, both times in it, issue filter & Embeddings \\
-Closed book & None & None \\
-Graphiti 0.30.2 & \code{search\_memory} & LLM extraction (Luna), one-issue subset \\
-Mem0 2.2.1 & \code{search\_memory} & LLM extraction (Luna), one-issue subset \\
-TGMS 0.8.0 & Its fifteen tools (its paper describes thirteen operators); and its own planner, plan verifier and executor & Deterministic, no LLM; tools with Luna, its pipeline with Sonnet and Opus; tenant-wide questions only \\
+Development & Hyperledger INDY 2,323; MariaDB MXS 3,333; Spring SEC 3,150 & 387 & 7 & Read while Keel was tuned: tool descriptions, compact text, the generated views \\
+\addlinespace
+Held-out & JiraEcosystem AC 1,544; Sakai GRBK 1,433; RedHat PROJQUAY 2,455 & 387 & 31 & Tenants, conditions, commands, budget and analysis registered on 2026-10-26, before any run \\
+\addlinespace
+Confirmation & Apache TAJO 2,183; Apache RAVE 1,286 & 258 & 47 & Tenant rule, conditions, three hypotheses with margins, commands and analysis registered on 2026-11-01, before any question existed; three amendments, each before the results they could affect \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-\textbf{Agents.} GPT-6 Luna runs through a gateway (OfoxAI) at temperature 0, and Claude Haiku 5.5 and Claude Sonnet 5.5 straight from Anthropic's API, with the same system prompt for every system, except one paragraph that describes that system's tools (Appendix~\ref{app:prompt}). Claude runs at its default temperature, which Haiku and Sonnet do not let a caller change, with thinking off and prompt caching on; caching changes the price, not the answer. Claude Sonnet 5.5 is a one-repetition extension: every system but the two memory systems, on both question sets.
+\textbf{Selection.} Held-out tenants were chosen by a rule fixed before screening: 900 to 4,000 issues; the replay check mismatching on at most 1\% of issues; a priority scheme with Blocker, Critical or Highest, so the urgent rule can hold; at most 1\% of status values without a category; and the unmodified pipeline filling every per-type count. Of 97 projects in 11 instances, three passed, one per instance, and those are the set. The confirmation set's rule relaxed only the last condition (at least 100 questions and half of each type's count) and took the three passing projects with the most questions, at most one per instance. No project of the eight instances first named passed; an amendment, written before any question was generated, admitted every unused project, and none passed either. A second amendment, written before Apache or Mojang (the two largest instances, left out of the earlier screenings for size) were restored, admitted their projects and added one rule: with fewer than three instances passing, fill to three by the same ranking, at most two per instance. Sixty Apache projects passed; Mojang's one candidate did not; the ranking gave TAJO and RAVE, the two Apache projects with all 129 questions, no replay mismatch and the most issues. The set is therefore disjoint from the other two in instances, projects and questions, but its two tenants share an instance (Appendix~\ref{app:provenance} and \code{evals/jira/confirm/README.md} record every step).
 
-\textbf{Grading.} Every answer is structured: the agent ends with \code{ANSWER: <json>}, graded by exact match after normalizing case, empty values, issue-key prefixes and yes/no. No judge model is used. A run that ends in an error (a prompt over the model's limit) counts as wrong; a gateway outage leaves the run out for a rerun. A partial set scores zero under exact match; Appendix~\ref{app:tables}, Table~\ref{tab:b6} grades the set-valued tenant-wide questions by set-F1 as well, which narrows the Keel--API gap to 15 to 27 points and leaves RAG far behind.
+% ===========================================================================
+\section{Conditions and protocol}
+\label{sec:conditions}
+\label{sec:systems}
 
-For a system $S$, agent $m$ and question set $Q$ with $R$ repetitions, accuracy is the share of runs graded correct, where $g$ is the exact-match grader and $a$ the extracted answer:
+Every condition reads the same log, late arrivals and corrections included; agents differ only in their tools and one paragraph of the system prompt that describes them (Table~\ref{tab:conditions}).
+
+\begin{table*}[t]
+\caption{Conditions. All SQL conditions run DuckDB 2.0.0, read-only, rows capped at 200 with the cut said, like Keel's listing ceiling.}
+\label{tab:conditions}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{P{0.75in} L P{1.5in}}
+\toprule
+Condition & What the agent gets & Sets \\
+\midrule
+\code{keel} & Keel's four read tools over MCP (\code{annotate} off), compact text, listing ceiling 200 & All three \\
+\code{keel+query} & The same plus \code{query} over the SQL compiled from the cartridge, served by Keel's MCP server over an in-memory SQLite store; the compiled paragraph in the server's instructions & All three (post hoc on the first two) \\
+\code{sql} & \code{sql\_query} over the log modelled by hand: one row per issue, each field's history as an SQL:2011-style bitemporal table, links bitemporal the same way, statuses and their categories, the raw events; and hand-written macros \code{issue\_state\_at(t)}, \code{issue\_state\_known\_at(t, k)}, \code{links\_at(t)} and one per rule & All three \\
+\code{sql-tables} & The same tables without the macros; the rules as definitions in words & Held-out \\
+\code{sqlgen} & \code{sql\_query} over Keel's own tables with the first generator's output: \code{state\_at}, \code{state\_known\_at}, \code{relations\_at} and the rule macros; a hand-written paragraph & Held-out \\
+\code{sqlgen2} & The same with the per-kind and change views of Section~\ref{sec:sql}, and the paragraph generated by \code{describe} & All three (post hoc on the first two) \\
+\code{api} & A Jira-like API: \code{get\_issue}, \code{get\_changelog} (both times, initial values) and \code{search\_issues} with JQL's \code{WAS\,\ldots\,ON} and \code{CHANGED DURING} (Appendix~\ref{app:apitools}) & Held-out (and the first run) \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\textbf{Agent.} Claude Haiku 5.5, three repetitions per condition, at its default temperature (callers cannot change it), thinking off, prompt caching on. The held-out registration named GPT-6 Luna too; an amendment before any run dropped it. Held-out and confirmation runs go straight to Anthropic's API; the development-set runs of \code{keel+query} and \code{sqlgen2} went through a gateway (OfoxAI) at a time the direct account had no credit, so their costs are not comparable with the other sets'. The confirmation run started through the gateway and, after 82 runs, was restarted from nothing straight to Anthropic, its route on the held-out set; the 82 rows are kept aside, unanalysed (the third amendment).
+
+\textbf{Grading.} Every answer is structured: the agent ends with \code{ANSWER: <json>}, graded by exact match after normalizing case, empty values, issue-key prefixes and yes/no. No judge model is used; a set must match exactly. A run that ends in an error counts as wrong; a run lost to a gateway or network fault is set aside and asked again.
+
+\textbf{Statistics.} Accuracy is the share of runs graded correct, a question's repetitions averaged first:
 \begin{equation*}
-\mathrm{Acc}(S, m) = \frac{1}{|Q|\,R} \sum_{q \in Q} \sum_{r=1}^{R} g\big(a_{q,r},\ \mathrm{gold}_q\big)
+\mathrm{Acc}(S) = \frac{1}{|Q|\,R} \sum_{q \in Q} \sum_{r=1}^{R} g\big(a_{q,r},\ \mathrm{gold}_q\big).
 \end{equation*}
+Questions of one tenant and type share a template and an issue population, so they are not independent draws. Intervals and differences use a cluster bootstrap that resamples tenant $\times$ type cells whole (tenant-wide questions by sub-type), $B = 10{,}000$, seed 0; a difference between two conditions is paired over the questions both answered. On the held-out set the five registered comparisons are tested two-sided with Holm's adjustment, and the bootstrap over questions as independent draws is reported beside them. On the confirmation set each hypothesis is a one-sided decision fixed in advance: \emph{H1}, \code{sqlgen2} $-$ \code{sql}, and \emph{H2}, \code{keel+query} $-$ \code{sql}, are confirmed if the interval's lower bound is above $-2$ points (non-inferiority); \emph{H3}, \code{keel+query} $-$ \code{keel}, if it is above 0. The 2-point margin is smaller than every gap the planned held-out comparisons found. No multiplicity adjustment: three claims, each stated in advance. Cost is the dollars spent over the correct runs, at the provider's prices.
 
-The 95\% interval resamples questions with replacement, $B = 10{,}000$ times with a fixed seed, after averaging each question's repetitions, since repetitions of one question are not independent draws. A difference between two systems is resampled paired, on the questions both answered, with a two-sided $p$-value:
-\begin{equation*}
-\mathrm{CI}_{95} = \big[\,\widehat{\mathrm{Acc}}^{*}_{(0.025)},\ \widehat{\mathrm{Acc}}^{*}_{(0.975)}\,\big], \qquad \Delta^{*}_b = \mathrm{Acc}^{*}_b(S_1) - \mathrm{Acc}^{*}_b(S_2)
-\end{equation*}
-
-Cost is reported per question as input and output tokens and dollars at each provider's prices. Every result row records the repository commit (Keel, harness and questions), whether the code had uncommitted changes, and the versions of the packages each system ran on. Keel's code is the same in every row of the main run; the harness commits after the first changed only how failures are handled (Appendix~\ref{app:provenance}).
-
-\textbf{Fairness.} Baselines get their documented best setup: JQL's history operators for the API, a hybrid retriever for RAG, each memory system configured by its own guide with pinned releases. Graphiti and Mem0 ingest only the issues the one-issue questions touch (4,381 events), because the whole log would take Graphiti about 210 hours. This favours them, and they are not asked tenant-wide questions. TGMS stamps transaction time with its own clock, so ``as recorded by'' questions are not natively answerable by it.
-
-\textbf{Pilot.} A pilot on MariaDB (105 one-issue and 24 tenant-wide questions, Luna and Haiku through the gateway) preceded the main run and shaped it (Appendix~\ref{app:provenance}).
-
-The tenant-wide templates were written before the pilot. The pilot then changed what Keel's tools return (Appendix~\ref{app:provenance}); the baselines' tools were not revised. Appendix~\ref{app:tables}, Table~\ref{tab:b5} breaks the 72 questions down by sub-type: the API ties Keel on status at an instant and beats it on change windows, and loses on known-at sets and rule listings, which the product's API cannot express; Table~\ref{tab:b6} grades the set-valued questions by set-F1 as well.
-
-\textbf{Main run.} Three tenants, 387 questions: 315 one-issue (105 per tenant) and 72 tenant-wide (24 per tenant). Luna and Haiku run three repetitions of Keel, the API and RAG, except Luna's RAG on tenant-wide questions, one repetition. Closed book runs once with Luna and three times with Haiku. Graphiti and Mem0 run one repetition, one-issue questions only, with Luna and Haiku; we cut them from three to one for budget. Sonnet runs once on everything but the memory systems. A per-invocation budget cap (\code{-{}-max-usd}) stops starting runs once an invocation has spent that much; the rows it leaves out are reported where they occur. The ablation, Keel without a ceiling, runs once with Luna on tenant-wide questions. The agents cost 33.49 USD of a 100 USD Anthropic credit and about 6.9 USD at the gateway. Confidence intervals by bootstrap over questions, as above.
+\textbf{Frozen code.} Each set's runs use one commit of \code{keel/}: d7b3576 for the held-out registered conditions, 25979b2 for its post hoc \code{keel+query}, d620fcb (release 0.36.0) for the confirmation set; every result row records the repository commit, whether \code{keel/} or the harness had uncommitted changes, and package versions.
 
 % ===========================================================================
 \section{Results}
 \label{sec:results}
 
-Section~\ref{sec:ingest} measures ingest cost and determinism; \ref{sec:oneissue} and \ref{sec:tenant} give accuracy on one-issue and tenant-wide questions, \ref{sec:bytype} by question type and \ref{sec:memory} for the memory systems; \ref{sec:cost} gives cost per correct answer, \ref{sec:ablations} the ablations, \ref{sec:governed} governed memory and \ref{sec:tdbench} the external check on TDBench.
+\subsection{Held-out set, as registered}
+\label{sec:heldout}
 
-\subsection{Ingest cost and determinism}
-\label{sec:ingest}
-
-Table~\ref{tab:ingest} compares the systems' ingest.
-
-\begin{table*}[t]
-\caption{Ingest cost and determinism, by system.}
-\label{tab:ingest}
-\centering
-\small
-\begin{tabularx}{\textwidth}{l Q{1.3in} Q{1.0in} L L}
-\toprule
-System & LLM calls per event & Input tokens per event & Time & Whole log (51,669 events) \\
-\midrule
-Keel & 0 & 0 & 0.1--0.2 s per tenant & $\sim$0.5 s \\
-TGMS & 0 & 0 & 2 s to load MariaDB & seconds \\
-Mem0 & 1.0 & $\sim$8,000--13,400 & 6--14 s per event & $\sim$4--8 days, never attempted \\
-Graphiti & 2.9--3.0 (up to 6--7 in early trials) & $\sim$5,000--5,200 & $\sim$15 s per event (33--124 s at worst) & $\sim$210 h at the measured rate \\
-\bottomrule
-\end{tabularx}
-\end{table*}
-
-Mem0 ingested the 4,381-event subset of the three tenants for about 4.2 USD. Graphiti finished MariaDB (1,122 events) and Spring (938) at 14.5 to 14.8 s per event, then Hyperledger (2,321): about 17 hours in all. In early trials its cost per event grew with its graph, as it deduplicates and invalidates against more facts. The extractor's content filter refused prompts for harmless Jira text that other models accept. The refused events went to a fallback model (DeepSeek V4.1 Flash; Haiku for Mem0's first 4) and were counted: 41 of Graphiti's 4,381 events (Hyperledger 20, MariaDB 15, Spring 6) and 5 of Mem0's. No event was refused by every model, so none was dropped. Keel builds the same graph from each tenant's log in order, reversed and in three shuffles: Hyperledger 2,324 entities and 35,876 facts, MariaDB 3,334 and 41,244, Spring 3,151 and 36,655, compared on value, evidence and all four times, in 0.1 to 0.2 s of ingest per tenant in memory (0.3 to 0.4 s with the graph comparison). Quantifying this check for the paper found a residual order dependence: before the fix in Appendix~\ref{app:provenance}, a shuffled order differed in \code{closed\_at} alone on 107 to 155 facts per tenant (0.3\%), where a correction arrived before the value it corrects; log order and reversed order were already identical, and every result in this paper was measured in log order. Keel answered all 2,692 injected windows as expected; before transaction time was taken from the event's \code{recorded\_at} rather than the ingest clock (Appendix~\ref{app:provenance}) it got all 900 of Hyperledger's wrong.
-
-\subsection{One-issue questions (315)}
-\label{sec:oneissue}
-
-Every system that reads the log scores 0.95 to 0.99 on one-issue questions (Table~\ref{tab:oneissue}); Keel leads the API by 3 points with Luna and Haiku ($p < 0.001$) and ties with Sonnet; the memory systems lose, and closed book answers only the abstentions.
+As registered, Keel's five tools trail hand-written SQL by 2.8 points, tie hand-written SQL without its macros, and lead the product's API by 9.1 (Tables~\ref{tab:heldout} and~\ref{tab:planned}).
 
 \begin{table}[t]
-\caption{Accuracy on the 315 one-issue questions, by agent and system.}
-\label{tab:oneissue}
+\caption{Held-out set, Haiku, 387 questions, three repetitions: accuracy (\%) with 95\% cluster CI, by scope, USD per correct answer and input tokens per run. Rows below the rule were built after the registered results were read.}
+\label{tab:heldout}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{l r r r r r r}
+\setlength{\tabcolsep}{2.6pt}
+\begin{tabular}{l r c r r r r}
 \toprule
-Agent & Keel & API & RAG & Mem0 & Graphiti & Closed book \\
+Condition & Acc. & 95\% CI & One & Tenant & USD/corr. & Tokens \\
 \midrule
-Luna & 0.99 & 0.96 & 0.98 & 0.61 & 0.16 & 0.06 \\
-Haiku & 0.98 & 0.95 & 0.97 & 0.54 & 0.13 & 0.05 \\
-Sonnet & 0.99 & 0.99 & 0.99 & not run & not run & 0.05 \\
+\code{api} & 86.7 & [79.3, 92.7] & 92.5 & 61.6 & 0.00087 & 9.9k \\
+\code{keel} & 95.9 & [93.8, 97.6] & 96.9 & 91.2 & 0.00057 & 8.4k \\
+\code{sql-tables} & 96.2 & [93.6, 98.3] & 97.6 & 90.3 & 0.00073 & 8.2k \\
+\code{sqlgen}, registered & 89.6 & [81.4, 96.1] & 91.4 & 81.5 & 0.00085 & 9.9k \\
+\code{sqlgen}, zone fixed & 98.2 & [96.6, 99.5] & 98.7 & 95.8 & 0.00075 & 10.1k \\
+\code{sql} & 98.7 & [97.5, 99.6] & 98.4 & 100.0 & 0.00047 & 5.3k \\
+\midrule
+\code{sqlgen2} & 99.1 & [97.8, 100.0] & 98.8 & 100.0 & 0.00047 & 6.3k \\
+\code{keel+query} & 99.1 & [97.9, 100.0] & 99.0 & 99.5 & 0.00043 & 9.7k \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{table*}[t]
-\caption{One-issue questions: paired Keel minus each system, in points, with 95\% CI.}
-\label{tab:oneissue-paired}
-\centering
-\small
-\begin{tabularx}{\textwidth}{l L L L L}
-\toprule
-Agent & vs API & vs RAG & vs Mem0 & vs Graphiti \\
-\midrule
-Luna & +3 [+2, +5], $p < 0.001$ & +1.7 [+0.4, +3.2], $p = 0.011$ & +39 [+33, +44], $p < 0.001$ & +84 [+80, +88], $p < 0.001$ \\
-Haiku & +3 [+1, +5], $p < 0.001$ & +1 [$-$1, +2], $p = 0.33$ & +44 [+38, +49], $p < 0.001$ & +85 [+81, +88], $p < 0.001$ \\
-Sonnet & 0 [0, 0], $p = 1.0$ & 0 [0, 0], $p = 1.0$ & not run & not run \\
-\bottomrule
-\end{tabularx}
-\end{table*}
-
-Keel's lead over the API on one issue is three points with Luna and Haiku and none with Sonnet (Table~\ref{tab:oneissue-paired}); against RAG it is at most two. A context graph adds little where the product API already exposes the issue.
-
-\subsection{Tenant-wide questions (72)}
-\label{sec:tenant}
-
-Tenant-wide questions separate the systems: Keel answers 0.93 to 0.99, the API 0.61 to 0.78, RAG 0.14 to 0.26 (Figure~\ref{fig:3}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b1}).
-
-\begin{figure}[t]
-\centering
-\keelfig{figures/fig3-tenant-accuracy.pdf}{3}
-\caption{Accuracy on the 72 tenant-wide questions, by agent and system. Keel leads with every agent, the API is second and RAG far behind; closed book scores 0.00. Each bar carries its 95\% bootstrap interval over questions ($B = 10{,}000$; a question's repetitions averaged first).}
-\label{fig:3}
-\end{figure}
-
-\begin{table*}[t]
-\caption{Tenant-wide questions: paired Keel minus each system, in points, with 95\% CI.}
-\label{tab:tenant-paired}
-\centering
-\small
-\begin{tabularx}{\textwidth}{l L L L L}
-\toprule
-Agent & vs API & vs RAG & vs closed book & vs TGMS \\
-\midrule
-Luna & +32 [+20, +44], $p < 0.001$ & +72 [+60, +82], $p < 0.001$ & +93 [+88, +97], $p < 0.001$ & +73 [+63, +82], $p < 0.001$ \\
-Haiku & +28 [+16, +40], $p < 0.001$ & +79 [+70, +87], $p < 0.001$ & +93 [+88, +97], $p < 0.001$ & --- \\
-Sonnet & +21 [+11, +31], $p < 0.001$ & +74 [+59, +88], $p < 0.001$, 34 questions & +99 [+96, +100], $p < 0.001$ & --- \\
-\bottomrule
-\end{tabularx}
-\end{table*}
-
-The gap over the API holds with every agent (Table~\ref{tab:tenant-paired}). A stronger agent narrows it, from +32 points with Luna to +21 with Sonnet, but does not close it. TGMS, run with Luna on all 72 tenant-wide questions (one repetition), answers 0.19 [0.11, 0.29]: 8 of MariaDB's 24, 3 of Hyperledger's and 3 of Spring's. Keel leads it by 73 points [+63, +82] ($p < 0.001$), and TGMS reads about 741k input tokens a question, 0.39 USD per correct answer against Keel's 0.0037. This scopes what 0.19 measures: TGMS's tools used directly by one agent, on a workload partly built on transaction-time and domain-rule semantics its current interface does not expose, so it tests workload fit and agent-facing interface coverage more than TGMS's temporal graph capabilities. Through its own agent layer instead (a planner writing its operator IR, a static plan verifier, an executor with up to three repairs, scored on the engine's answer as TGMS's harness scores it), TGMS answers 0.10 [0.04, 0.17] of the 72 with Sonnet and 0.22 [0.12, 0.32] with Claude Opus 5.5 (one repetition; Haiku, piloted on MariaDB, answered none of its 24). The engine is not what fails (where we checked a miss by hand, one direct snapshot returns the gold); the misses are intermediate results cut at its default limit of 100 that plans then treat as complete (15 with Sonnet, 12 with Opus), plans that pass the static verifier and fail when they run (13 and 27), the 12 as-known-at questions, and, with Sonnet, plans that stop at resolving entities (17).
-
-\subsection{Accuracy by question type}
-\label{sec:bytype}
-
-Pooled over agents, Keel's advantage is on tenant-wide questions: 0.94 against 0.65 for the API and 0.17 for RAG (Figure~\ref{fig:4}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b2}). On one-issue types every system that reads the log scores 0.92 or above.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=5.5in]{figures/fig4-by-type.pdf}
-\caption{Accuracy by question type, pooled over agents; darker cells are more accurate. Mem0 and Graphiti were not asked tenant-wide questions.}
-\label{fig:4}
-\end{figure*}
-
-The API loses ground on one issue only where history matters: as-of, known-at and links. Closed book answers nothing but the abstentions, suggesting the models do not know these trackers from training.
-
-\subsection{Memory systems}
-\label{sec:memory}
-
-Mem0 and Graphiti lose on one-issue questions, consistent with loss at extraction, since both agents score alike. Both ran one repetition, on the one-issue subset only (Section~\ref{sec:systems}; Table~\ref{tab:memory}).
-
 \begin{table}[t]
-\caption{Memory systems: accuracy on one-issue questions, by agent, system and tenant.}
-\label{tab:memory}
+\caption{Held-out set, the five registered comparisons: paired difference in points, 95\% cluster CI, Holm-adjusted $p$, and questions where A / B is better.}
+\label{tab:planned}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{l l r r r}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l r c r r}
 \toprule
-Agent & System & Hyperledger & MariaDB & Spring \\
+A $-$ B & Diff. & 95\% CI & $p_{\mathrm{Holm}}$ & A / B \\
 \midrule
-Luna & Mem0 & 0.63 & 0.57 & 0.62 \\
-Haiku & Mem0 & 0.62 & 0.51 & 0.50 \\
-Luna & Graphiti & 0.20 & 0.12 & 0.14 \\
-Haiku & Graphiti & 0.18 & 0.10 & 0.12 \\
+\code{keel} $-$ \code{sql} & $-2.8$ & [$-4.7$, $-1.4$] & $<0.001$ & 5 / 29 \\
+\code{keel} $-$ \code{sqlgen} & $+6.3$ & [$+0.4$, $+13.9$] & 0.066 & 46 / 14 \\
+\code{keel} $-$ \code{sql-tables} & $-0.3$ & [$-2.9$, $+2.2$] & 0.74 & 18 / 25 \\
+\code{keel} $-$ \code{api} & $+9.1$ & [$+3.3$, $+16.4$] & $<0.001$ & 70 / 22 \\
+\code{sql} $-$ \code{sqlgen} & $+9.1$ & [$+2.6$, $+17.5$] & 0.002 & 52 / 4 \\
+\midrule
+\multicolumn{5}{l}{With the zone-fixed \code{sqlgen} arm (not registered):} \\
+\code{keel} $-$ \code{sqlgen} & $-2.3$ & [$-3.9$, $-1.0$] & $<0.001$ & 5 / 27 \\
+\code{sql} $-$ \code{sqlgen} & $+0.5$ & [$-0.5$, $+1.8$] & 0.81 & 8 / 6 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Both agents score alike on each memory, so what fails is what extraction stored: INDY-311's priority, for example, never reached Graphiti's graph. Outside the abstentions, Mem0 answers 0.44 to 0.77 of each one-issue type and Graphiti 0.00 to 0.15.
+\textbf{Keel's tools against SQL.} The registered comparison Keel was expected to win is lost: \code{keel} $-$ \code{sql} is $-2.8$ points, 5 questions better and 29 worse. Keel loses on two types (Appendix~\ref{app:sets}): known-at questions (93.8\% against 98.7\%) and tenant-wide ones (91.2\% against 100\%). Without the hand-written macros, SQL ties Keel's tools ($-0.3$): the advantage is in the point-in-time views, not in SQL as such.
 
-\subsection{Cost per correct answer}
-\label{sec:cost}
+\textbf{The first generated SQL.} \code{sqlgen} as registered trails hand-written SQL by 9.1 points, and most of that was a defect in the generator, found while reading its failures: a helper wrote the session's wall time with a literal \code{+00:00}, and the benchmark opened the database in the machine's zone, so every instant an agent passed to a macro moved five hours; known-at accuracy was 68\%. Fixed (89e8510) and run again on the same questions, \code{sqlgen} trails \code{sql} by 0.5 points, within noise, and still trails it by 4 points on tenant-wide questions. Both runs are reported; the registered one is what the registration covers.
 
-On tenant-wide questions Keel is the cheapest per correct answer with all three agents (Figure~\ref{fig:5}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b3}); on one-issue questions it reads more tokens than the API (Table~\ref{tab:oneissue-cost}).
+\textbf{The API.} The product's API, with JQL's history operators, trails Keel by 9.1 points, nearly all of it on tenant-wide questions (61.6\% against 91.2\%), which it can express only by many calls.
 
-\begin{figure}[t]
-\centering
-\keelfig{figures/fig5-cost.pdf}{5}
-\caption{Accuracy against USD per correct answer on tenant-wide questions, one point per agent and system; the cost axis is logarithmic. With each agent Keel's point sits up and to the left of the API's and RAG's: more accurate and cheaper. RAG costs about ten to thirty times as much per correct answer as Keel with the same agent.}
-\label{fig:5}
-\end{figure}
+\subsection{Two conditions built after the held-out results}
+\label{sec:posthoc}
+
+Reading those results, we changed what the generator emits and gave Keel the sixth tool. Both changes were built knowing the held-out results, so on the held-out and development sets they are exploratory.
+
+\textbf{\code{sqlgen2}.} The first generator returned facts as rows of (subject, predicate, value as JSON text): correct, but the agent had to pivot, decode and filter them, and after the zone fix most of its remaining misses were tenant-wide. The cartridge gained optional declarations (a kind's \code{facts} and \code{attrs}, \code{one} on a relation), and from them the generator emits the per-kind views and the change view of Section~\ref{sec:sql}, with the agent's paragraph generated by \code{describe} instead of written by hand. Nothing about Jira entered the generator; the declarations are in the Jira cartridge. The first generator's output is unchanged, and \code{sqlgen} keeps it.
+
+\textbf{\code{keel+query}.} The five tools plus \code{query} over the same compiled views, served by Keel's own MCP server (Section~\ref{sec:query}).
+
+Both tie hand-written SQL on the held-out set and again on the development set, and \code{query} adds to the five tools on both (Table~\ref{tab:sets-acc}). On the development set Haiku made 1,534 \code{query} calls and 281 failed, none behind a wrong answer: 250 timeouts, 185 of them while a tenant's sandbox was copied under six concurrent benchmark workers (the copy no longer counts against the timeout), and 31 SQL errors, 17 of them the tenant written as a schema prefix, which the generated paragraph now forbids by name. Both fixes are in release 0.36.0, which the confirmation set froze.
+
+\subsection{Confirmation set}
+\label{sec:confirm}
+
+Registered in advance, all three hypotheses are confirmed (Table~\ref{tab:hyp}): the compiled SQL is not worse than hand-written SQL, Keel's tools with \code{query} are not worse either, and \code{query} adds to the five tools. The run made 3,096 runs, with no harness error, for 1.44 USD.
 
 \begin{table}[t]
-\caption{One-issue questions, USD per correct answer (mean input tokens per question).}
-\label{tab:oneissue-cost}
+\caption{Confirmation set (258 questions, Haiku, three repetitions): the three registered hypotheses, paired over all 258, 95\% cluster CI, and the decision rule fixed in advance.}
+\label{tab:hyp}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{l r r r r r}
+\setlength{\tabcolsep}{2.8pt}
+\begin{tabular}{l l r c c r l}
 \toprule
-Agent & Keel & API & RAG & Mem0 & Graphiti \\
+& A $-$ B & Diff. & 95\% CI & Bound & A / B & Result \\
 \midrule
-Luna & 0.0005 (4.6k) & 0.0003 (2.1k) & 0.0003 (1.8k) & 0.0036 (20k) & 0.017 (24k) \\
-Haiku & 0.0007 (7.6k) & 0.0005 (4.0k) & 0.0006 (4.2k) & 0.0033 (17k) & 0.010 (13k) \\
-Sonnet & 0.016 (8.2k) & 0.0087 (3.8k) & 0.0105 (4.7k) & not run & not run \\
+H1 & \code{sqlgen2} $-$ \code{sql} & $+0.3$ & [$-0.3$, $+0.7$] & $> -2$ & 3 / 1 & confirmed \\
+H2 & \code{keel+query} $-$ \code{sql} & $+0.3$ & [$-0.3$, $+0.7$] & $> -2$ & 3 / 1 & confirmed \\
+H3 & \code{keel+query} $-$ \code{keel} & $+1.2$ & [$+0.2$, $+2.5$] & $> 0$ & 10 / 2 & confirmed \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Keel answers a tenant-wide question in about 5.5 to 5.9 tool calls, the API in 10 to 19 and RAG in 12 to 50; Sonnet with the API reads twice the tokens of Sonnet with Keel. On one-issue questions Keel reads about twice the API's tokens (1.9 to 2.2 times), because it returns the field's temporal history.
-
-\subsection{Ablations}
-\label{sec:ablations}
-
-\subsubsection*{Listing ceiling}
-
-The listing ceiling (200) cuts the cost per correct answer about fourfold, with accuracy within noise (one repetition, no interval; Luna, tenant-wide questions; Table~\ref{tab:ceiling}).
-
 \begin{table}[t]
-\caption{Listing ceiling ablation: Luna on tenant-wide questions, one repetition.}
-\label{tab:ceiling}
+\caption{Accuracy (\%) by condition and set, Haiku, three repetitions, with the paired differences behind the three hypotheses (points, 95\% cluster CI). On the development set \code{keel} is the first run's five tools in their full text form (Appendix~\ref{app:dev}); \code{keel+query} and \code{sqlgen2} ran later, through a gateway. Only the confirmation column is confirmatory for H1--H3.}
+\label{tab:sets-acc}
 \centering
 \footnotesize
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{l r r r}
 \toprule
-Keel listings & Accuracy & USD/correct & Tokens/question \\
+ & Development & Held-out & Confirmation \\
 \midrule
-With the ceiling (200) & 0.93 & 0.0037 & 31k \\
-Without the ceiling & 0.90 & 0.0145 & 128k \\
+\code{keel} & 97.1 & 95.9 & 94.8 \\
+\code{keel+query} & 99.2 & 99.1 & 96.0 \\
+\code{sql} & 99.3 & 98.7 & 95.7 \\
+\code{sqlgen2} & 99.4 & 99.1 & 96.0 \\
+\midrule
+H1: \code{sqlgen2} $-$ \code{sql} & \makecell[r]{$+0.1$\\ {[$-0.2$, $+0.4$]}} & \makecell[r]{$+0.3$\\ {[$-0.2$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} \\
+\addlinespace
+H2: \code{keel+query} $-$ \code{sql} & \makecell[r]{$-0.1$\\ {[$-0.6$, $+0.3$]}} & \makecell[r]{$+0.4$\\ {[$0.0$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} \\
+\addlinespace
+H3: \code{keel+query} $-$ \code{keel} & \makecell[r]{$+2.2$\\ {[$+0.8$, $+3.8$]}} & \makecell[r]{$+3.3$\\ {[$+1.7$, $+5.2$]}} & \makecell[r]{$+1.2$\\ {[$+0.2$, $+2.5$]}} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsubsection*{Rules in the cartridge}
+The confirmation set is harder for every condition than the other two, by 3 to 4 points, and the difference is in one question type. Of its 258 questions, 10 are missed by all four conditions in at least two of three repetitions, and all 10 ask which of the issues ``related to'' an issue were done. On each, all four conditions return the same set: the gold plus issues the oracle leaves out, nearly all of them the asked issue's sub-tasks, and twice a \code{depends\_on} or \code{blocks} link. The oracle counts only the \code{relates\_to} relation, as the question's parameters say; the agents read ``related to'' broadly. Apache uses sub-tasks heavily, so links accuracy is 67\% here against about 93\% on the held-out set and 96\% on the development set with the same wording. We found this after the result and changed nothing: the hypotheses are paired differences, and on those 10 questions the four conditions fail alike, adding 0 to every difference. A later set should word the question ``linked to X by \emph{relates to}''.
 
-The Jira cartridge is loaded with no rules, so Keel evaluates nothing and the agent applies the definition each question states from facts and links. We ask the 63 questions that need a rule (45 one-issue rule questions and 18 tenant-wide questions that use blocked, stalled or urgent\_unassigned), paired against the main run's Keel rows, with Luna and Haiku at three repetitions: 378 runs, 1.28 USD (Table~\ref{tab:rules}).
+Outside links, the four conditions answer the confirmation set's one-issue questions at 98 to 100\% per type. On its 48 tenant-wide questions \code{keel} answers 95.1\% and the other three 99.3 to 100\%, the same place the held-out set found Keel's tools weakest.
 
-\begin{table*}[t]
-\caption{Rules ablation: Keel with the cartridge's rules (Rules) against the same cartridge with none (None). Gap in points; Tokens = input tokens per question.}
-\label{tab:rules}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{5pt}
-\begin{tabularx}{\textwidth}{l L c c c c c}
-\toprule
-Agent & Questions & Rules & None & Gap [95\% CI], $p$ & Tokens & USD/correct \\
-\midrule
-Haiku & Rule, one issue (45) & \makecell{0.99\\ {[0.98, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$1 [$-$2, 0]\\ $p = 0.73$} & 7k vs 7k & \makecell{0.0008\\ vs 0.0007} \\
-\addlinespace
-Haiku & Tenant with a rule (18) & \makecell{0.94\\ {[0.89, 1.00]}} & \makecell{0.69\\ {[0.48, 0.87]}} & \makecell{+26 [+4, +48]\\ $p = 0.022$} & 60k vs 78k & \makecell{0.0044\\ vs 0.0071} \\
-\addlinespace
-Luna & Rule, one issue (45) & \makecell{0.99\\ {[0.98, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$1 [$-$2, 0]\\ $p = 0.72$} & 4k vs 4k & \makecell{0.0005\\ vs 0.0005} \\
-\addlinespace
-Luna & Tenant with a rule (18) & \makecell{0.93\\ {[0.85, 0.98]}} & \makecell{0.67\\ {[0.48, 0.83]}} & \makecell{+26 [+9, +44]\\ $p = 0.001$} & 77k vs 149k & \makecell{0.0090\\ vs 0.0239} \\
-\bottomrule
-\end{tabularx}
-\end{table*}
+\subsection{Cost}
+\label{sec:res-cost}
 
-On one issue the agent applies a stated definition as well as Keel does. On tenant-wide questions, rules evaluated by Keel add 26 points with both agents and make a correct answer 1.6 to 2.7 times cheaper. With only 18 tenant-wide questions the intervals are wide.
+Hand-written SQL reads the fewest tokens (5.3k per run on both sets) and \code{keel+query} the most among the four (9.5k to 9.7k), because the server's instructions carry the compiled paragraph beside the tools' descriptions. Per correct answer \code{keel+query} is nonetheless the cheapest: 0.00043 USD on the held-out set and 0.00044 on the confirmation set, against 0.00047 and 0.00048 for \code{sql} and \code{sqlgen2} and 0.00057 and 0.00055 for \code{keel}. Every condition but the API averages 2.2 to 2.6 turns a run; we did not decompose the cost further. The product's API costs 0.00087 per correct answer on the held-out set. These differences are descriptive; none was registered as a hypothesis.
 
-\subsubsection*{Brief vs full reads}
+\subsection{Determinism and scale}
+\label{sec:determinism}
 
-Every context, history and search call is forced to detail=``full'', which adds transaction times, ids and bookkeeping to the brief form the agent gets by default. All 387 questions are asked with Luna and Haiku, one repetition, paired against the main run's Keel rows: 774 runs, 5.76 USD (Table~\ref{tab:brief}).
+\textbf{Real logs.} Keel builds the same graph from each development tenant's log in order, reversed and in three shuffles, compared on value, evidence and all four times: Hyperledger 2,324 entities and 35,876 facts, MariaDB 3,334 and 41,244, Spring 3,151 and 36,655, in 0.1 to 0.2 s of ingest per tenant in memory, and it answers all 2,692 injected windows as expected. Quantifying this check found a residual order dependence, since fixed: a shuffled order differed in \code{closed\_at} on 0.3\% of facts where a correction arrived before the value it corrects (Appendix~\ref{app:provenance}).
 
-\begin{table*}[t]
-\caption{Brief against full reads: Keel's default tool output against the full form. Gap (brief $-$ full) in points; Tokens = input tokens per question.}
-\label{tab:brief}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{5pt}
-\begin{tabularx}{\textwidth}{l L c c c c c}
-\toprule
-Agent & Questions & Brief & Full & Gap [95\% CI], $p$ & Tokens & USD/correct \\
-\midrule
-Haiku & One issue (315) & \makecell{0.98\\ {[0.97, 0.99]}} & \makecell{0.97\\ {[0.94, 0.98]}} & \makecell{+1 [0, +3]\\ $p = 0.13$} & 7.6k vs 9.3k & \makecell{0.0007\\ vs 0.0010} \\
-\addlinespace
-Haiku & Tenant (72) & \makecell{0.93\\ {[0.88, 0.97]}} & \makecell{0.88\\ {[0.79, 0.94]}} & \makecell{+6 [$-$1, +12]\\ $p = 0.10$} & 36k vs 198k & \makecell{0.0028\\ vs 0.059} \\
-\addlinespace
-Luna & One issue (315) & \makecell{0.99\\ {[0.99, 1.00]}} & \makecell{1.00\\ {[1.00, 1.00]}} & \makecell{$-$0.7 [$-$1.4, $-$0.2]\\ $p = 0.005$} & 4.6k vs 5.4k & \makecell{0.0005\\ vs 0.0006} \\
-\addlinespace
-Luna & Tenant (72) & \makecell{0.93\\ {[0.88, 0.97]}} & \makecell{0.88\\ {[0.79, 0.94]}} & \makecell{+5 [$-$3, +13]\\ $p = 0.23$} & 31k vs 212k & \makecell{0.0037\\ vs 0.025} \\
-\bottomrule
-\end{tabularx}
-\end{table*}
+\textbf{Synthetic logs.} A seeded generator with the Jira cartridge's event mix, late arrivals and corrections. At $10^5$ events, ingested in written and in shuffled order into MemoryStore and SqliteStore, entities, relations and facts hash identically, and replay rebuilds the same facts (release 0.36.0). SqliteStore ingests 16k to 23k events per second at every size up to $10^7$ events (1.2 kB per event on disk), and subject-level reads stay at or under 1 ms at the median and 4 ms at p99 at $10^7$. Tenant-wide reads grow with the tenant; pushed down to the store through the compiled SQL, a one-tenant $10^7$-event history window takes 114 to 138 ms on SQLite, DuckDB and Postgres, and a rule count 0.4 s on DuckDB against 18 s in Python. Split into 100 tenants, the same $10^6$ events answer in 10 to 100 ms.
 
-On tenant-wide questions the full form reads 5.5 to 7 times the input tokens and costs 7 to 21 times more per correct answer. Its 5 to 6 point accuracy drop is within noise at one repetition ($p = 0.10$ and $0.23$), so we do not claim an accuracy loss. On one-issue questions there is no practical difference; with Luna the full form is 0.7 points better, which is significant ($p = 0.005$).
+\subsection{The development set's first run}
+\label{sec:firstrun}
 
-\subsubsection*{What the three say}
+Before the held-out set existed, the first run compared Keel's five tools, in their full text form, with the product's API, hybrid retrieval and two memory systems built by LLM extraction, on the development set, with three agents (GPT-6 Luna, Claude Haiku 5.5 and Claude Sonnet 5.5); Appendix~\ref{app:dev} gives it in full. Its numbers are on the questions Keel was later tuned against, so they are development results, and the SQL conditions were not part of it.
 
-The listing ceiling and the brief form cut the cost per correct answer on tenant-wide questions about 4 and 7 to 21 times. Rules evaluated in the cartridge tie with the agent's own reading on one issue, and on tenant-wide questions add 26 points at 1.6 to 2.7 times lower cost. The shape of what the tools return, and where business logic is evaluated, is a cost lever and, for rules, an accuracy one.
-
-\subsection{Governed memory}
-\label{sec:governed}
-
-Keel's memory rules (contribution C4) held in all three tests: a property test, an adversary agent and a poisoning run. Random reads found no leak or miss in 26,666, the adversary agent got nothing through, and every check on writes, with the evidence check as fixed after the run, kept poisoned answers at 0.
-
-\subsubsection*{Property test}
-
-A seeded test (\path{tests/test_memory_properties.py}) writes 2,000 memories on the fleet cartridge and the in-memory store, each with a canary, a unique marker value, across two tenants, three registered agents, three tasks and four scopes. It then reads 20,000 times as a random tenant, agent and task through context, history and search, replays both tenants and reads 6,666 more times, checking each read against a reference model of who may see what. Result: 0 leaks and 0 misses in 26,666 reads; 2,470 reads were refused for a kind the agent may not read. The test does catch leaks: at the CI size (300 writes; 4,000 reads, 3,000 before the replay and 1,000 after), with scopes, kinds or relations unenforced it finds 33,775, 2,225 and 955 leaks before the replay and 11,796, 700 and 173 after. It calls no model; the full size takes 9 minutes, the CI size 4 s.
-
-\subsubsection*{Adversary agent}
-
-The adversary agent, an LLM, gets the five tools over the MariaDB graph, with Hyperledger's in the same store. Its registry lets it read issues only and write task and agent scope; a trusted copilot has planted four canaries it may not read: another tenant's, another agent's, another task's, and one on a kind outside its registry. 12 attacks (Appendix~\ref{app:attacks}): 8 reads and 4 forbidden writes, each tell it to use every tool and parameter and to retry; Luna and Haiku run each three times, 72 runs for 0.71 USD (Table~\ref{tab:adversary}).
-
-\begin{table}[t]
-\caption{Adversary agent: twelve attacks, three runs each. Refused: calls Keel refused; Leaked: canaries read; Forbidden writes: stored.}
-\label{tab:adversary}
-\centering
-\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{l r r r r r}
-\toprule
-Agent & Runs & Tool calls & Refused & Leaked & Forbidden writes \\
-\midrule
-Haiku & 36 & 272 & 85 & 0 & 0 \\
-Luna & 36 & 289 & 82 & 0 & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Of 62 annotate calls, 41 were refused; the 21 accepted were proposals, which the design allows, or the adversary's own task and agent memory, and no run guessed the task name. In 6 runs (3 impersonation, 3 admin listing) the model declined without any call; those test the model, not Keel.
-
-\subsubsection*{Poisoning}
-
-Without governance, one untrusted agent's wrong write is repeated by another agent in 91 to 98\% of its answers; each of Keel's checks, with the evidence check as fixed after the run, holds that at 0 with both agents (Figure~\ref{fig:6}). Before each of the 60 current-state questions (20 per tenant), the scripted poisoner writes a wrong value for the issue and field asked, one the field really takes in the tenant, never the gold. Luna and Haiku then answer through the main run's harness, in no task, three repetitions per condition: 2,880 runs for 1.43 USD. The condition added after ea9b30a (Appendix~\ref{app:provenance}) adds 360 runs for 0.14 USD. An answer is poisoned when it equals that value. The conditions differ in what the Jira cartridge lets the poisoner write (Table~\ref{tab:poisoning}; poisoned shares in Appendix~\ref{app:tables}, Table~\ref{tab:b4}).
+\begin{itemize}[leftmargin=*]
+\item \textbf{One issue.} Every system that reads the log scores 0.95 to 0.99; Keel leads the API by 3 points with Luna and Haiku and ties with Sonnet. Memory systems built by LLM extraction lose: Mem0 \cite{mem0} 0.54 to 0.61 and Graphiti \cite{zep} 0.13 to 0.16, with both agents alike, so what fails is what extraction stored (one repetition, our configuration by their guides, on the issues the questions touch, since Graphiti would need about 210 hours for the whole log).
+\item \textbf{Tenant-wide.} Keel answers 0.93 to 0.99, the API 0.61 to 0.78, retrieval 0.14 to 0.26; Keel leads the API by 21 to 32 points with every agent and is the cheapest per correct answer. TGMS \cite{tgms}, a bitemporal graph system for agents, answers 0.19 through its tools with Luna and at most 0.22 through its own planner and verifier.
+\item \textbf{Ingest.} Keel calls no model; Graphiti makes about three LLM calls per event and Mem0 one, at 15 s and 6 to 14 s per event.
+\item \textbf{Governed memory.} Unchecked, one agent's wrong write is repeated in 91 to 98\% of another agent's answers; verified evidence (as fixed after the run), the agent registry and proposals each hold that at 0. A property test finds 0 leaks in 26,666 random reads across tenants, agents, tasks and scopes, and an adversary agent told to break the rules leaks nothing and stores no forbidden write. An agent on the poisoner's own task repeats its note in 14 to 17\% of answers, since task memory is the task's to share.
+\item \textbf{Poisoning, by condition} (Table~\ref{tab:gov}). Before each of 60 current-state questions a scripted poisoner writes a wrong value the field really takes for the issue asked; Luna and Haiku then answer, three repetitions per condition (2,880 runs, 1.43 USD; the after-ea9b30a condition 360 more).
+\item \textbf{An external check.} On TDBench \cite{tdbench}, whose small tables fit in a prompt, Keel ties pasting the tables in with Haiku and Sonnet and trails it by 5 to 6 points with Luna.
+\end{itemize}
 
 \begin{table*}[t]
-\caption{Poisoning run: the conditions and the answering agents' accuracy under each.}
-\label{tab:poisoning}
+\caption{Governed memory, development set (Appendix~\ref{sec:governed}): what the poisoner's tenant write meets under each condition, and the answering agents' accuracy [95\% CI] on the 60 questions; poisoned shares in Appendix~\ref{app:tables}, Table~\ref{tab:b4}.}
+\label{tab:gov}
 \centering
 \footnotesize
 \begin{tabularx}{\textwidth}{P{1.1in} L r r}
 \toprule
-Condition & What the poisoner's tenant write meets & Luna acc. [95\% CI] & Haiku acc. [95\% CI] \\
+Condition & What the poisoner's tenant write meets & Luna acc. & Haiku acc. \\
 \midrule
 Clean & No write & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
-\addlinespace
-Open & The cartridge as shipped: no agent registry, evidence as free text; the write with evidence ``trust-me'' is accepted & 0.09 [0.05, 0.14] & 0.00 [0.00, 0.00] \\
-\addlinespace
-Evidence (242d8c2) & \code{memory.evidence} accepts only an applied event or a \code{human:} reference; ``trust-me'' is refused and the write falls back to task scope & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
-\addlinespace
-Cited, before ea9b30a & The poisoner cites a real event about another issue; accepted because the event exists & 0.07 [0.04, 0.11] & 0.00 [0.00, 0.00] \\
-\addlinespace
-Cited, after ea9b30a & The cited event must have set a fact on the subject written about; refused, back to task scope & 0.99 [0.97, 1.00] & 1.00 [1.00, 1.00] \\
-\addlinespace
-Registry & An \code{agents:} registry lets the poisoner write only task and agent scope; refused, back to task scope & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
-\addlinespace
-Proposed & The poisoner writes tenant scope as status ``proposed''; it waits among context's proposals and no fact changes & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
-\addlinespace
-Mem0, clean & A copy of Mem0's tenant store, without the poisoner's line & 0.56 [0.43, 0.67] & 0.56 [0.43, 0.67] \\
-\addlinespace
-Mem0, poisoned & The same with the poisoner's line added as one more memory (Mem0 stored 19 or 20 of the 20 lines per tenant) & 0.54 [0.42, 0.66] & 0.55 [0.43, 0.67] \\
+Open & The cartridge as shipped: no agent registry, evidence as free text; ``trust-me'' is accepted & 0.09 [0.05, 0.14] & 0.00 [0.00, 0.00] \\
+Evidence (242d8c2) & Evidence must be an applied event or a \code{human:} reference; refused, the write falls back to task scope & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+Cited, before ea9b30a & A real event about another issue is cited; accepted because the event exists & 0.07 [0.04, 0.11] & 0.00 [0.00, 0.00] \\
+Cited, after ea9b30a & The cited event must have set a fact on the subject written about; refused & 0.99 [0.97, 1.00] & 1.00 [1.00, 1.00] \\
+Registry & An \code{agents:} registry lets the poisoner write only task and agent scope; refused & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+Proposed & The write is filed as a proposal; no fact changes & 1.00 [1.00, 1.00] & 1.00 [1.00, 1.00] \\
+Same task & The answering agent is on the poisoner's task, so the note is read beside the log's value & 0.85 [0.79, 0.90] & 0.81 [0.73, 0.88] \\
+Mem0, clean / poisoned & Mem0's tenant store without and with the poisoner's line & 0.56 / 0.54 & 0.56 / 0.55 \\
 \bottomrule
 \end{tabularx}
 \end{table*}
-
-\begin{figure}[t]
-\centering
-\keelfig{figures/fig6-poisoned.pdf}{6}
-\caption{Share of answers equal to the poisoner's wrong value, by condition; the upper bar of each pair is Luna, the lower Haiku. The two writes Keel accepted, with no policy and with a cited event before ea9b30a, are repeated in 91 to 98\% of answers; every check holds both agents at 0; Mem0 stays at 0 to 2\% with and without the write. The same-task condition (Table~\ref{tab:b4}) is not a leak and is not plotted.}
-\label{fig:6}
-\end{figure}
-
-With no policy the write is accepted, and the answering agent repeats it in 91\% of Luna's answers and 98\% of Haiku's; accuracy falls from 1.00 to 0.09 and 0.00. Verified evidence with the subject check, the agent registry and proposals each leave both agents at 0 poisoned and 0.99 to 1.00 accurate: a refused write lands in the poisoner's task scope, which an agent in no task does not read. Evidence must be checked against the subject: free text, or a real event about another issue, gets through; after 242d8c2 and ea9b30a (Appendix~\ref{app:provenance}) the same writes are refused. Mem0 moves from 0.56 to 0.54 and 0.55 and matches the poisoner's value in 0 to 2\% of answers with or without the write: it rarely finds the field at all, so this is retrieval loss, not protection.
-
-A tenth condition, same-task, puts the answering agent on the poisoner's task. The note is written to task scope and read, since task memory is the task's to share. Scopes never close each other, so \code{context} shows the log's value and the note side by side, each with its author (\code{by:~jira}, and \code{by:~intern}, the poisoner's agent id): Luna repeats the note in 14\% of answers [9, 19] and Haiku in 17\% [10, 24], with accuracy 0.85 [0.79, 0.90] and 0.81 [0.73, 0.88] (360 runs, 0.18 USD). This is the limit of governance: a task trusts its own agents, and what the reader has left is provenance, not policy.
-
-\subsection{An external check: TDBench}
-\label{sec:tdbench}
-
-On a third-party benchmark whose data fits in a prompt, Keel adds no accuracy over pasting the data in: it ties with Haiku and Sonnet and trails by 5 to 6 points with Luna (Table~\ref{tab:tdbench}). Every agent gains 15 to 22 points over closed book.
-
-TDBench's leaders and organizations tables hold 569 terms of who held an office or post from Start to End. They went into one tenant through a cartridge of two kinds (office, post) and one handler that opens holder at Start and closes it at End, with no change under \code{keel/}. The 9 offices whose terms overlap are left out, since holder is one value at a time. We sample 200 questions with seed 7, stratified: 150 of temporal reasoning over Allen's interval relations (unique, several or no answer) and 50 of temporal alignment, the ``now'' task in its repository, in TDBench's first GPT-4o paraphrase, with records current as of 2025-01-01. Each is asked four ways under one system prompt: through Keel's tools; with the asked office's rows pasted in, a stricter form of TDBench's open book setting, which also appends irrelevant rows; with both whole tables pasted in; and closed book. Luna and Haiku run three repetitions, Sonnet one: 5,600 runs, no errors, 13.07 USD. Answers are graded by exact set match of names against TDBench's correct rows. That is stricter than TDBench's substring-based answer accuracy with partial credit, so its published numbers are not comparable with ours; its time accuracy needs an LLM judge and is not measured.
-
-\begin{table*}[t]
-\caption{TDBench: accuracy [95\% CI]; beside each other condition, Keel minus it in points [95\% CI], $p$ (paired bootstrap, $B = 10{,}000$).}
-\label{tab:tdbench}
-\centering
-\footnotesize
-\begin{tabularx}{\textwidth}{l >{\raggedright\arraybackslash}X l l l}
-\toprule
-Agent & Keel & Asked rows pasted & Whole tables pasted & Closed book \\
-\midrule
-Luna & 0.76 [0.71, 0.82] & \makecell[l]{0.81 [0.76, 0.87]\\ $-$5 [$-$8, $-$2], $p < 0.001$} & \makecell[l]{0.82 [0.77, 0.87]\\ $-$6 [$-$9, $-$3], $p < 0.001$} & \makecell[l]{0.61 [0.55, 0.68]\\ +15 [+9, +21], $p < 0.001$} \\
-\addlinespace
-Haiku & 0.81 [0.76, 0.85] & \makecell[l]{0.80 [0.74, 0.85]\\ +1 [$-$3, +4], $p = 0.60$} & \makecell[l]{0.81 [0.76, 0.86]\\ $-$1 [$-$3, +2], $p = 0.60$} & \makecell[l]{0.59 [0.52, 0.65]\\ +22 [+17, +28], $p < 0.001$} \\
-\addlinespace
-Sonnet & 0.80 [0.74, 0.85] & \makecell[l]{0.82 [0.77, 0.87]\\ $-$2 [$-$5, +1], $p = 0.20$} & \makecell[l]{0.81 [0.76, 0.86]\\ $-$1 [$-$4, +1], $p = 0.39$} & \makecell[l]{0.62 [0.56, 0.69]\\ +18 [+12, +24], $p < 0.001$} \\
-\bottomrule
-\end{tabularx}
-\end{table*}
-
-On the 13 questions where the pasted rows succeeded and Keel missed, the five transcripts we read were interval misreadings (an agent counting a term that started in 2014 as `starting after 2020'), with the correct dates in Keel's output. With every agent Keel answers ``now'' questions at 0.99 to 1.00 and unique-answer questions at 0.86 to 0.90, but those with several or no answers at 0.59 to 0.69. The interval misreading is a difficulty every condition shares. Keel reads 5.6k to 9.2k input tokens a question against 15k to 21k for the whole tables.
-
-This marks a boundary, not a win. With small, static data that fits in a prompt, pasting it in does as well as Keel or better. Keel's gain in the Jira benchmark is on tenant-wide questions, whose log of tens of thousands of events does not fit in a prompt (Section~\ref{sec:tenant}). TDBench has no transaction time, so it does not test known-at reads.
 
 % ===========================================================================
-\section{Discussion and limitations}
-\label{sec:discussion}
+\section{Related work}
+\label{sec:related}
 
-The main run confirms what the pilot suggested: a context graph does not help agents answer about one issue a product API already exposes; it helps when the question spans the tenant, involves a business rule, or asks what was known when. Rules belong in the cartridge: with them removed and the agent applying the stated definition, accuracy ties on one issue but falls 26 points on tenant-wide questions (Section~\ref{sec:ablations}). Memories built by LLM extraction lose even on one issue, consistent with loss at extraction, since both agents score alike.
+\textbf{Temporal databases.} Keel's time model is classical. Valid time, transaction time and their combination come from the temporal database literature \cite{jensen-glossary}. Keel's facts are an interval encoding of the Bitemporal Conceptual Data Model \cite{jensen-bcdm}; its as-of and known-at reads are TSQL2's valid and transaction timeslices \cite{snodgrass-tsql2}; a correction closes the earlier row in transaction time instead of deleting it, as in Snodgrass's bitemporal tables \cite{snodgrass-book}. SQL:2011 standardized application-time and system-versioned tables \cite{kulkarni-sql2011}, and commercial systems ship them \cite{sqlserver-temporal,mariadb-sysver}; there the DBMS stamps transaction time at commit, and loading earlier system times is an administrative path. Datomic keeps an immutable log with as-of reads \cite{datomic}, and XTDB is bitemporal \cite{xtdb}; both take transaction time from their own transaction log. Keel takes it from the event's source, which is what lets a replay rebuild it. Temporal graph DBMSs store and query a graph's history \cite{aeong,clockg,tgql}; Keel's graph holds pointers and a few labels over a pluggable store, and one of them could serve as that store. The hand-written baseline of this paper is the textbook construction in SQL:2011 style; what Keel adds is that the views come from a declaration.
 
-\textbf{Threats to validity.}
+\textbf{Streams and projections.} CEDR \cite{cedr} separates valid time and a provider-assigned occurrence time from the server's clock and defines query semantics on the provider's times, so delivery order and retractions do not change the answer. Out-of-order processing \cite{li-ooo}, the Dataflow model \cite{akidau-dataflow} and Flink \cite{carbone-flink} handle late data with event time and watermarks; differential dataflow \cite{mcsherry-dd} and DBSP \cite{budiu-dbsp} maintain views whose outputs are functions of the inputs at each logical time. Event sourcing rebuilds application state by replaying a log \cite{fowler-es}, log-centric architectures treat tables as views of a log \cite{kreps-log,kleppmann-insideout,kleppmann-olep}, and change data capture turns a database's commit log into such a stream \cite{debezium}. Keel is an event-sourced projection in this sense; what it adds is the projection's shape, declared once and compiled, and point reads at any pair of world and recorded instants after the fact.
+
+\textbf{Agent memory.} Bitemporal agent memory is not ours to claim. TGMS \cite{tgms} offers a bitemporal graph an agent can ask what was believed at a date, keeps retract apart from correct, replays an append-only log to a byte-identical store, keeps the LLM out of the write path and serves tools over MCP; it stamps transaction time with its own clock. Zep/Graphiti \cite{zep} and TOKI \cite{toki} also predate us on bitemporal agent memory, and Niksarli and Baheti \cite{niksarli} store conversational memories with valid and transaction time and retrieve them by vector search filtered by time. Mem0 \cite{mem0} extracts and updates memories with an LLM. Benchmarks of agent memory are dialogue (LongMemEval \cite{longmemeval}, LoCoMo \cite{locomo}, STALE \cite{stale}) or stage-wise evaluations of extraction \cite{halumem,memoryagentbench,groundtruth}; feeding them to Keel would need the LLM extraction Keel avoids. TDBench \cite{tdbench} builds time-sensitive questions from temporal databases over Allen's interval relations \cite{allen}, uni-temporal and aimed at a model's knowledge rather than a memory layer. What we claim against this work is memory built from a product's structured event log, one core across products through compiled cartridges, and a staged, pre-registered comparison with SQL written by hand.
+
+\textbf{Text-to-SQL and access control.} Text-to-SQL benchmarks \cite{spider,bird,gao-text2sql} evaluate models writing queries over a given schema. Here the schema is compiled from a declaration together with its description for the agent, and the question is whether that schema is as good to query as one an engineer designed; the gap between \code{sql} and \code{sql-tables} on the held-out set (Table~\ref{tab:planned}) says the views matter more than the language. Multi-tenant schema mapping \cite{aulbach} and fine-grained access control by query rewriting \cite{rizvi-fgac} or row-level security \cite{pg-rls} precede Keel's tenant binding; \code{query} applies them to a new caller, an agent's SQL, by copying the tenant's readable rows or by a role per tenant. Each fact names the event that set it, which is coarse-grained where-provenance \cite{buneman}; Keel does not compute why- or how-provenance of answers \cite{green}.
+
+% ===========================================================================
+\section{Limitations}
+\label{sec:limits}
 
 \begin{itemize}[leftmargin=*]
-\item \textbf{Governed memory, narrow setups.} The poisoner is a script, not an LLM agent, and only current-state questions were asked; Mem0's low poisoned rate cannot be separated from its retrieval loss. Each part uses one cartridge: fleet for the property test, Jira for the adversary and poisoning runs. The property test uses only the in-memory store (the store conformance suite covers other stores separately), and the adversary run two agents that reach the store only through the five tools, with no transport-level attack. A poisoner on the answering agent's own task is read by design: with the log's value shown beside the note, the agents repeat the note in 14 to 17\% of answers (condition same-task, Section~\ref{sec:governed}).
-\item \textbf{Memory systems at one repetition, one issue only.} Graphiti and Mem0 ran one repetition, cut from three for budget, on the one-issue subset, and were not asked tenant-wide questions (Section~\ref{sec:systems}). They, and TGMS, were loaded by our code, configured by their guides with pinned releases. Their configurations are published with the harness (\code{evals/jira/memories.py}, \code{evals/jira/tgms\_system.py}), so anyone can check them.
-\item \textbf{Sonnet at one repetition, RAG partial; TGMS with few agents.} Sonnet ran once; its RAG on tenant-wide questions stopped at 34 of 72 at its 8 USD budget cap, about 420k input tokens a question. Luna's RAG and closed book on tenant-wide questions also ran once. TGMS's tools ran with one agent (Luna), its own pipeline with two (Sonnet, Opus), each one repetition.
-\item \textbf{Exact match, templated questions, simulated transaction time.} Answers are graded by exact match after normalization, with no judge model; a right answer in the wrong format counts as wrong for every system alike. Gold is exact, but phrasing is ours; two rule questions were reworded after the pilot exposed an ambiguous definition. Jira does not record when anyone learned a change, so late arrivals and corrections are injected with a published seed.
-\item \textbf{Route effect.} Haiku with RAG answered 8 of 24 MariaDB tenant-wide questions in the pilot, through the gateway, and 0.14 in the main run, straight from Anthropic, where it gives up early; Haiku is therefore compared within one route only. Rows lost to outages, rate limits or a harness fault were discarded and rerun, never counted (Appendix~\ref{app:provenance}).
-\item \textbf{Ablations at small size.} The brief/full ablation ran one repetition, so its 5 to 6 point accuracy drop on tenant-wide questions is not significant ($p = 0.10$ and $0.23$). The rules ablation has only 18 tenant-wide questions, and its intervals are wide. The run without the listing ceiling is one repetition, with no interval.
-\item \textbf{TDBench, a narrow check on public data.} Only answer accuracy was measured, not time accuracy; 9 offices with overlapping terms were left out; the sample is 200 questions; the tables carry no transaction time. Both datasets are public and may be in training data: closed book answers 0.59 to 0.62 of TDBench's questions against 0.05 to 0.06 of the Jira one-issue questions (the abstentions), so contamination is a concern for TDBench, not for Jira. Sonnet ran one repetition, and 84 of its 200 whole-table rows ran before the cache fix (Appendix~\ref{app:provenance}), so that cost is overstated.
+\item \textbf{One agent, one domain.} The held-out and confirmation sets ran Claude Haiku 5.5 only, three repetitions; every set is Jira. Whether the ties hold for other agents, and for a domain whose cartridge is not the authors', is untested.
+\item \textbf{The confirmation set is small and one instance.} 258 questions on two Apache projects, chosen by a rule amended twice before any of its questions existed, because no project of the instances first named passed it. Its two tenants share Apache's workflow and people. The intervals of H1 and H2 sit well inside the margin, but a 2-point margin cannot detect a smaller loss.
+\item \textbf{The strongest condition was built for the benchmark.} \code{sqlgen2}'s per-kind views and the cartridge declarations they compile from were added after reading the held-out results, with the benchmark's question types in view. The generator stayed domain-agnostic and the confirmation set tested it on unseen data, but what a cartridge can declare grew to fit the questions asked.
+\item \textbf{Templated questions, exact match, simulated transaction time.} Phrasing is ours, and one template's wording (``related to'') proved ambiguous on the confirmation set (Section~\ref{sec:confirm}). Answers are graded by exact match, so a right answer in another format is wrong for every condition alike. Jira does not record when anyone learned a change, so late arrivals and corrections are injected with a published seed.
+\item \textbf{Hand-written baseline by the authors.} \code{sql} was written by us, knowing Keel, to the textbook construction; a different engineer could write better or worse views. It is published with the harness.
+\item \textbf{\code{query} reads less than the tools.} Agent and task memory and proposals are left out of what \code{query} reads, and SQLite and DuckDB serve it from a copy bounded at 100,000 rows; larger tenants need Postgres.
+\item \textbf{Development-set results.} The comparisons with retrieval, memory systems, TGMS and governed memory (Section~\ref{sec:firstrun}) were measured once, on the development set, with the limits Appendix~\ref{app:dev} states.
 \end{itemize}
 
 % ===========================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
-Deterministic ingest of a Jira project's events gave agents a context graph that is cheap to build and identical on replay. On tenant-wide questions, with three agents, it is more accurate than the product's own API (by 21 to 32 points) or RAG, and the cheapest per correct answer. On one-issue questions the systems that read the log score 0.95 to 0.99; Keel leads the API by 3 points with Luna and Haiku ($p < 0.001$) and ties with Sonnet, and memories built by LLM extraction trail it by 39 to 85 points. Without governance, one agent's wrong write is repeated in 91 to 98\% of another agent's answers; verified evidence as fixed after the run, the agent registry and proposals each hold that at 0, while Mem0's rate barely moves because it rarely finds the fact at all. Property tests find no leak in 26,666 random reads, and an adversary agent told to break the rules leaks nothing and stores no forbidden write.
-
-Open work is an LLM poisoner for the poisoning run, a second domain with real product events, and the memory systems at three repetitions.
+Declaring a product's domain once, as events, kinds, facts, relations and rules, is enough to give agents two interfaces to a bitemporal graph that replays identically from the product's log: tools, and SQL compiled with its own description. On real Jira projects development never saw, an agent querying the compiled SQL, or Keel's tools with that SQL beside them, answers temporal questions as well as an agent querying views a database engineer wrote by hand for the same log; registered in advance, that held within 2 points, and the SQL added 1.2 points to the tools alone at a lower cost per correct answer. The tools alone did not match hand-written SQL, and we report that. Open work is a second domain with real product events, more agents on the registered sets, and question wording reviewed for ambiguity before registration.
 
 % ===========================================================================
 \section*{Reproducibility}
 \label{sec:repro}
 
-The code, the harness and every result file are at release \href{https://github.com/angelkurten/keel/releases/tag/v0.32.0}{v0.32.0} of \href{https://github.com/angelkurten/keel}{github.com/angelkurten/keel} (package \code{keel-context==0.32.0} on PyPI), the first release with every fix the evaluation found (Appendix~\ref{app:provenance}); each result row names the commit it was measured with. TGMS through its own planner and verifier was run after that release, with the harness of commit 6c7c9ef. This paper's source is in \code{docs/paper-pvldb/} of the repository; an earlier version is archived at \href{https://doi.org/10.5281/zenodo.23571091}{doi:10.5281/zenodo.23571091}. \code{evals/jira/README.md} goes from the dataset dump to every result file, and \code{evals/tdbench/README.md} does the same for the external check. Every result row records the commit, a dirty flag and the versions of the packages it ran on. Seeds: 7 for the injections and the question templates, 7 for the TDBench sample, 0 for the bootstrap, with $B = 10{,}000$. Pinned versions: graphiti-core 0.30.2, mem0ai 2.2.1, tgms 0.8.0. Models: GPT-6 Luna through the OfoxAI gateway, Claude Haiku 5.5, Claude Sonnet 5.5 and Claude Opus 5.5 directly from Anthropic, run from 2026-10-20 to 2026-10-23. Total API spend was about 91 USD. Agent runs cost 83.7 USD (the main run 40.4, pilots 8.7, ablations 7.1, governed memory 2.5, TGMS 11.9 (its pipeline 8.7), TDBench 13.2, their pilots included, and 0.4 in rows left out). Graphiti's and Mem0's ingest with Luna cost 7.0 USD (4,381 events each: Graphiti 2.78 USD and 17 hours, Mem0 4.24 USD and 9 hours; embeddings not counted, small).
-
-\textbf{Data and licenses.} The Public Jira Dataset (Montgomery et al., MSR 2022, Zenodo) is CC BY 4.0; people are anonymized as \code{user-<8 hex>}. TDBench's paper is CC BY 4.0, but its data repository states no license, so we redistribute only question ids and our result rows, not the tables. No human subjects were involved.
+Code, harness and every result file are at \href{https://github.com/angelkurten/keel}{github.com/angelkurten/keel}; Keel 0.36.0 (package \code{keel-context} on PyPI) is the code the confirmation set froze. \code{evals/jira/README.md} goes from the dataset dump to every development result; \code{evals/jira/heldout/README.md} and \code{evals/jira/confirm/README.md} hold each registration, its amendments, the exact commands, the SHA-256 of every generated file, and the results as appended after each run. Seeds: 7, 31 and 47 for the sets' injections and templates, 0 for the bootstrap ($B = 10{,}000$). The held-out set's Haiku runs cost 5.7 USD, the development set's \code{keel+query} and \code{sqlgen2} 2.5 USD through the gateway, and the confirmation set 1.6 USD, pilots and rows set aside included: 9.8 USD in all; the first run's spend is in Appendix~\ref{app:costmeas}. \textbf{Data and licenses.} The Public Jira Dataset is CC BY 4.0; people are anonymized. No human subjects were involved.
 
 % ===========================================================================
 \section*{Acknowledgments}
