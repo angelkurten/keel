@@ -40,7 +40,7 @@ Rule 5 is relaxed, because in the held-out screening only 3 of 9 projects filled
 
 5. `inject.py` (seed 47, `--late 0.05 --corrections 0.02 --check`) and `questions.py` (seed 47, `--check`) run
    unmodified and pass their checks, and the project gets at least 100 of the 129 questions, with at least half of
-   each type's count and that the first 45 `keel` runs were all correct (a progress check).
+   each type's count.
 
 Of those that pass, the three with the most questions, at most one per instance (ties: fewer `check.py`
 mismatches, then more issues). If fewer than three instances pass, the set is what passes, and the analysis runs on
