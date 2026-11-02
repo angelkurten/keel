@@ -1,0 +1,87 @@
+{
+ "seed": 47,
+ "inject": {
+  "seed": 47,
+  "late": 0.05,
+  "corrections": 0.02
+ },
+ "counts": {
+  "current": 20,
+  "as_of": 25,
+  "known_at": 25,
+  "links": 15,
+  "rule": 15,
+  "abstain": 5,
+  "tenant": 24
+ },
+ "keel_commit": "d620fcb",
+ "tenants": {
+  "apache-tajo": {
+   "instance": "Apache",
+   "project": "TAJO",
+   "issues": 2183,
+   "events": 9268,
+   "questions": 129,
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "sub_types": {
+    "links:depends_on": 1,
+    "links:duplicates": 1,
+    "links:relates_to": 13,
+    "rule:blocked": 5,
+    "rule:stalled": 5,
+    "rule:urgent_unassigned": 5,
+    "tenant:changed": 4,
+    "tenant:count_at": 4,
+    "tenant:known_at": 4,
+    "tenant:rule_at": 6,
+    "tenant:status_at": 6
+   },
+   "questions_sha256": "e933e26f67970269f2a6247a83ec881c2c21940d4d8f7d7a423e7a5c2a031936",
+   "bitemporal_sha256": "922170f93a34f1f2be32849442d8495e14b89d8191a74297792eb97bd2af3af8",
+   "injections_sha256": "ef129f22dbdfaaa868729d898e11bd0147268086fbcf6ad4187a3375440a2590",
+   "events_sha256": "534faa55e792a281f495569891f7be9e69245644c41d2d4614427b9538c57f81",
+   "export_sha256": "fef27aa5a9590ecdaf4cbeb4c0292b964a755f14f382693f6eb0cf21d71b7e65"
+  },
+  "apache-rave": {
+   "instance": "Apache",
+   "project": "RAVE",
+   "issues": 1286,
+   "events": 5169,
+   "questions": 129,
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "sub_types": {
+    "links:depends_on": 2,
+    "links:relates_to": 13,
+    "rule:blocked": 5,
+    "rule:stalled": 5,
+    "rule:urgent_unassigned": 5,
+    "tenant:changed": 4,
+    "tenant:count_at": 4,
+    "tenant:known_at": 4,
+    "tenant:rule_at": 6,
+    "tenant:status_at": 6
+   },
+   "questions_sha256": "516be629570516b6b8e9909ea8dc1bf77dc256ec042c82581d5ba676cb4271f9",
+   "bitemporal_sha256": "ad567e7d3a032b0d5cdf6117986a01e6f6d74bafd3eae01b29d35115f223aac6",
+   "injections_sha256": "0df0ebc184e0194abecf2020f4f82e5c5b036988d6b2bc39b6f49e10e5e741b9",
+   "events_sha256": "21fcb8d48bb7b1998166ae06a857fa14ee0b9d4f0e359b40d061a432eddbff7e",
+   "export_sha256": "9af68f260f905114ae5c77125bd9a88a5771ed6bf2554e2cf272a08adc36d3c1"
+  }
+ }
+}

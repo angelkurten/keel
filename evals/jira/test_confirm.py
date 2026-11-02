@@ -105,3 +105,11 @@ def test_fewer_than_three_instances_fill_to_three_at_most_two_per_instance():
          for k, q in (("A", 129), ("B", 128), ("C", 127))] + [{"instance": "Mojang", "key": "M", "questions": 110, "mismatched": 0, "issues": 1000}]
     assert [x["key"] for x in screen.select(c)] == ["A", "M", "B"]
     assert [x["key"] for x in screen.select(c[:3])] == ["A", "B"]  # one instance: two at most
+
+
+def test_the_bench_knows_the_selected_tenants():
+    from evals.jira import bench
+
+    manifest = __import__("json").loads((screen.Path(__file__).parent / "confirm" / "manifest.json").read_text())
+    for t, m in manifest["tenants"].items():
+        assert bench.instance(t) == (m["instance"], m["project"])

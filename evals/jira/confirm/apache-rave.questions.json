@@ -1,0 +1,1962 @@
+[
+ {
+  "id": "apache-rave-current-001",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What status does RAVE-177 have now?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-177",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-current-002",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What resolution does RAVE-1089 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1089",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-rave-current-003",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-1158?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1158",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-004",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-1160?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1160",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-005",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What resolution does RAVE-840 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-840",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-rave-current-006",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current status of RAVE-1169?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1169",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-current-007",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current priority of RAVE-401?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-401",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-rave-current-008",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What status does RAVE-1132 have now?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1132",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-current-009",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-304?",
+  "answer": "user-52232a0c",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-304",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-010",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What issue type does RAVE-505 have now?",
+  "answer": "Improvement",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-505",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-rave-current-011",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-60?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-60",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-012",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What assignee does RAVE-562 have now?",
+  "answer": "user-dd9d1a13",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-562",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-013",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What issue type does RAVE-752 have now?",
+  "answer": "Improvement",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-752",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-rave-current-014",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-41?",
+  "answer": "user-9794abaf",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-41",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-015",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What priority does RAVE-580 have now?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-580",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-rave-current-016",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current issue type of RAVE-1091?",
+  "answer": "Improvement",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1091",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-rave-current-017",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What status does RAVE-857 have now?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-857",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-current-018",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What assignee does RAVE-1250 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1250",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-019",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What is the current assignee of RAVE-542?",
+  "answer": "user-ada4207a",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-542",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-current-020",
+  "tenant": "apache-rave",
+  "type": "current",
+  "question": "What assignee does RAVE-954 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-954",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-001",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-12-30 13:55 UTC, what status did RAVE-355 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-355",
+   "predicate": "status",
+   "as_of": "2011-12-30 13:55 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-002",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-08-28 17:50 UTC, what status did RAVE-53 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-53",
+   "predicate": "status",
+   "as_of": "2011-08-28 17:50 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-003",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-04-15 16:47 UTC, what status did RAVE-480 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-480",
+   "predicate": "status",
+   "as_of": "2012-04-15 16:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-004",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-12-30 18:07 UTC, what status did RAVE-376 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-376",
+   "predicate": "status",
+   "as_of": "2011-12-30 18:07 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-005",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-08-26 11:41 UTC, what status did RAVE-96 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-96",
+   "predicate": "status",
+   "as_of": "2011-08-26 11:41 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-006",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-12-02 20:36 UTC, what status did RAVE-539 have?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-539",
+   "predicate": "status",
+   "as_of": "2012-12-02 20:36 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-007",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the status of RAVE-108 on 2011-08-22 10:14 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-108",
+   "predicate": "status",
+   "as_of": "2011-08-22 10:14 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-008",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-07-20 00:29 UTC, what status did RAVE-691 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-691",
+   "predicate": "status",
+   "as_of": "2012-07-20 00:29 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-009",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-04-09 16:51 UTC, what status did RAVE-524 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-524",
+   "predicate": "status",
+   "as_of": "2012-04-09 16:51 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-010",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-06-25 03:20 UTC, what status did RAVE-554 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-554",
+   "predicate": "status",
+   "as_of": "2012-06-25 03:20 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-011",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-02-10 16:19 UTC, what status did RAVE-415 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-415",
+   "predicate": "status",
+   "as_of": "2012-02-10 16:19 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-012",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-12-06 17:14 UTC, what status did RAVE-302 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-302",
+   "predicate": "status",
+   "as_of": "2011-12-06 17:14 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-013",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-06-20 05:07 UTC, what status did RAVE-601 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-601",
+   "predicate": "status",
+   "as_of": "2012-06-20 05:07 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-014",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the status of RAVE-618 on 2012-07-18 04:36 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-618",
+   "predicate": "status",
+   "as_of": "2012-07-18 04:36 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-015",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-02-16 06:15 UTC, what status did RAVE-436 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-436",
+   "predicate": "status",
+   "as_of": "2012-02-16 06:15 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-016",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the status of RAVE-458 on 2012-03-25 13:35 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-458",
+   "predicate": "status",
+   "as_of": "2012-03-25 13:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-017",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the status of RAVE-267 on 2011-10-30 01:16 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-267",
+   "predicate": "status",
+   "as_of": "2011-10-30 01:16 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-018",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the status of RAVE-687 on 2012-06-24 09:47 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-687",
+   "predicate": "status",
+   "as_of": "2012-06-24 09:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-019",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2012-04-29 14:04 UTC, what status did RAVE-586 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-586",
+   "predicate": "status",
+   "as_of": "2012-04-29 14:04 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-020",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-08-31 22:47 UTC, what status did RAVE-217 have?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-217",
+   "predicate": "status",
+   "as_of": "2011-08-31 22:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-021",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "On 2011-08-09 19:05 UTC, what resolution did RAVE-27 have?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-27",
+   "predicate": "resolution",
+   "as_of": "2011-08-09 19:05 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-022",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the resolution of RAVE-97 on 2011-10-04 11:49 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-97",
+   "predicate": "resolution",
+   "as_of": "2011-10-04 11:49 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-023",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the resolution of RAVE-111 on 2011-08-06 06:28 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-111",
+   "predicate": "resolution",
+   "as_of": "2011-08-06 06:28 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-024",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the resolution of RAVE-79 on 2011-07-14 15:22 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-79",
+   "predicate": "resolution",
+   "as_of": "2011-07-14 15:22 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-as_of-025",
+  "tenant": "apache-rave",
+  "type": "as_of",
+  "question": "What was the resolution of RAVE-120 on 2011-08-04 03:27 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-120",
+   "predicate": "resolution",
+   "as_of": "2011-08-04 03:27 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-001",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-12-01 06:03 UTC, what was the status of RAVE-296 at 2011-11-30 21:08 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-296",
+   "predicate": "status",
+   "as_of": "2011-11-30 21:08 UTC",
+   "known_at": "2011-12-01 06:03 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-002",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-08-02 02:26 UTC, what status did RAVE-1264 have at 2014-07-31 21:22 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1264",
+   "predicate": "status",
+   "as_of": "2014-07-31 21:22 UTC",
+   "known_at": "2014-08-02 02:26 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-003",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-04-16 21:56 UTC, what status did RAVE-553 have at 2012-04-16 19:30 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-553",
+   "predicate": "status",
+   "as_of": "2012-04-16 19:30 UTC",
+   "known_at": "2012-04-16 21:56 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-004",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-12-24 16:34 UTC, what was the resolution of RAVE-533 at 2012-12-18 15:29 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-533",
+   "predicate": "resolution",
+   "as_of": "2012-12-18 15:29 UTC",
+   "known_at": "2012-12-24 16:34 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-005",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-08-02 03:09 UTC, what was the status of RAVE-1175 at 2014-08-01 21:01 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1175",
+   "predicate": "status",
+   "as_of": "2014-08-01 21:01 UTC",
+   "known_at": "2014-08-02 03:09 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-006",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-05-07 22:30 UTC, what status did RAVE-965 have at 2013-05-05 21:01 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-965",
+   "predicate": "status",
+   "as_of": "2013-05-05 21:01 UTC",
+   "known_at": "2013-05-07 22:30 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-007",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-06-10 10:41 UTC, what resolution did RAVE-653 have at 2012-06-07 15:46 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-653",
+   "predicate": "resolution",
+   "as_of": "2012-06-07 15:46 UTC",
+   "known_at": "2012-06-10 10:41 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-008",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-07-20 17:49 UTC, what was the status of RAVE-984 at 2013-07-18 19:07 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-984",
+   "predicate": "status",
+   "as_of": "2013-07-18 19:07 UTC",
+   "known_at": "2013-07-20 17:49 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-009",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-11-28 15:47 UTC, what was the assignee of RAVE-371 at 2011-11-28 13:35 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-371",
+   "predicate": "assignee",
+   "as_of": "2011-11-28 13:35 UTC",
+   "known_at": "2011-11-28 15:47 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-010",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-01-01 04:13 UTC, what resolution did RAVE-394 have at 2011-12-22 17:50 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-394",
+   "predicate": "resolution",
+   "as_of": "2011-12-22 17:50 UTC",
+   "known_at": "2012-01-01 04:13 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-011",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-02-23 15:20 UTC, what was the status of RAVE-433 at 2012-02-23 15:11 UTC?",
+  "answer": "Reopened",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-433",
+   "predicate": "status",
+   "as_of": "2012-02-23 15:11 UTC",
+   "known_at": "2012-02-23 15:20 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-012",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-02-17 11:02 UTC, what was the status of RAVE-691 at 2013-02-14 14:07 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-691",
+   "predicate": "status",
+   "as_of": "2013-02-14 14:07 UTC",
+   "known_at": "2013-02-17 11:02 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-013",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-10-29 18:43 UTC, what status did RAVE-835 have at 2012-10-29 04:31 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-835",
+   "predicate": "status",
+   "as_of": "2012-10-29 04:31 UTC",
+   "known_at": "2012-10-29 18:43 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-014",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2012-08-11 13:06 UTC, what assignee did RAVE-751 have at 2012-08-08 15:45 UTC?",
+  "answer": "user-8bf0e3b5",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-751",
+   "predicate": "assignee",
+   "as_of": "2012-08-08 15:45 UTC",
+   "known_at": "2012-08-11 13:06 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-015",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-11-25 14:02 UTC, what was the status of RAVE-297 at 2011-11-22 16:39 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-297",
+   "predicate": "status",
+   "as_of": "2011-11-22 16:39 UTC",
+   "known_at": "2011-11-25 14:02 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-016",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-10-31 19:54 UTC, what was the status of RAVE-729 at 2012-10-29 04:32 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-729",
+   "predicate": "status",
+   "as_of": "2012-10-29 04:32 UTC",
+   "known_at": "2012-10-31 19:54 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-017",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-07-31 04:05 UTC, what was the status of RAVE-653 at 2012-07-31 03:51 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-653",
+   "predicate": "status",
+   "as_of": "2012-07-31 03:51 UTC",
+   "known_at": "2012-07-31 04:05 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-018",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-07-21 10:14 UTC, what resolution did RAVE-984 have at 2013-07-18 19:07 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-984",
+   "predicate": "resolution",
+   "as_of": "2013-07-18 19:07 UTC",
+   "known_at": "2013-07-21 10:14 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-019",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-09-19 10:34 UTC, what was the resolution of RAVE-222 at 2011-09-16 15:09 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-222",
+   "predicate": "resolution",
+   "as_of": "2011-09-16 15:09 UTC",
+   "known_at": "2011-09-19 10:34 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-020",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-12-03 03:12 UTC, what was the status of RAVE-1079 at 2014-12-01 20:31 UTC?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-1079",
+   "predicate": "status",
+   "as_of": "2014-12-01 20:31 UTC",
+   "known_at": "2014-12-03 03:12 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-021",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-11-23 23:05 UTC, what was the resolution of RAVE-317 at 2011-11-07 17:59 UTC?",
+  "answer": "Incomplete",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-317",
+   "predicate": "resolution",
+   "as_of": "2011-11-07 17:59 UTC",
+   "known_at": "2011-11-23 23:05 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-022",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2011-08-08 09:35 UTC, what was the issue type of RAVE-146 at 2011-08-03 18:03 UTC?",
+  "answer": "Sub-task",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-146",
+   "predicate": "issue_type",
+   "as_of": "2011-08-03 18:03 UTC",
+   "known_at": "2011-08-08 09:35 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-023",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "As the tracker stood on 2011-08-30 19:11 UTC, what status did RAVE-163 have at 2011-08-30 14:39 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-163",
+   "predicate": "status",
+   "as_of": "2011-08-30 14:39 UTC",
+   "known_at": "2011-08-30 19:11 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-024",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2012-05-18 21:19 UTC, what was the resolution of RAVE-593 at 2012-05-10 18:44 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-593",
+   "predicate": "resolution",
+   "as_of": "2012-05-10 18:44 UTC",
+   "known_at": "2012-05-18 21:19 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-known_at-025",
+  "tenant": "apache-rave",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-03-25 22:21 UTC, what was the status of RAVE-919 at 2013-03-25 20:57 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:RAVE-919",
+   "predicate": "status",
+   "as_of": "2013-03-25 20:57 UTC",
+   "known_at": "2013-03-25 22:21 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-rave-links-001",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2015-01-09 18:01 UTC, of the issues related to RAVE-194, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-676"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-194",
+   "relation": "relates_to",
+   "as_of": "2015-01-09 18:01 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-002",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2015-01-28 15:18 UTC, of the issues related to RAVE-456, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-460",
+   "RAVE-465"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-456",
+   "relation": "relates_to",
+   "as_of": "2015-01-28 15:18 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-003",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2014-05-31 07:41 UTC, of the issues related to RAVE-1068, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-911"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-1068",
+   "relation": "relates_to",
+   "as_of": "2014-05-31 07:41 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-004",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2014-06-03 01:24 UTC, of the issues related to RAVE-11, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-116",
+   "RAVE-163",
+   "RAVE-180",
+   "RAVE-261",
+   "RAVE-33",
+   "RAVE-53",
+   "RAVE-54",
+   "RAVE-96",
+   "RAVE-97"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-11",
+   "relation": "relates_to",
+   "as_of": "2014-06-03 01:24 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-005",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2013-06-19 09:09 UTC, of the issues related to RAVE-140, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-11",
+   "RAVE-477"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-140",
+   "relation": "relates_to",
+   "as_of": "2013-06-19 09:09 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-006",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2013-10-08 06:06 UTC, of the issues related to RAVE-355, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-242"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-355",
+   "relation": "relates_to",
+   "as_of": "2013-10-08 06:06 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-007",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2013-07-05 20:04 UTC, of the issues related to RAVE-180, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-148"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-180",
+   "relation": "relates_to",
+   "as_of": "2013-07-05 20:04 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-008",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2012-12-22 16:34 UTC, of the issues related to RAVE-96, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-11"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-96",
+   "relation": "relates_to",
+   "as_of": "2012-12-22 16:34 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-009",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2012-06-27 20:34 UTC, of the issues RAVE-440 depends on, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-441",
+   "RAVE-442",
+   "RAVE-443"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-440",
+   "relation": "depends_on",
+   "as_of": "2012-06-27 20:34 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-010",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2014-04-29 12:47 UTC, of the issues related to RAVE-164, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-22",
+   "RAVE-298"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-164",
+   "relation": "relates_to",
+   "as_of": "2014-04-29 12:47 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-011",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2012-06-11 12:50 UTC, of the issues related to RAVE-9, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-38",
+   "RAVE-386",
+   "RAVE-479"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-9",
+   "relation": "relates_to",
+   "as_of": "2012-06-11 12:50 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-012",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2012-08-09 12:00 UTC, of the issues RAVE-608 depends on, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-543"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-608",
+   "relation": "depends_on",
+   "as_of": "2012-08-09 12:00 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-rave-links-013",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2013-04-08 20:47 UTC, of the issues related to RAVE-28, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-31"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-28",
+   "relation": "relates_to",
+   "as_of": "2013-04-08 20:47 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-014",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2013-12-29 18:07 UTC, of the issues related to RAVE-10, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-184",
+   "RAVE-209",
+   "RAVE-249",
+   "RAVE-251",
+   "RAVE-265",
+   "RAVE-68",
+   "RAVE-74",
+   "RAVE-75"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-10",
+   "relation": "relates_to",
+   "as_of": "2013-12-29 18:07 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-links-015",
+  "tenant": "apache-rave",
+  "type": "links",
+  "question": "On 2014-08-05 22:03 UTC, of the issues related to RAVE-335, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "RAVE-28"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-335",
+   "relation": "relates_to",
+   "as_of": "2014-08-05 22:03 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-rave-rule-001",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was RAVE-332 blocked on 2014-11-12 04:28 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-332",
+   "rule": "blocked",
+   "as_of": "2014-11-12 04:28 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-002",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was RAVE-606 blocked on 2012-10-02 11:46 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-606",
+   "rule": "blocked",
+   "as_of": "2012-10-02 11:46 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-003",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was RAVE-608 blocked on 2013-01-06 17:47 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-608",
+   "rule": "blocked",
+   "as_of": "2013-01-06 17:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-004",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was RAVE-608 blocked on 2013-04-13 18:09 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-608",
+   "rule": "blocked",
+   "as_of": "2013-04-13 18:09 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-005",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was RAVE-608 blocked on 2013-01-19 09:37 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-608",
+   "rule": "blocked",
+   "as_of": "2013-01-19 09:37 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-006",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was RAVE-1138 idle on 2014-11-20 02:10 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-1138",
+   "rule": "stalled",
+   "as_of": "2014-11-20 02:10 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-007",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was RAVE-86 idle on 2011-10-19 12:01 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-86",
+   "rule": "stalled",
+   "as_of": "2011-10-19 12:01 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-008",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was RAVE-546 idle on 2013-02-28 05:07 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-546",
+   "rule": "stalled",
+   "as_of": "2013-02-28 05:07 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-009",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was RAVE-1077 idle on 2014-06-07 00:35 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-1077",
+   "rule": "stalled",
+   "as_of": "2014-06-07 00:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-010",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. Was RAVE-711 idle on 2014-07-03 19:18 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-711",
+   "rule": "stalled",
+   "as_of": "2014-07-03 19:18 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-011",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was RAVE-1256 urgent and unassigned on 2014-08-21 17:01 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-1256",
+   "rule": "urgent_unassigned",
+   "as_of": "2014-08-21 17:01 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-012",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was RAVE-260 urgent and unassigned on 2012-09-16 23:35 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-260",
+   "rule": "urgent_unassigned",
+   "as_of": "2012-09-16 23:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-013",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was RAVE-509 urgent and unassigned on 2014-08-04 19:32 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-509",
+   "rule": "urgent_unassigned",
+   "as_of": "2014-08-04 19:32 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-014",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was RAVE-509 urgent and unassigned on 2012-12-13 20:21 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-509",
+   "rule": "urgent_unassigned",
+   "as_of": "2012-12-13 20:21 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-rule-015",
+  "tenant": "apache-rave",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was RAVE-509 urgent and unassigned on 2014-02-20 04:08 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:RAVE-509",
+   "rule": "urgent_unassigned",
+   "as_of": "2014-02-20 04:08 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-abstain-001",
+  "tenant": "apache-rave",
+  "type": "abstain",
+  "question": "What is the current status of RAVE-9801?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:RAVE-9801",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-abstain-002",
+  "tenant": "apache-rave",
+  "type": "abstain",
+  "question": "What was the status of RAVE-424 on 2011-06-20 13:48 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:RAVE-424",
+   "predicate": "status",
+   "as_of": "2011-06-20 13:48 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-abstain-003",
+  "tenant": "apache-rave",
+  "type": "abstain",
+  "question": "What is the current status of RAVE-6278?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:RAVE-6278",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-abstain-004",
+  "tenant": "apache-rave",
+  "type": "abstain",
+  "question": "What was the status of RAVE-839 on 2012-02-09 21:38 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:RAVE-839",
+   "predicate": "status",
+   "as_of": "2012-02-09 21:38 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-abstain-005",
+  "tenant": "apache-rave",
+  "type": "abstain",
+  "question": "What is the current status of RAVE-4228?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:RAVE-4228",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-001",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-03-23 07:19 UTC, which issues of the RAVE project had status In Progress?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2013-03-23 07:19 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-002",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-12-14 13:35 UTC, which issues of the RAVE project had status In Progress?",
+  "answer": [
+   "RAVE-1075",
+   "RAVE-1077",
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2013-12-14 13:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-003",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-04-23 14:22 UTC, which issues of the RAVE project had status Reopened?",
+  "answer": [
+   "RAVE-346",
+   "RAVE-35",
+   "RAVE-578"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2013-04-23 14:22 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-004",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-05-10 05:36 UTC, which issues of the RAVE project had status In Progress?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2013-05-10 05:36 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-005",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-08-02 06:35 UTC, which issues of the RAVE project had status In Progress?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941",
+   "RAVE-978"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "In Progress",
+   "as_of": "2013-08-02 06:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-006",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2013-01-15 16:37 UTC, which issues of the RAVE project had status Reopened?",
+  "answer": [
+   "RAVE-346",
+   "RAVE-35",
+   "RAVE-578"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2013-01-15 16:37 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-007",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2014-10-04 16:39 UTC, how many issues of the RAVE project had a status among: In Progress?",
+  "answer": 8,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2014-10-04 16:39 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-008",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2012-03-29 23:50 UTC, how many issues of the RAVE project had a status among: In Progress?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2012-03-29 23:50 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-009",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2014-01-26 03:09 UTC, how many issues of the RAVE project had a status among: In Progress?",
+  "answer": 8,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2014-01-26 03:09 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-010",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "On 2012-11-02 15:30 UTC, how many issues of the RAVE project had a status among: In Progress?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2012-11-02 15:30 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-011",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2012-12-03 06:39 UTC, which issues of the RAVE project were blocked?",
+  "answer": [
+   "RAVE-440",
+   "RAVE-608"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2012-12-03 06:39 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-012",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. On 2013-07-24 22:20 UTC, which issues of the RAVE project were idle?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2013-07-24 22:20 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-013",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2012-07-28 12:14 UTC, which issues of the RAVE project were urgent and unassigned?",
+  "answer": [
+   "RAVE-509",
+   "RAVE-729"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2012-07-28 12:14 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-014",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2013-04-02 05:59 UTC, which issues of the RAVE project were blocked?",
+  "answer": [
+   "RAVE-440",
+   "RAVE-608"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2013-04-02 05:59 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-015",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress and its status has not changed for 30 days or more. On 2014-10-16 11:55 UTC, which issues of the RAVE project were idle?",
+  "answer": [
+   "RAVE-1077",
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2014-10-16 11:55 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-016",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2013-04-12 18:23 UTC, which issues of the RAVE project were urgent and unassigned?",
+  "answer": [
+   "RAVE-509"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2013-04-12 18:23 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-017",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Which issues of the RAVE project had their status changed between 2013-04-24 04:51 UTC and 2013-05-21 22:30 UTC?",
+  "answer": [
+   "RAVE-946",
+   "RAVE-947",
+   "RAVE-948",
+   "RAVE-957",
+   "RAVE-958",
+   "RAVE-960",
+   "RAVE-961",
+   "RAVE-965",
+   "RAVE-966",
+   "RAVE-967"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2013-04-24 04:51 UTC",
+   "until": "2013-05-21 22:30 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-018",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Which issues of the RAVE project had their assignee changed between 2011-05-21 15:36 UTC and 2011-05-31 00:49 UTC?",
+  "answer": [
+   "RAVE-32",
+   "RAVE-33",
+   "RAVE-39",
+   "RAVE-40",
+   "RAVE-41",
+   "RAVE-43",
+   "RAVE-5"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "assignee",
+   "since": "2011-05-21 15:36 UTC",
+   "until": "2011-05-31 00:49 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-019",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Which issues of the RAVE project had their status changed between 2014-01-12 02:12 UTC and 2014-01-28 06:03 UTC?",
+  "answer": [
+   "RAVE-1075",
+   "RAVE-1087",
+   "RAVE-1088",
+   "RAVE-1089"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2014-01-12 02:12 UTC",
+   "until": "2014-01-28 06:03 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-020",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "Which issues of the RAVE project had their status changed between 2012-08-15 11:58 UTC and 2012-08-28 17:01 UTC?",
+  "answer": [
+   "RAVE-555",
+   "RAVE-754",
+   "RAVE-756",
+   "RAVE-761",
+   "RAVE-762",
+   "RAVE-763",
+   "RAVE-767",
+   "RAVE-768",
+   "RAVE-770",
+   "RAVE-771",
+   "RAVE-776"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "status",
+   "since": "2012-08-15 11:58 UTC",
+   "until": "2012-08-28 17:01 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-021",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2011-06-30 08:20 UTC, which issues of the RAVE project had status In Progress at 2011-06-29 18:42 UTC?",
+  "answer": [
+   "RAVE-27",
+   "RAVE-43",
+   "RAVE-44",
+   "RAVE-45",
+   "RAVE-57"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "In Progress",
+   "as_of": "2011-06-29 18:42 UTC",
+   "known_at": "2011-06-30 08:20 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-022",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2012-04-20 05:52 UTC, which issues of the RAVE project had status In Progress at 2012-04-16 21:25 UTC?",
+  "answer": [
+   "RAVE-495",
+   "RAVE-508"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "In Progress",
+   "as_of": "2012-04-16 21:25 UTC",
+   "known_at": "2012-04-20 05:52 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-023",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2013-02-15 09:57 UTC, which issues of the RAVE project had status Resolved at 2013-02-14 16:05 UTC?",
+  "answer": [
+   "RAVE-268",
+   "RAVE-572",
+   "RAVE-603",
+   "RAVE-691",
+   "RAVE-694",
+   "RAVE-695",
+   "RAVE-697",
+   "RAVE-698",
+   "RAVE-699",
+   "RAVE-700",
+   "RAVE-701",
+   "RAVE-756",
+   "RAVE-758",
+   "RAVE-767",
+   "RAVE-841",
+   "RAVE-845",
+   "RAVE-859",
+   "RAVE-878",
+   "RAVE-884",
+   "RAVE-889"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Resolved",
+   "as_of": "2013-02-14 16:05 UTC",
+   "known_at": "2013-02-15 09:57 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-tenant-024",
+  "tenant": "apache-rave",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2013-02-16 21:20 UTC, which issues of the RAVE project had status Resolved at 2013-02-14 15:52 UTC?",
+  "answer": [
+   "RAVE-268",
+   "RAVE-572",
+   "RAVE-603",
+   "RAVE-694",
+   "RAVE-695",
+   "RAVE-697",
+   "RAVE-698",
+   "RAVE-699",
+   "RAVE-700",
+   "RAVE-701",
+   "RAVE-756",
+   "RAVE-758",
+   "RAVE-767",
+   "RAVE-841",
+   "RAVE-845",
+   "RAVE-859",
+   "RAVE-878",
+   "RAVE-884",
+   "RAVE-889"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Resolved",
+   "as_of": "2013-02-14 15:52 UTC",
+   "known_at": "2013-02-16 21:20 UTC"
+  }
+ }
+]

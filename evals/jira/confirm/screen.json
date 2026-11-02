@@ -1,0 +1,3767 @@
+{
+ "seed": 47,
+ "candidates": [
+  {
+   "instance": "Apache",
+   "key": "AIRAVATA",
+   "tenant": "apache-airavata",
+   "issues": 3538,
+   "mismatched": 13,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 126,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "APEXMALHAR",
+   "tenant": "apache-apexmalhar",
+   "issues": 2041,
+   "mismatched": 68,
+   "urgent_priority": true,
+   "uncategorised": 0.0002057189878625797,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "ARIES",
+   "tenant": "apache-aries",
+   "issues": 2056,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 6,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 120,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "ARTEMIS",
+   "tenant": "apache-artemis",
+   "issues": 3571,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "ASTERIXDB",
+   "tenant": "apache-asterixdb",
+   "issues": 2993,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.15633423180592992,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "AURORA",
+   "tenant": "apache-aurora",
+   "issues": 1970,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "AVRO",
+   "tenant": "apache-avro",
+   "issues": 3272,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "AXIS",
+   "tenant": "apache-axis",
+   "issues": 2918,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 119,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "AXIS2C",
+   "tenant": "apache-axis2c",
+   "issues": 1692,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "AXISCPP",
+   "tenant": "apache-axiscpp",
+   "issues": 1087,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "BATIK",
+   "tenant": "apache-batik",
+   "issues": 1317,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 23,
+    "links": 1,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 20
+   },
+   "questions": 109,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "BEEHIVE",
+   "tenant": "apache-beehive",
+   "issues": 1231,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 111,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "BIGTOP",
+   "tenant": "apache-bigtop",
+   "issues": 3622,
+   "mismatched": 35,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "BOOKKEEPER",
+   "tenant": "apache-bookkeeper",
+   "issues": 1095,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "CAY",
+   "tenant": "apache-cay",
+   "issues": 2714,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.06896551724137931,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "CLEREZZA",
+   "tenant": "apache-clerezza",
+   "issues": 1069,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 3,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 114,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "CLIMATE",
+   "tenant": "apache-climate",
+   "issues": 973,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 110,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "CMIS",
+   "tenant": "apache-cmis",
+   "issues": 1096,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 115,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "COCOON",
+   "tenant": "apache-cocoon",
+   "issues": 2364,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "CONNECTORS",
+   "tenant": "apache-connectors",
+   "issues": 1689,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 6,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 119,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "CONTINUUM",
+   "tenant": "apache-continuum",
+   "issues": 2724,
+   "mismatched": 27,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 127,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "COUCHDB",
+   "tenant": "apache-couchdb",
+   "issues": 3292,
+   "mismatched": 21,
+   "urgent_priority": true,
+   "uncategorised": 0.00013713658804168953,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 10,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 124,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DAFFODIL",
+   "tenant": "apache-daffodil",
+   "issues": 2577,
+   "mismatched": 127,
+   "urgent_priority": true,
+   "uncategorised": 0.07361428726995535,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "DATALAB",
+   "tenant": "apache-datalab",
+   "issues": 1858,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 8,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 20
+   },
+   "questions": 115,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DELTASPIKE",
+   "tenant": "apache-deltaspike",
+   "issues": 1390,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DIRMINA",
+   "tenant": "apache-dirmina",
+   "issues": 1114,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DIRSERVER",
+   "tenant": "apache-dirserver",
+   "issues": 2278,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.00016977928692699492,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 119,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DIRSTUDIO",
+   "tenant": "apache-dirstudio",
+   "issues": 1277,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 8,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 21
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "DISPATCH",
+   "tenant": "apache-dispatch",
+   "issues": 2302,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.004080351537978657,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "EAGLE",
+   "tenant": "apache-eagle",
+   "issues": 1097,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "FALCON",
+   "tenant": "apache-falcon",
+   "issues": 2343,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "FINERACT",
+   "tenant": "apache-fineract",
+   "issues": 1476,
+   "mismatched": 215,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "FLUME",
+   "tenant": "apache-flume",
+   "issues": 3380,
+   "mismatched": 91,
+   "urgent_priority": true,
+   "uncategorised": 0.0001183151916706105,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "FOP",
+   "tenant": "apache-fop",
+   "issues": 3040,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 126,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "FOR",
+   "tenant": "apache-for",
+   "issues": 1251,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "GIRAPH",
+   "tenant": "apache-giraph",
+   "issues": 1252,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 128,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "GOBBLIN",
+   "tenant": "apache-gobblin",
+   "issues": 1591,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 9,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 107,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "GUACAMOLE",
+   "tenant": "apache-guacamole",
+   "issues": 1485,
+   "mismatched": 9,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "HAMA",
+   "tenant": "apache-hama",
+   "issues": 1006,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 119,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "HAWQ",
+   "tenant": "apache-hawq",
+   "issues": 1808,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 9,
+    "rule": 9,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "HOP",
+   "tenant": "apache-hop",
+   "issues": 2158,
+   "mismatched": 19,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 10,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 124,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "HTTPCLIENT",
+   "tenant": "apache-httpclient",
+   "issues": 2116,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0003563156957063959,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 115,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "HUDI",
+   "tenant": "apache-hudi",
+   "issues": 3172,
+   "mismatched": 36,
+   "urgent_priority": true,
+   "uncategorised": 0.11753892733564014,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "IOTDB",
+   "tenant": "apache-iotdb",
+   "issues": 2265,
+   "mismatched": 25,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "ISIS",
+   "tenant": "apache-isis",
+   "issues": 2932,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 128,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "IVY",
+   "tenant": "apache-ivy",
+   "issues": 1623,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 6,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JAMES",
+   "tenant": "apache-james",
+   "issues": 3611,
+   "mismatched": 15,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JCLOUDS",
+   "tenant": "apache-jclouds",
+   "issues": 1590,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 10,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 124,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JENA",
+   "tenant": "apache-jena",
+   "issues": 2238,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JS2",
+   "tenant": "apache-js2",
+   "issues": 1354,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JSPWIKI",
+   "tenant": "apache-jspwiki",
+   "issues": 1050,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 121,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "JUDDI",
+   "tenant": "apache-juddi",
+   "issues": 1012,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 12,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 23
+   },
+   "questions": 122,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "KNOX",
+   "tenant": "apache-knox",
+   "issues": 2694,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 128,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "KUDU",
+   "tenant": "apache-kudu",
+   "issues": 3194,
+   "mismatched": 111,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "LANG",
+   "tenant": "apache-lang",
+   "issues": 1641,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 12,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 123,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "LENS",
+   "tenant": "apache-lens",
+   "issues": 1451,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "LIBCLOUD",
+   "tenant": "apache-libcloud",
+   "issues": 1045,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 11,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 104,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "LOG4J2",
+   "tenant": "apache-log4j2",
+   "issues": 3304,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "MADLIB",
+   "tenant": "apache-madlib",
+   "issues": 1482,
+   "mismatched": 42,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "MAHOUT",
+   "tenant": "apache-mahout",
+   "issues": 2121,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 128,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "MASSEMBLY",
+   "tenant": "apache-massembly",
+   "issues": 941,
+   "mismatched": 36,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "MATH",
+   "tenant": "apache-math",
+   "issues": 1628,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "METRON",
+   "tenant": "apache-metron",
+   "issues": 2349,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "Apache",
+   "key": "MINIFICPP",
+   "tenant": "apache-minificpp",
+   "issues": 1707,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "MRELEASE",
+   "tenant": "apache-mrelease",
+   "issues": 1045,
+   "mismatched": 48,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "MRM",
+   "tenant": "apache-mrm",
+   "issues": 1993,
+   "mismatched": 30,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "MSHARED",
+   "tenant": "apache-mshared",
+   "issues": 991,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 11,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 108,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "MXNET",
+   "tenant": "apache-mxnet",
+   "issues": 1407,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "NUTCH",
+   "tenant": "apache-nutch",
+   "issues": 2909,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "ODE",
+   "tenant": "apache-ode",
+   "issues": 1078,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 12,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 126,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OLINGO",
+   "tenant": "apache-olingo",
+   "issues": 1552,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 112,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OODT",
+   "tenant": "apache-oodt",
+   "issues": 1040,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 115,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OOZIE",
+   "tenant": "apache-oozie",
+   "issues": 3646,
+   "mismatched": 9,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OPENEJB",
+   "tenant": "apache-openejb",
+   "issues": 2046,
+   "mismatched": 9,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 3,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OPENJPA",
+   "tenant": "apache-openjpa",
+   "issues": 2896,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OPENMEETINGS",
+   "tenant": "apache-openmeetings",
+   "issues": 2718,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 119,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OPENNLP",
+   "tenant": "apache-opennlp",
+   "issues": 1309,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 3,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "ORC",
+   "tenant": "apache-orc",
+   "issues": 1075,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.000723589001447178,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 11,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 125,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "OWB",
+   "tenant": "apache-owb",
+   "issues": 1393,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 10,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 103,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "PARQUET",
+   "tenant": "apache-parquet",
+   "issues": 2092,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "PIVOT",
+   "tenant": "apache-pivot",
+   "issues": 1039,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 20
+   },
+   "questions": 114,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "PROTON",
+   "tenant": "apache-proton",
+   "issues": 2472,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "RANGER",
+   "tenant": "apache-ranger",
+   "issues": 3567,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 13,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 127,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "RATIS",
+   "tenant": "apache-ratis",
+   "issues": 1467,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 14,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 126,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "RAVE",
+   "tenant": "apache-rave",
+   "issues": 1286,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "REEF",
+   "tenant": "apache-reef",
+   "issues": 2065,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "ROL",
+   "tenant": "apache-rol",
+   "issues": 2135,
+   "mismatched": 48,
+   "urgent_priority": true,
+   "uncategorised": 0.023497267759562842,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SAMZA",
+   "tenant": "apache-samza",
+   "issues": 2714,
+   "mismatched": 13,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SCB",
+   "tenant": "apache-scb",
+   "issues": 2326,
+   "mismatched": 54,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SCM",
+   "tenant": "apache-scm",
+   "issues": 958,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SENTRY",
+   "tenant": "apache-sentry",
+   "issues": 2564,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SHINDIG",
+   "tenant": "apache-shindig",
+   "issues": 1979,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SLIDER",
+   "tenant": "apache-slider",
+   "issues": 1265,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 10,
+    "rule": 14,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 123,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SMX4",
+   "tenant": "apache-smx4",
+   "issues": 1905,
+   "mismatched": 25,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SMXCOMP",
+   "tenant": "apache-smxcomp",
+   "issues": 972,
+   "mismatched": 43,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SQOOP",
+   "tenant": "apache-sqoop",
+   "issues": 3152,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.0002442598925256473,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SSHD",
+   "tenant": "apache-sshd",
+   "issues": 1235,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 126,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "STANBOL",
+   "tenant": "apache-stanbol",
+   "issues": 1473,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "STDCXX",
+   "tenant": "apache-stdcxx",
+   "issues": 1062,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "STORM",
+   "tenant": "apache-storm",
+   "issues": 3762,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.00012597631645250694,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "STR",
+   "tenant": "apache-str",
+   "issues": 3009,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 8,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 122,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "STRATOS",
+   "tenant": "apache-stratos",
+   "issues": 1662,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SUBMARINE",
+   "tenant": "apache-submarine",
+   "issues": 1171,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SUREFIRE",
+   "tenant": "apache-surefire",
+   "issues": 1958,
+   "mismatched": 66,
+   "urgent_priority": true,
+   "uncategorised": 0.0002469135802469136,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "SYNAPSE",
+   "tenant": "apache-synapse",
+   "issues": 1120,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 3,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 117,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SYNCOPE",
+   "tenant": "apache-syncope",
+   "issues": 1650,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.00015926102882624622,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 10,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 124,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "SYSTEMDS",
+   "tenant": "apache-systemds",
+   "issues": 3119,
+   "mismatched": 47,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "TAJO",
+   "tenant": "apache-tajo",
+   "issues": 2183,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TAP5",
+   "tenant": "apache-tap5",
+   "issues": 2696,
+   "mismatched": 69,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "TAPESTRY",
+   "tenant": "apache-tapestry",
+   "issues": 2499,
+   "mismatched": 7,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 12,
+    "abstain": 5,
+    "tenant": 21
+   },
+   "questions": 110,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TAVERNA",
+   "tenant": "apache-taverna",
+   "issues": 1063,
+   "mismatched": 57,
+   "urgent_priority": true,
+   "uncategorised": 0.009395973154362415,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "TIKA",
+   "tenant": "apache-tika",
+   "issues": 3633,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TINKERPOP",
+   "tenant": "apache-tinkerpop",
+   "issues": 2681,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TOBAGO",
+   "tenant": "apache-tobago",
+   "issues": 2091,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.011214442013129104,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "TOMAHAWK",
+   "tenant": "apache-tomahawk",
+   "issues": 1683,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 118,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TOMEE",
+   "tenant": "apache-tomee",
+   "issues": 3371,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TRAFODION",
+   "tenant": "apache-trafodion",
+   "issues": 3337,
+   "mismatched": 13,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "TRINIDAD",
+   "tenant": "apache-trinidad",
+   "issues": 2561,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 2,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "USERGRID",
+   "tenant": "apache-usergrid",
+   "issues": 1341,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 10,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 124,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "VCL",
+   "tenant": "apache-vcl",
+   "issues": 1122,
+   "mismatched": 5,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 113,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "XALANJ",
+   "tenant": "apache-xalanj",
+   "issues": 954,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 4,
+    "rule": 7,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 104,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "XERCESC",
+   "tenant": "apache-xercesc",
+   "issues": 2230,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 5,
+    "rule": 10,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 108,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "XERCESJ",
+   "tenant": "apache-xercesj",
+   "issues": 1725,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 10,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 103,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "XW",
+   "tenant": "apache-xw",
+   "issues": 1128,
+   "mismatched": 95,
+   "urgent_priority": true,
+   "uncategorised": 0.07721680101824353,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Apache",
+   "key": "YETUS",
+   "tenant": "apache-yetus",
+   "issues": 1136,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "Apache",
+   "key": "YUNIKORN",
+   "tenant": "apache-yunikorn",
+   "issues": 994,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 129,
+   "checks_passed": true
+  },
+  {
+   "instance": "IntelDAOS",
+   "key": "CART",
+   "tenant": "inteldaos-cart",
+   "issues": 941,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.15246015246015246,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "HAP",
+   "tenant": "jfrog-hap",
+   "issues": 1274,
+   "mismatched": 662,
+   "urgent_priority": false,
+   "uncategorised": 0.2126727334007415,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "TCAP",
+   "tenant": "jfrog-tcap",
+   "issues": 1063,
+   "mismatched": 128,
+   "urgent_priority": false,
+   "uncategorised": 0.09709425939050319,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "CLOV",
+   "tenant": "jira-clov",
+   "issues": 1501,
+   "mismatched": 21,
+   "urgent_priority": true,
+   "uncategorised": 0.11897155028145444,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "ID",
+   "tenant": "jira-id",
+   "issues": 1310,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.12032332563510392,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "JPOSERVER",
+   "tenant": "jira-jposerver",
+   "issues": 2180,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.08177570093457943,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "ACJIRA",
+   "tenant": "jiraecosystem-acjira",
+   "issues": 1999,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.35353535353535354,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "AG",
+   "tenant": "jiraecosystem-ag",
+   "issues": 1485,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.2561787072243346,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "AMPS",
+   "tenant": "jiraecosystem-amps",
+   "issues": 1490,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.18317141961767472,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "APL",
+   "tenant": "jiraecosystem-apl",
+   "issues": 1266,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.15390781563126252,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "CE",
+   "tenant": "jiraecosystem-ce",
+   "issues": 959,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.005272407732864675,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 121,
+   "checks_passed": true
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PL",
+   "tenant": "jiraecosystem-pl",
+   "issues": 2889,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.15846652042202025,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PLE",
+   "tenant": "jiraecosystem-ple",
+   "issues": 1499,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.11298315163528246,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PLUG",
+   "tenant": "jiraecosystem-plug",
+   "issues": 1161,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.14864035984461255,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "STRM",
+   "tenant": "jiraecosystem-strm",
+   "issues": 2293,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.12500962204603186,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "UPM",
+   "tenant": "jiraecosystem-upm",
+   "issues": 3763,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.2661669862297368,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Mindville",
+   "key": "ICS",
+   "tenant": "mindville-ics",
+   "issues": 1847,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "Mojang",
+   "key": "WEB",
+   "tenant": "mojang-web",
+   "issues": 3473,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.000996457041629761,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 15,
+    "rule": 7,
+    "abstain": 5,
+    "tenant": 19
+   },
+   "questions": 116,
+   "checks_passed": true
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CDRIVER",
+   "tenant": "mongodb-cdriver",
+   "issues": 3410,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.002250562640660165,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "COMPASS",
+   "tenant": "mongodb-compass",
+   "issues": 2603,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.0029422148993762504,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CSHARP",
+   "tenant": "mongodb-csharp",
+   "issues": 3752,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.014848017929682029,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CXX",
+   "tenant": "mongodb-cxx",
+   "issues": 2298,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.00786468433527257,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "GODRIVER",
+   "tenant": "mongodb-godriver",
+   "issues": 2161,
+   "mismatched": 1,
+   "urgent_priority": false,
+   "uncategorised": 0.0273224043715847,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "NODE",
+   "tenant": "mongodb-node",
+   "issues": 3621,
+   "mismatched": 5,
+   "urgent_priority": false,
+   "uncategorised": 0.02704198077322083,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PHPC",
+   "tenant": "mongodb-phpc",
+   "issues": 1600,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.006602735418959283,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PYTHON",
+   "tenant": "mongodb-python",
+   "issues": 2872,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.1323131552248901,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUBY",
+   "tenant": "mongodb-ruby",
+   "issues": 2689,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.11706906232453677,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUST",
+   "tenant": "mongodb-rust",
+   "issues": 1046,
+   "mismatched": 3,
+   "urgent_priority": false,
+   "uncategorised": 0.010053948013732222,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "SWIFT",
+   "tenant": "mongodb-swift",
+   "issues": 1338,
+   "mismatched": 4,
+   "urgent_priority": false,
+   "uncategorised": 0.005266981474754813,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "TOOLS",
+   "tenant": "mongodb-tools",
+   "issues": 2452,
+   "mismatched": 13,
+   "urgent_priority": false,
+   "uncategorised": 0.04394457099468489,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "AUTOSUITE",
+   "tenant": "qt-autosuite",
+   "issues": 1521,
+   "mismatched": 102,
+   "urgent_priority": false,
+   "uncategorised": 0.019579254322016248,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "PYSIDE",
+   "tenant": "qt-pyside",
+   "issues": 1595,
+   "mismatched": 53,
+   "urgent_priority": false,
+   "uncategorised": 0.0014098690835850957,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QBS",
+   "tenant": "qt-qbs",
+   "issues": 1634,
+   "mismatched": 95,
+   "urgent_priority": false,
+   "uncategorised": 0.0008981498113885396,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QSR",
+   "tenant": "qt-qsr",
+   "issues": 1248,
+   "mismatched": 151,
+   "urgent_priority": false,
+   "uncategorised": 0.0007524454477050414,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTIFW",
+   "tenant": "qt-qtifw",
+   "issues": 2178,
+   "mismatched": 54,
+   "urgent_priority": false,
+   "uncategorised": 0.02569356872635561,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTMOBILITY",
+   "tenant": "qt-qtmobility",
+   "issues": 1926,
+   "mismatched": 28,
+   "urgent_priority": false,
+   "uncategorised": 0.0279842080817464,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTVSADDINBUG",
+   "tenant": "qt-qtvsaddinbug",
+   "issues": 967,
+   "mismatched": 87,
+   "urgent_priority": false,
+   "uncategorised": 0.0002949852507374631,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "AAH",
+   "tenant": "redhat-aah",
+   "issues": 979,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.06131846825012118,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "AF",
+   "tenant": "redhat-af",
+   "issues": 2696,
+   "mismatched": 50,
+   "urgent_priority": true,
+   "uncategorised": 0.03488879197557784,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "APIMAN",
+   "tenant": "redhat-apiman",
+   "issues": 1333,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 113,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "ARQ",
+   "tenant": "redhat-arq",
+   "issues": 2168,
+   "mismatched": 73,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "BXMSDOC",
+   "tenant": "redhat-bxmsdoc",
+   "issues": 3589,
+   "mismatched": 44,
+   "urgent_priority": true,
+   "uncategorised": 0.026424969681496137,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CLOUD",
+   "tenant": "redhat-cloud",
+   "issues": 2226,
+   "mismatched": 278,
+   "urgent_priority": true,
+   "uncategorised": 0.02650378625517931,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "COST",
+   "tenant": "redhat-cost",
+   "issues": 1932,
+   "mismatched": 27,
+   "urgent_priority": true,
+   "uncategorised": 0.11485360628421805,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CRW",
+   "tenant": "redhat-crw",
+   "issues": 2159,
+   "mismatched": 55,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CS",
+   "tenant": "redhat-cs",
+   "issues": 940,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.004135338345864661,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "RedHat",
+   "key": "DESIGN",
+   "tenant": "redhat-design",
+   "issues": 1765,
+   "mismatched": 63,
+   "urgent_priority": true,
+   "uncategorised": 0.1860909438288116,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "EJBTHREE",
+   "tenant": "redhat-ejbthree",
+   "issues": 2190,
+   "mismatched": 70,
+   "urgent_priority": true,
+   "uncategorised": 0.02112676056338028,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ELY",
+   "tenant": "redhat-ely",
+   "issues": 2110,
+   "mismatched": 56,
+   "urgent_priority": true,
+   "uncategorised": 0.01345668629100084,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQ",
+   "tenant": "redhat-entmq",
+   "issues": 1473,
+   "mismatched": 28,
+   "urgent_priority": true,
+   "uncategorised": 0.17791301235009843,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQBR",
+   "tenant": "redhat-entmqbr",
+   "issues": 3720,
+   "mismatched": 229,
+   "urgent_priority": true,
+   "uncategorised": 0.2793427230046948,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQMAAS",
+   "tenant": "redhat-entmqmaas",
+   "issues": 2202,
+   "mismatched": 14,
+   "urgent_priority": true,
+   "uncategorised": 0.17435171254093282,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQST",
+   "tenant": "redhat-entmqst",
+   "issues": 2482,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.12530404658362201,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ERRAI",
+   "tenant": "redhat-errai",
+   "issues": 1104,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0003281916639317361,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 11,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 104,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "FH",
+   "tenant": "redhat-fh",
+   "issues": 2235,
+   "mismatched": 78,
+   "urgent_priority": true,
+   "uncategorised": 0.006617735531223679,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "FORGE",
+   "tenant": "redhat-forge",
+   "issues": 2634,
+   "mismatched": 90,
+   "urgent_priority": true,
+   "uncategorised": 0.08062189453438051,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "FUSETOOLS",
+   "tenant": "redhat-fusetools",
+   "issues": 3341,
+   "mismatched": 52,
+   "urgent_priority": true,
+   "uncategorised": 0.0037227001985440105,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "HAL",
+   "tenant": "redhat-hal",
+   "issues": 1601,
+   "mismatched": 44,
+   "urgent_priority": true,
+   "uncategorised": 0.062244434348023625,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "HAWKULAR",
+   "tenant": "redhat-hawkular",
+   "issues": 1309,
+   "mismatched": 63,
+   "urgent_priority": true,
+   "uncategorised": 0.033385093167701864,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBESB",
+   "tenant": "redhat-jbesb",
+   "issues": 3890,
+   "mismatched": 195,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBJCA",
+   "tenant": "redhat-jbjca",
+   "issues": 1399,
+   "mismatched": 12,
+   "urgent_priority": true,
+   "uncategorised": 0.0027007120058924624,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 9,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 103,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBRULES",
+   "tenant": "redhat-jbrules",
+   "issues": 3056,
+   "mismatched": 23,
+   "urgent_priority": true,
+   "uncategorised": 0.012457705321439557,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBTM",
+   "tenant": "redhat-jbtm",
+   "issues": 3483,
+   "mismatched": 123,
+   "urgent_priority": true,
+   "uncategorised": 0.0011466011466011465,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBWS",
+   "tenant": "redhat-jbws",
+   "issues": 3845,
+   "mismatched": 361,
+   "urgent_priority": true,
+   "uncategorised": 0.09366197183098592,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JDG",
+   "tenant": "redhat-jdg",
+   "issues": 1710,
+   "mismatched": 84,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JGRP",
+   "tenant": "redhat-jgrp",
+   "issues": 2482,
+   "mismatched": 59,
+   "urgent_priority": true,
+   "uncategorised": 0.040734679032551374,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JWS",
+   "tenant": "redhat-jws",
+   "issues": 930,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.020632530120481926,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "KATA",
+   "tenant": "redhat-kata",
+   "issues": 1106,
+   "mismatched": 17,
+   "urgent_priority": true,
+   "uncategorised": 0.013222632226322263,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MAISTRA",
+   "tenant": "redhat-maistra",
+   "issues": 2299,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.09227808918263197,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MODE",
+   "tenant": "redhat-mode",
+   "issues": 2679,
+   "mismatched": 151,
+   "urgent_priority": true,
+   "uncategorised": 0.018924820630134138,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MULTIARCH",
+   "tenant": "redhat-multiarch",
+   "issues": 915,
+   "mismatched": 9,
+   "urgent_priority": true,
+   "uncategorised": 0.016422706176365584,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "OCPPLAN",
+   "tenant": "redhat-ocpplan",
+   "issues": 1291,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.016306408797876374,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ODC",
+   "tenant": "redhat-odc",
+   "issues": 1406,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.08994334277620397,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ORG",
+   "tenant": "redhat-org",
+   "issues": 1850,
+   "mismatched": 77,
+   "urgent_priority": true,
+   "uncategorised": 0.24176565874730022,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "PLANNER",
+   "tenant": "redhat-planner",
+   "issues": 2540,
+   "mismatched": 83,
+   "urgent_priority": true,
+   "uncategorised": 0.0026258881680568426,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RESTEASY",
+   "tenant": "redhat-resteasy",
+   "issues": 2922,
+   "mismatched": 71,
+   "urgent_priority": true,
+   "uncategorised": 0.006983962752198655,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHBRMS",
+   "tenant": "redhat-rhbrms",
+   "issues": 2400,
+   "mismatched": 1359,
+   "urgent_priority": true,
+   "uncategorised": 0.4361741719389654,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHDEVDOCS",
+   "tenant": "redhat-rhdevdocs",
+   "issues": 2486,
+   "mismatched": 36,
+   "urgent_priority": true,
+   "uncategorised": 0.003111921880030046,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHDM",
+   "tenant": "redhat-rhdm",
+   "issues": 1260,
+   "mismatched": 54,
+   "urgent_priority": true,
+   "uncategorised": 0.07179106325040228,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHPAM",
+   "tenant": "redhat-rhpam",
+   "issues": 2886,
+   "mismatched": 120,
+   "urgent_priority": true,
+   "uncategorised": 0.00011127802815334112,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHSSO",
+   "tenant": "redhat-rhsso",
+   "issues": 1477,
+   "mismatched": 70,
+   "urgent_priority": true,
+   "uncategorised": 0.4149809440046907,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SB",
+   "tenant": "redhat-sb",
+   "issues": 1319,
+   "mismatched": 65,
+   "urgent_priority": true,
+   "uncategorised": 0.06622101524963443,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SECURITY",
+   "tenant": "redhat-security",
+   "issues": 959,
+   "mismatched": 22,
+   "urgent_priority": true,
+   "uncategorised": 0.007270964614638876,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SOA",
+   "tenant": "redhat-soa",
+   "issues": 3116,
+   "mismatched": 130,
+   "urgent_priority": true,
+   "uncategorised": 0.05157962604771115,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SWITCHYARD",
+   "tenant": "redhat-switchyard",
+   "issues": 3015,
+   "mismatched": 185,
+   "urgent_priority": true,
+   "uncategorised": 0.00010181225819588678,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SWSQE",
+   "tenant": "redhat-swsqe",
+   "issues": 1299,
+   "mismatched": 45,
+   "urgent_priority": true,
+   "uncategorised": 0.007714285714285714,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "TEIIDDES",
+   "tenant": "redhat-teiiddes",
+   "issues": 3099,
+   "mismatched": 53,
+   "urgent_priority": true,
+   "uncategorised": 0.004886162802786152,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "THORN",
+   "tenant": "redhat-thorn",
+   "issues": 2467,
+   "mismatched": 78,
+   "urgent_priority": true,
+   "uncategorised": 0.36513473445539374,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "TRACING",
+   "tenant": "redhat-tracing",
+   "issues": 1467,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.0030537093587210346,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "UNDERTOW",
+   "tenant": "redhat-undertow",
+   "issues": 1780,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.022211938917167977,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "WELD",
+   "tenant": "redhat-weld",
+   "issues": 2576,
+   "mismatched": 59,
+   "urgent_priority": true,
+   "uncategorised": 0.01013202333435677,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "WINDUP",
+   "tenant": "redhat-windup",
+   "issues": 3035,
+   "mismatched": 52,
+   "urgent_priority": true,
+   "uncategorised": 0.0010415581710238517,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Sakai",
+   "key": "EVALSYS",
+   "tenant": "sakai-evalsys",
+   "issues": 1577,
+   "mismatched": 34,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "SecondLife",
+   "key": "STORM",
+   "tenant": "secondlife-storm",
+   "issues": 1547,
+   "mismatched": 22,
+   "urgent_priority": false,
+   "uncategorised": 0.2590994218711831,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Sonatype",
+   "key": "MVNCENTRAL",
+   "tenant": "sonatype-mvncentral",
+   "issues": 1641,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.15815085158150852,
+   "failed": [
+    4
+   ]
+  }
+ ],
+ "selected": [
+  "apache-tajo",
+  "apache-rave"
+ ]
+}

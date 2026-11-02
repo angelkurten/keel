@@ -1,0 +1,1940 @@
+[
+ {
+  "id": "apache-tajo-current-001",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What resolution does TAJO-916 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-916",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-tajo-current-002",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current resolution of TAJO-1023?",
+  "answer": "Won't Fix",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1023",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-tajo-current-003",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What priority does TAJO-1816 have now?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1816",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-current-004",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current assignee of TAJO-92?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-92",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-tajo-current-005",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What status does TAJO-608 have now?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-608",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-tajo-current-006",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What resolution does TAJO-479 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-479",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-tajo-current-007",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What priority does TAJO-313 have now?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-313",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-current-008",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current issue type of TAJO-2067?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-2067",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-tajo-current-009",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current issue type of TAJO-2012?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-2012",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-tajo-current-010",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What resolution does TAJO-203 have now?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-203",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-tajo-current-011",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current issue type of TAJO-679?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-679",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-tajo-current-012",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What priority does TAJO-1135 have now?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1135",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-current-013",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What resolution does TAJO-2087 have now?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-2087",
+   "predicate": "resolution"
+  }
+ },
+ {
+  "id": "apache-tajo-current-014",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current priority of TAJO-1993?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1993",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-current-015",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current assignee of TAJO-332?",
+  "answer": "user-a83dd46f",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-332",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-tajo-current-016",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What issue type does TAJO-1225 have now?",
+  "answer": "Bug",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1225",
+   "predicate": "issue_type"
+  }
+ },
+ {
+  "id": "apache-tajo-current-017",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current assignee of TAJO-1055?",
+  "answer": "user-1156cb30",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1055",
+   "predicate": "assignee"
+  }
+ },
+ {
+  "id": "apache-tajo-current-018",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What status does TAJO-1064 have now?",
+  "answer": "Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1064",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-tajo-current-019",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What is the current priority of TAJO-785?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-785",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-current-020",
+  "tenant": "apache-tajo",
+  "type": "current",
+  "question": "What priority does TAJO-1602 have now?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1602",
+   "predicate": "priority"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-001",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-07-10 01:54 UTC, what status did TAJO-925 have?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-925",
+   "predicate": "status",
+   "as_of": "2014-07-10 01:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-002",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1896 on 2015-10-20 23:16 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1896",
+   "predicate": "status",
+   "as_of": "2015-10-20 23:16 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-003",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-12-27 14:05 UTC, what resolution did TAJO-422 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-422",
+   "predicate": "resolution",
+   "as_of": "2013-12-27 14:05 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-004",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-06-29 14:47 UTC, what status did TAJO-60 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-60",
+   "predicate": "status",
+   "as_of": "2013-06-29 14:47 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-005",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1491 on 2015-04-01 16:58 UTC?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1491",
+   "predicate": "status",
+   "as_of": "2015-04-01 16:58 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-006",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-12-05 20:46 UTC, what priority did TAJO-335 have?",
+  "answer": "Major",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-335",
+   "predicate": "priority",
+   "as_of": "2013-12-05 20:46 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-007",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1800 on 2015-08-30 06:15 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1800",
+   "predicate": "status",
+   "as_of": "2015-08-30 06:15 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-008",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-07-26 00:20 UTC, what status did TAJO-966 have?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-966",
+   "predicate": "status",
+   "as_of": "2014-07-26 00:20 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-009",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1464 on 2015-04-30 16:10 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1464",
+   "predicate": "status",
+   "as_of": "2015-04-30 16:10 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-010",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2015-02-24 08:55 UTC, what status did TAJO-1301 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1301",
+   "predicate": "status",
+   "as_of": "2015-02-24 08:55 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-011",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1723 on 2015-08-03 08:09 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1723",
+   "predicate": "status",
+   "as_of": "2015-08-03 08:09 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-012",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1140 on 2014-10-28 03:29 UTC?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1140",
+   "predicate": "status",
+   "as_of": "2014-10-28 03:29 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-013",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-12-09 23:44 UTC, what assignee did TAJO-305 have?",
+  "answer": "user-b24ce378",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-305",
+   "predicate": "assignee",
+   "as_of": "2013-12-09 23:44 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-014",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-05-20 19:08 UTC, what status did TAJO-832 have?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-832",
+   "predicate": "status",
+   "as_of": "2014-05-20 19:08 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-015",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2015-06-10 16:16 UTC, what status did TAJO-1514 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1514",
+   "predicate": "status",
+   "as_of": "2015-06-10 16:16 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-016",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the status of TAJO-1360 on 2015-03-01 05:10 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1360",
+   "predicate": "status",
+   "as_of": "2015-03-01 05:10 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-017",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-11-09 11:40 UTC, what status did TAJO-138 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-138",
+   "predicate": "status",
+   "as_of": "2013-11-09 11:40 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-018",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-10-17 07:50 UTC, what status did TAJO-260 have?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-260",
+   "predicate": "status",
+   "as_of": "2013-10-17 07:50 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-019",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-02-14 14:51 UTC, what status did TAJO-595 have?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-595",
+   "predicate": "status",
+   "as_of": "2014-02-14 14:51 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-020",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2013-10-06 07:41 UTC, what status did TAJO-208 have?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-208",
+   "predicate": "status",
+   "as_of": "2013-10-06 07:41 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-021",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2015-04-22 06:12 UTC, what assignee did TAJO-723 have?",
+  "answer": "user-1156cb30",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-723",
+   "predicate": "assignee",
+   "as_of": "2015-04-22 06:12 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-022",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-11-21 20:54 UTC, what assignee did TAJO-1160 have?",
+  "answer": "user-1156cb30",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1160",
+   "predicate": "assignee",
+   "as_of": "2014-11-21 20:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-023",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the assignee of TAJO-1537 on 2015-04-14 05:59 UTC?",
+  "answer": "user-0dde4cd9",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1537",
+   "predicate": "assignee",
+   "as_of": "2015-04-14 05:59 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-024",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "What was the assignee of TAJO-1112 on 2014-10-16 04:32 UTC?",
+  "answer": "user-9404107b",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1112",
+   "predicate": "assignee",
+   "as_of": "2014-10-16 04:32 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-as_of-025",
+  "tenant": "apache-tajo",
+  "type": "as_of",
+  "question": "On 2014-09-25 15:45 UTC, what resolution did TAJO-639 have?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-639",
+   "predicate": "resolution",
+   "as_of": "2014-09-25 15:45 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-001",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-04-18 14:58 UTC, what was the assignee of TAJO-763 at 2014-04-18 14:05 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-763",
+   "predicate": "assignee",
+   "as_of": "2014-04-18 14:05 UTC",
+   "known_at": "2014-04-18 14:58 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-002",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-08-07 11:49 UTC, what assignee did TAJO-119 have at 2013-08-04 15:30 UTC?",
+  "answer": "user-a83dd46f",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-119",
+   "predicate": "assignee",
+   "as_of": "2013-08-04 15:30 UTC",
+   "known_at": "2013-08-07 11:49 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-003",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2015-12-28 08:09 UTC, what status did TAJO-1858 have at 2015-12-23 15:24 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1858",
+   "predicate": "status",
+   "as_of": "2015-12-23 15:24 UTC",
+   "known_at": "2015-12-28 08:09 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-004",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2016-05-14 15:16 UTC, what assignee did TAJO-1401 have at 2016-05-11 08:36 UTC?",
+  "answer": "user-5cec8306",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1401",
+   "predicate": "assignee",
+   "as_of": "2016-05-11 08:36 UTC",
+   "known_at": "2016-05-14 15:16 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-005",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-12-16 01:46 UTC, what resolution did TAJO-415 have at 2013-12-15 16:17 UTC?",
+  "answer": "Pending Closed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-415",
+   "predicate": "resolution",
+   "as_of": "2013-12-15 16:17 UTC",
+   "known_at": "2013-12-16 01:46 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-006",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-12-11 09:03 UTC, what was the resolution of TAJO-358 at 2013-12-03 10:31 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-358",
+   "predicate": "resolution",
+   "as_of": "2013-12-03 10:31 UTC",
+   "known_at": "2013-12-11 09:03 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-007",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-08-17 14:56 UTC, what was the status of TAJO-118 at 2013-08-12 05:10 UTC?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-118",
+   "predicate": "status",
+   "as_of": "2013-08-12 05:10 UTC",
+   "known_at": "2013-08-17 14:56 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-008",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-11-26 05:37 UTC, what status did TAJO-296 have at 2013-11-24 07:37 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-296",
+   "predicate": "status",
+   "as_of": "2013-11-24 07:37 UTC",
+   "known_at": "2013-11-26 05:37 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-009",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-05-17 19:08 UTC, what was the status of TAJO-801 at 2014-05-16 00:38 UTC?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-801",
+   "predicate": "status",
+   "as_of": "2014-05-16 00:38 UTC",
+   "known_at": "2014-05-17 19:08 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-010",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2014-10-15 16:38 UTC, what was the status of TAJO-1075 at 2014-10-14 07:09 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1075",
+   "predicate": "status",
+   "as_of": "2014-10-14 07:09 UTC",
+   "known_at": "2014-10-15 16:38 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-011",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2015-11-16 01:53 UTC, what status did TAJO-1969 have at 2015-11-10 03:50 UTC?",
+  "answer": "In Progress",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1969",
+   "predicate": "status",
+   "as_of": "2015-11-10 03:50 UTC",
+   "known_at": "2015-11-16 01:53 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-012",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2015-06-22 17:20 UTC, what was the status of TAJO-1646 at 2015-06-19 02:56 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1646",
+   "predicate": "status",
+   "as_of": "2015-06-19 02:56 UTC",
+   "known_at": "2015-06-22 17:20 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-013",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-12-12 18:38 UTC, what resolution did TAJO-1239 have at 2014-12-12 07:29 UTC?",
+  "answer": null,
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1239",
+   "predicate": "resolution",
+   "as_of": "2014-12-12 07:29 UTC",
+   "known_at": "2014-12-12 18:38 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-014",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2015-09-11 09:32 UTC, what was the resolution of TAJO-1816 at 2015-09-07 06:40 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1816",
+   "predicate": "resolution",
+   "as_of": "2015-09-07 06:40 UTC",
+   "known_at": "2015-09-11 09:32 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-015",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2015-11-16 03:55 UTC, what was the status of TAJO-1972 at 2015-11-09 10:40 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1972",
+   "predicate": "status",
+   "as_of": "2015-11-09 10:40 UTC",
+   "known_at": "2015-11-16 03:55 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-016",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2016-05-05 00:44 UTC, what was the priority of TAJO-1968 at 2016-05-03 03:23 UTC?",
+  "answer": "Minor",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1968",
+   "predicate": "priority",
+   "as_of": "2016-05-03 03:23 UTC",
+   "known_at": "2016-05-05 00:44 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-017",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-08-07 04:14 UTC, what status did TAJO-102 have at 2013-08-07 03:22 UTC?",
+  "answer": "Patch Available",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-102",
+   "predicate": "status",
+   "as_of": "2013-08-07 03:22 UTC",
+   "known_at": "2013-08-07 04:14 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-018",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2015-10-12 07:30 UTC, what was the status of TAJO-1889 at 2015-09-28 21:51 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1889",
+   "predicate": "status",
+   "as_of": "2015-09-28 21:51 UTC",
+   "known_at": "2015-10-12 07:30 UTC",
+   "window": "after",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-019",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-08-31 08:20 UTC, what was the assignee of TAJO-105 at 2013-08-31 08:05 UTC?",
+  "answer": "user-1156cb30",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-105",
+   "predicate": "assignee",
+   "as_of": "2013-08-31 08:05 UTC",
+   "known_at": "2013-08-31 08:20 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-020",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-09-11 07:04 UTC, what resolution did TAJO-937 have at 2014-09-04 12:37 UTC?",
+  "answer": "Fixed",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-937",
+   "predicate": "resolution",
+   "as_of": "2014-09-04 12:37 UTC",
+   "known_at": "2014-09-11 07:04 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-021",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2015-12-17 12:06 UTC, what status did TAJO-2007 have at 2015-12-03 08:21 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-2007",
+   "predicate": "status",
+   "as_of": "2015-12-03 08:21 UTC",
+   "known_at": "2015-12-17 12:06 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-022",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2013-11-13 11:15 UTC, what assignee did TAJO-284 have at 2013-11-12 06:23 UTC?",
+  "answer": "user-82f94c5c",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-284",
+   "predicate": "assignee",
+   "as_of": "2013-11-12 06:23 UTC",
+   "known_at": "2013-11-13 11:15 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-023",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2014-02-13 23:00 UTC, what status did TAJO-578 have at 2014-02-12 14:12 UTC?",
+  "answer": "Resolved",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-578",
+   "predicate": "status",
+   "as_of": "2014-02-12 14:12 UTC",
+   "known_at": "2014-02-13 23:00 UTC",
+   "window": "before",
+   "injection": "correction"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-024",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "As the tracker stood on 2015-11-13 21:34 UTC, what issue type did TAJO-1882 have at 2015-11-10 01:48 UTC?",
+  "answer": "Task",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-1882",
+   "predicate": "issue_type",
+   "as_of": "2015-11-10 01:48 UTC",
+   "known_at": "2015-11-13 21:34 UTC",
+   "window": "after",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-known_at-025",
+  "tenant": "apache-tajo",
+  "type": "known_at",
+  "question": "According to what had been recorded by 2013-11-22 17:33 UTC, what was the status of TAJO-200 at 2013-11-20 11:46 UTC?",
+  "answer": "Open",
+  "answer_type": "value",
+  "params": {
+   "subject": "issue:TAJO-200",
+   "predicate": "status",
+   "as_of": "2013-11-20 11:46 UTC",
+   "known_at": "2013-11-22 17:33 UTC",
+   "window": "before",
+   "injection": "late"
+  }
+ },
+ {
+  "id": "apache-tajo-links-001",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2015-11-24 10:35 UTC, of the issues related to TAJO-734, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1576",
+   "TAJO-768"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-734",
+   "relation": "relates_to",
+   "as_of": "2015-11-24 10:35 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-002",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2015-11-19 12:21 UTC, of the issues related to TAJO-1397, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1146",
+   "TAJO-1399",
+   "TAJO-1536",
+   "TAJO-1551",
+   "TAJO-1622"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1397",
+   "relation": "relates_to",
+   "as_of": "2015-11-19 12:21 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-003",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2017-09-02 02:37 UTC, of the issues related to TAJO-680, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1310",
+   "TAJO-1666"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-680",
+   "relation": "relates_to",
+   "as_of": "2017-09-02 02:37 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-004",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2017-08-10 09:55 UTC, of the issues related to TAJO-744, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1176"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-744",
+   "relation": "relates_to",
+   "as_of": "2017-08-10 09:55 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-005",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2018-02-25 10:48 UTC, of the issues related to TAJO-1458, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1331"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1458",
+   "relation": "relates_to",
+   "as_of": "2018-02-25 10:48 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-006",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2016-09-30 15:21 UTC, of the issues related to TAJO-1443, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1459"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1443",
+   "relation": "relates_to",
+   "as_of": "2016-09-30 15:21 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-007",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2017-12-03 00:38 UTC, of the issues related to TAJO-721, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1402",
+   "TAJO-710"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-721",
+   "relation": "relates_to",
+   "as_of": "2017-12-03 00:38 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-008",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2019-11-26 23:45 UTC, of the issues related to TAJO-540, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1255",
+   "TAJO-1397",
+   "TAJO-323",
+   "TAJO-550",
+   "TAJO-855"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-540",
+   "relation": "relates_to",
+   "as_of": "2019-11-26 23:45 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-009",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2016-07-09 05:27 UTC, of the issues linked to TAJO-1425 as duplicates, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1576",
+   "TAJO-1580"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1425",
+   "relation": "duplicates",
+   "as_of": "2016-07-09 05:27 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-010",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2020-08-06 08:10 UTC, of the issues related to TAJO-475, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-505",
+   "TAJO-543"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-475",
+   "relation": "relates_to",
+   "as_of": "2020-08-06 08:10 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-011",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2016-06-28 14:41 UTC, of the issues related to TAJO-778, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-785"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-778",
+   "relation": "relates_to",
+   "as_of": "2016-06-28 14:41 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-012",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2015-01-26 18:10 UTC, of the issues related to TAJO-1282, which were done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1288"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1282",
+   "relation": "relates_to",
+   "as_of": "2015-01-26 18:10 UTC",
+   "done": true
+  }
+ },
+ {
+  "id": "apache-tajo-links-013",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2020-03-18 21:48 UTC, of the issues related to TAJO-2110, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-2128"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-2110",
+   "relation": "relates_to",
+   "as_of": "2020-03-18 21:48 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-014",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2020-03-26 16:36 UTC, of the issues related to TAJO-337, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1879"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-337",
+   "relation": "relates_to",
+   "as_of": "2020-03-26 16:36 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-links-015",
+  "tenant": "apache-tajo",
+  "type": "links",
+  "question": "On 2019-08-22 08:41 UTC, of the issues TAJO-2101 depends on, which were not done (done means a status among: Closed, Resolved)?",
+  "answer": [
+   "TAJO-1891"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-2101",
+   "relation": "depends_on",
+   "as_of": "2019-08-22 08:41 UTC",
+   "done": false
+  }
+ },
+ {
+  "id": "apache-tajo-rule-001",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was TAJO-1312 blocked on 2017-10-16 04:18 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1312",
+   "rule": "blocked",
+   "as_of": "2017-10-16 04:18 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-002",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was TAJO-135 blocked on 2017-12-30 11:07 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-135",
+   "rule": "blocked",
+   "as_of": "2017-12-30 11:07 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-003",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was TAJO-1518 blocked on 2016-09-05 15:32 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1518",
+   "rule": "blocked",
+   "as_of": "2016-09-05 15:32 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-004",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was TAJO-1518 blocked on 2018-04-29 19:26 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1518",
+   "rule": "blocked",
+   "as_of": "2018-04-29 19:26 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-005",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). Was TAJO-1511 blocked on 2015-09-08 15:19 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1511",
+   "rule": "blocked",
+   "as_of": "2015-09-08 15:19 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-006",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. Was TAJO-1123 idle on 2018-06-20 09:44 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1123",
+   "rule": "stalled",
+   "as_of": "2018-06-20 09:44 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-007",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. Was TAJO-1602 idle on 2019-05-05 15:39 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1602",
+   "rule": "stalled",
+   "as_of": "2019-05-05 15:39 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-008",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. Was TAJO-1333 idle on 2019-03-13 03:48 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1333",
+   "rule": "stalled",
+   "as_of": "2019-03-13 03:48 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-009",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. Was TAJO-259 idle on 2015-08-09 22:20 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-259",
+   "rule": "stalled",
+   "as_of": "2015-08-09 22:20 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-010",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. Was TAJO-2068 idle on 2020-07-28 05:42 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-2068",
+   "rule": "stalled",
+   "as_of": "2020-07-28 05:42 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-011",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was TAJO-705 urgent and unassigned on 2017-03-10 01:18 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-705",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-03-10 01:18 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-012",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was TAJO-488 urgent and unassigned on 2017-05-16 07:17 UTC?",
+  "answer": false,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-488",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-05-16 07:17 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-013",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was TAJO-1182 urgent and unassigned on 2019-04-08 01:41 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1182",
+   "rule": "urgent_unassigned",
+   "as_of": "2019-04-08 01:41 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-014",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was TAJO-1996 urgent and unassigned on 2018-02-20 02:38 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1996",
+   "rule": "urgent_unassigned",
+   "as_of": "2018-02-20 02:38 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-rule-015",
+  "tenant": "apache-tajo",
+  "type": "rule",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. Was TAJO-1996 urgent and unassigned on 2017-07-26 07:22 UTC?",
+  "answer": true,
+  "answer_type": "bool",
+  "params": {
+   "subject": "issue:TAJO-1996",
+   "rule": "urgent_unassigned",
+   "as_of": "2017-07-26 07:22 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-abstain-001",
+  "tenant": "apache-tajo",
+  "type": "abstain",
+  "question": "What is the current status of TAJO-11169?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:TAJO-11169",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-tajo-abstain-002",
+  "tenant": "apache-tajo",
+  "type": "abstain",
+  "question": "What was the status of TAJO-1948 on 2015-08-15 04:44 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:TAJO-1948",
+   "predicate": "status",
+   "as_of": "2015-08-15 04:44 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-abstain-003",
+  "tenant": "apache-tajo",
+  "type": "abstain",
+  "question": "What is the current status of TAJO-7259?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:TAJO-7259",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-tajo-abstain-004",
+  "tenant": "apache-tajo",
+  "type": "abstain",
+  "question": "What was the status of TAJO-540 on 2013-05-31 07:17 UTC?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:TAJO-540",
+   "predicate": "status",
+   "as_of": "2013-05-31 07:17 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-abstain-005",
+  "tenant": "apache-tajo",
+  "type": "abstain",
+  "question": "What is the current status of TAJO-9855?",
+  "answer": null,
+  "answer_type": "unknown",
+  "params": {
+   "subject": "issue:TAJO-9855",
+   "predicate": "status"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-001",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2019-12-10 07:04 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-1718",
+   "TAJO-1969",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2019-12-10 07:04 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-002",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2021-03-18 03:04 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-1718",
+   "TAJO-1969",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2021-03-18 03:04 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-003",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2015-07-23 22:12 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-247",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2015-07-23 22:12 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-004",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2020-12-22 17:42 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-1718",
+   "TAJO-1969",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2020-12-22 17:42 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-005",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2015-05-19 18:26 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-247",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2015-05-19 18:26 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-006",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2019-03-28 07:04 UTC, which issues of the TAJO project had status Reopened?",
+  "answer": [
+   "TAJO-1475",
+   "TAJO-1718",
+   "TAJO-1969",
+   "TAJO-459",
+   "TAJO-639"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "status_at",
+   "status": "Reopened",
+   "as_of": "2019-03-28 07:04 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-007",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2017-04-17 03:33 UTC, how many issues of the TAJO project had a status among: In Progress, Patch Available?",
+  "answer": 60,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2017-04-17 03:33 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-008",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2019-07-12 18:21 UTC, how many issues of the TAJO project had a status among: In Progress, Patch Available?",
+  "answer": 57,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2019-07-12 18:21 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-009",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2014-09-07 11:33 UTC, how many issues of the TAJO project had a status among: In Progress, Patch Available?",
+  "answer": 28,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2014-09-07 11:33 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-010",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "On 2014-01-17 21:07 UTC, how many issues of the TAJO project had a status among: In Progress, Patch Available?",
+  "answer": 14,
+  "answer_type": "count",
+  "params": {
+   "subtype": "count_at",
+   "category": "indeterminate",
+   "as_of": "2014-01-17 21:07 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-011",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2016-01-23 23:54 UTC, which issues of the TAJO project were blocked?",
+  "answer": [
+   "TAJO-1511",
+   "TAJO-1518",
+   "TAJO-1719",
+   "TAJO-1891"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2016-01-23 23:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-012",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. On 2014-01-10 12:11 UTC, which issues of the TAJO project were idle?",
+  "answer": [
+   "TAJO-122",
+   "TAJO-269",
+   "TAJO-35",
+   "TAJO-363",
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2014-01-10 12:11 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-013",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2019-09-27 00:15 UTC, which issues of the TAJO project were urgent and unassigned?",
+  "answer": [
+   "TAJO-1182",
+   "TAJO-1375",
+   "TAJO-1876",
+   "TAJO-1996",
+   "TAJO-2169"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2019-09-27 00:15 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-014",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: Closed, Resolved). On 2019-05-05 16:57 UTC, which issues of the TAJO project were blocked?",
+  "answer": [
+   "TAJO-1511",
+   "TAJO-1518",
+   "TAJO-1719"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "blocked",
+   "as_of": "2019-05-05 16:57 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-015",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Call an issue idle when its status is one of In Progress, Patch Available and its status has not changed for 30 days or more. On 2013-06-03 00:33 UTC, which issues of the TAJO project were idle?",
+  "answer": [
+   "TAJO-40"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "stalled",
+   "as_of": "2013-06-03 00:33 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-016",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "An issue is urgent and unassigned when its priority is Blocker, Critical or Highest, it is not done (done means a status among: Closed, Resolved), and nobody is assigned to it. On 2016-10-27 10:26 UTC, which issues of the TAJO project were urgent and unassigned?",
+  "answer": [
+   "TAJO-1182",
+   "TAJO-1375",
+   "TAJO-1876",
+   "TAJO-1996",
+   "TAJO-2169"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "rule_at",
+   "rule": "urgent_unassigned",
+   "as_of": "2016-10-27 10:26 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-017",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Which issues of the TAJO project had their assignee changed between 2014-03-19 22:53 UTC and 2014-03-23 10:21 UTC?",
+  "answer": [
+   "TAJO-615",
+   "TAJO-679",
+   "TAJO-691",
+   "TAJO-692",
+   "TAJO-698"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "assignee",
+   "since": "2014-03-19 22:53 UTC",
+   "until": "2014-03-23 10:21 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-018",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Which issues of the TAJO project had their assignee changed between 2014-07-13 04:04 UTC and 2014-07-30 21:02 UTC?",
+  "answer": [
+   "TAJO-666",
+   "TAJO-742",
+   "TAJO-931",
+   "TAJO-933",
+   "TAJO-947",
+   "TAJO-952",
+   "TAJO-957",
+   "TAJO-960",
+   "TAJO-961",
+   "TAJO-974",
+   "TAJO-978",
+   "TAJO-979"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "assignee",
+   "since": "2014-07-13 04:04 UTC",
+   "until": "2014-07-30 21:02 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-019",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Which issues of the TAJO project had their assignee changed between 2018-04-30 15:24 UTC and 2018-05-20 01:32 UTC?",
+  "answer": [
+   "TAJO-1724",
+   "TAJO-2171",
+   "TAJO-2172"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "assignee",
+   "since": "2018-04-30 15:24 UTC",
+   "until": "2018-05-20 01:32 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-020",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "Which issues of the TAJO project had their priority changed between 2013-12-04 22:40 UTC and 2013-12-26 10:03 UTC?",
+  "answer": [
+   "TAJO-164",
+   "TAJO-182",
+   "TAJO-335",
+   "TAJO-393",
+   "TAJO-438"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "changed",
+   "field": "priority",
+   "since": "2013-12-04 22:40 UTC",
+   "until": "2013-12-26 10:03 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-021",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2013-12-25 18:12 UTC, which issues of the TAJO project had status Patch Available at 2013-12-24 09:40 UTC?",
+  "answer": [
+   "TAJO-35",
+   "TAJO-385",
+   "TAJO-451"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Patch Available",
+   "as_of": "2013-12-24 09:40 UTC",
+   "known_at": "2013-12-25 18:12 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-022",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2014-02-20 21:47 UTC, which issues of the TAJO project had status Patch Available at 2014-02-19 01:24 UTC?",
+  "answer": [
+   "TAJO-35",
+   "TAJO-377",
+   "TAJO-378",
+   "TAJO-510",
+   "TAJO-530",
+   "TAJO-575",
+   "TAJO-584",
+   "TAJO-594",
+   "TAJO-601",
+   "TAJO-607"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Patch Available",
+   "as_of": "2014-02-19 01:24 UTC",
+   "known_at": "2014-02-20 21:47 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-023",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2015-01-11 15:09 UTC, which issues of the TAJO project had status Patch Available at 2015-01-10 09:19 UTC?",
+  "answer": [
+   "TAJO-1019",
+   "TAJO-1023",
+   "TAJO-1112",
+   "TAJO-1142",
+   "TAJO-1226",
+   "TAJO-1294",
+   "TAJO-1295",
+   "TAJO-35",
+   "TAJO-611",
+   "TAJO-623",
+   "TAJO-637",
+   "TAJO-740"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "Patch Available",
+   "as_of": "2015-01-10 09:19 UTC",
+   "known_at": "2015-01-11 15:09 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-tenant-024",
+  "tenant": "apache-tajo",
+  "type": "tenant",
+  "question": "According to what had been recorded by 2014-10-21 14:40 UTC, which issues of the TAJO project had status In Progress at 2014-10-15 12:17 UTC?",
+  "answer": [
+   "TAJO-1003",
+   "TAJO-1026",
+   "TAJO-1035",
+   "TAJO-1045",
+   "TAJO-1057",
+   "TAJO-1058",
+   "TAJO-1082",
+   "TAJO-1118",
+   "TAJO-259",
+   "TAJO-269",
+   "TAJO-337",
+   "TAJO-509",
+   "TAJO-52",
+   "TAJO-540",
+   "TAJO-579",
+   "TAJO-603",
+   "TAJO-710",
+   "TAJO-723",
+   "TAJO-744",
+   "TAJO-809",
+   "TAJO-845",
+   "TAJO-982"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subtype": "known_at",
+   "status": "In Progress",
+   "as_of": "2014-10-15 12:17 UTC",
+   "known_at": "2014-10-21 14:40 UTC"
+  }
+ }
+]

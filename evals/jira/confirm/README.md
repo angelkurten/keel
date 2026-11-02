@@ -142,3 +142,10 @@ One rule is added, written before any of their numbers exist, because two instan
 tenants under "at most one per instance": **if fewer than three instances pass, the set is filled to three with the
 next projects by the same ranking, at most two per instance.** Rules 1 to 5, the seed, the ranking and tie-breaks,
 the conditions, the commands, the budget and the analysis are unchanged. If no project passes, no paid run happens.
+
+## Selected, 2026-11-02 (`screen.json`, `manifest.json`)
+
+Of 221 candidates, 60 passed every rule, all of Apache; Mojang's one project (WEB, 116 questions) failed rule 5.
+The ranking (129 questions, then no `check.py` mismatch, then most issues) gives **apache-tajo** (TAJO, 2,183
+issues) and **apache-rave** (RAVE, 1,286); at most two per instance, so the set is these two, 258 questions, all
+129 of each. The commands above take `--tenants apache-tajo,apache-rave`.
