@@ -157,3 +157,18 @@ has credit again: the route the held-out set used, so costs become comparable wi
 aside, unanalysed (`results/confirm-haiku.discarded-gateway.jsonl`), and the run starts again from nothing, the
 same command without `EVAL_ANTHROPIC_DIRECT=0`. Nothing else changes; what was seen of the results: the progress
 count and that the first 45 `keel` runs were all correct (a progress check).
+
+## Result, 2026-11-02 (`results/confirm-haiku.jsonl`, `results/confirm-stats.md`)
+
+3,096 runs on d620fcb's `keel/`, Claude straight from Anthropic, no harness error, 1.44 USD. Accuracy: keel 94.8%,
+keel+query 96.0, sql 95.7, sqlgen2 96.0 (one-issue 94.8 to 95.2 for all four; tenant-wide keel 95.1, the others
+99.3 to 100). All three hypotheses are confirmed:
+
+- **H1** sqlgen2 − sql +0.3 points [−0.3, +0.7] (3 questions better, 1 worse), above −2.
+- **H2** keel+query − sql +0.3 [−0.3, +0.7] (3 / 1), above −2.
+- **H3** keel+query − keel +1.2 [+0.2, +2.5] (10 / 2), above 0.
+
+Secondary, descriptive: USD per correct answer keel 0.00055, keel+query 0.00044, sql 0.00048, sqlgen2 0.00048;
+input tokens per run 7,798, 9,502, 5,285 and 6,322. Both tenants are Apache projects (the second amendment's fill
+rule), so the set is disjoint from the held-out and development sets in instances, projects and questions, but
+its two tenants share one instance.
