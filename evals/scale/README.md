@@ -76,6 +76,8 @@ was slowed ~2.8x by contention and was rerun (both runs are in `scale.jsonl`; th
 - **Determinism**: facts and entities hash identically in written and shuffled order, on both stores, at 10^5 and
   10^6, and replay rebuilds the same facts. Relations do not: 0.6% of relation rows differ under shuffle (link and
   unlink are applied in arrival order, not placed by valid time as facts are).
+  Rerun after db80a70 (relations a function of their events), on b53e381 (labels `syn:1e5`, `syn:1e6`): entities,
+  relations and facts hash identically in written and shuffled order on both stores, at 10^5 and 10^6.
 - **HTTP** (`keel serve`, loopback) adds ~0.6–0.7 ms per call.
 
 ## Tenant-wide reads pushed down to the store (label `pushdown:syn:*`)
