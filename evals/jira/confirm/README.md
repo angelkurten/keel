@@ -40,7 +40,7 @@ Rule 5 is relaxed, because in the held-out screening only 3 of 9 projects filled
 
 5. `inject.py` (seed 47, `--late 0.05 --corrections 0.02 --check`) and `questions.py` (seed 47, `--check`) run
    unmodified and pass their checks, and the project gets at least 100 of the 129 questions, with at least half of
-   each type's count.
+   each type's count and that the first 45 `keel` runs were all correct (a progress check).
 
 Of those that pass, the three with the most questions, at most one per instance (ties: fewer `check.py`
 mismatches, then more issues). If fewer than three instances pass, the set is what passes, and the analysis runs on
@@ -149,3 +149,11 @@ Of 221 candidates, 60 passed every rule, all of Apache; Mojang's one project (WE
 The ranking (129 questions, then no `check.py` mismatch, then most issues) gives **apache-tajo** (TAJO, 2,183
 issues) and **apache-rave** (RAVE, 1,286); at most two per instance, so the set is these two, 258 questions, all
 129 of each. The commands above take `--tenants apache-tajo,apache-rave`.
+
+## Third amendment, 2026-11-02, during the run: Claude straight from Anthropic
+
+After 82 runs (all `keel`, first repetition) the author asked to run Claude straight from Anthropic, whose account
+has credit again: the route the held-out set used, so costs become comparable with it. The 82 gateway rows are set
+aside, unanalysed (`results/confirm-haiku.discarded-gateway.jsonl`), and the run starts again from nothing, the
+same command without `EVAL_ANTHROPIC_DIRECT=0`. Nothing else changes; what was seen of the results: the progress
+count and that the first 45 `keel` runs were all correct (a progress check).
