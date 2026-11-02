@@ -1,0 +1,133 @@
+{
+ "seed": 53,
+ "counts": {
+  "two_hop": 8,
+  "known_count": 8,
+  "entries": 8,
+  "time_in": 8,
+  "both": 8
+ },
+ "keel_commit": "d620fcb",
+ "tenants": {
+  "hyperledger": {
+   "set": "development",
+   "data": "~/datasets/public-jira/export",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "28b0fce64c60d8eeaf456186c7486670a4f89bb89c986ca2a78bcf41b2e320b9",
+   "bitemporal_sha256": "69df0e1a857e6751cddd186a9edfa7159be2536100bda94c06b632ff44ba2743",
+   "injections_sha256": "5d47479e2a5f265b5c7e16c192939c928d1ea7893f145acc577ee32d464bf544"
+  },
+  "mariadb": {
+   "set": "development",
+   "data": "~/datasets/public-jira/export",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "b34f8662cf1468a04f27cfda5ca49ddb6aed45716abeeac7e55f0ee182aa541f",
+   "bitemporal_sha256": "53af5082f0cc8906d97a3a00d0c9974b69dee7872d8e60ae67e77a8e505e8e1c",
+   "injections_sha256": "6a257cd0389cd159ea7a1973f3402d81ffffce7f5b7c6a94771230769bfc8340"
+  },
+  "spring": {
+   "set": "development",
+   "data": "~/datasets/public-jira/export",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "40c4ad784d50adad378470ca77c09a5b2ed756a25531fd23f8c1f6f5b22ecb24",
+   "bitemporal_sha256": "cf9fcd81d4c0de91482cf752444a66026c59cb6603db8edd36571bfab273462d",
+   "injections_sha256": "ada5b947bf1a562bd8215992ad9910e20aac1937db07bbca8ea169525389f3a9"
+  },
+  "ecosystem-ac": {
+   "set": "held-out",
+   "data": "~/datasets/public-jira/heldout",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "22dc58af7b30b6b4fb5a53d04c549a1bb58cdf5669be00b2b3e7650edfc14e27",
+   "bitemporal_sha256": "1a9d34304db9c89d35652477b7107c7907bdd4461ef0bc9a943b55128dd34ce7",
+   "injections_sha256": "a4f743c8c45884a39451717e9e82a8be8e4845bfc232cd08097586c975000bd7"
+  },
+  "sakai-grbk": {
+   "set": "held-out",
+   "data": "~/datasets/public-jira/heldout",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "f443104e6afb4945c9e46d1b99a0ad960666de04a9aaeb7e50041dee4139815a",
+   "bitemporal_sha256": "477a26007afdf3dde23acf7c516eeb86f4c3506d26e1db50906a6f74b5abcb5b",
+   "injections_sha256": "2003fa552acfcca41a2d44c201f0e09f17b0df1d40e034c54277cd655f59b097"
+  },
+  "redhat-projquay": {
+   "set": "held-out",
+   "data": "~/datasets/public-jira/heldout",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "2e2382e0c6d16376f25aa6cdb98dabb49c1efd8bb2f85278cd5355207a71dac5",
+   "bitemporal_sha256": "60b6501074fc115e9a927b9a0028ed19efda3be4ad5fd4ffa80486b083cd6d29",
+   "injections_sha256": "d77640281d704089e2c695853d7b27a87e48cae5b187de51db8299ec4ef1bf0f"
+  },
+  "apache-tajo": {
+   "set": "confirmation",
+   "data": "~/datasets/public-jira/confirm",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "deecf55ac9e91d7e404ee806208972143e000ad8136ed744e46ae7542f5561f8",
+   "bitemporal_sha256": "922170f93a34f1f2be32849442d8495e14b89d8191a74297792eb97bd2af3af8",
+   "injections_sha256": "ef129f22dbdfaaa868729d898e11bd0147268086fbcf6ad4187a3375440a2590"
+  },
+  "apache-rave": {
+   "set": "confirmation",
+   "data": "~/datasets/public-jira/confirm",
+   "questions": 40,
+   "by_type": {
+    "two_hop": 8,
+    "known_count": 8,
+    "entries": 8,
+    "time_in": 8,
+    "both": 8
+   },
+   "questions_sha256": "a7c7c0d83f241f82932a921f9068322e2f90de6cb1e0762d539bee81144fc325",
+   "bitemporal_sha256": "ad567e7d3a032b0d5cdf6117986a01e6f6d74bafd3eae01b29d35115f223aac6",
+   "injections_sha256": "0df0ebc184e0194abecf2020f4f82e5c5b036988d6b2bc39b6f49e10e5e741b9"
+  }
+ }
+}

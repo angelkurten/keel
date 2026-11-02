@@ -1,0 +1,626 @@
+[
+ {
+  "id": "ecosystem-ac-two_hop-001",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2018-05-13 08:44 UTC, take the issues linked to AC-685 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2018-05-13 08:44 UTC, and leave AC-685 itself out.",
+  "answer": [
+   "AC-655"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-685",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2018-05-13 08:44 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-002",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2021-05-05 11:16 UTC, take the issues linked to AC-1882 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-05-05 11:16 UTC, and leave AC-1882 itself out.",
+  "answer": [
+   "ACDEV-2255"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1882",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-05-05 11:16 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-003",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2018-07-16 10:50 UTC, take the issues linked to AC-1912 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2018-07-16 10:50 UTC, and leave AC-1912 itself out.",
+  "answer": [
+   "ACJS-20",
+   "ACJS-202"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1912",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2018-07-16 10:50 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-004",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2020-01-24 20:50 UTC, take the issues linked to AC-1866 by a 'duplicates' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-01-24 20:50 UTC, and leave AC-1866 itself out.",
+  "answer": [
+   "AC-2007"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1866",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-01-24 20:50 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-005",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2020-08-12 21:02 UTC, take the issues linked to AC-1626 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-08-12 21:02 UTC, and leave AC-1626 itself out.",
+  "answer": [
+   "AC-1911",
+   "AC-204",
+   "ACJS-157",
+   "AMKT-8009"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-1626",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-08-12 21:02 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-006",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2019-09-17 05:23 UTC, take the issues linked to AC-2434 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2019-09-17 05:23 UTC, and leave AC-2434 itself out.",
+  "answer": [
+   "ACDEV-3999"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-2434",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2019-09-17 05:23 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-007",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2020-06-15 19:20 UTC, take the issues linked to AC-2202 by a 'duplicates' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-06-15 19:20 UTC, and leave AC-2202 itself out.",
+  "answer": [
+   "DEVHELP-62"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-2202",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-06-15 19:20 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-two_hop-008",
+  "tenant": "ecosystem-ac",
+  "type": "two_hop",
+  "question": "On 2018-02-10 10:04 UTC, take the issues linked to AC-2161 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2018-02-10 10:04 UTC, and leave AC-2161 itself out.",
+  "answer": [
+   "AC-2010"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:AC-2161",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2018-02-10 10:04 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-001",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-06-14 12:45 UTC, how many issues of the AC project had status New at 2013-06-06 10:11 UTC?",
+  "answer": 26,
+  "answer_type": "count",
+  "params": {
+   "status": "New",
+   "as_of": "2013-06-06 10:11 UTC",
+   "known_at": "2013-06-14 12:45 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-002",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-01-16 17:09 UTC, how many issues of the AC project had status Closed at 2020-01-16 07:41 UTC?",
+  "answer": 1370,
+  "answer_type": "count",
+  "params": {
+   "status": "Closed",
+   "as_of": "2020-01-16 07:41 UTC",
+   "known_at": "2020-01-16 17:09 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-003",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-06-07 00:09 UTC, how many issues of the AC project had status New at 2013-06-06 10:30 UTC?",
+  "answer": 31,
+  "answer_type": "count",
+  "params": {
+   "status": "New",
+   "as_of": "2013-06-06 10:30 UTC",
+   "known_at": "2013-06-07 00:09 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-004",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-06-15 20:04 UTC, how many issues of the AC project had status Resolved at 2014-06-15 10:38 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2014-06-15 10:38 UTC",
+   "known_at": "2014-06-15 20:04 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-005",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-01-24 04:31 UTC, how many issues of the AC project had status Triage at 2020-01-24 04:06 UTC?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "status": "Triage",
+   "as_of": "2020-01-24 04:06 UTC",
+   "known_at": "2020-01-24 04:31 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-006",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2017-05-27 00:02 UTC, how many issues of the AC project had status Triage at 2017-05-26 17:27 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "Triage",
+   "as_of": "2017-05-26 17:27 UTC",
+   "known_at": "2017-05-27 00:02 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-007",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-08-20 15:40 UTC, how many issues of the AC project had status Waiting for Dev Spt at 2020-08-20 08:14 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "Waiting for Dev Spt",
+   "as_of": "2020-08-20 08:14 UTC",
+   "known_at": "2020-08-20 15:40 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-known_count-008",
+  "tenant": "ecosystem-ac",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2019-09-14 16:11 UTC, how many issues of the AC project had status Under Review at 2019-09-09 22:12 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "Under Review",
+   "as_of": "2019-09-09 22:12 UTC",
+   "known_at": "2019-09-14 16:11 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-001",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2018-09-21 06:58 UTC and 2021-06-06 00:02 UTC, how many times was AC-885 moved into status Under Review? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-885",
+   "status": "Under Review",
+   "since": "2018-09-21 06:58 UTC",
+   "until": "2021-06-06 00:02 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-002",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2018-06-19 22:41 UTC and 2021-05-25 17:51 UTC, how many times was AC-1182 moved into status Under Review? Count every move into it, not the issue's creation.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-1182",
+   "status": "Under Review",
+   "since": "2018-06-19 22:41 UTC",
+   "until": "2021-05-25 17:51 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-003",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2013-04-12 07:40 UTC and 2020-03-12 17:41 UTC, how many times was AC-526 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-526",
+   "status": "Closed",
+   "since": "2013-04-12 07:40 UTC",
+   "until": "2020-03-12 17:41 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-004",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2020-04-08 20:00 UTC and 2021-05-02 18:19 UTC, how many times was AC-1386 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-1386",
+   "status": "Closed",
+   "since": "2020-04-08 20:00 UTC",
+   "until": "2021-05-02 18:19 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-005",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2015-08-26 03:17 UTC and 2021-09-13 22:38 UTC, how many times was AC-1182 moved into status Under Review? Count every move into it, not the issue's creation.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-1182",
+   "status": "Under Review",
+   "since": "2015-08-26 03:17 UTC",
+   "until": "2021-09-13 22:38 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-006",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2013-01-15 10:08 UTC and 2014-08-09 19:39 UTC, how many times was AC-316 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-316",
+   "status": "Closed",
+   "since": "2013-01-15 10:08 UTC",
+   "until": "2014-08-09 19:39 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-007",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2016-05-20 14:19 UTC and 2021-07-04 08:11 UTC, how many times was AC-2384 moved into status In Progress? Count every move into it, not the issue's creation.",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-2384",
+   "status": "In Progress",
+   "since": "2016-05-20 14:19 UTC",
+   "until": "2021-07-04 08:11 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-entries-008",
+  "tenant": "ecosystem-ac",
+  "type": "entries",
+  "question": "Between 2013-03-07 06:12 UTC and 2017-10-12 05:11 UTC, how many times was AC-339 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-339",
+   "status": "Closed",
+   "since": "2013-03-07 06:12 UTC",
+   "until": "2017-10-12 05:11 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-001",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2015-11-15 12:20 UTC, how many whole days in total had AC-297 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 893,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-297",
+   "status": "Closed",
+   "as_of": "2015-11-15 12:20 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-002",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2015-05-14 08:23 UTC, how many whole days in total had AC-1078 spent in status In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 83,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-1078",
+   "status": "In Progress",
+   "as_of": "2015-05-14 08:23 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-003",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2020-05-14 19:32 UTC, how many whole days in total had AC-2184 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 763,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-2184",
+   "status": "Closed",
+   "as_of": "2020-05-14 19:32 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-004",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2014-12-31 12:20 UTC, how many whole days in total had AC-524 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 181,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-524",
+   "status": "Resolved",
+   "as_of": "2014-12-31 12:20 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-005",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2020-09-08 20:30 UTC, how many whole days in total had AC-1344 spent in status Triage, adding every period it was in it? Round the total down to whole days.",
+  "answer": 19,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-1344",
+   "status": "Triage",
+   "as_of": "2020-09-08 20:30 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-006",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2019-07-09 20:47 UTC, how many whole days in total had AC-286 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 106,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-286",
+   "status": "Resolved",
+   "as_of": "2019-07-09 20:47 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-007",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2020-09-06 07:02 UTC, how many whole days in total had AC-431 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 2650,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-431",
+   "status": "Closed",
+   "as_of": "2020-09-06 07:02 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-time_in-008",
+  "tenant": "ecosystem-ac",
+  "type": "time_in",
+  "question": "Up to 2021-12-07 04:34 UTC, how many whole days in total had AC-796 spent in status Under Review, adding every period it was in it? Round the total down to whole days.",
+  "answer": 670,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:AC-796",
+   "status": "Under Review",
+   "as_of": "2021-12-07 04:34 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-001",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2016-05-27 09:24 UTC and on 2016-07-02 16:26 UTC?",
+  "answer": [
+   "AC-1080",
+   "AC-804"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-05-27 09:24 UTC",
+   "until": "2016-07-02 16:26 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-002",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2014-04-09 20:18 UTC and on 2014-06-04 21:46 UTC?",
+  "answer": [
+   "AC-1047"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2014-04-09 20:18 UTC",
+   "until": "2014-06-04 21:46 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-003",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2018-04-11 08:47 UTC and on 2018-04-25 12:04 UTC?",
+  "answer": [
+   "AC-2186"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2018-04-11 08:47 UTC",
+   "until": "2018-04-25 12:04 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-004",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2018-08-09 14:02 UTC and on 2018-08-20 22:14 UTC?",
+  "answer": [
+   "AC-2186",
+   "AC-2385",
+   "AC-2403",
+   "AC-2417",
+   "AC-2431",
+   "AC-2433",
+   "AC-2434",
+   "AC-2437",
+   "AC-2448"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2018-08-09 14:02 UTC",
+   "until": "2018-08-20 22:14 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-005",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2018-02-05 22:24 UTC and on 2018-04-20 10:00 UTC?",
+  "answer": [
+   "AC-2186"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2018-02-05 22:24 UTC",
+   "until": "2018-04-20 10:00 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-006",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2018-04-09 03:00 UTC and on 2018-05-18 15:18 UTC?",
+  "answer": [
+   "AC-2186"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2018-04-09 03:00 UTC",
+   "until": "2018-05-18 15:18 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-007",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2016-06-18 15:30 UTC and on 2016-08-22 02:39 UTC?",
+  "answer": [
+   "AC-1080"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-06-18 15:30 UTC",
+   "until": "2016-08-22 02:39 UTC"
+  }
+ },
+ {
+  "id": "ecosystem-ac-both-008",
+  "tenant": "ecosystem-ac",
+  "type": "both",
+  "question": "Which issues of the AC project had a status among: In Progress, Under Review both on 2016-11-09 18:03 UTC and on 2016-12-22 00:02 UTC?",
+  "answer": [
+   "AC-1866",
+   "AC-2051",
+   "AC-2184",
+   "AC-2186"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-11-09 18:03 UTC",
+   "until": "2016-12-22 00:02 UTC"
+  }
+ }
+]

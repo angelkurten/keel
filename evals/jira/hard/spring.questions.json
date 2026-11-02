@@ -1,0 +1,634 @@
+[
+ {
+  "id": "spring-two_hop-001",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2010-04-03 02:50 UTC, take the issues linked to SEC-724 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'depends on' link (either direction)? Count a link only if it existed on 2010-04-03 02:50 UTC, and leave SEC-724 itself out.",
+  "answer": [
+   "SEC-721",
+   "SEC-723"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-724",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "depends_on",
+    "any"
+   ],
+   "as_of": "2010-04-03 02:50 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-002",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2008-11-04 06:33 UTC, take the issues linked to SEC-407 by a 'duplicates' link (either direction). What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2008-11-04 06:33 UTC, and leave SEC-407 itself out.",
+  "answer": [
+   "SEC-433",
+   "SEC-464"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-407",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2008-11-04 06:33 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-003",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2016-02-10 21:15 UTC, take the parents of SEC-2668. What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2016-02-10 21:15 UTC, and leave SEC-2668 itself out.",
+  "answer": [
+   "SEC-2049"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-2668",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2016-02-10 21:15 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-004",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2016-03-01 03:37 UTC, take the parents of SEC-2236. What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2016-03-01 03:37 UTC, and leave SEC-2236 itself out.",
+  "answer": [
+   "SPR-9356"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-2236",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2016-03-01 03:37 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-005",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2015-03-31 03:47 UTC, take the issues linked to SEC-2501 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2015-03-31 03:47 UTC, and leave SEC-2501 itself out.",
+  "answer": [
+   "SEC-2885"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-2501",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2015-03-31 03:47 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-006",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2016-02-25 17:24 UTC, take the parents of SEC-2183. What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2016-02-25 17:24 UTC, and leave SEC-2183 itself out.",
+  "answer": [
+   "SEC-2049"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-2183",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2016-02-25 17:24 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-007",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2011-11-26 21:02 UTC, take the issues linked to SEC-861 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2011-11-26 21:02 UTC, and leave SEC-861 itself out.",
+  "answer": [
+   "SEC-1471",
+   "SEC-491",
+   "SEC-493"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-861",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2011-11-26 21:02 UTC"
+  }
+ },
+ {
+  "id": "spring-two_hop-008",
+  "tenant": "spring",
+  "type": "two_hop",
+  "question": "On 2014-08-31 14:57 UTC, take the issues linked to SEC-580 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'depends on' link (either direction)? Count a link only if it existed on 2014-08-31 14:57 UTC, and leave SEC-580 itself out.",
+  "answer": [
+   "SEC-528"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:SEC-580",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "depends_on",
+    "any"
+   ],
+   "as_of": "2014-08-31 14:57 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-001",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2008-05-09 10:19 UTC, how many issues of the SEC project had status Open at 2008-05-09 07:31 UTC?",
+  "answer": 52,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2008-05-09 07:31 UTC",
+   "known_at": "2008-05-09 10:19 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-002",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-06-19 08:45 UTC, how many issues of the SEC project had status Waiting for Feedback at 2012-06-16 18:51 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "Waiting for Feedback",
+   "as_of": "2012-06-16 18:51 UTC",
+   "known_at": "2012-06-19 08:45 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-003",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-06-17 06:03 UTC, how many issues of the SEC project had status Waiting for Feedback at 2012-06-16 19:16 UTC?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "status": "Waiting for Feedback",
+   "as_of": "2012-06-16 19:16 UTC",
+   "known_at": "2012-06-17 06:03 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-004",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2015-08-19 22:48 UTC, how many issues of the SEC project had status Waiting for Feedback at 2015-08-19 15:23 UTC?",
+  "answer": 20,
+  "answer_type": "count",
+  "params": {
+   "status": "Waiting for Feedback",
+   "as_of": "2015-08-19 15:23 UTC",
+   "known_at": "2015-08-19 22:48 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-005",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2008-05-09 09:40 UTC, how many issues of the SEC project had status Open at 2008-05-09 07:21 UTC?",
+  "answer": 52,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2008-05-09 07:21 UTC",
+   "known_at": "2008-05-09 09:40 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-006",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2015-03-19 02:27 UTC, how many issues of the SEC project had status Resolved at 2015-02-25 11:09 UTC?",
+  "answer": 51,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2015-02-25 11:09 UTC",
+   "known_at": "2015-03-19 02:27 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-007",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2011-12-30 21:35 UTC, how many issues of the SEC project had status Open at 2011-12-26 12:22 UTC?",
+  "answer": 71,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2011-12-26 12:22 UTC",
+   "known_at": "2011-12-30 21:35 UTC"
+  }
+ },
+ {
+  "id": "spring-known_count-008",
+  "tenant": "spring",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-03-26 18:23 UTC, how many issues of the SEC project had status Open at 2014-03-14 09:13 UTC?",
+  "answer": 226,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2014-03-14 09:13 UTC",
+   "known_at": "2014-03-26 18:23 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-001",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2014-10-13 12:57 UTC and 2015-05-07 00:42 UTC, how many times was SEC-2275 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2275",
+   "status": "Closed",
+   "since": "2014-10-13 12:57 UTC",
+   "until": "2015-05-07 00:42 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-002",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2015-08-10 17:37 UTC and 2016-02-14 19:32 UTC, how many times was SEC-2655 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2655",
+   "status": "Closed",
+   "since": "2015-08-10 17:37 UTC",
+   "until": "2016-02-14 19:32 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-003",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2008-12-05 00:55 UTC and 2009-11-21 07:06 UTC, how many times was SEC-1048 moved into status Reopened? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-1048",
+   "status": "Reopened",
+   "since": "2008-12-05 00:55 UTC",
+   "until": "2009-11-21 07:06 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-004",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2009-02-07 07:47 UTC and 2012-12-27 05:06 UTC, how many times was SEC-1085 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-1085",
+   "status": "Closed",
+   "since": "2009-02-07 07:47 UTC",
+   "until": "2012-12-27 05:06 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-005",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2008-05-08 15:06 UTC and 2008-08-29 00:38 UTC, how many times was SEC-807 moved into status Reopened? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-807",
+   "status": "Reopened",
+   "since": "2008-05-08 15:06 UTC",
+   "until": "2008-08-29 00:38 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-006",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2008-09-27 05:12 UTC and 2015-07-25 04:16 UTC, how many times was SEC-273 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-273",
+   "status": "Closed",
+   "since": "2008-09-27 05:12 UTC",
+   "until": "2015-07-25 04:16 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-007",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2015-11-25 21:25 UTC and 2016-03-01 20:45 UTC, how many times was SEC-2437 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2437",
+   "status": "Closed",
+   "since": "2015-11-25 21:25 UTC",
+   "until": "2016-03-01 20:45 UTC"
+  }
+ },
+ {
+  "id": "spring-entries-008",
+  "tenant": "spring",
+  "type": "entries",
+  "question": "Between 2007-06-08 17:01 UTC and 2011-07-24 18:18 UTC, how many times was SEC-391 moved into status Reopened? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-391",
+   "status": "Reopened",
+   "since": "2007-06-08 17:01 UTC",
+   "until": "2011-07-24 18:18 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-001",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2015-10-19 18:50 UTC, how many whole days in total had SEC-2462 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 34,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2462",
+   "status": "Resolved",
+   "as_of": "2015-10-19 18:50 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-002",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2014-01-26 22:32 UTC, how many whole days in total had SEC-2416 spent in status Waiting for Feedback, adding every period it was in it? Round the total down to whole days.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2416",
+   "status": "Waiting for Feedback",
+   "as_of": "2014-01-26 22:32 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-003",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2012-06-22 20:29 UTC, how many whole days in total had SEC-1761 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 341,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-1761",
+   "status": "Resolved",
+   "as_of": "2012-06-22 20:29 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-004",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2014-11-21 21:43 UTC, how many whole days in total had SEC-2127 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 388,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2127",
+   "status": "Open",
+   "as_of": "2014-11-21 21:43 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-005",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2015-01-23 16:57 UTC, how many whole days in total had SEC-2815 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2815",
+   "status": "Resolved",
+   "as_of": "2015-01-23 16:57 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-006",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2015-08-19 09:03 UTC, how many whole days in total had SEC-2352 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2352",
+   "status": "Open",
+   "as_of": "2015-08-19 09:03 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-007",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2014-03-09 11:59 UTC, how many whole days in total had SEC-2005 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-2005",
+   "status": "Resolved",
+   "as_of": "2014-03-09 11:59 UTC"
+  }
+ },
+ {
+  "id": "spring-time_in-008",
+  "tenant": "spring",
+  "type": "time_in",
+  "question": "Up to 2008-11-12 22:59 UTC, how many whole days in total had SEC-834 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 177,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:SEC-834",
+   "status": "Closed",
+   "as_of": "2008-11-12 22:59 UTC"
+  }
+ },
+ {
+  "id": "spring-both-001",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2014-02-15 00:42 UTC and on 2014-04-10 18:22 UTC?",
+  "answer": [
+   "SEC-2078",
+   "SEC-2383",
+   "SEC-2393",
+   "SEC-2408",
+   "SEC-2413",
+   "SEC-2420",
+   "SEC-2437",
+   "SEC-2480"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2014-02-15 00:42 UTC",
+   "until": "2014-04-10 18:22 UTC"
+  }
+ },
+ {
+  "id": "spring-both-002",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2013-01-24 15:07 UTC and on 2013-02-21 04:59 UTC?",
+  "answer": [
+   "SEC-2002",
+   "SEC-2054",
+   "SEC-2078",
+   "SEC-2124"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-01-24 15:07 UTC",
+   "until": "2013-02-21 04:59 UTC"
+  }
+ },
+ {
+  "id": "spring-both-003",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2013-09-04 11:43 UTC and on 2013-12-01 02:01 UTC?",
+  "answer": [
+   "SEC-2078"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-09-04 11:43 UTC",
+   "until": "2013-12-01 02:01 UTC"
+  }
+ },
+ {
+  "id": "spring-both-004",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2005-08-15 12:19 UTC and on 2005-10-23 13:20 UTC?",
+  "answer": [
+   "SEC-35"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2005-08-15 12:19 UTC",
+   "until": "2005-10-23 13:20 UTC"
+  }
+ },
+ {
+  "id": "spring-both-005",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2006-03-29 21:35 UTC and on 2006-06-04 05:32 UTC?",
+  "answer": [
+   "SEC-141",
+   "SEC-61",
+   "SEC-8"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2006-03-29 21:35 UTC",
+   "until": "2006-06-04 05:32 UTC"
+  }
+ },
+ {
+  "id": "spring-both-006",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2006-04-02 09:56 UTC and on 2006-05-20 17:32 UTC?",
+  "answer": [
+   "SEC-141",
+   "SEC-61",
+   "SEC-8"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2006-04-02 09:56 UTC",
+   "until": "2006-05-20 17:32 UTC"
+  }
+ },
+ {
+  "id": "spring-both-007",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2013-01-04 01:11 UTC and on 2013-02-16 20:36 UTC?",
+  "answer": [
+   "SEC-2002",
+   "SEC-2054",
+   "SEC-2078"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-01-04 01:11 UTC",
+   "until": "2013-02-16 20:36 UTC"
+  }
+ },
+ {
+  "id": "spring-both-008",
+  "tenant": "spring",
+  "type": "both",
+  "question": "Which issues of the SEC project had a status among: In Progress, Investigating, Waiting for Feedback both on 2013-12-10 02:01 UTC and on 2014-03-01 17:32 UTC?",
+  "answer": [
+   "SEC-2078",
+   "SEC-2383",
+   "SEC-2393",
+   "SEC-2408",
+   "SEC-2413"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-12-10 02:01 UTC",
+   "until": "2014-03-01 17:32 UTC"
+  }
+ }
+]

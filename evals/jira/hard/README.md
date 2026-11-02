@@ -1,0 +1,79 @@
+# Hard slice: pre-registration
+
+The three question sets so far sit near the ceiling: on the confirmation set every SQL-backed condition answered 95.7
+to 96.0%, and its non-inferiority hypotheses were decided on 4 and 12 questions where conditions differed. A reviewer
+asked whether the ties hold when the questions are harder. This directory fixes, before any model has seen one of its
+questions, a slice of 320 harder questions over the eight tenants of the three sets, the conditions, the commands, the
+budget and the analysis. Nothing here changes once the first paid run starts; a fix the pilot forces is a new commit,
+named in the results.
+
+Written 2026-11-02, by the author with Claude Code. What the author knew when writing it: every result of the
+development, held-out and confirmation sets. What the author had seen of these questions: their text, their gold and
+the distribution of answers (below); no model has answered any.
+
+## Questions
+
+`hard.py` (with `test_hard.py`), seed 53, 8 questions of each of five types per tenant, 40 per tenant, 320 in all. Each
+type combines two steps that the main set's questions take one at a time:
+
+- `two_hop`: issues two relations away from one, both relations as they stood at an instant ("take the sub-tasks of
+  X; what were the issues that block any of them?"). Relations named explicitly (the links lesson of the confirmation
+  set): sub-task, parent, blocks, blocked by, and 'relates to', 'depends on', 'duplicates' in either direction.
+- `known_count`: how many issues of the project had a status at an instant, as recorded by a later instant. Only
+  where a late or corrected record makes that count differ from today's knowledge of the same instant.
+- `entries`: how many times one issue was moved into a status within a window (never its creation); mostly 2 or more.
+- `time_in`: whole days one issue spent in a status up to an instant, every spell added, rounded down; the total is
+  never within an hour of a whole day.
+- `both`: the issues in progress (the tenant's indeterminate statuses, listed) at two instants 7 to 90 days apart;
+  only where neither instant alone gives the answer.
+
+Instants keep an hour from every change the question reads, as in the main set. Gold comes from `questions.Oracle`
+over the log alone; `hard.check` answers all 320 with Keel's primitives, written apart from the oracle, and agrees on
+all 320 (`test_hard.py` regenerates every file from the data byte for byte and runs that check). Gold was not checked
+through SQL as the main sets' was. `manifest.json` holds the SHA-256 of every question file and of the log and
+injections each was generated from.
+
+Answers seen while writing this: `two_hop` sets of 1 to 15 issues (35 of 64 have one), most of them through two
+'relates to' hops (the relation the data has most of); `known_count` from 1 to 1,652; `entries` 1 to 6 (34 of 64 are
+1); `time_in` 1 to 2,677 days; `both` sets of 1 to 15.
+
+## Conditions, agent, commands
+
+As registered for the confirmation set: `keel`, `keel+query`, `sql`, `sqlgen2`; Claude Haiku 5.5 straight from
+Anthropic; 3 repetitions; Keel conditions on the compact read-only form; Keel's code `keel/` at **d620fcb**, unchanged
+since. The runs start from a clean `git worktree` of the commit that adds this README, so every row records
+`dirty: false`.
+
+```bash
+git worktree add ../keel-hard <this commit> && cd ../keel-hard
+D=~/datasets/public-jira; R=evals/jira/results
+B="uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench \
+   --questions evals/jira/hard --keel-compact --keel-read-only --models anthropic/claude-haiku-5.5 --systems keel,keel+query,sql,sqlgen2"
+# pilot, read for harness errors only, its rows not analysed (one question of each type per tenant)
+$B --data $D/export  --tenants hyperledger,mariadb,spring --per-type 1 --reps 1 --max-usd 0.2 --out $R/hard-pilot.jsonl
+$B --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --per-type 1 --reps 1 --max-usd 0.2 --out $R/hard-pilot.jsonl
+$B --data $D/confirm --tenants apache-tajo,apache-rave --per-type 1 --reps 1 --max-usd 0.2 --out $R/hard-pilot.jsonl
+# the run: 3,840 runs; one brake per command (4 USD in all); a rerun resumes
+$B --data $D/export  --tenants hyperledger,mariadb,spring --reps 3 --max-usd 1.5 --out $R/hard-haiku.jsonl
+$B --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 3 --max-usd 1.5 --out $R/hard-haiku.jsonl
+$B --data $D/confirm --tenants apache-tajo,apache-rave --reps 3 --max-usd 1.0 --out $R/hard-haiku.jsonl
+uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl --questions evals/jira/hard --out $R/hard-stats.md
+```
+
+If a brake stops a command, nothing more is spent until the author decides; the rows so far are reported as partial.
+
+## Analysis
+
+`confirm_analysis.py` unchanged (its output's title says "Confirmation set"; the numbers are this slice's), over the
+320 questions pooled: accuracy per condition, a question's repetitions averaged first, and the same three hypotheses
+with the same bounds, each a paired difference with a 95% interval from the cluster bootstrap over tenant x type cells
+(40 cells), B = 10,000, seed 0, no adjustment:
+
+- **H1** `sqlgen2 − sql`, confirmed if the lower bound is above −2.0 points.
+- **H2** `keel+query − sql`, the same.
+- **H3** `keel+query − keel`, confirmed if the lower bound is above 0.
+
+Descriptive, from the same rows: accuracy per type and per set for each condition, and cost and input tokens per run.
+The slice is reported as off the ceiling if the best condition scores below 95%; if every condition scores 95% or
+more, the slice did not do what it was made for, and the paper says so. Reported whatever it shows, beside the three
+sets, never in place of them.

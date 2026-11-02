@@ -1,0 +1,621 @@
+[
+ {
+  "id": "sakai-grbk-two_hop-001",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2018-07-18 05:24 UTC, take the issues linked to GRBK-739 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2018-07-18 05:24 UTC, and leave GRBK-739 itself out.",
+  "answer": [
+   "GRBK-707"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-739",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2018-07-18 05:24 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-002",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2014-03-18 19:42 UTC, take the issues linked to GRBK-584 by a 'duplicates' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2014-03-18 19:42 UTC, and leave GRBK-584 itself out.",
+  "answer": [
+   "GRBK-733"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-584",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2014-03-18 19:42 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-003",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2013-08-30 19:34 UTC, take the issues linked to GRBK-752 by a 'depends on' link (either direction). What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2013-08-30 19:34 UTC, and leave GRBK-752 itself out.",
+  "answer": [
+   "GRBK-1103",
+   "GRBK-1145"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-752",
+   "hop1": [
+    "depends_on",
+    "any"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2013-08-30 19:34 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-004",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2012-05-28 12:29 UTC, take the issues linked to GRBK-715 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2012-05-28 12:29 UTC, and leave GRBK-715 itself out.",
+  "answer": [
+   "GRBK-1412"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-715",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2012-05-28 12:29 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-005",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2012-05-20 13:31 UTC, take the issues linked to GRBK-1049 by a 'depends on' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2012-05-20 13:31 UTC, and leave GRBK-1049 itself out.",
+  "answer": [
+   "GRBK-1220"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-1049",
+   "hop1": [
+    "depends_on",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2012-05-20 13:31 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-006",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2019-05-21 14:54 UTC, take the issues linked to GRBK-1406 by a 'depends on' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2019-05-21 14:54 UTC, and leave GRBK-1406 itself out.",
+  "answer": [
+   "GRBK-1333",
+   "GRBK-1388"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-1406",
+   "hop1": [
+    "depends_on",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2019-05-21 14:54 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-007",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2015-01-23 06:40 UTC, take the parents of GRBK-942. What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2015-01-23 06:40 UTC, and leave GRBK-942 itself out.",
+  "answer": [
+   "GRBK-285",
+   "GRBK-727",
+   "GRBK-877",
+   "GRBK-973"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-942",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2015-01-23 06:40 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-two_hop-008",
+  "tenant": "sakai-grbk",
+  "type": "two_hop",
+  "question": "On 2017-01-03 03:20 UTC, take the issues linked to GRBK-869 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2017-01-03 03:20 UTC, and leave GRBK-869 itself out.",
+  "answer": [
+   "GRBK-460",
+   "GRBK-881",
+   "GRBK-882",
+   "GRBK-937"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:GRBK-869",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2017-01-03 03:20 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-001",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2009-07-20 17:01 UTC, how many issues of the GRBK project had status In Progress at 2009-07-18 13:25 UTC?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2009-07-18 13:25 UTC",
+   "known_at": "2009-07-20 17:01 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-002",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2010-06-18 18:39 UTC, how many issues of the GRBK project had status Resolved at 2010-06-18 16:27 UTC?",
+  "answer": 28,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2010-06-18 16:27 UTC",
+   "known_at": "2010-06-18 18:39 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-003",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2011-06-17 04:17 UTC, how many issues of the GRBK project had status In Progress at 2011-06-16 22:03 UTC?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2011-06-16 22:03 UTC",
+   "known_at": "2011-06-17 04:17 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-004",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2009-07-19 23:23 UTC, how many issues of the GRBK project had status In Progress at 2009-07-18 14:11 UTC?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2009-07-18 14:11 UTC",
+   "known_at": "2009-07-19 23:23 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-005",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-04-27 04:43 UTC, how many issues of the GRBK project had status Resolved at 2012-04-23 17:48 UTC?",
+  "answer": 24,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2012-04-23 17:48 UTC",
+   "known_at": "2012-04-27 04:43 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-006",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-04-24 06:22 UTC, how many issues of the GRBK project had status Resolved at 2012-04-19 12:47 UTC?",
+  "answer": 26,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2012-04-19 12:47 UTC",
+   "known_at": "2012-04-24 06:22 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-007",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2009-09-14 07:32 UTC, how many issues of the GRBK project had status Reopened at 2009-08-25 20:29 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "Reopened",
+   "as_of": "2009-08-25 20:29 UTC",
+   "known_at": "2009-09-14 07:32 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-known_count-008",
+  "tenant": "sakai-grbk",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2011-04-14 19:11 UTC, how many issues of the GRBK project had status In Progress at 2011-04-14 00:49 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2011-04-14 00:49 UTC",
+   "known_at": "2011-04-14 19:11 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-001",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2011-02-23 08:00 UTC and 2019-03-22 22:29 UTC, how many times was GRBK-414 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 6,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-414",
+   "status": "Resolved",
+   "since": "2011-02-23 08:00 UTC",
+   "until": "2019-03-22 22:29 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-002",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2010-11-04 13:45 UTC and 2019-04-14 18:47 UTC, how many times was GRBK-766 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-766",
+   "status": "Closed",
+   "since": "2010-11-04 13:45 UTC",
+   "until": "2019-04-14 18:47 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-003",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2010-03-31 09:03 UTC and 2012-09-26 12:59 UTC, how many times was GRBK-514 moved into status In Progress? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-514",
+   "status": "In Progress",
+   "since": "2010-03-31 09:03 UTC",
+   "until": "2012-09-26 12:59 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-004",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2010-10-09 14:58 UTC and 2014-03-02 22:19 UTC, how many times was GRBK-654 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-654",
+   "status": "Closed",
+   "since": "2010-10-09 14:58 UTC",
+   "until": "2014-03-02 22:19 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-005",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2010-10-04 08:42 UTC and 2015-11-30 14:29 UTC, how many times was GRBK-739 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-739",
+   "status": "Closed",
+   "since": "2010-10-04 08:42 UTC",
+   "until": "2015-11-30 14:29 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-006",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2011-11-18 00:03 UTC and 2014-03-30 17:50 UTC, how many times was GRBK-653 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-653",
+   "status": "Resolved",
+   "since": "2011-11-18 00:03 UTC",
+   "until": "2014-03-30 17:50 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-007",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2011-11-26 02:56 UTC and 2013-07-11 01:24 UTC, how many times was GRBK-1007 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-1007",
+   "status": "Resolved",
+   "since": "2011-11-26 02:56 UTC",
+   "until": "2013-07-11 01:24 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-entries-008",
+  "tenant": "sakai-grbk",
+  "type": "entries",
+  "question": "Between 2011-05-31 10:43 UTC and 2014-08-13 21:01 UTC, how many times was GRBK-817 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-817",
+   "status": "Resolved",
+   "since": "2011-05-31 10:43 UTC",
+   "until": "2014-08-13 21:01 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-001",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2019-04-01 20:36 UTC, how many whole days in total had GRBK-363 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 5,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-363",
+   "status": "Open",
+   "as_of": "2019-04-01 20:36 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-002",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2010-12-06 21:32 UTC, how many whole days in total had GRBK-176 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 76,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-176",
+   "status": "Open",
+   "as_of": "2010-12-06 21:32 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-003",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2010-09-18 05:14 UTC, how many whole days in total had GRBK-231 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-231",
+   "status": "Resolved",
+   "as_of": "2010-09-18 05:14 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-004",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2017-07-26 12:32 UTC, how many whole days in total had GRBK-966 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 13,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-966",
+   "status": "Resolved",
+   "as_of": "2017-07-26 12:32 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-005",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2017-08-15 15:55 UTC, how many whole days in total had GRBK-887 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 2309,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-887",
+   "status": "Closed",
+   "as_of": "2017-08-15 15:55 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-006",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2017-01-04 00:02 UTC, how many whole days in total had GRBK-1099 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 160,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-1099",
+   "status": "Open",
+   "as_of": "2017-01-04 00:02 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-007",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2017-07-06 23:21 UTC, how many whole days in total had GRBK-682 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1013,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-682",
+   "status": "Open",
+   "as_of": "2017-07-06 23:21 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-time_in-008",
+  "tenant": "sakai-grbk",
+  "type": "time_in",
+  "question": "Up to 2012-01-02 23:14 UTC, how many whole days in total had GRBK-894 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 48,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:GRBK-894",
+   "status": "Resolved",
+   "as_of": "2012-01-02 23:14 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-001",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2012-04-25 13:28 UTC and on 2012-06-25 06:59 UTC?",
+  "answer": [
+   "GRBK-1185"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-04-25 13:28 UTC",
+   "until": "2012-06-25 06:59 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-002",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2012-03-18 07:10 UTC and on 2012-06-13 19:13 UTC?",
+  "answer": [
+   "GRBK-1185"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-03-18 07:10 UTC",
+   "until": "2012-06-13 19:13 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-003",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2012-01-31 16:54 UTC and on 2012-03-01 10:37 UTC?",
+  "answer": [
+   "GRBK-1185",
+   "GRBK-1203",
+   "GRBK-1208"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-01-31 16:54 UTC",
+   "until": "2012-03-01 10:37 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-004",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2012-01-08 02:37 UTC and on 2012-01-21 14:12 UTC?",
+  "answer": [
+   "GRBK-1185",
+   "GRBK-1203"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-01-08 02:37 UTC",
+   "until": "2012-01-21 14:12 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-005",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2009-11-22 22:58 UTC and on 2010-01-15 18:18 UTC?",
+  "answer": [
+   "GRBK-369"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2009-11-22 22:58 UTC",
+   "until": "2010-01-15 18:18 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-006",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2011-08-29 23:37 UTC and on 2011-09-14 02:46 UTC?",
+  "answer": [
+   "GRBK-1041"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2011-08-29 23:37 UTC",
+   "until": "2011-09-14 02:46 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-007",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2011-10-06 19:56 UTC and on 2011-12-30 03:32 UTC?",
+  "answer": [
+   "GRBK-1041"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2011-10-06 19:56 UTC",
+   "until": "2011-12-30 03:32 UTC"
+  }
+ },
+ {
+  "id": "sakai-grbk-both-008",
+  "tenant": "sakai-grbk",
+  "type": "both",
+  "question": "Which issues of the GRBK project had a status among: In Progress both on 2011-08-30 20:01 UTC and on 2011-11-06 21:28 UTC?",
+  "answer": [
+   "GRBK-1041"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2011-08-30 20:01 UTC",
+   "until": "2011-11-06 21:28 UTC"
+  }
+ }
+]
