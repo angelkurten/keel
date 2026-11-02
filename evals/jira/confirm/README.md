@@ -112,7 +112,7 @@ the development set in instances too, but not from the held-out set in instances
 
 ## Outcome of the amended screening, 2026-11-01: no set
 
-`screen.json`: of 94 candidates, 6 passed rules 1 to 4 (as the held-out screening found 9, three of them now used)
+`screen-amended.json`: of 94 candidates, 6 passed rules 1 to 4 (as the held-out screening found 9, three of them now used)
 and none passed rule 5. Short on links questions (at least 8 of 15 needed): JiraEcosystem CE 121 questions with 7
 links, RedHat APIMAN 113 with 1, ERRAI 104 with none, JBJCA 103 with 1; ERRAI and JBJCA also under half of the
 rule or tenant-wide counts; Mindville ICS and RedHat CS: `inject.py` raised, no questions. As registered, no paid
