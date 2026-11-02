@@ -110,6 +110,52 @@ During Graphiti's ingest, a fallback model's schema error was retried (b60a51a) 
 
 Commit f364733 gives direct Claude calls their own cache breakpoint on the system prompt. Rows measured before it, the Jira main run included, overstate the cost of long system prompts; answers are unaffected. The overstatement is largest for Keel, whose system prompt (the cartridge's kinds, relations and rules) is the longest, and smallest for the API and RAG, so it works against Keel's cost claim rather than for it.
 
+\subsection{The held-out and confirmation sets}
+\label{app:prov-sets}
+
+Each set's registration, amendments, commands and results are in its README (\code{evals/jira/heldout/README.md}, \code{evals/jira/confirm/README.md}). Table~\ref{tab:fixes-sets} lists what changed in \code{keel/} between the held-out registration (d7b3576) and the release the confirmation set froze (0.36.0, d620fcb), and Table~\ref{tab:aside} every row set aside. No row set aside is counted in any result.
+
+\begin{table*}[t]
+\caption{Changes to \code{keel/} from the held-out registration to release 0.36.0, by commit, with what found each and which runs they reach.}
+\label{tab:fixes-sets}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{P{1.1in} L L}
+\toprule
+Commit & What it changed & Found by; runs it reaches \\
+\midrule
+89e8510 & The generated helper wrote the session's wall time with a literal \code{+00:00}; in a database opened in another zone every instant passed to a macro moved by the zone's offset. It now writes the UTC instant and reads a time without offset as UTC & Reading the registered \code{sqlgen} arm's failures (known-at 68\%); that arm was run again on the fix, and both runs are reported \\
+\addlinespace
+2c347d7, ea68ac4, 9ddf4eb & Optional cartridge declarations (a kind's \code{facts} and \code{attrs}, \code{one} on a relation) and, from them, the per-kind state views, the change view and the generated agent paragraph; a cartridge without them compiles byte for byte as before & Built after the held-out results (post hoc); \code{sqlgen2} on every set \\
+\addlinespace
+20c7cd1 to b9931af & \code{query}, the optional sixth tool: the per-tenant sandboxes, the Postgres role per tenant, bounds on rows, bytes, macro expansion and time, transports; released as 0.35.0 & Decided by the author after the held-out results; \code{keel+query} on every set \\
+\addlinespace
+74e7079 & The generated paragraph names each rule's two macros and what the state views lack; \code{now()} on SQLite & 47 of the held-out \code{keel+query} run's 158 failed calls misread the schema; the development and confirmation runs \\
+\addlinespace
+75952fc & A sandbox copy no longer counts against the query's timeout (bounded by the 100,000-row ceiling instead); the paragraph forbids a schema prefix by name & The development set's 281 failed \code{query} calls (250 timeouts, 17 schema prefixes); the confirmation run \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Rows set aside on the held-out and confirmation sets and the development set's later runs, never counted.}
+\label{tab:aside}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{P{1.6in} r L}
+\toprule
+File & Rows & Why \\
+\midrule
+\code{heldout-pilot.jsonl} & 105 & The registered pilot, read for harness errors only \\
+\code{dev-haiku-query-sqlgen2.discarded-credit.jsonl} & 6 & The direct Anthropic account ran out of credit (an API error, not an answer); the run continued through the gateway \\
+\code{confirm-pilot.jsonl} & 56 & The registered pilot, read for harness errors only \\
+\code{confirm-haiku.discarded-gateway.jsonl} & 82 & The first 82 confirmation runs, through the gateway, before the third amendment moved the run to Anthropic's API and started it again from nothing; of their results only the progress count and that the first 45 \code{keel} runs were correct were seen \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+One edit to a registration was itself a mistake, and was undone: commit 78d3f0d, which recorded the third amendment, also slipped the progress check's wording into the text of rule 5; 46eabbf took it out again, so rule 5 reads as registered.
+
 % ===========================================================================
 \section{Tables behind the figures}
 \label{app:tables}
