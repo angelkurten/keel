@@ -172,3 +172,16 @@ Secondary, descriptive: USD per correct answer keel 0.00055, keel+query 0.00044,
 input tokens per run 7,798, 9,502, 5,285 and 6,322. Both tenants are Apache projects (the second amendment's fill
 rule), so the set is disjoint from the held-out and development sets in instances, projects and questions, but
 its two tenants share one instance.
+
+## Read after the result, 2026-11-02: the links questions
+
+Of the 258 questions, 10 are missed by all four conditions in at least two of three repetitions, and all 10 are
+`links` questions ("of the issues related to TAJO-744, which were done?"). On each, every condition returns the same
+set: the gold plus issues the oracle leaves out. The oracle counts only the `relates_to` relation, as the question's
+parameters say; the agents read "related to" broadly and add the issue's sub-tasks (`parent` in the log, e.g.
+TAJO-1260 and TAJO-1345 under TAJO-744) and, twice, a `depends_on` or `blocks` link. Apache uses sub-tasks heavily,
+so `links` accuracy is about 67% here against about 93% on the held-out set and 96% on the development set, with the
+same wording. Nothing is changed: the hypotheses are paired differences, and on these 10 questions the four
+conditions fail alike, so each adds 0 to every difference; what they lower is every condition's absolute accuracy,
+by about 4 points on one-issue questions. A later set would word the question "linked to X by 'relates to'"; this
+one keeps the wording it was registered with.
