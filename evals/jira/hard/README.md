@@ -186,3 +186,12 @@ uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl -
 
 Pilot of the second addendum, 2026-11-02 (`results/hard-sonnet-pilot.jsonl`, not analysed): 40 runs, 0.49 USD, no
 harness error, all straight to Anthropic; it projects 16 USD for the run. Nothing changes.
+
+Result of the second addendum, 2026-11-03 (`results/hard-sonnet.jsonl`, `results/hard-sonnet-stats.md`): 1,280 runs,
+all on fd6353c with `dirty: false`, no harness error, 13.43 USD. Sonnet saturates the slice: sql 100.0%, sql-log 99.4,
+keel+query 99.1, sqlgen2 99.1; 8 misses in all (entries 5, time_in 2, two_hop 1). Paired, exploratory: sqlgen2 − sql
+−0.9 [−2.2, 0.0] (0 / 3), keel+query − sql −0.9 [−2.2, 0.0] (0 / 3), sql-log − sql −0.6 [−1.6, 0.0] (0 / 2),
+sqlgen2 − sql-log and keel+query − sql-log −0.3 (1 / 2). `confirm_analysis` prints "not confirmed" beside H1 and H2:
+that label is the Haiku registration's rule, which does not apply here (no decision rule was registered for Sonnet).
+USD per correct answer: sql 0.0091, keel+query 0.0094, sqlgen2 0.0108, sql-log 0.0129 (1.2 to 1.4 times the others);
+input tokens per run 5,531, 10,170, 7,355 and 7,507 (Haiku read 20,122 over the raw log).
