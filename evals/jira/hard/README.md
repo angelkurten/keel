@@ -145,3 +145,15 @@ uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R
 Pilot of the addendum, 2026-11-02 (`results/hard-ablation-pilot.jsonl`, not analysed): 80 runs, 0.11 USD, no harness
 error; the bench printed its accuracy table. It projects 2.7 USD for the run, so before the run the brakes are raised to
 1.2, 1.2 and 0.8 USD (3.2 in all), approved by the author; nothing else changes.
+
+Result of the addendum, 2026-11-02 (`results/hard-ablation-haiku.jsonl`, `results/hard-ablation-stats.md`): 1,920 runs,
+all on d5e7201 with `dirty: false`, no harness error, 2.18 USD; no brake reached. During the run the author asked for,
+and saw, partial accuracy twice (at 782 and 1,527 runs); nothing was changed, and no decision rule depends on it.
+
+Accuracy: sql-tables 95.9% [94.0, 97.7], sql-log 94.5 [92.5, 96.2] (beside sql 97.4, sqlgen2 96.2, keel+query 95.8,
+keel 92.6). Paired differences, exploratory: sql-tables − sql −1.5 [−2.8, −0.2] (7 / 22); sql-log − sql −2.9
+[−5.0, −1.0] (11 / 29); sqlgen2 − sql-log +1.8 [−0.3, +4.0] (24 / 14); keel+query − sql-log +1.4 [−0.8, +3.5]
+(24 / 18); keel − sql-log −1.9 [−4.5, +0.7] (22 / 36). By type (sql-tables, sql-log): two_hop 95.3, 93.8;
+known_count 100, 98.4; entries 92.7, 96.4; time_in 95.3, 92.7; both 96.4, 91.1. Input tokens per run 8,601 and
+20,122; USD per correct answer 0.00085 and 0.00154, against 0.00062 for sql, 0.00067 for keel+query and 0.00093 for
+sqlgen2.
