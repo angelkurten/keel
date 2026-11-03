@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -156,11 +157,19 @@ func NewClient(o Options) *Client {
 }
 
 func (c *Client) post(ctx context.Context, path string, body any, out any) error {
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return err
+	return c.do(ctx, http.MethodPost, path, body, out)
+}
+
+func (c *Client) do(ctx context.Context, method, path string, body any, out any) error {
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		reader = bytes.NewReader(raw)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.o.BaseURL+path, bytes.NewReader(raw))
+	req, err := http.NewRequestWithContext(ctx, method, c.o.BaseURL+path, reader)
 	if err != nil {
 		return err
 	}
@@ -492,4 +501,44 @@ func (c *Client) Events(ctx context.Context, batch []Envelope) (IngestReport, er
 	var out IngestReport
 	err := c.post(ctx, "/v1/events", batch, &out)
 	return out, err
+}
+
+// AgentSpec is a stored agent (the cartridge says `registry: store`): the cartridge profile it Extends, narrowed by
+// what it sets. Nil fields inherit the profile; Writes: &[]string{} writes nothing.
+type AgentSpec struct {
+	Extends     string      `json:"extends"`
+	Description string      `json:"description,omitempty"`
+	Writes      *[]string   `json:"writes,omitempty"`
+	Reads       *AgentReads `json:"reads,omitempty"`
+	Query       *bool       `json:"query,omitempty"`
+}
+
+type AgentReads struct {
+	Kinds     []string `json:"kinds,omitempty"`
+	Relations []string `json:"relations,omitempty"`
+}
+
+type StoredAgent struct {
+	ID string `json:"id"`
+	AgentSpec
+}
+
+// PutAgent creates or replaces this tenant's agent. It may only narrow its profile (a 422 says why otherwise).
+// The shared secret or an account key; never a key narrowed to an agent.
+func (c *Client) PutAgent(ctx context.Context, id string, spec AgentSpec) (StoredAgent, error) {
+	var out StoredAgent
+	err := c.do(ctx, http.MethodPut, "/v1/agents/"+url.PathEscape(id), spec, &out)
+	return out, err
+}
+
+// Agents lists this tenant's stored agents.
+func (c *Client) Agents(ctx context.Context) ([]StoredAgent, error) {
+	var out []StoredAgent
+	err := c.do(ctx, http.MethodGet, "/v1/agents", nil, &out)
+	return out, err
+}
+
+// RemoveAgent closes this tenant's agent; the audit keeps who it was.
+func (c *Client) RemoveAgent(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/v1/agents/"+url.PathEscape(id), nil, nil)
 }

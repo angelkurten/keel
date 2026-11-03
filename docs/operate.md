@@ -99,9 +99,35 @@ uv run keel import acme-logistics.jsonl acme-logistics --db mysql://user:pass@ho
 uv run keel replay examples/fleet examples/fleet/events.jsonl acme-logistics --db keel.db --check
 ```
 
+## Agents created at runtime
+
+A product that creates agents from its own UI, per customer, declares a few profiles in the cartridge and lets each tenant store agents that extend one (SPEC §6.1):
+
+```yaml
+registry: store
+agents:                        # profiles, reviewed with the ontology
+  team-member:
+    writes: [task, agent]
+    reads: { kinds: [unit, tire, inspection] }
+  approver:
+    kind: human
+    writes: [task, tenant]
+```
+
+A stored agent may only narrow its profile, so the cartridge stays the boundary. Manage them over HTTP (`PUT/GET/DELETE /v1/agents/{id}`, the SDKs' `put_agent`/`agents`/`remove_agent`) or from the command line:
+
+```bash
+uv run keel agents set examples/fleet writer-7f3a --tenant acme/c1 --db keel.db --extends team-member --kinds tire
+uv run keel agents list --tenant acme/c1 --db keel.db
+uv run keel agents rm writer-7f3a --tenant acme/c1 --db keel.db
+uv run keel validate examples/fleet --db keel.db   # after an ontology change: stored agents that no longer fit
+```
+
+An edit applies to running servers within a few seconds. Removing an agent closes it; the audit still says who it was.
+
 ## Erase a tenant
 
-When an end-customer leaves and the law (Colombia's Ley 1581, GDPR's right to erasure) or your privacy notice says their data goes, Keel deletes everything it stores for that tenant: entities, relations, facts of every scope, what agents and people annotated, the ids of the events it applied and, through the index, its semantic documents. Declare the event your SaaS sends when the customer is deleted:
+When an end-customer leaves and the law (Colombia's Ley 1581, GDPR's right to erasure) or your privacy notice says their data goes, Keel deletes everything it stores for that tenant: entities, relations, facts of every scope, what agents and people annotated, the ids of the events it applied, the agents it stored (`registry: store`) and, through the index, its semantic documents. Declare the event your SaaS sends when the customer is deleted:
 
 ```yaml
 events:

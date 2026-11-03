@@ -857,7 +857,7 @@ class SqlStore:
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
         # ponytail: DISTINCT over the (tenant, ...) indexes; a tenants table if it ever shows in a profile
-        rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts")
+        rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts UNION SELECT DISTINCT tenant FROM agents")
         return sorted(t for t in {r["tenant"] for r in rows} if not is_global(t))
 
     def forgotten(self, tenant: str) -> datetime | None:

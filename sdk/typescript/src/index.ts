@@ -238,11 +238,15 @@ export function envelope(a: EnvelopeArgs): Envelope {
 export class Client<S extends string = string> {
   constructor(private readonly options: ClientOptions) {}
 
-  private async post<T>(path: string, body: unknown): Promise<T> {
+  private post<T>(path: string, body: unknown): Promise<T> {
+    return this.request("POST", path, body);
+  }
+
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const o = this.options;
     const doFetch = o.fetch ?? fetch;
     const res = await doFetch(`${o.baseUrl.replace(/\/+$/, "")}${path}`, {
-      method: "POST",
+      method,
       headers: {
         "content-type": "application/json",
         "x-keel-tenant": o.tenant,
@@ -250,7 +254,7 @@ export class Client<S extends string = string> {
         ...(o.secret ? { authorization: `Bearer ${o.secret}` } : {}),
         ...(o.traceparent ? { traceparent: o.traceparent } : {}),
       },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (!res.ok) {
       let detail: unknown = res.statusText;
@@ -396,4 +400,31 @@ export class Client<S extends string = string> {
   events(batch: Envelope | Envelope[]): Promise<IngestReport> {
     return this.post("/v1/events", batch);
   }
+
+  /** Create or replace this tenant's agent (`registry: store`): it extends a cartridge profile and may only narrow it.
+   * The shared secret or an account key; never a key narrowed to an agent. */
+  putAgent(id: string, spec: AgentSpec): Promise<StoredAgent> {
+    return this.request("PUT", `/v1/agents/${encodeURIComponent(id)}`, spec);
+  }
+
+  /** This tenant's stored agents. */
+  agents(): Promise<StoredAgent[]> {
+    return this.request("GET", "/v1/agents");
+  }
+
+  /** Close this tenant's agent; the audit keeps who it was. */
+  removeAgent(id: string): Promise<{ removed: string }> {
+    return this.request("DELETE", `/v1/agents/${encodeURIComponent(id)}`);
+  }
 }
+
+/** A stored agent's spec: a cartridge profile it `extends`, narrowed by what it sets. */
+export type AgentSpec = {
+  extends: string;
+  description?: string;
+  writes?: Array<"tenant" | "task" | "agent">;
+  reads?: { kinds?: string[]; relations?: string[] };
+  query?: boolean;
+};
+
+export type StoredAgent = AgentSpec & { id: string };

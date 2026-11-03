@@ -1,7 +1,8 @@
 // End to end from Bun: start `keel serve --transport http` (Python), emit typed events, ask the tools.
+import { appendFileSync, cpSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { type Entity, KeelError } from "@keel-context/sdk";
+import { Client, type Entity, KeelError } from "@keel-context/sdk";
 import { client, emit, subjects } from "./keel-fleet";
 
 const ROOT = new URL("../../..", import.meta.url).pathname;
@@ -107,5 +108,32 @@ test("query: read-only SQL when the server runs with --query", async () => {
     await expect(keel.query("SELECT * FROM api_keys")).rejects.toBeInstanceOf(KeelError);
   } finally {
     q.kill();
+  }
+});
+
+test("stored agents: put, list, bind and remove when the cartridge says registry: store", async () => {
+  const cart = `${mkdtempSync(`${tmpdir()}/keel-ts-agents-`)}/fleet`;
+  cpSync(`${ROOT}/examples/fleet`, cart, { recursive: true });
+  appendFileSync(`${cart}/cartridge.yaml`, "\nregistry: store\nagents:\n  team-member:\n    writes: [task, agent]\n    reads: { kinds: [unit, tire, inspection] }\n");
+  const port = PORT + 2;
+  const s = Bun.spawn(["uv", "run", "keel", "serve", cart, "--transport", "http", "--port", String(port), "--events", "examples/fleet/events.jsonl"],
+    { cwd: ROOT, env: { ...process.env, KEEL_SECRET: SECRET }, stdout: "ignore", stderr: "ignore" });
+  try {
+    for (let i = 0; i < 200; i++) {
+      try {
+        if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) break;
+      } catch {}
+      await Bun.sleep(100);
+    }
+    const opts = { baseUrl: `http://127.0.0.1:${port}`, tenant: "acme-logistics", secret: SECRET };
+    const keel = new Client(opts);
+    expect(await keel.putAgent("writer", { extends: "team-member", description: "Writes" })).toEqual({ id: "writer", extends: "team-member", description: "Writes" });
+    await expect(keel.putAgent("x", { extends: "nobody" })).rejects.toMatchObject({ status: 422 });
+    expect((await keel.agents()).map((a) => a.id)).toEqual(["writer"]);
+    expect(await new Client({ ...opts, agent: "writer" }).search("T-9001")).not.toEqual([]);
+    expect(await keel.removeAgent("writer")).toEqual({ removed: "writer" });
+    expect(await keel.agents()).toEqual([]);
+  } finally {
+    s.kill();
   }
 });

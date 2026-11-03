@@ -122,7 +122,32 @@ final class Client
         return $list;
     }
 
+    /** Create or replace this tenant's agent (the cartridge says `registry: store`): `['extends' => <profile>, ...]`, which
+     * may only narrow its profile. The shared secret or an account key; never a key narrowed to an agent.
+     * @param array<string, mixed> $spec @return array<string, mixed> */
+    public function putAgent(string $id, array $spec): array
+    {
+        return $this->request('PUT', '/v1/agents/' . rawurlencode($id), $spec);
+    }
+
+    /** This tenant's stored agents, each with its `id`. @return list<array<string, mixed>> */
+    public function agents(): array
+    {
+        return $this->request('GET', '/v1/agents');
+    }
+
+    /** Close this tenant's agent; the audit keeps who it was. @return array<string, mixed> */
+    public function removeAgent(string $id): array
+    {
+        return $this->request('DELETE', '/v1/agents/' . rawurlencode($id));
+    }
+
     private function post(string $path, mixed $body): mixed
+    {
+        return $this->request('POST', $path, $body);
+    }
+
+    private function request(string $method, string $path, mixed $body = null): mixed
     {
         $headers = ["Content-Type: application/json", "X-Keel-Tenant: {$this->tenant}"];
         if ($this->agent !== null) {
@@ -134,11 +159,12 @@ final class Client
         if ($this->traceparent !== null) {
             $headers[] = "traceparent: {$this->traceparent}";
         }
-        $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $json = $body === null ? null : json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $url = rtrim($this->baseUrl, '/') . $path;
         if (function_exists('curl_init')) {
             $ch = curl_init($url);
-            curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => $json, CURLOPT_HTTPHEADER => $headers, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $this->timeout]);
+            $opts = [CURLOPT_CUSTOMREQUEST => $method, CURLOPT_HTTPHEADER => $headers, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => $this->timeout];
+            curl_setopt_array($ch, $json === null ? $opts : $opts + [CURLOPT_POSTFIELDS => $json]);
             $raw = curl_exec($ch);
             if ($raw === false) {
                 throw new \RuntimeException('keel: ' . curl_error($ch));
@@ -146,7 +172,8 @@ final class Client
             $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
             curl_close($ch);
         } else {
-            $ctx = stream_context_create(['http' => ['method' => 'POST', 'header' => implode("\r\n", $headers), 'content' => $json, 'timeout' => $this->timeout, 'ignore_errors' => true]]);
+            $http = ['method' => $method, 'header' => implode("\r\n", $headers), 'timeout' => $this->timeout, 'ignore_errors' => true];
+            $ctx = stream_context_create(['http' => $json === null ? $http : $http + ['content' => $json]]);
             $raw = file_get_contents($url, false, $ctx);
             if ($raw === false) {
                 throw new \RuntimeException("keel: no answer from $url");

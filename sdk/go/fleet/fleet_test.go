@@ -19,7 +19,7 @@ import (
 
 const secret = "s3cret"
 
-func startServer(t *testing.T) string {
+func startServer(t *testing.T, cartridge string, extra ...string) string {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -28,7 +28,7 @@ func startServer(t *testing.T) string {
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 	root, _ := filepath.Abs("../../..")
-	cmd := exec.Command("uv", "run", "keel", "serve", "examples/fleet", "--transport", "http", "--port", fmt.Sprint(port))
+	cmd := exec.Command("uv", append([]string{"run", "keel", "serve", cartridge, "--transport", "http", "--port", fmt.Sprint(port)}, extra...)...)
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "KEEL_SECRET="+secret)
 	if err := cmd.Start(); err != nil {
@@ -48,7 +48,7 @@ func startServer(t *testing.T) string {
 }
 
 func TestGeneratedClient(t *testing.T) {
-	base := startServer(t)
+	base := startServer(t, "examples/fleet")
 	ctx := context.Background()
 	tenant := "acme-logistics"
 	c := NewClient(keel.Options{BaseURL: base, Tenant: tenant, Secret: secret})
@@ -173,5 +173,46 @@ func TestGeneratedClient(t *testing.T) {
 	}
 	if Cartridge != "fleet" || len(Kinds) != 7 {
 		t.Fatalf("constants: %s %v", Cartridge, Kinds)
+	}
+}
+
+func TestStoredAgents(t *testing.T) {
+	root, _ := filepath.Abs("../../..")
+	cart := filepath.Join(t.TempDir(), "fleet")
+	_ = os.MkdirAll(cart, 0o755)
+	profiles := "\nregistry: store\nagents:\n  team-member:\n    writes: [task, agent]\n    reads: { kinds: [unit, tire, inspection] }\n"
+	for name, extra := range map[string]string{"cartridge.yaml": profiles, "handlers.py": ""} {
+		raw, err := os.ReadFile(filepath.Join(root, "examples", "fleet", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(cart, name), append(raw, extra...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := startServer(t, cart, "--events", "examples/fleet/events.jsonl")
+	ctx := context.Background()
+	opts := keel.Options{BaseURL: base, Tenant: "acme-logistics", Secret: secret}
+	c := keel.NewClient(opts)
+	got, err := c.PutAgent(ctx, "writer", keel.AgentSpec{Extends: "team-member", Description: "Writes", Writes: &[]string{"task"}})
+	if err != nil || got.ID != "writer" || got.Extends != "team-member" || len(*got.Writes) != 1 {
+		t.Fatalf("put: %v %+v", err, got)
+	}
+	var ke *keel.Error
+	if _, err := c.PutAgent(ctx, "x", keel.AgentSpec{Extends: "nobody"}); !errors.As(err, &ke) || ke.Status != 422 {
+		t.Fatalf("expected 422, got %v", err)
+	}
+	if list, err := c.Agents(ctx); err != nil || len(list) != 1 || list[0].ID != "writer" || list[0].Description != "Writes" {
+		t.Fatalf("list: %v %+v", err, list)
+	}
+	opts.Agent = "writer"
+	if hits, err := keel.NewClient(opts).Search(ctx, "T-9001"); err != nil || len(hits) == 0 {
+		t.Fatalf("bound: %v %+v", err, hits)
+	}
+	if err := c.RemoveAgent(ctx, "writer"); err != nil {
+		t.Fatal(err)
+	}
+	if list, err := c.Agents(ctx); err != nil || len(list) != 0 {
+		t.Fatalf("after remove: %v %+v", err, list)
 	}
 }
