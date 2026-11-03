@@ -183,3 +183,6 @@ $S --data $D/confirm --tenants apache-tajo,apache-rave --reps 1 --max-usd 11 --o
 uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl --questions evals/jira/hard --agent Sonnet \
     --pairs sqlgen2:sql-log,keel+query:sql-log,sql-log:sql --out $R/hard-sonnet-stats.md
 ```
+
+Pilot of the second addendum, 2026-11-02 (`results/hard-sonnet-pilot.jsonl`, not analysed): 40 runs, 0.49 USD, no
+harness error, all straight to Anthropic; it projects 16 USD for the run. Nothing changes.
