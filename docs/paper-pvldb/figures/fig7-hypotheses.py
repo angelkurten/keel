@@ -1,7 +1,7 @@
 """Figure 7: the three hypotheses' paired differences on each set, with 95% cluster CIs.
 
 Data: hypotheses.json (rows: hypothesis, set, diff, lo, hi in points), from evals/jira/confirm_analysis.analyze
-over each set's Haiku rows (main.tex, Table tab:sets-acc).
+over each set's Haiku rows (main.tex, Table tab:sets-acc), the hard slice from evals/jira/results/hard-stats.md.
 Run:  uv run --with matplotlib python fig7-hypotheses.py
 """
 from __future__ import annotations
@@ -23,16 +23,16 @@ from matplotlib.lines import Line2D
 S.apply()
 
 HYPS = [("H1", "H1: sqlgen2 − sql", -2.0), ("H2", "H2: keel+query − sql", -2.0), ("H3", "H3: keel+query − keel", 0.0)]
-SETS = [("dev", "Development", S.GREY_MID, "o"), ("heldout", "Held-out", S.GREY_DARK, "o"), ("confirm", "Confirmation", S.KEEL, "D")]
+SETS = [("dev", "Development", S.GREY_MID, "o"), ("heldout", "Held-out", S.GREY_DARK, "o"), ("confirm", "Confirmation", S.KEEL, "D"), ("hard", "Hard slice", S.INK, "s")]
 
 rows = {(h, s): (d, lo, hi) for h, s, d, lo, hi in json.loads(Path(HERE, "hypotheses.json").read_text())}
 
-fig, ax = plt.subplots(figsize=(S.WIDTH_IN, 2.3))
-step, spread = 1.0, 0.22
+fig, ax = plt.subplots(figsize=(S.WIDTH_IN, 2.6))
+step, spread = 1.0, 0.18
 ys = {}
 for i, (h, _, _) in enumerate(HYPS):
     for j, (s, _, _, _) in enumerate(SETS):
-        ys[(h, s)] = -(i * step) - (j - 1) * spread
+        ys[(h, s)] = -(i * step) - (j - 1.5) * spread
 ax.axvline(0, color=S.AXIS, lw=0.6, zorder=1)
 for i, (h, _, bound) in enumerate(HYPS):  # the decision bound, under that hypothesis's rows only
     y0 = -(i * step)
@@ -42,7 +42,7 @@ for h, _, _ in HYPS:
         d, lo, hi = rows[(h, s)]
         y = ys[(h, s)]
         ax.plot([lo, hi], [y, y], color=color, lw=1.2, solid_capstyle="butt", zorder=3)
-        ax.plot(d, y, marker=marker, ms=4.2 if marker == "D" else 4, color=color, mec="white", mew=0.5, zorder=4)
+        ax.plot(d, y, marker=marker, ms=4.2 if marker in "Ds" else 4, color=color, mec="white", mew=0.5, zorder=4)
 
 ax.set_yticks([-(i * step) for i in range(len(HYPS))])
 ax.set_yticklabels([label for _, label, _ in HYPS])
@@ -50,8 +50,8 @@ for t in ax.get_yticklabels():
     t.set_color(S.INK)
 ax.tick_params(axis="y", length=0)
 ax.set_ylim(-(len(HYPS) - 1) * step - 0.5, 0.5)
-ax.set_xlim(-2.6, 5.6)
-ax.set_xticks([-2, -1, 0, 1, 2, 3, 4, 5])
+ax.set_xlim(-4.3, 6.1)
+ax.set_xticks([-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6])
 ax.xaxis.grid(True)
 ax.set_axisbelow(True)
 ax.spines["left"].set_visible(False)

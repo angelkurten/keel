@@ -41,7 +41,7 @@
 \email{angel@angelkurten.com}
 
 \begin{abstract}
-Agents inside a product ask what holds now, what held at an instant, and what the product had recorded by then. Keel answers from the product's own events. A cartridge declares a domain's event types, entity kinds, facts, relations and rules once; a deterministic ingest with no LLM builds a bitemporal graph per tenant whose transaction time comes from the events, so replaying the log in any order rebuilds it identically. The same cartridge compiles to two interfaces: five tools an agent calls, and bitemporal SQL views and rule macros that an optional read-only \code{query} tool serves, bound to the tenant by the store. We evaluate on temporal questions over eight real Jira projects of seven instances, in three sets: a development set, a pre-registered held-out set and a pre-registered confirmation set (1,032 questions, gold computed by an independent oracle from the log). Hand-written bitemporal SQL over the log is the strongest baseline. On the held-out set, as registered, Keel's core read tools trail it by 2.8 points (95\% CI $[-4.7, -1.4]$) while leading the product's API by 9.1. Two conditions built after that result, the SQL compiled from the cartridge and the core tools plus \code{query}, tied it there and on the development set. Registered in advance on a third set (two projects of one Jira instance), both are not worse than hand-written SQL ($+0.3$ points, $[-0.3, +0.7]$, margin $-2$), and \code{query} adds 1.2 points to the core tools ($[+0.2, +2.5]$); the tools with \code{query} also cost the least per correct answer. On this benchmark, which every SQL-backed condition answers at 96 to 99\%, with one agent, a domain declared once matched SQL written by hand for it.
+Agents inside a product ask what holds now, what held at an instant, and what the product had recorded by then. Keel answers from the product's own events. A cartridge declares a domain's event types, entity kinds, facts, relations and rules once; a deterministic ingest with no LLM builds a bitemporal graph per tenant whose transaction time comes from the events, so replaying the log in any order rebuilds it identically. The same cartridge compiles to two interfaces: five tools an agent calls, and bitemporal SQL views and rule macros that an optional read-only \code{query} tool serves, bound to the tenant by the store. We evaluate on temporal questions over eight real Jira projects of seven instances, in three sets: a development set, a pre-registered held-out set and a pre-registered confirmation set (1,032 questions, gold computed by an independent oracle from the log). Hand-written bitemporal SQL over the log is the strongest baseline. On the held-out set, as registered, Keel's core read tools trail it by 2.8 points (95\% CI $[-4.7, -1.4]$) while leading the product's API by 9.1. Two conditions built after that result, the SQL compiled from the cartridge and the core tools plus \code{query}, tied it there and on the development set. Registered in advance on a third set (two projects of one Jira instance), both are not worse than hand-written SQL ($+0.3$ points, $[-0.3, +0.7]$, margin $-2$), and \code{query} adds 1.2 points to the core tools ($[+0.2, +2.5]$); the tools with \code{query} also cost the least per correct answer. That benchmark sits near its ceiling: every SQL-backed condition answers 96 to 99\%. On a harder slice of 320 questions registered afterwards, which combine two steps each, neither tie is confirmed (compiled SQL $-1.1$ points, $[-3.1, +0.8]$; tools with \code{query} $-1.6$, $[-3.8, +0.5]$), while \code{query} still adds 3.2 points to the core tools. With one agent, a domain declared once matched SQL written by hand on near-ceiling questions, and came within 2 points of it, not provably, on harder ones.
 \end{abstract}
 
 \maketitle
@@ -58,15 +58,15 @@ An agent shipped inside a product, a support copilot or a planning assistant, ne
 
 Keel puts the two together for agents. A \emph{cartridge} declares a domain once: its event types, entity kinds and their facts, relations, rules and memory policy, plus handlers of about ten lines that map each event to five store primitives. A deterministic ingest, with no LLM and no network call, builds a bitemporal graph per tenant whose transaction time is the one the event's source declares, so a replay of the log in any order rebuilds the same graph, transaction time included. From the same cartridge Keel compiles two interfaces. One is five tools (\code{context}, \code{history}, \code{search}, \code{related}, \code{annotate}) whose results carry rule verdicts, counts and changes. The other is bitemporal SQL: point-in-time views per entity kind, a change view and one macro per rule, in three dialects, which an optional sixth tool, \code{query}, serves read-only and bound to one tenant by the store, never by the agent's SQL.
 
-Whether that is worth doing is an empirical question with an obvious baseline: a database engineer who models the same log in bitemporal tables and writes the point-in-time views and rule macros by hand. We built that baseline ourselves, to the textbook construction; on the development set it scored above Keel's tools (99.3\% against 97.1\%). This paper reports how Keel fares against it on data development never saw, in three stages: a development set; a held-out set whose tenants, conditions, budget and analysis were registered before any run; and, because the two conditions that tied hand-written SQL on the held-out set were built after reading its results, a third, confirmation set registered in advance with three hypotheses and their decision rules. The registered held-out result was negative for Keel's core tools, and we report it as such.
+Whether that is worth doing is an empirical question with an obvious baseline: a database engineer who models the same log in bitemporal tables and writes the point-in-time views and rule macros by hand. We built that baseline ourselves, to the textbook construction; on the development set it scored above Keel's tools (99.3\% against 97.1\%). This paper reports how Keel fares against it on data development never saw, in three stages: a development set; a held-out set whose tenants, conditions, budget and analysis were registered before any run; and, because the two conditions that tied hand-written SQL on the held-out set were built after reading its results, a third, confirmation set registered in advance with three hypotheses and their decision rules. Because those sets sit near their ceiling, a fourth stage registered a harder slice over the same tenants with the same hypotheses. The registered held-out result was negative for Keel's core tools, the hard slice's for the two ties, and we report both as such.
 
 Contributions:
 
 \begin{enumerate}[leftmargin=*]
 \item \textbf{One declaration, two compiled interfaces (C1).} A cartridge compiles to agent tools and to bitemporal SQL (Section~\ref{sec:compile}); the SQL comes with the paragraph that documents it for an agent, generated from the same declaration. The core names no domain: five example cartridges, a Jira cartridge and a cartridge over a third-party benchmark's tables (TDBench \cite{tdbench}) run with no domain-specific code under \code{keel/}.
 \item \textbf{Source-declared transaction time, order-independent (C2).} A formal model (Section~\ref{sec:formal}) in which every fact's position in its history is a function of fields it carries, so any permutation of the log yields the same graph and the same answer to ``what held at $a$, as known at $k$''; checked on real and synthetic logs.
-\item \textbf{A benchmark and a staged protocol (C3).} Temporal questions over real Jira projects with injected late arrivals and corrections, gold from an oracle that imports nothing from Keel, and three sets: development, pre-registered held-out, pre-registered confirmation (Section~\ref{sec:benchmark}).
-\item \textbf{What the compiled interfaces buy (C4).} The SQL compiled from the cartridge is not worse than hand-written SQL, and Keel's tools with \code{query} are not worse either, both confirmed on the third set; the core tools alone trail hand-written SQL, lead the product's API, and gain from \code{query} on all three sets (Section~\ref{sec:results}).
+\item \textbf{A benchmark and a staged protocol (C3).} Temporal questions over real Jira projects with injected late arrivals and corrections, gold from an oracle that imports nothing from Keel, and three sets: development, pre-registered held-out, pre-registered confirmation, plus a pre-registered harder slice (Section~\ref{sec:benchmark}).
+\item \textbf{What the compiled interfaces buy (C4).} The SQL compiled from the cartridge is not worse than hand-written SQL, and Keel's tools with \code{query} are not worse either, both confirmed on the third set but not on the harder slice, where hand-written SQL leads by 1 to 2 points; the core tools alone trail hand-written SQL, lead the product's API, and gain from \code{query} on every set (Section~\ref{sec:results}).
 \end{enumerate}
 
 The first version of this work compared Keel's five tools with the product's API, retrieval and memory systems built by LLM extraction on the development set, and measured governed write-back by agents. Those results stand as development-set results; Section~\ref{sec:firstrun} summarizes them and Appendix~\ref{app:dev} gives them in full.
@@ -335,7 +335,7 @@ Registered in advance, all three hypotheses are confirmed (Table~\ref{tab:hyp}, 
 \begin{figure}[t]
 \centering
 \keelfig{figures/fig7-hypotheses.pdf}{7}
-\caption{The three hypotheses on each set: paired difference with its 95\% cluster interval, Haiku, three repetitions. A hypothesis is confirmed when its interval lies right of its dashed bound ($-2$ points for H1 and H2, 0 for H3); only the confirmation set was registered for them, the other two sets are exploratory. On the development set H3's \code{keel} is the first run's full text form.}
+\caption{The three hypotheses on each set: paired difference with its 95\% cluster interval, Haiku, three repetitions. A hypothesis is confirmed when its interval lies right of its dashed bound ($-2$ points for H1 and H2, 0 for H3); the confirmation set and the hard slice were registered for them, the other two sets are exploratory. On the development set H3's \code{keel} is the first run's full text form.}
 \label{fig:hyp}
 \end{figure}
 
@@ -357,25 +357,25 @@ H3 & \code{keel+query} $-$ \code{keel} & $+1.2$ & [$+0.2$, $+2.5$] & $> 0$ & 10 
 \end{table}
 
 \begin{table}[t]
-\caption{Accuracy (\%) by condition and set, Haiku, three repetitions, with the paired differences behind the three hypotheses (points, 95\% cluster CI). On the development set \code{keel} is the first run's five tools in their full text form, not the compact read-only form of the other columns (Appendix~\ref{app:dev}); \code{keel+query} and \code{sqlgen2} ran later, through a gateway. Only the confirmation column is confirmatory for H1--H3.}
+\caption{Accuracy (\%) by condition and set, Haiku, three repetitions, with the paired differences behind the three hypotheses (points, 95\% cluster CI). On the development set \code{keel} is the first run's five tools in their full text form, not the compact read-only form of the other columns (Appendix~\ref{app:dev}); \code{keel+query} and \code{sqlgen2} ran later, through a gateway. Only the confirmation and hard columns are confirmatory for H1--H3; the hard slice's 320 questions cover the other sets' eight tenants (Section~\ref{sec:hard}).}
 \label{tab:sets-acc}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{l r r r}
+\begin{tabular}{l r r r r}
 \toprule
- & Development & Held-out & Confirmation \\
+ & Development & Held-out & Confirmation & Hard \\
 \midrule
-\code{keel} & 97.1 & 95.9 & 94.8 \\
-\code{keel+query} & 99.2 & 99.1 & 96.0 \\
-\code{sql} & 99.3 & 98.7 & 95.7 \\
-\code{sqlgen2} & 99.4 & 99.1 & 96.0 \\
+\code{keel} & 97.1 & 95.9 & 94.8 & 92.6 \\
+\code{keel+query} & 99.2 & 99.1 & 96.0 & 95.8 \\
+\code{sql} & 99.3 & 98.7 & 95.7 & 97.4 \\
+\code{sqlgen2} & 99.4 & 99.1 & 96.0 & 96.2 \\
 \midrule
-H1: \code{sqlgen2} $-$ \code{sql} & \makecell[r]{$+0.1$\\ {[$-0.2$, $+0.4$]}} & \makecell[r]{$+0.3$\\ {[$-0.2$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} \\
+H1: \code{sqlgen2} $-$ \code{sql} & \makecell[r]{$+0.1$\\ {[$-0.2$, $+0.4$]}} & \makecell[r]{$+0.3$\\ {[$-0.2$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} & \makecell[r]{$-1.1$\\ {[$-3.1$, $+0.8$]}} \\
 \addlinespace
-H2: \code{keel+query} $-$ \code{sql} & \makecell[r]{$-0.1$\\ {[$-0.6$, $+0.3$]}} & \makecell[r]{$+0.4$\\ {[$0.0$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} \\
+H2: \code{keel+query} $-$ \code{sql} & \makecell[r]{$-0.1$\\ {[$-0.6$, $+0.3$]}} & \makecell[r]{$+0.4$\\ {[$0.0$, $+0.9$]}} & \makecell[r]{$+0.3$\\ {[$-0.3$, $+0.7$]}} & \makecell[r]{$-1.6$\\ {[$-3.8$, $+0.5$]}} \\
 \addlinespace
-H3: \code{keel+query} $-$ \code{keel} & \makecell[r]{$+2.2$\\ {[$+0.8$, $+3.8$]}} & \makecell[r]{$+3.3$\\ {[$+1.7$, $+5.2$]}} & \makecell[r]{$+1.2$\\ {[$+0.2$, $+2.5$]}} \\
+H3: \code{keel+query} $-$ \code{keel} & \makecell[r]{$+2.2$\\ {[$+0.8$, $+3.8$]}} & \makecell[r]{$+3.3$\\ {[$+1.7$, $+5.2$]}} & \makecell[r]{$+1.2$\\ {[$+0.2$, $+2.5$]}} & \makecell[r]{$+3.2$\\ {[$+0.9$, $+5.7$]}} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -385,6 +385,33 @@ The confirmation set is harder than the other two: by 3 to 4 points for \code{ke
 \textbf{Sensitivity.} The cluster bootstrap resamples 22 tenant $\times$ type cells, and few questions decide each hypothesis: H1 and H2 rest on 4 questions where the two conditions differ (3 and 1), H3 on 12 (10 and 2; exact sign test $p = 0.039$). The registration fixed no multiplicity adjustment. With Holm's over the three, H1 and H2 are tested first (their lower bounds at the stricter level are $-0.4$ points, far from $-2$) and H3 then at 5\%, so all three stand; with Bonferroni, H3's lower bound is $0.0$, at the edge. Leaving out the 10 links questions every condition misses changes no difference by more than 0.1 point, since each adds 0 to it.
 
 Outside links, the four conditions answer the confirmation set's one-issue questions at 98 to 100\% per type. On its 48 tenant-wide questions \code{keel} answers 95.1\% and the other three 99.3 to 100\%, the same place the held-out set found Keel's tools weakest.
+
+\subsection{A harder slice}
+\label{sec:hard}
+
+The sets above are near their ceiling, and their ties were decided on few questions. A fourth registration (\code{evals/jira/hard/README.md}) fixed, before any model saw one of its questions, 320 harder questions over the eight tenants of the three sets (seed 53, 40 per tenant) with the same conditions, agent, repetitions, hypotheses and bounds. Each of its five types combines two steps the main templates take one at a time: issues two named relations away from one, at an instant (\code{two\_hop}); how many issues had a status at an instant as recorded by a later one, only where a late or corrected record changes the count (\code{known\_count}); how many times one issue was moved into a status within a window (\code{entries}); whole days one issue spent in a status, every spell added (\code{time\_in}); and the issues in progress at two instants, where neither instant alone answers (\code{both}). Gold comes from the same oracle and Keel's primitives reach all 320; it was not checked through SQL. The run, from a clean checkout of the registration commit, made 3,840 runs with no harness error for 3.1 USD.
+
+The best condition, \code{sql}, scored 97.4\%, so by the registration's own rule (best below 95\%) the slice did not leave the ceiling; but the conditions now differ on 26 to 53 questions per hypothesis instead of 4 to 12. H3 is confirmed again ($+3.2$ points, $[+0.9, +5.7]$, 36 / 17). H1 and H2 are not: \code{sqlgen2} $-$ \code{sql} is $-1.1$ ($[-3.1, +0.8]$, 10 / 16) and \code{keel+query} $-$ \code{sql} $-1.6$ ($[-3.8, +0.5]$, 12 / 23), both intervals reaching past $-2$ (Table~\ref{tab:sets-acc}, Figure~\ref{fig:hyp}). Table~\ref{tab:hard} breaks the slice down by type. \code{known\_count} turned out easy for every condition. \code{keel} without \code{query} falls on \code{both} and \code{time\_in}. Hand-written SQL's lead is in \code{time\_in}, and, read after the result, its source is arithmetic: \code{keel+query} and \code{sqlgen2} miss mostly by one day (1,529 for 1,528), the agent counting days in its reply instead of in SQL. With \code{sql} the agent's queries compute the dates in 131 of 192 runs and miss 4; with \code{sqlgen2} in 25 and miss 21, with \code{keel+query} in 8 and miss 26. Neither paragraph documents date functions; why the hand-written schema leads the agent to compute in SQL is untested.
+
+\begin{table}[t]
+\caption{Hard slice (320 questions, 64 per type, Haiku, three repetitions): accuracy (\%) by type.}
+\label{tab:hard}
+\centering
+\footnotesize
+\begin{tabular}{l r r r r}
+\toprule
+Type & \code{keel} & \code{keel+query} & \code{sql} & \code{sqlgen2} \\
+\midrule
+\code{two\_hop} & 95.3 & 93.8 & 95.3 & 94.3 \\
+\code{known\_count} & 100.0 & 100.0 & 100.0 & 100.0 \\
+\code{entries} & 94.3 & 99.0 & 93.7 & 99.0 \\
+\code{time\_in} & 86.5 & 86.5 & 97.9 & 89.1 \\
+\code{both} & 87.0 & 100.0 & 100.0 & 99.0 \\
+\midrule
+All & 92.6 & 95.8 & 97.4 & 96.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Cost}
 \label{sec:res-cost}
@@ -452,7 +479,7 @@ Mem0, clean / poisoned & Mem0's tenant store without and with the poisoner's lin
 
 \begin{itemize}[leftmargin=*]
 \item \textbf{One agent, one domain.} The held-out and confirmation sets ran Claude Haiku 5.5 only, three repetitions; every set is Jira. Whether the ties hold for other agents, and for a domain whose cartridge is not the authors', is untested.
-\item \textbf{The confirmation set is small and one instance.} 258 questions on two Apache projects, chosen by a rule amended twice before any of its questions existed, because no project of the instances first named passed it. Its two tenants share Apache's workflow and people. The intervals of H1 and H2 sit well inside the margin, but a 2-point margin cannot detect a smaller loss, and every SQL-backed condition is near the benchmark's ceiling: H1 and H2 rest on 4 questions where the two conditions differ, H3 on 12.
+\item \textbf{The confirmation set is small and one instance.} 258 questions on two Apache projects, chosen by a rule amended twice before any of its questions existed, because no project of the instances first named passed it. Its two tenants share Apache's workflow and people. The intervals of H1 and H2 sit well inside the margin, but a 2-point margin cannot detect a smaller loss, and every SQL-backed condition is near the benchmark's ceiling: H1 and H2 rest on 4 questions where the two conditions differ, H3 on 12. The harder slice, decided on 26 to 53 such questions, did not confirm H1 or H2 (Section~\ref{sec:hard}).
 \item \textbf{The strongest condition was built for the benchmark.} \code{sqlgen2}'s per-kind views and the cartridge declarations they compile from were added after reading the held-out results, with the benchmark's question types in view. The generator stayed domain-agnostic and the confirmation set tested it on unseen data, but what a cartridge can declare grew to fit the questions asked.
 \item \textbf{Templated questions, exact match, simulated transaction time.} Phrasing is ours, and one template's wording (``related to'') proved ambiguous on the confirmation set (Section~\ref{sec:confirm}). Answers are graded by exact match, so a right answer in another format is wrong for every condition alike. Jira does not record when anyone learned a change, so late arrivals and corrections are injected with a published seed.
 \item \textbf{Hand-written baseline by the author.} \code{sql} was written by the author, knowing Keel, to the textbook construction; a different engineer could write better or worse views. It is published with the harness.
@@ -464,13 +491,13 @@ Mem0, clean / poisoned & Mem0's tenant store without and with the poisoner's lin
 \section{Conclusion}
 \label{sec:conclusion}
 
-Declaring a product's domain once, as events, kinds, facts, relations and rules, is enough to give agents two interfaces to a bitemporal graph that replays identically from the product's log: tools, and SQL compiled with its own description. On real Jira projects development never saw, Claude Haiku 5.5 querying the compiled SQL, or Keel's tools with that SQL beside them, answers these temporal questions as well as when it queries views written by hand for the same log; registered in advance, that held within 2 points, and the SQL added 1.2 points to the tools alone at a lower cost per correct answer. The core tools alone did not match hand-written SQL, and we report that. Open work is a second domain with real product events, more agents on the registered sets, and question wording reviewed for ambiguity before registration.
+Declaring a product's domain once, as events, kinds, facts, relations and rules, is enough to give agents two interfaces to a bitemporal graph that replays identically from the product's log: tools, and SQL compiled with its own description. On real Jira projects development never saw, Claude Haiku 5.5 querying the compiled SQL, or Keel's tools with that SQL beside them, answers these temporal questions as well as when it queries views written by hand for the same log; registered in advance, that held within 2 points, and the SQL added 1.2 points to the tools alone at a lower cost per correct answer. On a harder registered slice it did not hold: hand-written SQL led by 1 to 2 points, its intervals reaching past the margin, mostly on arithmetic over time that the agent did in its reply rather than in SQL. The core tools alone did not match hand-written SQL either, and we report both. Open work is a second domain with real product events, more agents on the registered sets, and question wording reviewed for ambiguity before registration.
 
 % ===========================================================================
 \section*{Reproducibility}
 \label{sec:repro}
 
-Code, harness and every result file are at \href{https://github.com/angelkurten/keel}{github.com/angelkurten/keel}; Keel 0.36.0 (package \code{keel-context} on PyPI) is the code the confirmation set froze. \code{evals/jira/README.md} goes from the dataset dump to every development result; \code{evals/jira/heldout/README.md} and \code{evals/jira/confirm/README.md} hold each registration, its amendments, the exact commands, the SHA-256 of every generated file, and the results as appended after each run. Seeds: 7, 31 and 47 for the sets' injections and templates, 0 for the bootstrap ($B = 10{,}000$). The held-out set's Haiku runs cost 5.7 USD, the development set's \code{keel+query} and \code{sqlgen2} 2.5 USD through the gateway, and the confirmation set 1.6 USD, pilots and rows set aside included: 9.8 USD in all; the first run's spend is in Appendix~\ref{app:dev-systems}. \textbf{Data and licenses.} The Public Jira Dataset is CC BY 4.0; people are anonymized. No human subjects were involved.
+Code, harness and every result file are at \href{https://github.com/angelkurten/keel}{github.com/angelkurten/keel}; Keel 0.36.0 (package \code{keel-context} on PyPI) is the code the confirmation set froze. \code{evals/jira/README.md} goes from the dataset dump to every development result; \code{evals/jira/heldout/README.md}, \code{evals/jira/confirm/README.md} and \code{evals/jira/hard/README.md} hold each registration, its amendments, the exact commands, the SHA-256 of every generated file, and the results as appended after each run. Seeds: 7, 31 and 47 for the sets' injections and templates, 53 for the hard slice's templates, 0 for the bootstrap ($B = 10{,}000$). The held-out set's Haiku runs cost 5.7 USD, the development set's \code{keel+query} and \code{sqlgen2} 2.5 USD through the gateway, the confirmation set 1.6 USD and the hard slice 3.3 USD, pilots and rows set aside included: 13.1 USD in all; the first run's spend is in Appendix~\ref{app:dev-systems}. \textbf{Data and licenses.} The Public Jira Dataset is CC BY 4.0; people are anonymized. No human subjects were involved.
 
 % ===========================================================================
 \section*{Acknowledgments}

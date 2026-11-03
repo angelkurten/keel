@@ -104,5 +104,7 @@ all four (the type turned out easy); entries 94.3, 99.0, 93.7, 99.0; time_in 86.
 and 0.00093.
 
 Read after the result: keel+query and sqlgen2 miss `time_in` mostly by one day (e.g. 1,529 for 1,528), the agent
-doing the date arithmetic in its reply instead of in SQL; hand-written SQL misses it in 4 runs of 192. This is
-where most of hand-written SQL's lead over the generated layer comes from.
+doing the date arithmetic in its reply instead of in SQL. The agent's queries compute the dates in SQL in 131 of 192
+`time_in` runs with `sql` (4 missed), 25 with `sqlgen2` (21 missed) and 8 with `keel+query` (26 missed). Neither
+paragraph documents date functions; why the hand-written schema leads the agent to compute in SQL is not measured.
+This is where most of hand-written SQL's lead over the generated layer comes from.
