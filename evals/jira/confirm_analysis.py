@@ -29,10 +29,10 @@ HYPOTHESES = [
 
 
 def analyze(qs: dict[str, dict[str, Any]], rows: list[dict[str, Any]], b: int = B, seed: int = SEED,
-            pairs: list[tuple[str, str]] = ()) -> dict[str, Any]:
+            pairs: list[tuple[str, str]] = (), agent: str = AGENT) -> dict[str, Any]:
     res = ha.analyze(qs, rows, b, seed)  # per-condition accuracy, cost and tokens, as for the held-out set
     an = Analysis(qs, b, seed)
-    acc = {s: per_question([r for r in rows if r["id"] in qs and r["system"] == s and AGENTS.get(r["model"], r["model"]) == AGENT])
+    acc = {s: per_question([r for r in rows if r["id"] in qs and r["system"] == s and AGENTS.get(r["model"], r["model"]) == agent])
            for s in {r["system"] for r in rows}}
     hyps = []
     for h in HYPOTHESES:
@@ -76,13 +76,14 @@ def main() -> None:
     ap.add_argument("results", nargs="+", type=Path)
     ap.add_argument("--questions", type=Path, default=HERE)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--agent", default=AGENT, help="whose rows the hypotheses and pairs read (default Haiku, as registered)")
     ap.add_argument("--pairs", default="", help="exploratory differences to add, as a:b,a:b (e.g. sql-log:sql)")
     a = ap.parse_args()
     manifest = json.loads((a.questions / "manifest.json").read_text())
     qs = {q["id"]: q for t in manifest["tenants"] for q in json.loads((a.questions / f"{t}.questions.json").read_text())}
     rows = [json.loads(line) for p in a.results for line in p.open()]
     pairs = [tuple(x.split(":")) for x in a.pairs.split(",") if x]
-    text = markdown(analyze(qs, rows, pairs=pairs))
+    text = markdown(analyze(qs, rows, pairs=pairs, agent=a.agent))
     print(text)
     if a.out:
         a.out.write_text(text)

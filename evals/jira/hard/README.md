@@ -157,3 +157,29 @@ keel 92.6). Paired differences, exploratory: sql-tables − sql −1.5 [−2.8, 
 known_count 100, 98.4; entries 92.7, 96.4; time_in 95.3, 92.7; both 96.4, 91.1. Input tokens per run 8,601 and
 20,122; USD per correct answer 0.00085 and 0.00154, against 0.00062 for sql, 0.00067 for keel+query and 0.00093 for
 sqlgen2.
+
+## Second addendum, 2026-11-02, before any of its runs: a stronger agent (exploratory)
+
+A reviewer asked whether the results hold for another agent. The author chose Claude Sonnet 5.5
+(`anthropic/claude-sonnet-5.5`, straight from Anthropic), one repetition, on four conditions: `sql`, `sqlgen2`,
+`keel+query` and `sql-log`. **Exploratory**: one repetition, no decision rule; Haiku's registered result above is
+unchanged by it. Estimated 25 to 45 USD (Haiku's tokens at Sonnet's list prices, 45 USD, less prompt caching); brakes
+17, 17 and 11 USD; if one is reached nothing more is spent until the author decides.
+
+Reported: accuracy per condition, per type and per tenant group; the same paired differences as for Haiku, read on
+Sonnet's rows with the same cluster interval and no decision rule: `sqlgen2 − sql` and `keel+query − sql` (H1, H2 as
+descriptions, not tests), `sqlgen2 − sql-log` and `keel+query − sql-log`, `sql-log − sql`; cost per correct answer and
+input tokens. `confirm_analysis.py` gained `--agent` (default Haiku; its registered output checked byte for byte).
+Code: the commit that adds this section; `keel/` still d620fcb.
+
+```bash
+S="... the same command as above, with --models anthropic/claude-sonnet-5.5 --systems sql,sqlgen2,keel+query,sql-log"
+# pilot on the confirmation tenants, harness errors only, not analysed (40 runs)
+$S --data $D/confirm --tenants apache-tajo,apache-rave --per-type 1 --reps 1 --max-usd 3 --out $R/hard-sonnet-pilot.jsonl
+# the run: 1,280 runs
+$S --data $D/export  --tenants hyperledger,mariadb,spring --reps 1 --max-usd 17 --out $R/hard-sonnet.jsonl
+$S --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 1 --max-usd 17 --out $R/hard-sonnet.jsonl
+$S --data $D/confirm --tenants apache-tajo,apache-rave --reps 1 --max-usd 11 --out $R/hard-sonnet.jsonl
+uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl --questions evals/jira/hard --agent Sonnet \
+    --pairs sqlgen2:sql-log,keel+query:sql-log,sql-log:sql --out $R/hard-sonnet-stats.md
+```

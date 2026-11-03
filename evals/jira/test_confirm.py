@@ -102,6 +102,18 @@ def test_exploratory_pairs_are_reported_without_a_decision():
     assert "Exploratory" in md and "sql-log - sql" in md
 
 
+def test_the_hypotheses_can_be_read_for_another_agent():
+    pytest.importorskip("numpy")
+    from evals.jira import confirm_analysis as ca
+
+    qs = questions()
+    sonnet = [r | {"model": "anthropic/claude-sonnet-5.5"} for r in rows(qs, "sqlgen2", set(range(0, 40, 4)))]
+    data = rows(qs, "sql", set()) + rows(qs, "sqlgen2", set()) + [r | {"model": "anthropic/claude-sonnet-5.5"} for r in rows(qs, "sql", set())] + sonnet
+    assert ca.analyze(qs, data, b=500)["hypotheses"][0]["diff"] == 0  # Haiku by default, as registered
+    h = ca.analyze(qs, data, b=500, agent="Sonnet")["hypotheses"][0]
+    assert h["diff"] == pytest.approx(-0.25)
+
+
 def test_amended_candidates_are_every_project_neither_set_used(tmp_path):
     """Amendment 2026-11-01: no candidate of the eight unused instances passed; every project of the restored instances
     but the held-out set's three is a candidate."""
