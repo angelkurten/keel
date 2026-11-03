@@ -1,0 +1,705 @@
+[
+ {
+  "id": "redhat-projquay-two_hop-001",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-10-16 23:34 UTC, take the issues linked to PROJQUAY-2442 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-10-16 23:34 UTC, and leave PROJQUAY-2442 itself out.",
+  "answer": [
+   "PROJQUAY-2438",
+   "PROJQUAY-2440",
+   "PROJQUAY-2441",
+   "PROJQUAY-2445"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2442",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-10-16 23:34 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-002",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-04-14 17:06 UTC, take the issues linked to PROJQUAY-458 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'duplicates' link (either direction)? Count a link only if it existed on 2021-04-14 17:06 UTC, and leave PROJQUAY-458 itself out.",
+  "answer": [
+   "PROJQUAY-228"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-458",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "duplicates",
+    "any"
+   ],
+   "as_of": "2021-04-14 17:06 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-003",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-12-20 02:18 UTC, take the issues linked to PROJQUAY-224 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-12-20 02:18 UTC, and leave PROJQUAY-224 itself out.",
+  "answer": [
+   "PROJQUAY-1340",
+   "PROJQUAY-1546",
+   "PROJQUAY-649"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-224",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-12-20 02:18 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-004",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-02-13 12:24 UTC, take the issues linked to PROJQUAY-276 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-02-13 12:24 UTC, and leave PROJQUAY-276 itself out.",
+  "answer": [
+   "PROJQUAY-288",
+   "PROJQUAY-292"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-276",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-02-13 12:24 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-005",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-12-20 20:02 UTC, take the parents of PROJQUAY-2827. What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-12-20 20:02 UTC, and leave PROJQUAY-2827 itself out.",
+  "answer": [
+   "ART-3512",
+   "CWFCONF-1405"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2827",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-12-20 20:02 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-006",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-03-18 16:13 UTC, take the issues linked to PROJQUAY-776 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-03-18 16:13 UTC, and leave PROJQUAY-776 itself out.",
+  "answer": [
+   "PROJQUAY-729",
+   "PROJQUAY-775"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-776",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-03-18 16:13 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-007",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2020-03-02 21:52 UTC, take the issues linked to PROJQUAY-288 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-03-02 21:52 UTC, and leave PROJQUAY-288 itself out.",
+  "answer": [
+   "PROJQUAY-276",
+   "PROJQUAY-292"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-288",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-03-02 21:52 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-two_hop-008",
+  "tenant": "redhat-projquay",
+  "type": "two_hop",
+  "question": "On 2021-09-19 11:21 UTC, take the issues linked to PROJQUAY-2050 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2021-09-19 11:21 UTC, and leave PROJQUAY-2050 itself out.",
+  "answer": [
+   "PROJQUAY-1694",
+   "PROJQUAY-1709",
+   "PROJQUAY-1737",
+   "PROJQUAY-1903"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:PROJQUAY-2050",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2021-09-19 11:21 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-001",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2021-02-08 20:44 UTC, how many issues of the PROJQUAY project had status Open at 2021-02-04 12:48 UTC?",
+  "answer": 16,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2021-02-04 12:48 UTC",
+   "known_at": "2021-02-08 20:44 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-002",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-03-30 02:05 UTC, how many issues of the PROJQUAY project had status Triage at 2020-03-29 20:56 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "Triage",
+   "as_of": "2020-03-29 20:56 UTC",
+   "known_at": "2020-03-30 02:05 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-003",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2021-01-25 05:46 UTC, how many issues of the PROJQUAY project had status Resolved at 2021-01-21 17:55 UTC?",
+  "answer": 59,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2021-01-21 17:55 UTC",
+   "known_at": "2021-01-25 05:46 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-004",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-08-14 05:58 UTC, how many issues of the PROJQUAY project had status Pull Request Sent at 2020-08-13 18:14 UTC?",
+  "answer": 20,
+  "answer_type": "count",
+  "params": {
+   "status": "Pull Request Sent",
+   "as_of": "2020-08-13 18:14 UTC",
+   "known_at": "2020-08-14 05:58 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-005",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2021-02-20 15:00 UTC, how many issues of the PROJQUAY project had status Open at 2021-02-12 13:35 UTC?",
+  "answer": 24,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2021-02-12 13:35 UTC",
+   "known_at": "2021-02-20 15:00 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-006",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-04-15 21:34 UTC, how many issues of the PROJQUAY project had status Open at 2020-04-15 13:18 UTC?",
+  "answer": 290,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2020-04-15 13:18 UTC",
+   "known_at": "2020-04-15 21:34 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-007",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2021-02-01 15:19 UTC, how many issues of the PROJQUAY project had status Resolved at 2021-01-21 16:32 UTC?",
+  "answer": 55,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2021-01-21 16:32 UTC",
+   "known_at": "2021-02-01 15:19 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-known_count-008",
+  "tenant": "redhat-projquay",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-09-21 01:13 UTC, how many issues of the PROJQUAY project had status Pull Request Sent at 2020-09-17 20:25 UTC?",
+  "answer": 20,
+  "answer_type": "count",
+  "params": {
+   "status": "Pull Request Sent",
+   "as_of": "2020-09-17 20:25 UTC",
+   "known_at": "2020-09-21 01:13 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-001",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2021-08-27 09:37 UTC and 2021-11-22 19:51 UTC, how many times was PROJQUAY-2271 moved into status Open? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2271",
+   "status": "Open",
+   "since": "2021-08-27 09:37 UTC",
+   "until": "2021-11-22 19:51 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-002",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2020-05-29 18:34 UTC and 2021-11-18 17:55 UTC, how many times was PROJQUAY-392 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-392",
+   "status": "Closed",
+   "since": "2020-05-29 18:34 UTC",
+   "until": "2021-11-18 17:55 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-003",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2021-08-07 19:29 UTC and 2021-09-11 21:24 UTC, how many times was PROJQUAY-2332 moved into status Open? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2332",
+   "status": "Open",
+   "since": "2021-08-07 19:29 UTC",
+   "until": "2021-09-11 21:24 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-004",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2020-06-04 13:19 UTC and 2021-12-06 15:08 UTC, how many times was PROJQUAY-252 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-252",
+   "status": "Closed",
+   "since": "2020-06-04 13:19 UTC",
+   "until": "2021-12-06 15:08 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-005",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2021-11-02 10:38 UTC and 2021-12-30 17:37 UTC, how many times was PROJQUAY-1767 moved into status Open? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-1767",
+   "status": "Open",
+   "since": "2021-11-02 10:38 UTC",
+   "until": "2021-12-30 17:37 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-006",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2020-12-20 19:42 UTC and 2021-05-26 13:28 UTC, how many times was PROJQUAY-935 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-935",
+   "status": "Closed",
+   "since": "2020-12-20 19:42 UTC",
+   "until": "2021-05-26 13:28 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-007",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2021-08-27 05:33 UTC and 2021-12-29 18:22 UTC, how many times was PROJQUAY-1914 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-1914",
+   "status": "Closed",
+   "since": "2021-08-27 05:33 UTC",
+   "until": "2021-12-29 18:22 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-entries-008",
+  "tenant": "redhat-projquay",
+  "type": "entries",
+  "question": "Between 2020-11-22 04:58 UTC and 2021-12-17 14:45 UTC, how many times was PROJQUAY-124 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-124",
+   "status": "Closed",
+   "since": "2020-11-22 04:58 UTC",
+   "until": "2021-12-17 14:45 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-001",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-01-24 04:15 UTC, how many whole days in total had PROJQUAY-683 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-683",
+   "status": "Closed",
+   "as_of": "2021-01-24 04:15 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-002",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-09-19 17:13 UTC, how many whole days in total had PROJQUAY-2205 spent in status Coding In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 19,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2205",
+   "status": "Coding In Progress",
+   "as_of": "2021-09-19 17:13 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-003",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-05-07 16:10 UTC, how many whole days in total had PROJQUAY-1696 spent in status Plan, adding every period it was in it? Round the total down to whole days.",
+  "answer": 57,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-1696",
+   "status": "Plan",
+   "as_of": "2021-05-07 16:10 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-004",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-10-04 02:31 UTC, how many whole days in total had PROJQUAY-2026 spent in status Plan, adding every period it was in it? Round the total down to whole days.",
+  "answer": 15,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2026",
+   "status": "Plan",
+   "as_of": "2021-10-04 02:31 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-005",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-07-01 05:31 UTC, how many whole days in total had PROJQUAY-298 spent in status Triage, adding every period it was in it? Round the total down to whole days.",
+  "answer": 149,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-298",
+   "status": "Triage",
+   "as_of": "2021-07-01 05:31 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-006",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-12-25 20:58 UTC, how many whole days in total had PROJQUAY-2659 spent in status Triage, adding every period it was in it? Round the total down to whole days.",
+  "answer": 9,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2659",
+   "status": "Triage",
+   "as_of": "2021-12-25 20:58 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-007",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2020-07-20 19:43 UTC, how many whole days in total had PROJQUAY-522 spent in status Coding In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 33,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-522",
+   "status": "Coding In Progress",
+   "as_of": "2020-07-20 19:43 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-time_in-008",
+  "tenant": "redhat-projquay",
+  "type": "time_in",
+  "question": "Up to 2021-11-24 22:55 UTC, how many whole days in total had PROJQUAY-2295 spent in status Coding In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 39,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:PROJQUAY-2295",
+   "status": "Coding In Progress",
+   "as_of": "2021-11-24 22:55 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-001",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2021-10-07 05:13 UTC and on 2021-11-21 13:23 UTC?",
+  "answer": [
+   "PROJQUAY-1454",
+   "PROJQUAY-1622",
+   "PROJQUAY-1899",
+   "PROJQUAY-2035",
+   "PROJQUAY-2082",
+   "PROJQUAY-2134",
+   "PROJQUAY-2137",
+   "PROJQUAY-2241",
+   "PROJQUAY-2256",
+   "PROJQUAY-2542",
+   "PROJQUAY-2599",
+   "PROJQUAY-2604",
+   "PROJQUAY-673"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2021-10-07 05:13 UTC",
+   "until": "2021-11-21 13:23 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-002",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2021-07-03 22:34 UTC and on 2021-09-12 11:39 UTC?",
+  "answer": [
+   "PROJQUAY-1454",
+   "PROJQUAY-1622",
+   "PROJQUAY-1861",
+   "PROJQUAY-1880",
+   "PROJQUAY-1899",
+   "PROJQUAY-1946",
+   "PROJQUAY-1962",
+   "PROJQUAY-2074",
+   "PROJQUAY-2082",
+   "PROJQUAY-2096",
+   "PROJQUAY-2134",
+   "PROJQUAY-2172",
+   "PROJQUAY-673",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2021-07-03 22:34 UTC",
+   "until": "2021-09-12 11:39 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-003",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2021-07-09 01:24 UTC and on 2021-09-18 18:32 UTC?",
+  "answer": [
+   "PROJQUAY-1454",
+   "PROJQUAY-1622",
+   "PROJQUAY-1861",
+   "PROJQUAY-1880",
+   "PROJQUAY-1899",
+   "PROJQUAY-1946",
+   "PROJQUAY-1962",
+   "PROJQUAY-2074",
+   "PROJQUAY-2082",
+   "PROJQUAY-2096",
+   "PROJQUAY-2134",
+   "PROJQUAY-2172",
+   "PROJQUAY-673",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2021-07-09 01:24 UTC",
+   "until": "2021-09-18 18:32 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-004",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2021-04-16 09:03 UTC and on 2021-05-29 21:22 UTC?",
+  "answer": [
+   "PROJQUAY-1446",
+   "PROJQUAY-1473",
+   "PROJQUAY-1622",
+   "PROJQUAY-1710",
+   "PROJQUAY-1846",
+   "PROJQUAY-1861",
+   "PROJQUAY-1863",
+   "PROJQUAY-1880",
+   "PROJQUAY-591",
+   "PROJQUAY-672",
+   "PROJQUAY-673",
+   "PROJQUAY-763",
+   "PROJQUAY-922",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2021-04-16 09:03 UTC",
+   "until": "2021-05-29 21:22 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-005",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2019-11-29 11:01 UTC and on 2020-01-27 04:22 UTC?",
+  "answer": [
+   "PROJQUAY-17",
+   "PROJQUAY-259",
+   "PROJQUAY-30",
+   "PROJQUAY-347",
+   "PROJQUAY-410",
+   "PROJQUAY-419",
+   "PROJQUAY-426",
+   "PROJQUAY-430",
+   "PROJQUAY-435",
+   "PROJQUAY-436",
+   "PROJQUAY-525",
+   "PROJQUAY-527"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2019-11-29 11:01 UTC",
+   "until": "2020-01-27 04:22 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-006",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2020-12-06 07:17 UTC and on 2021-01-30 16:46 UTC?",
+  "answer": [
+   "PROJQUAY-1128",
+   "PROJQUAY-1351",
+   "PROJQUAY-333",
+   "PROJQUAY-392",
+   "PROJQUAY-591",
+   "PROJQUAY-672",
+   "PROJQUAY-673",
+   "PROJQUAY-763",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2020-12-06 07:17 UTC",
+   "until": "2021-01-30 16:46 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-007",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2019-10-08 03:23 UTC and on 2020-01-03 14:50 UTC?",
+  "answer": [
+   "PROJQUAY-347",
+   "PROJQUAY-410",
+   "PROJQUAY-430",
+   "PROJQUAY-435",
+   "PROJQUAY-525",
+   "PROJQUAY-527"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2019-10-08 03:23 UTC",
+   "until": "2020-01-03 14:50 UTC"
+  }
+ },
+ {
+  "id": "redhat-projquay-both-008",
+  "tenant": "redhat-projquay",
+  "type": "both",
+  "question": "Which issues of the PROJQUAY project had a status among: Coding In Progress, In Progress, Pull Request Sent both on 2021-01-09 11:41 UTC and on 2021-03-07 03:20 UTC?",
+  "answer": [
+   "PROJQUAY-1128",
+   "PROJQUAY-1351",
+   "PROJQUAY-333",
+   "PROJQUAY-392",
+   "PROJQUAY-591",
+   "PROJQUAY-672",
+   "PROJQUAY-673",
+   "PROJQUAY-763",
+   "PROJQUAY-983"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2021-01-09 11:41 UTC",
+   "until": "2021-03-07 03:20 UTC"
+  }
+ }
+]

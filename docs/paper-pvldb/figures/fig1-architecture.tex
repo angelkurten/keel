@@ -39,7 +39,7 @@
 % ---- Keel lane, row 2 (read and write back), right to left
 \node[box] (prim)  at (3*\dx,-2.0) {\h{Store primitives}\\[1pt] upsert\_entity, link, unlink, open\_fact, close\_fact};
 \node[hl]  (graph) at (2*\dx,-2.0) {\h{Bitemporal graph}\\[1pt] one subgraph per tenant; facts close, never overwritten};
-\node[box] (tools) at (\dx,-2.0)   {\h{Five tools}\\[1pt] context, history, search, related, annotate};
+\node[box] (tools) at (\dx,-2.0)   {\h{Tools and SQL}\\[1pt] context, history, search, related, annotate; query over SQL compiled from the cartridge};
 \node[box] (agents) at (0,-2.0)    {\h{Agents}\\[1pt] any framework, through MCP};
 
 \draw[flow] (ev) -- (env);

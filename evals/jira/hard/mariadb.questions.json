@@ -1,0 +1,721 @@
+[
+ {
+  "id": "mariadb-two_hop-001",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2015-06-12 20:37 UTC, take the issues blocked by MXS-89. What were the parents of any of them? Count a link only if it existed on 2015-06-12 20:37 UTC, and leave MXS-89 itself out.",
+  "answer": [
+   "MXS-88"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-89",
+   "hop1": [
+    "blocks",
+    "out"
+   ],
+   "hop2": [
+    "subtask_of",
+    "out"
+   ],
+   "as_of": "2015-06-12 20:37 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-002",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2016-10-31 02:09 UTC, take the issues linked to MXS-845 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2016-10-31 02:09 UTC, and leave MXS-845 itself out.",
+  "answer": [
+   "MXS-846",
+   "MXS-847"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-845",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2016-10-31 02:09 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-003",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2020-11-27 11:48 UTC, take the issues linked to MXS-2383 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-11-27 11:48 UTC, and leave MXS-2383 itself out.",
+  "answer": [
+   "MXS-1432",
+   "MXS-1758",
+   "MXS-2267",
+   "MXS-2269",
+   "MXS-2292",
+   "MXS-2294",
+   "MXS-2478",
+   "MXS-2479",
+   "MXS-673"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-2383",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-11-27 11:48 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-004",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2020-03-12 20:19 UTC, take the issues linked to MXS-94 by a 'relates to' link (either direction). What were the sub-tasks of any of them? Count a link only if it existed on 2020-03-12 20:19 UTC, and leave MXS-94 itself out.",
+  "answer": [
+   "MXS-101",
+   "MXS-102",
+   "MXS-103",
+   "MXS-104",
+   "MXS-105",
+   "MXS-106",
+   "MXS-89",
+   "MXS-90",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-94",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "subtask_of",
+    "in"
+   ],
+   "as_of": "2020-03-12 20:19 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-005",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2019-09-29 02:10 UTC, take the issues linked to MXS-2642 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2019-09-29 02:10 UTC, and leave MXS-2642 itself out.",
+  "answer": [
+   "MXS-872"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-2642",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2019-09-29 02:10 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-006",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2020-04-16 18:56 UTC, take the issues linked to MXS-593 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-04-16 18:56 UTC, and leave MXS-593 itself out.",
+  "answer": [
+   "MXS-1160"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-593",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-04-16 18:56 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-007",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2018-04-19 13:38 UTC, take the issues linked to MXS-132 by a 'relates to' link (either direction). What were the parents of any of them? Count a link only if it existed on 2018-04-19 13:38 UTC, and leave MXS-132 itself out.",
+  "answer": [
+   "MXS-158"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-132",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "subtask_of",
+    "out"
+   ],
+   "as_of": "2018-04-19 13:38 UTC"
+  }
+ },
+ {
+  "id": "mariadb-two_hop-008",
+  "tenant": "mariadb",
+  "type": "two_hop",
+  "question": "On 2020-05-08 12:37 UTC, take the issues linked to MXS-2852 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-05-08 12:37 UTC, and leave MXS-2852 itself out.",
+  "answer": [
+   "DBAAS-2261",
+   "DBAAS-2286",
+   "MXS-2853"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:MXS-2852",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-05-08 12:37 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-001",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2015-11-01 06:18 UTC, how many issues of the MXS project had status Verified at 2015-10-31 12:17 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "Verified",
+   "as_of": "2015-10-31 12:17 UTC",
+   "known_at": "2015-11-01 06:18 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-002",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2018-06-04 15:48 UTC, how many issues of the MXS project had status In Review at 2018-06-04 15:20 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "In Review",
+   "as_of": "2018-06-04 15:20 UTC",
+   "known_at": "2018-06-04 15:48 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-003",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2018-10-31 07:25 UTC, how many issues of the MXS project had status In Review at 2018-10-30 14:46 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "In Review",
+   "as_of": "2018-10-30 14:46 UTC",
+   "known_at": "2018-10-31 07:25 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-004",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2020-11-25 17:53 UTC, how many issues of the MXS project had status Open at 2020-11-25 14:29 UTC?",
+  "answer": 165,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2020-11-25 14:29 UTC",
+   "known_at": "2020-11-25 17:53 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-005",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2018-04-03 12:08 UTC, how many issues of the MXS project had status In Progress at 2018-04-03 11:05 UTC?",
+  "answer": 9,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2018-04-03 11:05 UTC",
+   "known_at": "2018-04-03 12:08 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-006",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2018-09-30 23:35 UTC, how many issues of the MXS project had status In Progress at 2018-09-10 20:48 UTC?",
+  "answer": 17,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2018-09-10 20:48 UTC",
+   "known_at": "2018-09-30 23:35 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-007",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2018-01-01 17:21 UTC, how many issues of the MXS project had status Stalled at 2017-12-27 14:31 UTC?",
+  "answer": 7,
+  "answer_type": "count",
+  "params": {
+   "status": "Stalled",
+   "as_of": "2017-12-27 14:31 UTC",
+   "known_at": "2018-01-01 17:21 UTC"
+  }
+ },
+ {
+  "id": "mariadb-known_count-008",
+  "tenant": "mariadb",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2017-03-13 10:29 UTC, how many issues of the MXS project had status Open at 2017-03-11 08:52 UTC?",
+  "answer": 114,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2017-03-11 08:52 UTC",
+   "known_at": "2017-03-13 10:29 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-001",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2017-06-19 07:45 UTC and 2020-09-15 11:01 UTC, how many times was MXS-1248 moved into status Stalled? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1248",
+   "status": "Stalled",
+   "since": "2017-06-19 07:45 UTC",
+   "until": "2020-09-15 11:01 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-002",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2018-04-27 15:46 UTC and 2019-06-19 20:04 UTC, how many times was MXS-1598 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1598",
+   "status": "Closed",
+   "since": "2018-04-27 15:46 UTC",
+   "until": "2019-06-19 20:04 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-003",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2020-09-08 11:15 UTC and 2020-11-26 02:53 UTC, how many times was MXS-2646 moved into status Stalled? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-2646",
+   "status": "Stalled",
+   "since": "2020-09-08 11:15 UTC",
+   "until": "2020-11-26 02:53 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-004",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2019-11-16 22:45 UTC and 2020-04-30 00:49 UTC, how many times was MXS-2725 moved into status In Progress? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-2725",
+   "status": "In Progress",
+   "since": "2019-11-16 22:45 UTC",
+   "until": "2020-04-30 00:49 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-005",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2020-11-07 15:12 UTC and 2020-12-04 19:26 UTC, how many times was MXS-3068 moved into status Stalled? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-3068",
+   "status": "Stalled",
+   "since": "2020-11-07 15:12 UTC",
+   "until": "2020-12-04 19:26 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-006",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2015-06-15 06:15 UTC and 2017-12-10 05:48 UTC, how many times was MXS-109 moved into status In Review? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-109",
+   "status": "In Review",
+   "since": "2015-06-15 06:15 UTC",
+   "until": "2017-12-10 05:48 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-007",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2018-06-15 23:31 UTC and 2018-08-09 09:14 UTC, how many times was MXS-1914 moved into status In Review? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1914",
+   "status": "In Review",
+   "since": "2018-06-15 23:31 UTC",
+   "until": "2018-08-09 09:14 UTC"
+  }
+ },
+ {
+  "id": "mariadb-entries-008",
+  "tenant": "mariadb",
+  "type": "entries",
+  "question": "Between 2019-06-01 11:54 UTC and 2020-09-17 09:47 UTC, how many times was MXS-1134 moved into status In Review? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1134",
+   "status": "In Review",
+   "since": "2019-06-01 11:54 UTC",
+   "until": "2020-09-17 09:47 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-001",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-07-18 11:44 UTC, how many whole days in total had MXS-1763 spent in status In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 6,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1763",
+   "status": "In Progress",
+   "as_of": "2020-07-18 11:44 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-002",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-10-04 14:55 UTC, how many whole days in total had MXS-1907 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 849,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-1907",
+   "status": "Closed",
+   "as_of": "2020-10-04 14:55 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-003",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2019-11-22 14:09 UTC, how many whole days in total had MXS-2325 spent in status In Review, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-2325",
+   "status": "In Review",
+   "as_of": "2019-11-22 14:09 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-004",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-06-18 09:27 UTC, how many whole days in total had MXS-358 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1671,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-358",
+   "status": "Closed",
+   "as_of": "2020-06-18 09:27 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-005",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2019-04-16 11:15 UTC, how many whole days in total had MXS-2276 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 81,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-2276",
+   "status": "Closed",
+   "as_of": "2019-04-16 11:15 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-006",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-08-14 02:38 UTC, how many whole days in total had MXS-107 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1935,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-107",
+   "status": "Closed",
+   "as_of": "2020-08-14 02:38 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-007",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-02-08 04:57 UTC, how many whole days in total had MXS-323 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1528,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-323",
+   "status": "Closed",
+   "as_of": "2020-02-08 04:57 UTC"
+  }
+ },
+ {
+  "id": "mariadb-time_in-008",
+  "tenant": "mariadb",
+  "type": "time_in",
+  "question": "Up to 2020-08-13 17:46 UTC, how many whole days in total had MXS-2445 spent in status In Progress, adding every period it was in it? Round the total down to whole days.",
+  "answer": 6,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:MXS-2445",
+   "status": "In Progress",
+   "as_of": "2020-08-13 17:46 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-001",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2017-07-30 17:19 UTC and on 2017-10-10 17:50 UTC?",
+  "answer": [
+   "MXS-1140",
+   "MXS-1195",
+   "MXS-1228",
+   "MXS-1269",
+   "MXS-1327",
+   "MXS-760",
+   "MXS-764",
+   "MXS-765",
+   "MXS-89",
+   "MXS-90",
+   "MXS-904",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2017-07-30 17:19 UTC",
+   "until": "2017-10-10 17:50 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-002",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2016-07-03 05:17 UTC and on 2016-08-14 20:12 UTC?",
+  "answer": [
+   "MXS-126",
+   "MXS-168",
+   "MXS-178",
+   "MXS-186",
+   "MXS-2",
+   "MXS-204",
+   "MXS-205",
+   "MXS-528",
+   "MXS-657",
+   "MXS-67",
+   "MXS-70",
+   "MXS-743",
+   "MXS-89",
+   "MXS-90",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-07-03 05:17 UTC",
+   "until": "2016-08-14 20:12 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-003",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2017-01-05 13:13 UTC and on 2017-01-24 04:29 UTC?",
+  "answer": [
+   "MXS-1032",
+   "MXS-395",
+   "MXS-657",
+   "MXS-797",
+   "MXS-863",
+   "MXS-89",
+   "MXS-895",
+   "MXS-90",
+   "MXS-906",
+   "MXS-91",
+   "MXS-912",
+   "MXS-922",
+   "MXS-932"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2017-01-05 13:13 UTC",
+   "until": "2017-01-24 04:29 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-004",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2016-04-02 12:47 UTC and on 2016-06-20 02:08 UTC?",
+  "answer": [
+   "MXS-126",
+   "MXS-168",
+   "MXS-178",
+   "MXS-186",
+   "MXS-2",
+   "MXS-204",
+   "MXS-205",
+   "MXS-528",
+   "MXS-67",
+   "MXS-70",
+   "MXS-89",
+   "MXS-90",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-04-02 12:47 UTC",
+   "until": "2016-06-20 02:08 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-005",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2020-07-19 18:03 UTC and on 2020-09-21 21:44 UTC?",
+  "answer": [
+   "MXS-1195",
+   "MXS-2074",
+   "MXS-2193",
+   "MXS-2278",
+   "MXS-2309",
+   "MXS-2761",
+   "MXS-3028",
+   "MXS-765"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2020-07-19 18:03 UTC",
+   "until": "2020-09-21 21:44 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-006",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2017-09-23 12:18 UTC and on 2017-12-03 10:27 UTC?",
+  "answer": [
+   "MXS-1140",
+   "MXS-1195",
+   "MXS-1228",
+   "MXS-1373",
+   "MXS-1388",
+   "MXS-1410",
+   "MXS-619",
+   "MXS-760",
+   "MXS-764",
+   "MXS-765",
+   "MXS-89",
+   "MXS-90",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2017-09-23 12:18 UTC",
+   "until": "2017-12-03 10:27 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-007",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2017-08-12 00:39 UTC and on 2017-10-11 02:44 UTC?",
+  "answer": [
+   "MXS-1140",
+   "MXS-1195",
+   "MXS-1228",
+   "MXS-1269",
+   "MXS-1327",
+   "MXS-760",
+   "MXS-764",
+   "MXS-765",
+   "MXS-89",
+   "MXS-90",
+   "MXS-904",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2017-08-12 00:39 UTC",
+   "until": "2017-10-11 02:44 UTC"
+  }
+ },
+ {
+  "id": "mariadb-both-008",
+  "tenant": "mariadb",
+  "type": "both",
+  "question": "Which issues of the MXS project had a status among: Confirmed, In Progress, In Review, Stalled both on 2016-06-14 01:39 UTC and on 2016-08-20 17:57 UTC?",
+  "answer": [
+   "MXS-126",
+   "MXS-168",
+   "MXS-178",
+   "MXS-186",
+   "MXS-2",
+   "MXS-204",
+   "MXS-205",
+   "MXS-528",
+   "MXS-657",
+   "MXS-67",
+   "MXS-70",
+   "MXS-89",
+   "MXS-90",
+   "MXS-91"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2016-06-14 01:39 UTC",
+   "until": "2016-08-20 17:57 UTC"
+  }
+ }
+]

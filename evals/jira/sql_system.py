@@ -146,6 +146,37 @@ Rules (definitions):
 - stalled (issue): An issue has stalled when it is in progress and its status has not changed for 30 days.
 - urgent_unassigned (issue): An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned."""
 
+# The second ablation (bench system `sql-log`): the raw log alone, as a product's event log would be handed to an agent
+# that knows nothing of Keel or of the tables above; the agent derives valid time, transaction time and corrections itself.
+TOOLS_TEXT_LOG = """The project's history is in a DuckDB database, queried with SQL through sql_query (read-only; a result shows at most \
+200 rows and says when it cut, so filter or aggregate in SQL). Times are TIMESTAMP in UTC: write TIMESTAMP '2018-06-12 14:00'.
+There is one table, the tracker's event log as written:
+- events(id, type, issue_key, occurred_at, recorded_at, payload JSON): one row per event. occurred_at is when the change \
+happened in Jira (valid time); recorded_at is when the tracker recorded it (transaction time). Some changes were recorded \
+late, and some were first recorded with a wrong value and corrected later by an event of the same type for the same issue \
+and the same occurred_at, recorded later: what was believed at an instant is what had been recorded by then. Read payload \
+fields with payload->>'name'. Event types and their payload:
+  - issue.created: project, summary, reporter, parent (the parent issue's key for a sub-task, else null), and the initial \
+status, status_category, priority, assignee, resolution, issue_type.
+  - issue.status_changed: status, status_category, by.
+  - issue.assigned: assignee (null: unassigned), by.
+  - issue.priority_changed: priority, by.
+  - issue.resolution_changed: resolution (null: unresolved), by.
+  - issue.type_changed: issue_type, by.
+  - issue.linked / issue.unlinked: relation, other: issue_key <relation> other from occurred_at on (linked) or no longer \
+(unlinked). relation: blocks (issue_key blocks other), depends_on (issue_key depends on other), subtask_of, duplicates, \
+clones, relates_to (these three read in either direction).
+status_category is 'new', 'indeterminate' (in progress) or 'done'. A field keeps its value until a later change.
+Rules (definitions):
+- blocked (issue): An issue is blocked while an issue that blocks it is not done.
+- stalled (issue): An issue has stalled when it is in progress and its status has not changed for 30 days.
+- urgent_unassigned (issue): An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned."""
+
+# The duration remedy for the hand-written baselines (evals/jira/hard/README.md, fourth addendum): the sentence
+# keel.sqlgen.describe gives the compiled views, with DuckDB's own function in place of keel_days.
+DAYS_SENTENCE = ("date_diff('microsecond', a, b) / 86400000000.0 is the days from instant a to b as a fraction (2.5: two and a "
+                 "half days): compute durations in SQL with it, adding periods and rounding there, rather than counting dates by hand.")
+
 TOOLS = [{"type": "function", "function": {
     "name": "sql_query", "description": "Run one read-only SQL query (DuckDB dialect) over the project's tables and macros; returns columns and rows (at most 200, with the total when cut).",
     "parameters": {"type": "object", "properties": {"sql": {"type": "string", "description": "one SELECT (or WITH ... SELECT) statement"}}, "required": ["sql"]}}}]
@@ -234,9 +265,9 @@ def tables(events: list[dict[str, Any]]) -> dict[str, list[tuple[Any, ...]]]:
             "statuses": sorted(statuses.items()), "events": raw}
 
 
-def build(events: list[dict[str, Any]], path: Path | None = None, macros: bool = True) -> Path:
+def build(events: list[dict[str, Any]], path: Path | None = None, macros: bool = True, log: bool = False) -> Path:
     """Write the database for a log to `path` (a temporary file when None) and return its path; without `macros`,
-    the tables alone (the `sql-tables` ablation)."""
+    the tables alone (the `sql-tables` ablation); with `log`, the events table alone (the `sql-log` ablation)."""
     import duckdb
 
     if path is None:
@@ -244,9 +275,9 @@ def build(events: list[dict[str, Any]], path: Path | None = None, macros: bool =
     tmp = path.with_suffix(".building")
     tmp.unlink(missing_ok=True)
     con = duckdb.connect(str(tmp))
-    con.execute(DDL + (MACROS_DDL if macros else ""))
+    con.execute(next(line for line in DDL.splitlines() if "TABLE events" in line) if log else DDL + (MACROS_DDL if macros else ""))
     for name, rows in tables(events).items():
-        if rows:
+        if rows and (name == "events" or not log):
             con.executemany(f"INSERT INTO {name} VALUES ({', '.join('?' * len(rows[0]))})", rows)
     con.execute("CHECKPOINT")
     con.close()
@@ -269,13 +300,13 @@ def _tenant_db(path: Path) -> Any:
     return connect(path)
 
 
-def tenant_db(data: Path, tenant: str, events: list[dict[str, Any]], macros: bool = True) -> Any:
+def tenant_db(data: Path, tenant: str, events: list[dict[str, Any]], macros: bool = True, log: bool = False) -> Any:
     """The tenant's database, built once per log (cached next to the data, like the RAG embeddings)."""
     digest = hashlib.sha1((SCHEMA_VERSION + "\n" + "\n".join(json.dumps(e, sort_keys=True) for e in events)).encode()).hexdigest()[:12]
-    path = data / f"{tenant}.sql{'' if macros else '-tables'}-{digest}.duckdb"
+    path = data / f"{tenant}.sql{'-log' if log else '' if macros else '-tables'}-{digest}.duckdb"
     with _lock:
         if not path.exists():
-            build(events, path, macros=macros)
+            build(events, path, macros=macros, log=log)
         return _tenant_db(path)
 
 

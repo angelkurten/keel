@@ -1,0 +1,1235 @@
+{
+ "seed": 47,
+ "candidates": [
+  {
+   "instance": "IntelDAOS",
+   "key": "CART",
+   "tenant": "inteldaos-cart",
+   "issues": 941,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.15246015246015246,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "HAP",
+   "tenant": "jfrog-hap",
+   "issues": 1274,
+   "mismatched": 662,
+   "urgent_priority": false,
+   "uncategorised": 0.2126727334007415,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "JFrog",
+   "key": "TCAP",
+   "tenant": "jfrog-tcap",
+   "issues": 1063,
+   "mismatched": 128,
+   "urgent_priority": false,
+   "uncategorised": 0.09709425939050319,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "CLOV",
+   "tenant": "jira-clov",
+   "issues": 1501,
+   "mismatched": 21,
+   "urgent_priority": true,
+   "uncategorised": 0.11897155028145444,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "ID",
+   "tenant": "jira-id",
+   "issues": 1310,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.12032332563510392,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Jira",
+   "key": "JPOSERVER",
+   "tenant": "jira-jposerver",
+   "issues": 2180,
+   "mismatched": 11,
+   "urgent_priority": true,
+   "uncategorised": 0.08177570093457943,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "ACJIRA",
+   "tenant": "jiraecosystem-acjira",
+   "issues": 1999,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.35353535353535354,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "AG",
+   "tenant": "jiraecosystem-ag",
+   "issues": 1485,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.2561787072243346,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "AMPS",
+   "tenant": "jiraecosystem-amps",
+   "issues": 1490,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.18317141961767472,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "APL",
+   "tenant": "jiraecosystem-apl",
+   "issues": 1266,
+   "mismatched": 4,
+   "urgent_priority": true,
+   "uncategorised": 0.15390781563126252,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "CE",
+   "tenant": "jiraecosystem-ce",
+   "issues": 959,
+   "mismatched": 2,
+   "urgent_priority": true,
+   "uncategorised": 0.005272407732864675,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 7,
+    "rule": 15,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 121,
+   "checks_passed": true
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PL",
+   "tenant": "jiraecosystem-pl",
+   "issues": 2889,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.15846652042202025,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PLE",
+   "tenant": "jiraecosystem-ple",
+   "issues": 1499,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.11298315163528246,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "PLUG",
+   "tenant": "jiraecosystem-plug",
+   "issues": 1161,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.14864035984461255,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "STRM",
+   "tenant": "jiraecosystem-strm",
+   "issues": 2293,
+   "mismatched": 10,
+   "urgent_priority": true,
+   "uncategorised": 0.12500962204603186,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "JiraEcosystem",
+   "key": "UPM",
+   "tenant": "jiraecosystem-upm",
+   "issues": 3763,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.2661669862297368,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "Mindville",
+   "key": "ICS",
+   "tenant": "mindville-ics",
+   "issues": 1847,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CDRIVER",
+   "tenant": "mongodb-cdriver",
+   "issues": 3410,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.002250562640660165,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "COMPASS",
+   "tenant": "mongodb-compass",
+   "issues": 2603,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.0029422148993762504,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CSHARP",
+   "tenant": "mongodb-csharp",
+   "issues": 3752,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.014848017929682029,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "CXX",
+   "tenant": "mongodb-cxx",
+   "issues": 2298,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.00786468433527257,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "GODRIVER",
+   "tenant": "mongodb-godriver",
+   "issues": 2161,
+   "mismatched": 1,
+   "urgent_priority": false,
+   "uncategorised": 0.0273224043715847,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "NODE",
+   "tenant": "mongodb-node",
+   "issues": 3621,
+   "mismatched": 5,
+   "urgent_priority": false,
+   "uncategorised": 0.02704198077322083,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PHPC",
+   "tenant": "mongodb-phpc",
+   "issues": 1600,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.006602735418959283,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "PYTHON",
+   "tenant": "mongodb-python",
+   "issues": 2872,
+   "mismatched": 2,
+   "urgent_priority": false,
+   "uncategorised": 0.1323131552248901,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUBY",
+   "tenant": "mongodb-ruby",
+   "issues": 2689,
+   "mismatched": 0,
+   "urgent_priority": false,
+   "uncategorised": 0.11706906232453677,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "RUST",
+   "tenant": "mongodb-rust",
+   "issues": 1046,
+   "mismatched": 3,
+   "urgent_priority": false,
+   "uncategorised": 0.010053948013732222,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "SWIFT",
+   "tenant": "mongodb-swift",
+   "issues": 1338,
+   "mismatched": 4,
+   "urgent_priority": false,
+   "uncategorised": 0.005266981474754813,
+   "failed": [
+    3
+   ]
+  },
+  {
+   "instance": "MongoDB",
+   "key": "TOOLS",
+   "tenant": "mongodb-tools",
+   "issues": 2452,
+   "mismatched": 13,
+   "urgent_priority": false,
+   "uncategorised": 0.04394457099468489,
+   "failed": [
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "AUTOSUITE",
+   "tenant": "qt-autosuite",
+   "issues": 1521,
+   "mismatched": 102,
+   "urgent_priority": false,
+   "uncategorised": 0.019579254322016248,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "PYSIDE",
+   "tenant": "qt-pyside",
+   "issues": 1595,
+   "mismatched": 53,
+   "urgent_priority": false,
+   "uncategorised": 0.0014098690835850957,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QBS",
+   "tenant": "qt-qbs",
+   "issues": 1634,
+   "mismatched": 95,
+   "urgent_priority": false,
+   "uncategorised": 0.0008981498113885396,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QSR",
+   "tenant": "qt-qsr",
+   "issues": 1248,
+   "mismatched": 151,
+   "urgent_priority": false,
+   "uncategorised": 0.0007524454477050414,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTIFW",
+   "tenant": "qt-qtifw",
+   "issues": 2178,
+   "mismatched": 54,
+   "urgent_priority": false,
+   "uncategorised": 0.02569356872635561,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTMOBILITY",
+   "tenant": "qt-qtmobility",
+   "issues": 1926,
+   "mismatched": 28,
+   "urgent_priority": false,
+   "uncategorised": 0.0279842080817464,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Qt",
+   "key": "QTVSADDINBUG",
+   "tenant": "qt-qtvsaddinbug",
+   "issues": 967,
+   "mismatched": 87,
+   "urgent_priority": false,
+   "uncategorised": 0.0002949852507374631,
+   "failed": [
+    2,
+    3
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "AAH",
+   "tenant": "redhat-aah",
+   "issues": 979,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.06131846825012118,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "AF",
+   "tenant": "redhat-af",
+   "issues": 2696,
+   "mismatched": 50,
+   "urgent_priority": true,
+   "uncategorised": 0.03488879197557784,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "APIMAN",
+   "tenant": "redhat-apiman",
+   "issues": 1333,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 13,
+    "abstain": 5,
+    "tenant": 24
+   },
+   "questions": 113,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "ARQ",
+   "tenant": "redhat-arq",
+   "issues": 2168,
+   "mismatched": 73,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "BXMSDOC",
+   "tenant": "redhat-bxmsdoc",
+   "issues": 3589,
+   "mismatched": 44,
+   "urgent_priority": true,
+   "uncategorised": 0.026424969681496137,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CLOUD",
+   "tenant": "redhat-cloud",
+   "issues": 2226,
+   "mismatched": 278,
+   "urgent_priority": true,
+   "uncategorised": 0.02650378625517931,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "COST",
+   "tenant": "redhat-cost",
+   "issues": 1932,
+   "mismatched": 27,
+   "urgent_priority": true,
+   "uncategorised": 0.11485360628421805,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CRW",
+   "tenant": "redhat-crw",
+   "issues": 2159,
+   "mismatched": 55,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "CS",
+   "tenant": "redhat-cs",
+   "issues": 940,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.004135338345864661,
+   "failed": [
+    5
+   ],
+   "by_type": {},
+   "questions": 0,
+   "checks_passed": false
+  },
+  {
+   "instance": "RedHat",
+   "key": "DESIGN",
+   "tenant": "redhat-design",
+   "issues": 1765,
+   "mismatched": 63,
+   "urgent_priority": true,
+   "uncategorised": 0.1860909438288116,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "EJBTHREE",
+   "tenant": "redhat-ejbthree",
+   "issues": 2190,
+   "mismatched": 70,
+   "urgent_priority": true,
+   "uncategorised": 0.02112676056338028,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ELY",
+   "tenant": "redhat-ely",
+   "issues": 2110,
+   "mismatched": 56,
+   "urgent_priority": true,
+   "uncategorised": 0.01345668629100084,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQ",
+   "tenant": "redhat-entmq",
+   "issues": 1473,
+   "mismatched": 28,
+   "urgent_priority": true,
+   "uncategorised": 0.17791301235009843,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQBR",
+   "tenant": "redhat-entmqbr",
+   "issues": 3720,
+   "mismatched": 229,
+   "urgent_priority": true,
+   "uncategorised": 0.2793427230046948,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQMAAS",
+   "tenant": "redhat-entmqmaas",
+   "issues": 2202,
+   "mismatched": 14,
+   "urgent_priority": true,
+   "uncategorised": 0.17435171254093282,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ENTMQST",
+   "tenant": "redhat-entmqst",
+   "issues": 2482,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.12530404658362201,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ERRAI",
+   "tenant": "redhat-errai",
+   "issues": 1104,
+   "mismatched": 8,
+   "urgent_priority": true,
+   "uncategorised": 0.0003281916639317361,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "rule": 11,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 104,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "FH",
+   "tenant": "redhat-fh",
+   "issues": 2235,
+   "mismatched": 78,
+   "urgent_priority": true,
+   "uncategorised": 0.006617735531223679,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "FORGE",
+   "tenant": "redhat-forge",
+   "issues": 2634,
+   "mismatched": 90,
+   "urgent_priority": true,
+   "uncategorised": 0.08062189453438051,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "FUSETOOLS",
+   "tenant": "redhat-fusetools",
+   "issues": 3341,
+   "mismatched": 52,
+   "urgent_priority": true,
+   "uncategorised": 0.0037227001985440105,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "HAL",
+   "tenant": "redhat-hal",
+   "issues": 1601,
+   "mismatched": 44,
+   "urgent_priority": true,
+   "uncategorised": 0.062244434348023625,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "HAWKULAR",
+   "tenant": "redhat-hawkular",
+   "issues": 1309,
+   "mismatched": 63,
+   "urgent_priority": true,
+   "uncategorised": 0.033385093167701864,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBESB",
+   "tenant": "redhat-jbesb",
+   "issues": 3890,
+   "mismatched": 195,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBJCA",
+   "tenant": "redhat-jbjca",
+   "issues": 1399,
+   "mismatched": 12,
+   "urgent_priority": true,
+   "uncategorised": 0.0027007120058924624,
+   "failed": [
+    5
+   ],
+   "by_type": {
+    "current": 20,
+    "as_of": 25,
+    "known_at": 25,
+    "links": 1,
+    "rule": 9,
+    "abstain": 5,
+    "tenant": 18
+   },
+   "questions": 103,
+   "checks_passed": true
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBRULES",
+   "tenant": "redhat-jbrules",
+   "issues": 3056,
+   "mismatched": 23,
+   "urgent_priority": true,
+   "uncategorised": 0.012457705321439557,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBTM",
+   "tenant": "redhat-jbtm",
+   "issues": 3483,
+   "mismatched": 123,
+   "urgent_priority": true,
+   "uncategorised": 0.0011466011466011465,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JBWS",
+   "tenant": "redhat-jbws",
+   "issues": 3845,
+   "mismatched": 361,
+   "urgent_priority": true,
+   "uncategorised": 0.09366197183098592,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JDG",
+   "tenant": "redhat-jdg",
+   "issues": 1710,
+   "mismatched": 84,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JGRP",
+   "tenant": "redhat-jgrp",
+   "issues": 2482,
+   "mismatched": 59,
+   "urgent_priority": true,
+   "uncategorised": 0.040734679032551374,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "JWS",
+   "tenant": "redhat-jws",
+   "issues": 930,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.020632530120481926,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "KATA",
+   "tenant": "redhat-kata",
+   "issues": 1106,
+   "mismatched": 17,
+   "urgent_priority": true,
+   "uncategorised": 0.013222632226322263,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MAISTRA",
+   "tenant": "redhat-maistra",
+   "issues": 2299,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.09227808918263197,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MODE",
+   "tenant": "redhat-mode",
+   "issues": 2679,
+   "mismatched": 151,
+   "urgent_priority": true,
+   "uncategorised": 0.018924820630134138,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "MULTIARCH",
+   "tenant": "redhat-multiarch",
+   "issues": 915,
+   "mismatched": 9,
+   "urgent_priority": true,
+   "uncategorised": 0.016422706176365584,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "OCPPLAN",
+   "tenant": "redhat-ocpplan",
+   "issues": 1291,
+   "mismatched": 1,
+   "urgent_priority": true,
+   "uncategorised": 0.016306408797876374,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ODC",
+   "tenant": "redhat-odc",
+   "issues": 1406,
+   "mismatched": 3,
+   "urgent_priority": true,
+   "uncategorised": 0.08994334277620397,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "ORG",
+   "tenant": "redhat-org",
+   "issues": 1850,
+   "mismatched": 77,
+   "urgent_priority": true,
+   "uncategorised": 0.24176565874730022,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "PLANNER",
+   "tenant": "redhat-planner",
+   "issues": 2540,
+   "mismatched": 83,
+   "urgent_priority": true,
+   "uncategorised": 0.0026258881680568426,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RESTEASY",
+   "tenant": "redhat-resteasy",
+   "issues": 2922,
+   "mismatched": 71,
+   "urgent_priority": true,
+   "uncategorised": 0.006983962752198655,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHBRMS",
+   "tenant": "redhat-rhbrms",
+   "issues": 2400,
+   "mismatched": 1359,
+   "urgent_priority": true,
+   "uncategorised": 0.4361741719389654,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHDEVDOCS",
+   "tenant": "redhat-rhdevdocs",
+   "issues": 2486,
+   "mismatched": 36,
+   "urgent_priority": true,
+   "uncategorised": 0.003111921880030046,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHDM",
+   "tenant": "redhat-rhdm",
+   "issues": 1260,
+   "mismatched": 54,
+   "urgent_priority": true,
+   "uncategorised": 0.07179106325040228,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHPAM",
+   "tenant": "redhat-rhpam",
+   "issues": 2886,
+   "mismatched": 120,
+   "urgent_priority": true,
+   "uncategorised": 0.00011127802815334112,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "RHSSO",
+   "tenant": "redhat-rhsso",
+   "issues": 1477,
+   "mismatched": 70,
+   "urgent_priority": true,
+   "uncategorised": 0.4149809440046907,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SB",
+   "tenant": "redhat-sb",
+   "issues": 1319,
+   "mismatched": 65,
+   "urgent_priority": true,
+   "uncategorised": 0.06622101524963443,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SECURITY",
+   "tenant": "redhat-security",
+   "issues": 959,
+   "mismatched": 22,
+   "urgent_priority": true,
+   "uncategorised": 0.007270964614638876,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SOA",
+   "tenant": "redhat-soa",
+   "issues": 3116,
+   "mismatched": 130,
+   "urgent_priority": true,
+   "uncategorised": 0.05157962604771115,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SWITCHYARD",
+   "tenant": "redhat-switchyard",
+   "issues": 3015,
+   "mismatched": 185,
+   "urgent_priority": true,
+   "uncategorised": 0.00010181225819588678,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "SWSQE",
+   "tenant": "redhat-swsqe",
+   "issues": 1299,
+   "mismatched": 45,
+   "urgent_priority": true,
+   "uncategorised": 0.007714285714285714,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "TEIIDDES",
+   "tenant": "redhat-teiiddes",
+   "issues": 3099,
+   "mismatched": 53,
+   "urgent_priority": true,
+   "uncategorised": 0.004886162802786152,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "THORN",
+   "tenant": "redhat-thorn",
+   "issues": 2467,
+   "mismatched": 78,
+   "urgent_priority": true,
+   "uncategorised": 0.36513473445539374,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "TRACING",
+   "tenant": "redhat-tracing",
+   "issues": 1467,
+   "mismatched": 41,
+   "urgent_priority": true,
+   "uncategorised": 0.0030537093587210346,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "UNDERTOW",
+   "tenant": "redhat-undertow",
+   "issues": 1780,
+   "mismatched": 6,
+   "urgent_priority": true,
+   "uncategorised": 0.022211938917167977,
+   "failed": [
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "WELD",
+   "tenant": "redhat-weld",
+   "issues": 2576,
+   "mismatched": 59,
+   "urgent_priority": true,
+   "uncategorised": 0.01013202333435677,
+   "failed": [
+    2,
+    4
+   ]
+  },
+  {
+   "instance": "RedHat",
+   "key": "WINDUP",
+   "tenant": "redhat-windup",
+   "issues": 3035,
+   "mismatched": 52,
+   "urgent_priority": true,
+   "uncategorised": 0.0010415581710238517,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "Sakai",
+   "key": "EVALSYS",
+   "tenant": "sakai-evalsys",
+   "issues": 1577,
+   "mismatched": 34,
+   "urgent_priority": true,
+   "uncategorised": 0.0,
+   "failed": [
+    2
+   ]
+  },
+  {
+   "instance": "SecondLife",
+   "key": "STORM",
+   "tenant": "secondlife-storm",
+   "issues": 1547,
+   "mismatched": 22,
+   "urgent_priority": false,
+   "uncategorised": 0.2590994218711831,
+   "failed": [
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "instance": "Sonatype",
+   "key": "MVNCENTRAL",
+   "tenant": "sonatype-mvncentral",
+   "issues": 1641,
+   "mismatched": 0,
+   "urgent_priority": true,
+   "uncategorised": 0.15815085158150852,
+   "failed": [
+    4
+   ]
+  }
+ ],
+ "selected": []
+}

@@ -1,0 +1,661 @@
+[
+ {
+  "id": "apache-rave-two_hop-001",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2013-09-11 14:59 UTC, take the parents of RAVE-584. What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2013-09-11 14:59 UTC, and leave RAVE-584 itself out.",
+  "answer": [
+   "RAVE-580"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-584",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2013-09-11 14:59 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-002",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2011-11-06 01:47 UTC, take the issues linked to RAVE-93 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2011-11-06 01:47 UTC, and leave RAVE-93 itself out.",
+  "answer": [
+   "RAVE-116",
+   "RAVE-140",
+   "RAVE-163",
+   "RAVE-180",
+   "RAVE-26",
+   "RAVE-261",
+   "RAVE-33",
+   "RAVE-53",
+   "RAVE-54",
+   "RAVE-90",
+   "RAVE-92",
+   "RAVE-96",
+   "RAVE-97"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-93",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2011-11-06 01:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-003",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2014-12-02 16:41 UTC, take the issues linked to RAVE-28 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2014-12-02 16:41 UTC, and leave RAVE-28 itself out.",
+  "answer": [
+   "RAVE-485"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-28",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2014-12-02 16:41 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-004",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2014-01-02 00:32 UTC, take the parents of RAVE-17. What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2014-01-02 00:32 UTC, and leave RAVE-17 itself out.",
+  "answer": [
+   "RAVE-8"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-17",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2014-01-02 00:32 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-005",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2014-09-25 12:23 UTC, take the issues linked to RAVE-267 by a 'relates to' link (either direction). What were the sub-tasks of any of them? Count a link only if it existed on 2014-09-25 12:23 UTC, and leave RAVE-267 itself out.",
+  "answer": [
+   "RAVE-243"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-267",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "subtask_of",
+    "in"
+   ],
+   "as_of": "2014-09-25 12:23 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-006",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2013-12-31 22:01 UTC, take the issues linked to RAVE-26 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2013-12-31 22:01 UTC, and leave RAVE-26 itself out.",
+  "answer": [
+   "RAVE-116",
+   "RAVE-140",
+   "RAVE-163",
+   "RAVE-180",
+   "RAVE-261",
+   "RAVE-33",
+   "RAVE-477",
+   "RAVE-53",
+   "RAVE-54",
+   "RAVE-90",
+   "RAVE-92",
+   "RAVE-926",
+   "RAVE-93",
+   "RAVE-96",
+   "RAVE-97"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-26",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2013-12-31 22:01 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-007",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2012-12-03 08:30 UTC, take the issues linked to RAVE-27 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2012-12-03 08:30 UTC, and leave RAVE-27 itself out.",
+  "answer": [
+   "RAVE-12",
+   "RAVE-13",
+   "RAVE-267",
+   "RAVE-29"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-27",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2012-12-03 08:30 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-two_hop-008",
+  "tenant": "apache-rave",
+  "type": "two_hop",
+  "question": "On 2014-09-02 07:39 UTC, take the issues linked to RAVE-1068 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2014-09-02 07:39 UTC, and leave RAVE-1068 itself out.",
+  "answer": [
+   "SHINDIG-1965"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:RAVE-1068",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2014-09-02 07:39 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-001",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-07-31 16:19 UTC, how many issues of the RAVE project had status Resolved at 2012-07-31 05:03 UTC?",
+  "answer": 69,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2012-07-31 05:03 UTC",
+   "known_at": "2012-07-31 16:19 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-002",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2015-01-29 18:23 UTC, how many issues of the RAVE project had status In Progress at 2015-01-29 16:23 UTC?",
+  "answer": 9,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2015-01-29 16:23 UTC",
+   "known_at": "2015-01-29 18:23 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-003",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-02-07 18:30 UTC, how many issues of the RAVE project had status Reopened at 2013-02-07 11:54 UTC?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "status": "Reopened",
+   "as_of": "2013-02-07 11:54 UTC",
+   "known_at": "2013-02-07 18:30 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-004",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-02-25 23:55 UTC, how many issues of the RAVE project had status Open at 2012-02-24 10:16 UTC?",
+  "answer": 130,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2012-02-24 10:16 UTC",
+   "known_at": "2012-02-25 23:55 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-005",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2011-11-24 23:35 UTC, how many issues of the RAVE project had status Resolved at 2011-11-22 17:24 UTC?",
+  "answer": 47,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2011-11-22 17:24 UTC",
+   "known_at": "2011-11-24 23:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-006",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-02-17 17:57 UTC, how many issues of the RAVE project had status Reopened at 2013-02-14 15:49 UTC?",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "status": "Reopened",
+   "as_of": "2013-02-14 15:49 UTC",
+   "known_at": "2013-02-17 17:57 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-007",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-01-06 05:13 UTC, how many issues of the RAVE project had status In Progress at 2012-01-06 01:41 UTC?",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2012-01-06 01:41 UTC",
+   "known_at": "2012-01-06 05:13 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-known_count-008",
+  "tenant": "apache-rave",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2012-05-06 02:40 UTC, how many issues of the RAVE project had status In Progress at 2012-05-03 23:09 UTC?",
+  "answer": 5,
+  "answer_type": "count",
+  "params": {
+   "status": "In Progress",
+   "as_of": "2012-05-03 23:09 UTC",
+   "known_at": "2012-05-06 02:40 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-001",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2011-12-05 15:31 UTC and 2013-04-26 04:13 UTC, how many times was RAVE-242 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-242",
+   "status": "Closed",
+   "since": "2011-12-05 15:31 UTC",
+   "until": "2013-04-26 04:13 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-002",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2012-10-16 11:34 UTC and 2014-01-18 11:18 UTC, how many times was RAVE-533 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-533",
+   "status": "Closed",
+   "since": "2012-10-16 11:34 UTC",
+   "until": "2014-01-18 11:18 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-003",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2011-06-01 12:16 UTC and 2015-01-22 02:10 UTC, how many times was RAVE-27 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-27",
+   "status": "Closed",
+   "since": "2011-06-01 12:16 UTC",
+   "until": "2015-01-22 02:10 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-004",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2011-07-27 06:13 UTC and 2015-01-19 03:16 UTC, how many times was RAVE-116 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-116",
+   "status": "Closed",
+   "since": "2011-07-27 06:13 UTC",
+   "until": "2015-01-19 03:16 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-005",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2011-07-25 20:21 UTC and 2014-08-18 10:19 UTC, how many times was RAVE-112 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-112",
+   "status": "Resolved",
+   "since": "2011-07-25 20:21 UTC",
+   "until": "2014-08-18 10:19 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-006",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2013-01-12 17:00 UTC and 2014-04-03 16:16 UTC, how many times was RAVE-783 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-783",
+   "status": "Closed",
+   "since": "2013-01-12 17:00 UTC",
+   "until": "2014-04-03 16:16 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-007",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2011-10-07 07:11 UTC and 2012-04-17 21:54 UTC, how many times was RAVE-292 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-292",
+   "status": "Closed",
+   "since": "2011-10-07 07:11 UTC",
+   "until": "2012-04-17 21:54 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-entries-008",
+  "tenant": "apache-rave",
+  "type": "entries",
+  "question": "Between 2012-04-28 07:13 UTC and 2015-01-14 01:53 UTC, how many times was RAVE-540 moved into status Closed? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-540",
+   "status": "Closed",
+   "since": "2012-04-28 07:13 UTC",
+   "until": "2015-01-14 01:53 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-001",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2012-09-28 01:58 UTC, how many whole days in total had RAVE-550 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 140,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-550",
+   "status": "Closed",
+   "as_of": "2012-09-28 01:58 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-002",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2012-12-01 21:34 UTC, how many whole days in total had RAVE-298 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 375,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-298",
+   "status": "Closed",
+   "as_of": "2012-12-01 21:34 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-003",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2012-10-28 07:39 UTC, how many whole days in total had RAVE-674 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 47,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-674",
+   "status": "Open",
+   "as_of": "2012-10-28 07:39 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-004",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2014-07-29 20:09 UTC, how many whole days in total had RAVE-563 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 14,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-563",
+   "status": "Resolved",
+   "as_of": "2014-07-29 20:09 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-005",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2014-12-12 03:47 UTC, how many whole days in total had RAVE-610 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 70,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-610",
+   "status": "Resolved",
+   "as_of": "2014-12-12 03:47 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-006",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2015-01-02 00:52 UTC, how many whole days in total had RAVE-196 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 29,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-196",
+   "status": "Resolved",
+   "as_of": "2015-01-02 00:52 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-007",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2013-07-27 23:51 UTC, how many whole days in total had RAVE-665 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 361,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-665",
+   "status": "Closed",
+   "as_of": "2013-07-27 23:51 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-time_in-008",
+  "tenant": "apache-rave",
+  "type": "time_in",
+  "question": "Up to 2014-01-26 07:49 UTC, how many whole days in total had RAVE-262 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 20,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:RAVE-262",
+   "status": "Resolved",
+   "as_of": "2014-01-26 07:49 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-001",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-08-14 09:07 UTC and on 2012-10-02 05:35 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-694",
+   "RAVE-697",
+   "RAVE-711"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-08-14 09:07 UTC",
+   "until": "2012-10-02 05:35 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-002",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-05-03 17:42 UTC and on 2012-06-17 04:42 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-536",
+   "RAVE-546"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-05-03 17:42 UTC",
+   "until": "2012-06-17 04:42 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-003",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-05-06 08:17 UTC and on 2012-07-15 21:37 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-05-06 08:17 UTC",
+   "until": "2012-07-15 21:37 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-004",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2013-08-23 07:55 UTC and on 2013-11-11 20:40 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711",
+   "RAVE-880",
+   "RAVE-887",
+   "RAVE-941"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-08-23 07:55 UTC",
+   "until": "2013-11-11 20:40 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-005",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-09-17 04:51 UTC and on 2012-11-08 05:34 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-09-17 04:51 UTC",
+   "until": "2012-11-08 05:34 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-006",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-06-16 08:02 UTC and on 2012-09-14 03:16 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-06-16 08:02 UTC",
+   "until": "2012-09-14 03:16 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-007",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-08-13 08:59 UTC and on 2012-11-07 22:17 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546",
+   "RAVE-654",
+   "RAVE-711"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-08-13 08:59 UTC",
+   "until": "2012-11-07 22:17 UTC"
+  }
+ },
+ {
+  "id": "apache-rave-both-008",
+  "tenant": "apache-rave",
+  "type": "both",
+  "question": "Which issues of the RAVE project had a status among: In Progress both on 2012-06-12 14:08 UTC and on 2012-07-27 11:25 UTC?",
+  "answer": [
+   "RAVE-508",
+   "RAVE-546"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2012-06-12 14:08 UTC",
+   "until": "2012-07-27 11:25 UTC"
+  }
+ }
+]

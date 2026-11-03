@@ -23,6 +23,8 @@ happened and when it was recorded, corrections included), in its best ordinary f
           (evals/jira/sql_system.py; run with `--with duckdb==2.0.0`).
 - sql-tables: the same tables, prompt and tool without the macros or ready-made predicates (an ablation): the agent
           writes the bitemporal conditions itself, and gets the rules as the cartridge's definitions in words.
+- sql-log: the raw event log alone, one table (evals/jira/sql_system.TOOLS_TEXT_LOG): the agent derives valid time,
+          transaction time and corrections from the events itself, knowing nothing of Keel's or our tables.
 - sqlgen: the same tool over the schema and macros Keel generates from the cartridge (keel/sqlgen.py), filled by
           ingesting the log through Keel (evals/jira/sqlgen_system.py): generated macros in place of hand-written ones.
 - sqlgen2: post hoc (after the held-out results, not pre-registered): the same, with the cartridge's declared facts
@@ -70,11 +72,13 @@ EMBEDDING_MODEL, EMBEDDING_DIMS = "openai/text-embedding-3-small", 512
 INSTANCES = {"hyperledger": ("Hyperledger", "INDY"), "mariadb": ("MariaDB", "MXS"), "spring": ("Spring", "SEC")}
 # the held-out set (evals/jira/heldout/README.md): projects of Jira instances development never read
 HELDOUT = {"ecosystem-ac": ("JiraEcosystem", "AC"), "sakai-grbk": ("Sakai", "GRBK"), "redhat-projquay": ("RedHat", "PROJQUAY")}
+# the confirmation set (evals/jira/confirm/README.md), chosen by screen.py
+CONFIRM = {"apache-tajo": ("Apache", "TAJO"), "apache-rave": ("Apache", "RAVE")}
 
 
 def instance(tenant: str) -> tuple[str, str]:
-    """(Jira instance, project key) of a development or held-out tenant."""
-    return INSTANCES.get(tenant) or HELDOUT[tenant]
+    """(Jira instance, project key) of a development, held-out or confirmation tenant."""
+    return INSTANCES.get(tenant) or HELDOUT.get(tenant) or CONFIRM[tenant]
 SYSTEM = """You answer questions about the Jira project {project} of the {instance} tracker. Today is {today}. All times are UTC.
 {tools}
 Use your tools before answering and never invent facts. Read every date in the question carefully: some ask what was true at \
@@ -98,6 +102,7 @@ TOOLS_TEXT = {
     "tgms": "",  # filled from evals.jira.tgms_system on first use
     "sql": "",  # filled from evals.jira.sql_system on first use
     "sql-tables": "",
+    "sql-log": "",
     "sqlgen": "",
     "sqlgen2": "",
 }
@@ -161,6 +166,8 @@ def keel_cartridge() -> Any:
     return c if KEEL_RULES else replace(c, rules={})
 
 
+SQL_SYSTEMS = ("sql", "sql-tables", "sql-log", "sqlgen", "sqlgen2")
+DAYS_SYSTEMS = ("sql+days", "sql-tables+days", "sql-log+days")  # a baseline with sql_system.DAYS_SENTENCE appended
 KEEL_SYSTEMS = ("keel", "keel+query")  # keel+query: the five tools and the optional sixth (keel serve --query), exploratory
 
 
@@ -348,22 +355,24 @@ API_TOOLS = [{"type": "function", "function": f} for f in (
 
 
 def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rags: dict[str, Rag], apis: dict[str, Api], max_steps: int = 15) -> dict[str, Any]:
+    label, days = system, system in DAYS_SYSTEMS
+    system = system.removesuffix("+days") if days else system
     tenant = q["tenant"]
     if system == "tgms-pev":
         return ask_pev(gw, data, model, q)
-    instance, project = INSTANCES.get(tenant) or HELDOUT[tenant]
+    inst, project = instance(tenant)
     fmt = FORMATS["value" if q["answer_type"] == "unknown" else q["answer_type"]]  # an abstention looks like any value question
     tools_text = TOOLS_TEXT[system]
     server = keel_server(data, tenant, system == "keel+query") if system in KEEL_SYSTEMS else None
     if server is not None:
         tools_text += "\n\n" + server.instructions  # what the server says once per session (keel/mcp_server.py instructions)
-    prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
+    prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
     if system == "tgms":
         from evals.jira import tgms_system
 
         tools_text = tgms_system.TOOLS_TEXT
-        prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
-    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+        prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
+    if system in SQL_SYSTEMS:
         from evals.jira import sql_system
 
         if system in ("sqlgen", "sqlgen2"):
@@ -373,13 +382,14 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             db = sqlgen_system.tenant_db(data, tenant, source(data, tenant), v2=v2)
             text = sqlgen_system.tools_text_v2(tenant) if v2 else sqlgen_system.tools_text(tenant)
         else:
-            db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
-            text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
-        prompt = SYSTEM.format(project=project, instance=instance, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
+            db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql", log=system == "sql-log")
+            text = {"sql": sql_system.TOOLS_TEXT, "sql-tables": sql_system.TOOLS_TEXT_TABLES, "sql-log": sql_system.TOOLS_TEXT_LOG}[system]
+            text += "\n" + sql_system.DAYS_SENTENCE if days else ""
+        prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "keel+query": keel_tools(data, tenant, True) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
-             "sql": None, "sql-tables": None, "sqlgen": None, "sqlgen2": None}[system]
-    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+             "sql": None, "sql-tables": None, "sql-log": None, "sqlgen": None, "sqlgen2": None}[system]
+    if system in SQL_SYSTEMS:
         tools = sql_system.TOOLS
     if system == "tgms":
         tools = tgms_system.tools()
@@ -416,7 +426,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                         text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
                     elif system == "tgms":
                         text = tgms_system.call(data, tenant, name, args)
-                    elif system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+                    elif system in SQL_SYSTEMS:
                         if name != "sql_query":
                             raise ValueError(f"unknown tool {name}")
                         text = sql_system.query(db, str(args.get("sql", "")))
@@ -442,7 +452,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     else:
         reply = "(stopped after the step limit)"
     answer, parsed = extract(reply)
-    return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": system, "model": model, "gold": q["answer"],
+    return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": label, "model": model, "gold": q["answer"],
             "answer": answer, "parsed": parsed, "correct": parsed and grade(q, answer), "reply": reply[-2000:], "calls": calls,
             **({"keel_max_list": KEEL_MAX_LIST} if system in KEEL_SYSTEMS and KEEL_MAX_LIST else {}),
             **({"keel_rules": False} if system in KEEL_SYSTEMS and not KEEL_RULES else {}),

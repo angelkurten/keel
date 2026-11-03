@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the PVLDB submission (main.pdf) and its supplemental material (supplement.pdf).
-# Each cites the other's labels through xr, so both compile twice. Figures come from ../paper/figures.
+# Each cites the other's labels through xr, so both compile twice. Figures are the PDFs in ./figures
+# (rebuild them with figures/build.sh). The PDFs and LaTeX by-products are not tracked (.gitignore).
 set -euo pipefail
 cd "$(dirname "$0")"
 for _ in 1 2; do

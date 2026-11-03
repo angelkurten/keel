@@ -1,0 +1,627 @@
+[
+ {
+  "id": "apache-tajo-two_hop-001",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2019-02-14 00:54 UTC, take the parents of TAJO-289. What were the issues linked to any of them by a 'depends on' link (either direction)? Count a link only if it existed on 2019-02-14 00:54 UTC, and leave TAJO-289 itself out.",
+  "answer": [
+   "TAJO-2171"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-289",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "depends_on",
+    "any"
+   ],
+   "as_of": "2019-02-14 00:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-002",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2016-08-12 00:25 UTC, take the issues linked to TAJO-356 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2016-08-12 00:25 UTC, and leave TAJO-356 itself out.",
+  "answer": [
+   "TAJO-335"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-356",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2016-08-12 00:25 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-003",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2018-09-07 06:40 UTC, take the issues linked to TAJO-1580 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2018-09-07 06:40 UTC, and leave TAJO-1580 itself out.",
+  "answer": [
+   "TAJO-734"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1580",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2018-09-07 06:40 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-004",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2020-04-21 06:46 UTC, take the issues linked to TAJO-2063 by a 'depends on' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2020-04-21 06:46 UTC, and leave TAJO-2063 itself out.",
+  "answer": [
+   "TAJO-2047"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-2063",
+   "hop1": [
+    "depends_on",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2020-04-21 06:46 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-005",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2019-05-20 17:43 UTC, take the parents of TAJO-1891. What were the issues linked to any of them by a 'depends on' link (either direction)? Count a link only if it existed on 2019-05-20 17:43 UTC, and leave TAJO-1891 itself out.",
+  "answer": [
+   "TAJO-1067"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1891",
+   "hop1": [
+    "subtask_of",
+    "out"
+   ],
+   "hop2": [
+    "depends_on",
+    "any"
+   ],
+   "as_of": "2019-05-20 17:43 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-006",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2019-12-02 15:20 UTC, take the issues linked to TAJO-1837 by a 'relates to' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2019-12-02 15:20 UTC, and leave TAJO-1837 itself out.",
+  "answer": [
+   "TAJO-1780",
+   "TAJO-2068"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1837",
+   "hop1": [
+    "relates_to",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2019-12-02 15:20 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-007",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2018-07-23 13:52 UTC, take the issues linked to TAJO-1773 by a 'duplicates' link (either direction). What were the sub-tasks of any of them? Count a link only if it existed on 2018-07-23 13:52 UTC, and leave TAJO-1773 itself out.",
+  "answer": [
+   "TAJO-1420",
+   "TAJO-259"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-1773",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "subtask_of",
+    "in"
+   ],
+   "as_of": "2018-07-23 13:52 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-two_hop-008",
+  "tenant": "apache-tajo",
+  "type": "two_hop",
+  "question": "On 2017-11-18 18:57 UTC, take the issues linked to TAJO-694 by a 'duplicates' link (either direction). What were the issues linked to any of them by a 'relates to' link (either direction)? Count a link only if it existed on 2017-11-18 18:57 UTC, and leave TAJO-694 itself out.",
+  "answer": [
+   "TAJO-631"
+  ],
+  "answer_type": "set",
+  "params": {
+   "subject": "issue:TAJO-694",
+   "hop1": [
+    "duplicates",
+    "any"
+   ],
+   "hop2": [
+    "relates_to",
+    "any"
+   ],
+   "as_of": "2017-11-18 18:57 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-001",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-10-05 12:33 UTC, how many issues of the TAJO project had status Open at 2014-10-01 11:34 UTC?",
+  "answer": 185,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2014-10-01 11:34 UTC",
+   "known_at": "2014-10-05 12:33 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-002",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-09-18 14:55 UTC, how many issues of the TAJO project had status Closed at 2013-09-16 14:25 UTC?",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "status": "Closed",
+   "as_of": "2013-09-16 14:25 UTC",
+   "known_at": "2013-09-18 14:55 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-003",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-10-08 03:55 UTC, how many issues of the TAJO project had status Open at 2014-09-29 03:44 UTC?",
+  "answer": 187,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2014-09-29 03:44 UTC",
+   "known_at": "2014-10-08 03:55 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-004",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-09-29 11:54 UTC, how many issues of the TAJO project had status Open at 2014-09-29 02:29 UTC?",
+  "answer": 188,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2014-09-29 02:29 UTC",
+   "known_at": "2014-09-29 11:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-005",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2016-01-06 20:30 UTC, how many issues of the TAJO project had status Resolved at 2016-01-06 18:17 UTC?",
+  "answer": 1652,
+  "answer_type": "count",
+  "params": {
+   "status": "Resolved",
+   "as_of": "2016-01-06 18:17 UTC",
+   "known_at": "2016-01-06 20:30 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-006",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2013-12-27 07:11 UTC, how many issues of the TAJO project had status Patch Available at 2013-12-24 08:54 UTC?",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "status": "Patch Available",
+   "as_of": "2013-12-24 08:54 UTC",
+   "known_at": "2013-12-27 07:11 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-007",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2014-09-29 12:25 UTC, how many issues of the TAJO project had status Open at 2014-09-29 03:10 UTC?",
+  "answer": 188,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2014-09-29 03:10 UTC",
+   "known_at": "2014-09-29 12:25 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-known_count-008",
+  "tenant": "apache-tajo",
+  "type": "known_count",
+  "question": "According to what had been recorded by 2015-09-13 13:40 UTC, how many issues of the TAJO project had status Open at 2015-09-12 10:54 UTC?",
+  "answer": 309,
+  "answer_type": "count",
+  "params": {
+   "status": "Open",
+   "as_of": "2015-09-12 10:54 UTC",
+   "known_at": "2015-09-13 13:40 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-001",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2013-09-03 21:49 UTC and 2014-06-01 03:54 UTC, how many times was TAJO-30 moved into status In Progress? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-30",
+   "status": "In Progress",
+   "since": "2013-09-03 21:49 UTC",
+   "until": "2014-06-01 03:54 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-002",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2016-07-06 04:17 UTC and 2019-03-21 18:32 UTC, how many times was TAJO-1952 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-1952",
+   "status": "Resolved",
+   "since": "2016-07-06 04:17 UTC",
+   "until": "2019-03-21 18:32 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-003",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2015-10-09 20:58 UTC and 2018-03-03 07:13 UTC, how many times was TAJO-1493 moved into status Reopened? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-1493",
+   "status": "Reopened",
+   "since": "2015-10-09 20:58 UTC",
+   "until": "2018-03-03 07:13 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-004",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2013-12-16 21:08 UTC and 2016-02-13 13:28 UTC, how many times was TAJO-353 moved into status Patch Available? Count every move into it, not the issue's creation.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-353",
+   "status": "Patch Available",
+   "since": "2013-12-16 21:08 UTC",
+   "until": "2016-02-13 13:28 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-005",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2015-05-04 14:28 UTC and 2018-10-04 05:07 UTC, how many times was TAJO-1432 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-1432",
+   "status": "Resolved",
+   "since": "2015-05-04 14:28 UTC",
+   "until": "2018-10-04 05:07 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-006",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2014-09-19 14:11 UTC and 2017-12-30 13:53 UTC, how many times was TAJO-324 moved into status Patch Available? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-324",
+   "status": "Patch Available",
+   "since": "2014-09-19 14:11 UTC",
+   "until": "2017-12-30 13:53 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-007",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2013-11-06 13:15 UTC and 2018-01-08 13:32 UTC, how many times was TAJO-132 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 2,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-132",
+   "status": "Resolved",
+   "since": "2013-11-06 13:15 UTC",
+   "until": "2018-01-08 13:32 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-entries-008",
+  "tenant": "apache-tajo",
+  "type": "entries",
+  "question": "Between 2013-06-01 00:56 UTC and 2014-03-03 14:12 UTC, how many times was TAJO-60 moved into status Resolved? Count every move into it, not the issue's creation.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-60",
+   "status": "Resolved",
+   "since": "2013-06-01 00:56 UTC",
+   "until": "2014-03-03 14:12 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-001",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2019-03-07 19:53 UTC, how many whole days in total had TAJO-478 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 10,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-478",
+   "status": "Open",
+   "as_of": "2019-03-07 19:53 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-002",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2019-07-30 16:08 UTC, how many whole days in total had TAJO-602 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 3,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-602",
+   "status": "Open",
+   "as_of": "2019-07-30 16:08 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-003",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2015-11-23 18:19 UTC, how many whole days in total had TAJO-575 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 641,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-575",
+   "status": "Resolved",
+   "as_of": "2015-11-23 18:19 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-004",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2017-03-11 23:57 UTC, how many whole days in total had TAJO-1896 spent in status Closed, adding every period it was in it? Round the total down to whole days.",
+  "answer": 472,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-1896",
+   "status": "Closed",
+   "as_of": "2017-03-11 23:57 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-005",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2014-12-23 16:42 UTC, how many whole days in total had TAJO-762 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 4,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-762",
+   "status": "Open",
+   "as_of": "2014-12-23 16:42 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-006",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2014-07-27 22:49 UTC, how many whole days in total had TAJO-530 spent in status Open, adding every period it was in it? Round the total down to whole days.",
+  "answer": 18,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-530",
+   "status": "Open",
+   "as_of": "2014-07-27 22:49 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-007",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2020-05-15 05:30 UTC, how many whole days in total had TAJO-1181 spent in status Patch Available, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-1181",
+   "status": "Patch Available",
+   "as_of": "2020-05-15 05:30 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-time_in-008",
+  "tenant": "apache-tajo",
+  "type": "time_in",
+  "question": "Up to 2018-12-15 01:44 UTC, how many whole days in total had TAJO-801 spent in status Resolved, adding every period it was in it? Round the total down to whole days.",
+  "answer": 1674,
+  "answer_type": "count",
+  "params": {
+   "subject": "issue:TAJO-801",
+   "status": "Resolved",
+   "as_of": "2018-12-15 01:44 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-001",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2014-03-19 21:05 UTC and on 2014-06-01 15:58 UTC?",
+  "answer": [
+   "TAJO-259",
+   "TAJO-269",
+   "TAJO-35",
+   "TAJO-509",
+   "TAJO-52",
+   "TAJO-540",
+   "TAJO-579",
+   "TAJO-603",
+   "TAJO-623"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2014-03-19 21:05 UTC",
+   "until": "2014-06-01 15:58 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-002",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-08-25 09:03 UTC and on 2013-10-23 09:18 UTC?",
+  "answer": [
+   "TAJO-122",
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-08-25 09:03 UTC",
+   "until": "2013-10-23 09:18 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-003",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-05-15 05:39 UTC and on 2013-07-10 23:58 UTC?",
+  "answer": [
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-05-15 05:39 UTC",
+   "until": "2013-07-10 23:58 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-004",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-07-13 21:44 UTC and on 2013-10-05 18:05 UTC?",
+  "answer": [
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-07-13 21:44 UTC",
+   "until": "2013-10-05 18:05 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-005",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-08-24 17:36 UTC and on 2013-09-30 08:08 UTC?",
+  "answer": [
+   "TAJO-122",
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-08-24 17:36 UTC",
+   "until": "2013-09-30 08:08 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-006",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-09-25 01:02 UTC and on 2013-11-17 06:51 UTC?",
+  "answer": [
+   "TAJO-122",
+   "TAJO-135",
+   "TAJO-35",
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-09-25 01:02 UTC",
+   "until": "2013-11-17 06:51 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-007",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-05-03 11:18 UTC and on 2013-06-15 16:49 UTC?",
+  "answer": [
+   "TAJO-40"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-05-03 11:18 UTC",
+   "until": "2013-06-15 16:49 UTC"
+  }
+ },
+ {
+  "id": "apache-tajo-both-008",
+  "tenant": "apache-tajo",
+  "type": "both",
+  "question": "Which issues of the TAJO project had a status among: In Progress, Patch Available both on 2013-11-03 01:17 UTC and on 2014-01-21 15:38 UTC?",
+  "answer": [
+   "TAJO-269",
+   "TAJO-35",
+   "TAJO-52"
+  ],
+  "answer_type": "set",
+  "params": {
+   "since": "2013-11-03 01:17 UTC",
+   "until": "2014-01-21 15:38 UTC"
+  }
+ }
+]
