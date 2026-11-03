@@ -44,6 +44,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from keel.accounts import Quotas
+from keel.agents import put_agent, remove_agent
 from keel.cartridge import Cartridge
 from keel.envelope import Event, parse_iso, utcnow
 from keel.ingest import Ingestor
@@ -444,6 +445,44 @@ def build_http_app(
         def query_off(request: Request) -> None:
             run(lambda: tools_for(request))  # who asks first, as /v1/annotate on a read-only server
             raise HTTPException(404, "query is not enabled on this server (keel serve --query)")
+
+    # ---- stored agents (`registry: store`, keel/agents.py): managed by the operator or an account's key, never by an agent ----
+
+    def agents_of(request: Request) -> tuple[Store, str]:
+        key = key_of(request)
+        if key is not None and key.agent is not None:
+            raise HTTPException(403, f"this key calls as agent '{key.agent}': only the shared secret or an account key manages agents")
+        if cartridge.agent_registry != "store":
+            raise HTTPException(404, "this cartridge does not store agents (registry: store)")
+        return graph_for(key)[0], tenant_of(request)
+
+    @app.put("/v1/agents/{agent_id}")
+    def agent_put(agent_id: str, body: dict[str, Any], request: Request) -> dict[str, Any]:
+        s, t = agents_of(request)
+        try:
+            return {"id": agent_id, **put_agent(cartridge, s, t, agent_id, body)}
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/v1/agents")
+    def agents_list(request: Request) -> list[dict[str, Any]]:
+        s, t = agents_of(request)
+        return [{"id": i, **spec} for i, spec in s.agents(t).items()]
+
+    @app.get("/v1/agents/{agent_id}")
+    def agent_get(agent_id: str, request: Request) -> dict[str, Any]:
+        s, t = agents_of(request)
+        spec = s.agent(t, agent_id)
+        if spec is None:
+            raise HTTPException(404, f"no agent '{agent_id}' stored for this tenant")
+        return {"id": agent_id, **spec}
+
+    @app.delete("/v1/agents/{agent_id}")
+    def agent_delete(agent_id: str, request: Request) -> dict[str, Any]:
+        s, t = agents_of(request)
+        if not remove_agent(s, t, agent_id):
+            raise HTTPException(404, f"no agent '{agent_id}' stored for this tenant")
+        return {"removed": agent_id}
 
     @app.get("/v1/cartridge")
     def cartridge_doc() -> dict[str, Any]:

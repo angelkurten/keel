@@ -148,9 +148,9 @@ class Store(Protocol):
 
     # erasure (optional; the Ingestor requires it when the cartridge declares an event that `forgets: tenant`)
     # forget: in one transaction, everything about the tenant (entities, relations, facts of every scope,
-    # annotations, applied event ids) is deleted and a tombstone (tenant, time) is left, so nothing revives it.
-    # Idempotent: a second call deletes whatever slipped in since and keeps the first tombstone's time.
-    # Returns what it deleted: {"entities", "relations", "facts", "annotations", "ingested"}.
+    # annotations, applied event ids, stored agents with their history) is deleted and a tombstone (tenant, time) is
+    # left, so nothing revives it. Idempotent: a second call deletes whatever slipped in since and keeps the first
+    # tombstone's time. Returns what it deleted: {"entities", "relations", "facts", "annotations", "ingested", "agents"}.
     # def forget(self, tenant: str) -> dict[str, int]: ...
     # def forgotten(self, tenant: str) -> datetime | None: ...   # the tombstone's time
     # def forgotten_tenants(self) -> dict[str, datetime]: ...      # every tombstone, for index sweeps
@@ -176,6 +176,14 @@ class Store(Protocol):
     #                    known_at: datetime | None = None, author: str | None = None, task: str | None = None) -> dict[str, bool] | None: ...
     # def rule_subjects(self, tenant: str, cartridge: Any, rule: str, as_of: datetime, known_at: datetime | None = None,
     #                   author: str | None = None, task: str | None = None) -> set[str] | None: ...
+
+    # stored agents (optional; required when the cartridge says `registry: store`, keel/agents.py): a tenant's agent specs
+    # (an `agents:` entry plus `extends`), as plain dicts, bitemporal by valid_from/valid_to. put_agent closes the live
+    # one and opens the new; remove_agent closes it (False when none was live). Configuration, not events: reset keeps them.
+    # def put_agent(self, tenant: str, agent_id: str, spec: dict[str, Any], at: datetime) -> None: ...
+    # def agent(self, tenant: str, agent_id: str, at: datetime | None = None) -> dict[str, Any] | None: ...  # live at `at` (now)
+    # def agents(self, tenant: str) -> dict[str, dict[str, Any]]: ...  # the live ones, by id
+    # def remove_agent(self, tenant: str, agent_id: str, at: datetime) -> bool: ...
 
     # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
     # def tenants(self) -> list[str]: ...

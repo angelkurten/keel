@@ -52,7 +52,9 @@ class SqliteStore(SqlStore):
     CREATE TABLE IF NOT EXISTS metering (
       tenant TEXT NOT NULL, day TEXT NOT NULL, item TEXT NOT NULL, n INTEGER NOT NULL, PRIMARY KEY (tenant, day, item));
     CREATE TABLE IF NOT EXISTS cutoffs (tenant TEXT NOT NULL PRIMARY KEY, cut TEXT NOT NULL, at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS accounts (id TEXT NOT NULL PRIMARY KEY, rps INTEGER, events_month INTEGER, store TEXT, retention TEXT)
+    CREATE TABLE IF NOT EXISTS accounts (id TEXT NOT NULL PRIMARY KEY, rps INTEGER, events_month INTEGER, store TEXT, retention TEXT);
+    CREATE TABLE IF NOT EXISTS agents (tenant TEXT NOT NULL, id TEXT NOT NULL, spec TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT);
+    CREATE INDEX IF NOT EXISTS agents_id ON agents (tenant, id)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "

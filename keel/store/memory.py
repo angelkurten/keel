@@ -421,6 +421,7 @@ class MemoryStore:
         self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
         self._accounts: dict[str, Account] = {}  # id -> limits (keel/accounts.py)
+        self._agents: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, id) -> [spec, valid_from, valid_to] rows (keel/agents.py)
         self._metering: dict[tuple[str, str, str], int] = defaultdict(int)  # (tenant, day, item) -> n (keel/usage.py)
 
     def _mark(self, tenant: str, t: datetime | None) -> None:
@@ -679,7 +680,9 @@ class MemoryStore:
         facts = self._all_facts.get(tenant, [])
         ann = sum(1 for f in facts if is_annotation(f))
         counts = {"entities": len(self._entities.get(tenant, {})), "relations": sum(1 for r in self._all_rels.get(tenant, []) if not is_relation_mark(r)),
-                  "facts": len(facts) - ann, "annotations": ann, "ingested": len(self._seen.get(tenant, ()))}
+                  "facts": len(facts) - ann, "annotations": ann, "ingested": len(self._seen.get(tenant, ())),
+                  "agents": sum(len(rows) for (t, _), rows in self._agents.items() if t == tenant)}
+        self._agents = {k: rows for k, rows in self._agents.items() if k[0] != tenant}
         self.reset(tenant)
         self._forgotten.setdefault(tenant, utcnow())
         return counts
@@ -781,6 +784,26 @@ class MemoryStore:
         if k is None or k.revoked_at is not None:
             return False
         k.revoked_at = at
+        return True
+
+    # ---- stored agents (keel/agents.py, `registry: store`): configuration, not derived from events, so reset leaves them ----
+
+    def put_agent(self, tenant: str, agent_id: str, spec: dict[str, Any], at: datetime) -> None:
+        self.remove_agent(tenant, agent_id, at)
+        self._agents.setdefault((tenant, agent_id), []).append([json.loads(json.dumps(spec)), at, None])
+
+    def agent(self, tenant: str, agent_id: str, at: datetime | None = None) -> dict[str, Any] | None:
+        live = lambda r: r[2] is None if at is None else r[1] <= at and (r[2] is None or at < r[2])
+        return next((r[0] for r in reversed(self._agents.get((tenant, agent_id), [])) if live(r)), None)
+
+    def agents(self, tenant: str) -> dict[str, dict[str, Any]]:
+        return {i: rows[-1][0] for (t, i), rows in sorted(self._agents.items()) if t == tenant and rows[-1][2] is None}
+
+    def remove_agent(self, tenant: str, agent_id: str, at: datetime) -> bool:
+        rows = self._agents.get((tenant, agent_id))
+        if not rows or rows[-1][2] is not None:
+            return False
+        rows[-1][2] = at
         return True
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:

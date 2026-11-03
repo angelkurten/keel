@@ -392,7 +392,8 @@ class Tools:
         self.tenant = tenant  # tools are always scoped to one end-customer
         self.glob = global_of(tenant)  # the global partition this tenant reads: its account's, when it has one
         self.agent_id = agent  # who is calling; the host decides, Keel records
-        self.agent = resolve(cartridge.agents, agent)  # the spec to enforce; None when the cartridge declares no agents
+        # the spec to enforce; None when the cartridge declares no agents. `registry: store`: also the tenant's stored agents
+        self.agent = resolve(cartridge.agents, agent, store if cartridge.agent_registry == "store" else None, tenant)
         # the author this caller writes as, and the only one whose agent-scope memory it reads
         self.author = f"human:{agent}" if self.agent and self.agent.kind == "human" else agent
         self.symmetric = {rel for rel, spec in cartridge.relations.items() if isinstance(spec, dict) and spec.get("symmetric")}

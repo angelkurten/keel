@@ -165,3 +165,113 @@ def test_an_agent_that_may_write_no_scope_gets_the_read_tools_only():
     c.agents = parse_agents(AGENTS | {"reporter": {"description": "Reads only.", "writes": []}})
     assert _listed(build_server(Tools(c, s, TENANT, agent="reporter"))) == ["context", "history", "related", "search"]
     assert "annotate" in _listed(build_server(Tools(c, s, TENANT, agent="tires-bot")))
+
+
+# ---- stored agents (registry: store): per tenant, each extends a cartridge profile and only narrows it ----
+
+PROFILES = {
+    "team-member": {"writes": ["task", "agent"], "reads": {"kinds": ["unit", "tire", "inspection"]}},
+    "lead": {"writes": ["task", "agent", "tenant"], "query": True},
+    "approver": {"kind": "human", "writes": ["task", "tenant"]},
+}
+
+
+def _fleet_with_profiles():
+    c, s = _fleet_with_agents()
+    c.agents, c.agent_registry = parse_agents(PROFILES), "store"
+    return c, s
+
+
+def test_a_stored_agent_inherits_its_profile_and_may_only_narrow_it():
+    from keel.agents import put_agent
+
+    c, s = _fleet_with_profiles()
+    put_agent(c, s, TENANT, "writer-7f3a", {"extends": "team-member", "description": "Writes scripts", "reads": {"kinds": ["tire"]}})
+    t = Tools(c, s, TENANT, agent="writer-7f3a")
+    assert (t.agent.writes, t.agent.kinds, t.agent.description) == (frozenset({"task", "agent"}), frozenset({"tire"}), "Writes scripts")
+    with pytest.raises(PermissionError):
+        t.context("unit:MXK-4821")  # its profile reads units; it narrowed that away
+    assert t.annotate("tire:T-9001", "note", "x", scope="task", task="t1")["source"] == "annotate:writer-7f3a"
+    put_agent(c, s, TENANT, "ana", {"extends": "approver"})
+    assert Tools(c, s, TENANT, agent="ana").author == "human:ana"  # a person, from a human profile
+    for bad, why in [
+        ({"description": "no profile"}, "extends"),
+        ({"extends": "nobody"}, "profile 'nobody'"),
+        ({"extends": "team-member", "writes": ["tenant"]}, "widens"),
+        ({"extends": "team-member", "reads": {"kinds": ["ticket"]}}, "widens"),
+        ({"extends": "team-member", "reads": {"kinds": ["spaceship"]}}, "undeclared kind 'spaceship'"),
+        ({"extends": "team-member", "query": True}, "widens"),
+        ({"extends": "team-member", "kind": "human"}, "kind"),
+    ]:
+        with pytest.raises(ValueError, match=why):
+            put_agent(c, s, TENANT, "x", bad)
+    for bad_id in ("lead", "human:x", ""):  # a profile id would be shadowed; a ':' signs as someone else
+        with pytest.raises(ValueError):
+            put_agent(c, s, TENANT, bad_id, {"extends": "lead"})
+
+
+def test_stored_agents_resolve_per_tenant_and_apply_without_a_restart():
+    from keel.agents import put_agent, remove_agent
+
+    c, s = _fleet_with_profiles()
+    put_agent(c, s, TENANT, "bot", {"extends": "lead"})
+    assert Tools(c, s, TENANT, agent="bot").agent.query
+    with pytest.raises(PermissionError):
+        Tools(c, s, "other-tenant", agent="bot")  # another tenant's agent is not this tenant's
+    put_agent(c, s, TENANT, "bot", {"extends": "lead", "query": False})
+    assert not Tools(c, s, TENANT, agent="bot").agent.query  # this process sees an edit at once
+    assert remove_agent(s, TENANT, "bot") and not remove_agent(s, TENANT, "bot")
+    with pytest.raises(PermissionError):
+        Tools(c, s, TENANT, agent="bot")
+    assert Tools(c, s, TENANT, agent="lead").agent.id == "lead"  # a cartridge entry binds as before
+
+
+def test_without_registry_store_stored_agents_are_ignored():
+    from keel.agents import put_agent
+
+    c, s = _fleet_with_profiles()
+    put_agent(c, s, TENANT, "bot", {"extends": "lead"})
+    c.agent_registry = None
+    with pytest.raises(PermissionError):
+        Tools(c, s, TENANT, agent="bot")  # 0.36 behaviour: only the cartridge's entries
+    with pytest.raises(ValueError, match="registry: store"):
+        put_agent(c, s, TENANT, "bot2", {"extends": "lead"})
+
+
+def test_registry_store_is_validated_with_the_cartridge():
+    c = load_cartridge(FLEET)
+    c.agent_registry = "store"
+    assert any("registry: store" in m for m in c.validate())  # no profiles to extend
+    c.agent_registry = "elsewhere"
+    assert any("registry" in m for m in c.validate())
+    c.agents, c.agent_registry = parse_agents(PROFILES), "store"
+    assert c.validate() == []
+
+
+def test_stored_agents_over_http():
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from keel.http import build_http_app
+    from keel.keys import create_key
+
+    c, s = _fleet_with_profiles()
+    acme, _ = create_key(s, "acme")
+    bot_key, _ = create_key(s, "acme", agent="lead")
+    client = TestClient(build_http_app(c, s, secret="s3cret"))
+    h = {"Authorization": f"Bearer {acme}", "X-Keel-Tenant": "c1"}
+    res = client.put("/v1/agents/writer", json={"extends": "team-member", "description": "Writes"}, headers=h)
+    assert res.status_code == 200 and res.json() == {"id": "writer", "extends": "team-member", "description": "Writes"}
+    assert s.agent("acme/c1", "writer")  # under the account, as every tenant
+    assert client.put("/v1/agents/x", json={"extends": "nobody"}, headers=h).status_code == 422
+    assert client.get("/v1/agents", headers=h).json() == [{"id": "writer", "extends": "team-member", "description": "Writes"}]
+    assert client.get("/v1/agents/writer", headers=h).json()["extends"] == "team-member"
+    assert client.get("/v1/agents/writer", headers={**h, "X-Keel-Tenant": "c2"}).status_code == 404
+    res = client.post("/v1/search", json={"text": "T-9001"}, headers={**h, "X-Keel-Agent": "writer"})
+    assert res.status_code == 200  # the stored agent calls the tools
+    assert client.get("/v1/agents", headers={"Authorization": f"Bearer {bot_key}", "X-Keel-Tenant": "c1"}).status_code == 403
+    assert client.delete("/v1/agents/writer", headers=h).status_code == 200
+    assert client.delete("/v1/agents/writer", headers=h).status_code == 404
+    c.agent_registry = None
+    off = TestClient(build_http_app(c, s, secret="s3cret"))
+    assert off.get("/v1/agents", headers={"Authorization": "Bearer s3cret", "X-Keel-Tenant": "c1"}).status_code == 404
