@@ -1,6 +1,6 @@
 # Reproducing the paper
 
-The single entry point for reproducing *Do LLM Agents Need a Compiled Domain?* (`main.tex`, `supplement.tex`).
+The single entry point for reproducing *Do LLM Agents Need Prepared Views?* (`main.tex`, `supplement.tex`).
 It says where every table and figure of `main.tex` comes from, how to recompute each number from the committed
 result rows (free, no model call), how to rerun each paid stage, and which commit registered each stage.
 
