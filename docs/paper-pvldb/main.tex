@@ -41,7 +41,7 @@
 \email{angel@angelkurten.com}
 
 \begin{abstract}
-An agent inside a product needs the product's state now, at an earlier instant, and as the product had recorded it then. Between handing the agent the raw event log and building it a curated interface lies a spectrum: bitemporal tables modelled by hand, point-in-time views and rule macros written by hand, SQL views compiled from a declaration of the domain, and task-shaped tools. We measure where on that spectrum an LLM agent's accuracy and cost change. The benchmark asks temporal questions over eight real Jira projects of seven instances, with injected late arrivals and corrections and gold from an oracle independent of every interface; it is released with its harness. The protocol is staged and pre-registered: a development set, a held-out set, a confirmation set with three hypotheses, a clean rerun of it, and a harder slice; every result is reported as registered, negative ones included. The compiled end is Keel, an open-source system that compiles a domain declaration into tools and bitemporal SQL. With Claude Haiku 5.5: on near-ceiling questions (96 to 99\% correct), the compiled SQL and Keel's tools with SQL are not worse than hand-written views (registered and reproduced on a clean rerun: $+0.1$ points, intervals within $\pm 0.6$); on 320 harder questions that combine two steps, that could not be shown ($-1.1$ and $-1.6$ points, intervals reaching $-3.8$); an agent given only the raw log comes within 2 points of the compiled interfaces but pays 1.7 to 2.3 times as much per correct answer; task-shaped tools alone trail hand-written and compiled SQL on tenant-wide questions, and SQL access beside them adds 1.2 to 3.3 points; and most residual errors are date arithmetic the agent does in its reply instead of in SQL. What a compiled domain bought a capable agent here is cost, not answers out of its reach.
+An agent inside a product needs the product's state now, at an earlier instant, and as the product had recorded it then. Between handing the agent the raw event log and building it a curated interface lies a spectrum: bitemporal tables modelled by hand, point-in-time views and rule macros written by hand, SQL views compiled from a declaration of the domain, and task-shaped tools. We measure where on that spectrum an LLM agent's accuracy and cost change. The benchmark asks temporal questions over eight real Jira projects of seven instances, with injected late arrivals and corrections and gold from an oracle independent of every interface; it is released with its harness. The protocol is staged and pre-registered: a development set, a held-out set, a confirmation set with three hypotheses, a clean rerun of it, and a harder slice; every result is reported as registered, negative ones included. The compiled end is Keel, an open-source system that compiles a domain declaration into tools and bitemporal SQL. With Claude Haiku 5.5: on near-ceiling questions (96 to 99\% correct), the compiled SQL and Keel's tools with SQL are not worse than hand-written views ($+0.3$ points as registered, $+0.1$ on a clean rerun, every interval within $[-0.5, +0.7]$); on 320 harder questions that combine two steps, that could not be shown ($-1.1$ and $-1.6$ points, intervals reaching $-3.8$); an agent given only the raw log trails hand-written views by 2.9 points and comes within 2 of the compiled ones, at 1.7 to 2.3 times their cost per correct answer; task-shaped tools alone trail hand-written and compiled SQL on tenant-wide questions, and SQL access beside them adds 1.2 to 3.3 points; and most of the compiled interfaces' remaining gap to hand-written views is date arithmetic the agent does in its reply instead of in SQL. What prepared views bought a capable agent here is cost, not answers out of its reach; whether compiling them from a declaration saves engineering we did not measure.
 \end{abstract}
 
 \maketitle
@@ -56,22 +56,22 @@ An agent inside a product needs the product's state now, at an earlier instant, 
 
 An agent shipped inside a product, a support copilot or a planning assistant, needs the product's state: what a customer has, what changed, what was true when something happened, what the product had recorded at that moment, and which business rule applies. A product already holds these facts as events with time; event sourcing and change data capture derive state from them \cite{fowler-es,debezium}, and temporal databases have long answered as-of and as-known-at queries \cite{jensen-glossary,snodgrass-book}. Memory systems for agents instead build memory from text, an LLM reading and writing facts \cite{mem0,zep}. Each team that ships an agent decides how much of that structure to build for it, and the choice is a spectrum. At one end the agent gets the raw event log and SQL; then bitemporal tables a database engineer modelled from it; then point-in-time views and rule macros written by hand; then views compiled from a declaration of the domain; at the far end, task-shaped tools that answer ``what held at $t$'' directly.
 
-This paper asks where on that spectrum an agent's answers and costs change, and measures it. Three things make that hard to measure honestly. Benchmarks of temporal questions saturate, so differences hide at the ceiling. Interfaces are tuned on the questions they are judged on. And the baseline is often written by the people whose system it is compared with. We address the first with a harder slice and by reporting how many questions decide each comparison, the second with a staged protocol whose later stages were registered before any run, and the third only in part: our hand-written baseline is the author's, so we add the other end of the spectrum, an agent writing its own SQL over the raw log, which nobody designed.
+This paper asks where on that spectrum an agent's answers and costs change, and measures it. Three things make that hard to measure honestly. Benchmarks of temporal questions saturate, so differences hide at the ceiling. Interfaces are tuned on the questions they are judged on. And the baseline is often written by the people whose system it is compared with. We address the first with a harder slice and by reporting how many questions decide each comparison, the second with a staged protocol whose later stages were registered before any run, and the third only in part: our hand-written baseline is the author's, so we add the other end of the spectrum, an agent writing its own SQL over the raw log, whose schema nobody designed (we wrote only the description of its events).
 
 The compiled end of the spectrum is Keel, an open-source system we built: a \emph{cartridge} declares a domain's events, kinds, facts, relations and rules once, a deterministic ingest with no LLM builds a bitemporal graph per tenant whose transaction time the events declare, and the cartridge compiles to five tools and to bitemporal SQL that an optional sixth tool, \code{query}, serves bound to the tenant (Sections~\ref{sec:model} and~\ref{sec:compile}). Keel is the system under test, not the contribution being sold: two of its interfaces were built after reading the held-out results, and its core tools lost the held-out comparison as registered.
 
-What we found, with one agent (Claude Haiku 5.5) on one domain (Jira): on near-ceiling questions the compiled interfaces tie hand-written views, as registered, and again on a clean rerun; on harder questions that tie could not be shown; an agent with only the raw log comes within 2 points of the compiled interfaces at about twice the cost; task-shaped tools trail hand-written and compiled SQL on tenant-wide questions unless SQL is beside them; and the residual gaps are mostly arithmetic over time done outside the database (Section~\ref{sec:lessons}).
+What we found, with one agent (Claude Haiku 5.5) on one domain (Jira): on near-ceiling questions the compiled interfaces tie hand-written views, as registered, and again on a clean rerun; on harder questions that tie could not be shown; an agent with only the raw log comes within 2 points of the compiled interfaces at about twice the cost, and hand-written views are the cheapest of all; task-shaped tools trail hand-written and compiled SQL on tenant-wide questions unless SQL is beside them; and the residual gaps are mostly arithmetic over time done outside the database (Section~\ref{sec:lessons}).
 
 Contributions:
 
 \begin{enumerate}[leftmargin=*]
 \item \textbf{A benchmark of temporal questions over product events (C1).} Real Jira projects turned into event logs, with late arrivals and corrections injected under a published seed so that ``as recorded at $k$'' differs from ``as it happened''; twelve question types from one-fact reads to two-step questions; gold from an oracle that imports nothing from any interface (Section~\ref{sec:benchmark}).
-\item \textbf{A staged, pre-registered protocol (C2).} A development set, a held-out set, a confirmation set with three hypotheses and decision rules, a clean rerun and a harder slice, each registered before its runs, with every amendment, deviation and peek recorded (Section~\ref{sec:conditions}, Table~\ref{tab:deviations}).
-\item \textbf{Measurements across seven interfaces (C3).} From the raw log to task-shaped tools, with accuracy, cost per correct answer and tokens, and the analysis of where they differ (Sections~\ref{sec:results} and~\ref{sec:lessons}).
+\item \textbf{A staged, pre-registered protocol (C2).} A development set, then a held-out set, a confirmation set with three hypotheses and decision rules, a clean rerun and a harder slice, each of these four registered before its runs, with every amendment, deviation and peek recorded (Section~\ref{sec:conditions}, Table~\ref{tab:deviations}).
+\item \textbf{Measurements across eight conditions (C3).} From the raw log to task-shaped tools, with accuracy, cost per correct answer and tokens, and the analysis of where they differ (Sections~\ref{sec:results} and~\ref{sec:lessons}).
 \item \textbf{An open reference system for the compiled end (C4).} Keel, with a formal model in which transaction time comes from the event so any permutation of the log yields the same graph (Section~\ref{sec:formal}), and a compiler from one declaration to tools and to SQL in three dialects (Section~\ref{sec:compile}).
 \end{enumerate}
 
-The first version of this work compared Keel's tools with the product's API, retrieval and memory systems built by LLM extraction on the development set, and measured governed write-back by agents; Section~\ref{sec:firstrun} summarizes those development-set results. The supplement, in the artifact, holds the details the paper cites as \S A to \S E.
+A development-set run also compared Keel's tools with the product's API, retrieval and memory systems built by LLM extraction, and measured governed write-back by agents; Section~\ref{sec:firstrun} summarizes it. Supplemental material, outside this paper's pages, is in the repository (\code{docs/paper-pvldb/supplement.tex}, built by \code{build.sh}); we cite it as supplement \S A to \S E, and \code{docs/paper-pvldb/REPRODUCE.md} maps every table and figure to its result file and command.
 
 % ===========================================================================
 \section{The system under test: Keel}
@@ -82,7 +82,7 @@ Keel turns a product's events into a bitemporal graph per tenant, with no LLM, a
 \begin{figure*}[t]
 \centering
 \includegraphics[width=5.5in]{figures/fig1-architecture.pdf}
-\caption{Keel (top): product events through cartridge handlers into a bitemporal graph per tenant, read through tools and SQL compiled from the cartridge and written back only through annotate; memories built by LLM extraction (bottom) put a model between the event and what is stored.}
+\caption{Keel (top): product events through cartridge handlers into a bitemporal graph per tenant, read through tools and SQL compiled from the cartridge and written back only through annotate; the memory systems of the development-set run (bottom) instead put a model between the event and what is stored.}
 \label{fig:1}
 \end{figure*}
 
@@ -186,12 +186,19 @@ Current & 20 & A field's value now & Value \\
 As-of & 25 & A field's value at an instant inside its history (80\% differ from today's) & Value \\
 Known-at & 25 & A field's value at an instant, as recorded by a later instant & Value \\
 Links & 15 & Of the issues linked to one by a relation at an instant, which were done & Set of keys \\
-Rule & 15 & blocked, stalled or urgent\_unassigned at an instant, the definition given & Yes/no \\
+Rule & 15 & A rule's verdict at an instant, its definition in the question: blocked (an issue that blocks it is not done), idle (in progress, status unchanged 30 days or more), urgent and unassigned (Blocker, Critical or Highest, not done, nobody assigned) & Yes/no \\
 Abstain & 5 & An issue that never existed, or one before it was created & Unknown \\
 Tenant & 24 & Tenant-wide: issues with a status at an instant, counts, rule listings, changes in a window, sets as recorded by a later instant & Set or count \\
 \bottomrule
 \end{tabularx}
 \end{table*}
+
+The templates the results below turn on, verbatim (all twelve are in supplement \S\ref{app:templates}); a links question names its relation with one of five phrases, among them ``the issues that block \{key\}'' and ``the issues related to \{key\}'':
+\begin{lstlisting}
+known_at  According to what had been recorded by {known}, what was the {field} of {key} at {at}?
+links     On {at}, of {phrase}, which were done (done means a status among: {done})?
+time_in   Up to {at}, how many whole days in total had {key} spent in status {status}, adding every period it was in it? Round the total down to whole days.
+\end{lstlisting}
 
 \subsection{Three sets}
 \label{sec:sets}
@@ -224,6 +231,13 @@ Confirmation & Apache TAJO 2,183; Apache RAVE 1,286 & 258 & 47 & Tenant rule, co
 \label{sec:systems}
 
 Every condition reads the same log, late arrivals and corrections included; agents differ only in their tools and one paragraph of the system prompt that describes them (Table~\ref{tab:conditions}).
+
+\begin{lstlisting}
+You answer questions about the Jira project {project} of the {instance} tracker. Today is {today}. All times are UTC.
+{tools}
+Use your tools before answering and never invent facts. Read every date in the question carefully: some ask what was true at an earlier time, or what had been recorded by a given time. End your reply with one line, `ANSWER: <json>`, where <json> is {fmt} If the records cannot answer the question, end with `ANSWER: "unknown"`.
+\end{lstlisting}
+\code{\{tools\}} is the condition's paragraph (in \code{evals/jira/sql\_system.py}, \code{sqlgen\_system.py}, \code{bench.py} or generated by \code{keel.sqlgen.describe}; all in supplement \S\ref{app:prompt}) and \code{\{fmt\}} the answer type's format.
 
 \begin{table*}[t]
 \caption{Conditions. The \code{sql*} conditions run DuckDB 2.0.0 and \code{keel+query}'s \code{query} runs SQLite; all read-only, rows capped at 200 with the cut said, like Keel's listing ceiling.}
@@ -270,6 +284,7 @@ Questions of one tenant and type share a template and an issue population, so th
 Stage & Deviation & Effect on the reported result \\
 \midrule
 Held-out & An amendment before any run dropped the second agent (GPT-6 Luna) & One agent only \\
+ & Most rows record uncommitted changes in the working tree; \code{sqlgen2}'s rows are clean & The commit alone does not prove what ran; no rerun \\
  & A time-zone bug in the first generator found after the run; a fixed arm (89e8510) run beside the registered one & The registered arm is the result; the fixed arm is labelled not registered \\
  & \code{sqlgen2} and \code{keel+query} built after reading the results & Exploratory on this set; the reason for the confirmation set \\
 Confirmation & Two amendments widened the candidate projects, the second after the first's question counts were seen; it added a fill rule (at most two tenants per instance) & Both tenants come from one instance (Apache) \\
@@ -277,7 +292,7 @@ Confirmation & Two amendments widened the candidate projects, the second after t
  & The commit recording that amendment slipped a clause into rule 5's text; reverted & Rule 5 reads as registered \\
  & After the result: the ``related to'' wording read broadly by every agent on 10 questions & Nothing changed; each adds 0 to every paired difference \\
  & Every row records uncommitted changes in the working tree; a clean rerun registered before it started & H1 and H2 reproduce; H3's bound lands on 0, so H3 did not reproduce \\
-Hard slice & Pilot accuracy printed by the harness and seen; the run cost 3.6 USD projected against 2 estimated, approved & Nothing changed \\
+Hard slice & Pilot accuracy printed by the harness and seen; the run cost 3.6 USD projected against 2 estimated, approved; the commands gained \code{--with httpx} and ran under bash & Nothing changed \\
  & The best condition scored 97.4\%, failing the slice's own ``below 95\%'' criterion & Reported as not off the ceiling \\
  & Addendum (\code{sql-tables}, \code{sql-log}), registered before its runs as exploratory; \code{sql-log}'s paragraph written after the slice's result; brakes raised after its pilot; partial accuracy seen twice during the run & No decision rule depends on it \\
 \bottomrule
@@ -476,7 +491,7 @@ Before the held-out set existed, the first run compared Keel's five tools, in th
 \end{itemize}
 
 \begin{table*}[t]
-\caption{Governed memory, development set (supplement~\S\ref{sec:governed}): what the poisoner's tenant write meets under each condition, and the answering agents' accuracy [95\% CI] on the 60 questions; poisoned shares in supplement~\S\ref{app:tables}, Table~\ref{tab:b4}.}
+\caption{Governed memory, development set (supplement~\S\ref{sec:governed}): what the poisoner's tenant write meets under each condition, and the answering agents' accuracy [95\% CI] on the 60 questions; poisoned shares in supplement Table~\ref{tab:b4}.}
 \label{tab:gov}
 \centering
 \footnotesize
@@ -509,11 +524,11 @@ Six observations, each from the results above; with one agent and one domain, th
 
 \textbf{Arithmetic belongs in the database, and the schema decides whether it gets there.} Most of hand-written SQL's lead on the hard slice is \code{time\_in}, where agents over the compiled views count days in their reply and miss by one; over the hand-written schema they compute the difference in SQL in two thirds of the runs and almost never miss. Neither schema's paragraph mentions date functions. An interface that exposes durations, or says how to compute them, is the obvious untested remedy.
 
-\textbf{Task-shaped tools need a set-valued escape hatch.} Keel's tools alone come within 1.5 points of hand-written SQL on one-issue questions (96.9\% against 98.4\% on the held-out set; tied on the confirmation set) but trail it on tenant-wide ones (91.2\% against 100\% on the held-out set) and on questions over two instants (87\% on \code{both}); with \code{query} beside them those gaps close, and the gain is 1.2 to 3.3 points on every set, though on the confirmation set's clean rerun its interval reaches 0.
+\textbf{Task-shaped tools need a set-valued escape hatch.} Keel's tools alone come within 1.5 points of hand-written SQL on one-issue questions (96.9\% against 98.4\% on the held-out set; 94.8\% each on the confirmation set, 94.1\% against 94.9\% on its rerun) but trail it on tenant-wide ones (91.2\% against 100\% on the held-out set) and on questions over two instants (87\% on \code{both}); with \code{query} beside them those gaps close, and the gain is 1.2 to 3.3 points on every set (on the development set against the tools' older full-text form), though on the confirmation set's clean rerun its interval reaches 0.
 
-\textbf{What a compiled domain buys a capable agent is cost.} An agent with only the raw log and a description of its events reached 94.5\% on the hard slice, within 2 points of the compiled interfaces, at 1.7 to 2.3 times their cost per correct answer, because it rebuilds the bitemporal state in every query (20k input tokens a run against 12k to 13k). Hand-written views were cheaper still. We found no answer the compiled interfaces reach that the raw log does not, on these questions, with this agent.
+\textbf{What prepared views buy a capable agent is cost; what compiling them buys is unmeasured.} An agent with only the raw log and a description of its events reached 94.5\% on the hard slice, within 2 points of the compiled interfaces, at 1.7 to 2.3 times their cost per correct answer, because it rebuilds the bitemporal state in every query (20k input tokens a run against 12k to 13k). Hand-written views were cheaper still (0.00062 USD per correct answer against 0.00067 to 0.00093 for the compiled interfaces), so the saving comes from views, not from compiling them; what a compiler saves is the engineer's work (a 104-line declaration and 58 lines of handlers against 361 lines of views), which we did not measure. We found no answer the compiled interfaces reach that the raw log does not, on these questions, with this agent.
 
-\textbf{Pre-registration changed what this paper says.} The held-out registration fixed in advance that Keel's tools would be judged against hand-written SQL on unseen projects, and they lost by 2.8 points; a time-zone bug and a wording ambiguity were found only because results had to be explained, not improved; the confirmation set's clean rerun moved H3 from confirmed to on its bound. Each would have read as a better result without a registration to hold it to.
+\textbf{Pre-registration changed what this paper says.} The held-out registration fixed in advance that Keel's tools would be judged against hand-written SQL on unseen projects, and they lost by 2.8 points; a time-zone bug and a wording ambiguity were found only because results had to be explained, not improved; the confirmation set's clean rerun moved H3 from confirmed to on its bound. Without a registration to hold them to, each could have been read as a better result.
 
 % ===========================================================================
 \section{Related work}
@@ -523,7 +538,7 @@ Six observations, each from the results above; with one agent and one domain, th
 
 \textbf{Streams and projections.} CEDR \cite{cedr} separates valid time and a provider-assigned occurrence time from the server's clock and defines query semantics on the provider's times, so delivery order and retractions do not change the answer. Out-of-order processing \cite{li-ooo}, the Dataflow model \cite{akidau-dataflow} and Flink \cite{carbone-flink} handle late data with event time and watermarks; differential dataflow \cite{mcsherry-dd} and DBSP \cite{budiu-dbsp} maintain views whose outputs are functions of the inputs at each logical time. Event sourcing rebuilds application state by replaying a log \cite{fowler-es}, log-centric architectures treat tables as views of a log \cite{kreps-log,kleppmann-insideout,kleppmann-olep}, and change data capture turns a database's commit log into such a stream \cite{debezium}. Keel is an event-sourced projection in this sense; what it adds is the projection's shape, declared once and compiled, and point reads at any pair of world and recorded instants after the fact.
 
-\textbf{Agent memory.} Bitemporal agent memory is not ours to claim. TGMS \cite{tgms} offers a bitemporal graph an agent can ask what was believed at a date, keeps retract apart from correct, replays an append-only log to a byte-identical store, keeps the LLM out of the write path and serves tools over MCP; it stamps transaction time with its own clock. Zep/Graphiti \cite{zep} and TOKI \cite{toki} also predate us on bitemporal agent memory, and Niksarli and Baheti \cite{niksarli} store conversational memories with valid and transaction time and retrieve them by vector search filtered by time. Mem0 \cite{mem0} extracts and updates memories with an LLM. Benchmarks of agent memory are dialogue (LongMemEval \cite{longmemeval}, LoCoMo \cite{locomo}, STALE \cite{stale}) or stage-wise evaluations of extraction \cite{halumem,memoryagentbench,groundtruth}; feeding them to Keel would need the LLM extraction Keel avoids. TDBench \cite{tdbench} builds time-sensitive questions from temporal databases over Allen's interval relations \cite{allen}, uni-temporal and aimed at a model's knowledge rather than a memory layer. What we claim against this work is memory built from a product's structured event log, one core across products through compiled cartridges, and a staged, pre-registered comparison with SQL written by hand.
+\textbf{Agent memory.} Bitemporal agent memory is not ours to claim. TGMS \cite{tgms} offers a bitemporal graph an agent can ask what was believed at a date, keeps retract apart from correct, replays an append-only log to a byte-identical store, keeps the LLM out of the write path and serves tools over MCP; it stamps transaction time with its own clock. Zep/Graphiti \cite{zep} and TOKI \cite{toki} also predate us on bitemporal agent memory, and Niksarli and Baheti \cite{niksarli} store conversational memories with valid and transaction time and retrieve them by vector search filtered by time. Mem0 \cite{mem0} extracts and updates memories with an LLM. Benchmarks of agent memory are dialogue (LongMemEval \cite{longmemeval}, LoCoMo \cite{locomo}, STALE \cite{stale}) or stage-wise evaluations of extraction \cite{halumem,memoryagentbench,groundtruth}; feeding them to Keel would need the LLM extraction Keel avoids. TDBench \cite{tdbench} builds time-sensitive questions from temporal databases over Allen's interval relations \cite{allen}, uni-temporal and aimed at a model's knowledge rather than a memory layer. Against this work, what this paper adds is a measurement: how much a prepared interface over a product's structured event log changes an agent's answers and cost, in a staged, pre-registered comparison that runs from the raw log to task-shaped tools.
 
 \textbf{Text-to-SQL and access control.} Text-to-SQL benchmarks \cite{spider,bird,gao-text2sql} evaluate models writing queries over a given schema. Here the schema is compiled from a declaration together with its description for the agent, and the question is whether that schema is as good to query as one an engineer designed; the gap between \code{sql} and \code{sql-tables} (2.5 points on the held-out set, Table~\ref{tab:heldout}; 1.5 on the hard slice), and that between hand-written views and an agent writing SQL over the raw log (2.9 points, Section~\ref{sec:hard}), say the views matter more than the language. Multi-tenant schema mapping \cite{aulbach} and fine-grained access control by query rewriting \cite{rizvi-fgac} or row-level security \cite{pg-rls} precede Keel's tenant binding; \code{query} applies them to a new caller, an agent's SQL, by copying the tenant's readable rows or by a role per tenant. Each fact names the event that set it, which is coarse-grained where-provenance \cite{buneman}; Keel does not compute why- or how-provenance of answers \cite{green}.
 
@@ -545,7 +560,7 @@ Six observations, each from the results above; with one agent and one domain, th
 \section{Conclusion}
 \label{sec:conclusion}
 
-How much structure should a product build for the agents inside it? On temporal questions over real Jira projects, with one capable agent, the answer we measured is: less than one might think for accuracy, more for cost. SQL compiled from a declaration of the domain, and task-shaped tools with that SQL beside them, matched views written by hand on near-ceiling questions, as registered and on a clean rerun; on harder questions that combine two steps the match could not be shown, mostly because the agent did date arithmetic in its reply rather than in SQL. An agent given only the raw event log came within 2 points of the compiled interfaces and paid about twice as much per correct answer. Task-shaped tools alone trailed hand-written and compiled SQL on tenant-wide questions. The benchmark, the oracle, the registrations with every deviation, and Keel as a reference implementation of the compiled end are released. Open work is a second agent and a second domain on the registered sets, a baseline written by an engineer who does not know Keel, and an interface that puts durations in the database.
+How much structure should a product build for the agents inside it? On temporal questions over real Jira projects, with one capable agent, the answer we measured is: less than one might think for accuracy, more for cost. SQL compiled from a declaration of the domain, and task-shaped tools with that SQL beside them, matched views written by hand on near-ceiling questions, as registered and on a clean rerun; on harder questions that combine two steps the match could not be shown, mostly because the agent did date arithmetic in its reply rather than in SQL. An agent given only the raw event log came within 2 points of the compiled interfaces and paid about twice as much per correct answer; hand-written views were cheaper still, so what we measured is the value of prepared views, not of compiling them. Task-shaped tools alone trailed hand-written and compiled SQL on tenant-wide questions. The benchmark, the oracle, the registrations with every deviation, and Keel as a reference implementation of the compiled end are released. Open work is a second agent and a second domain on the registered sets, a baseline written by an engineer who does not know Keel, and an interface that puts durations in the database.
 
 % ===========================================================================
 \section*{Reproducibility}
@@ -556,7 +571,7 @@ Code, harness and every result file are at \href{https://github.com/angelkurten/
 % ===========================================================================
 \section*{Acknowledgments}
 
-We thank Niriana Blasco, Steven Anaya and Anderson Jiménez, members of an AI and Architecture team whose earlier work on a similar approach to this problem inspired this one, for the discussions that shaped its design. We thank the authors of the Public Jira Dataset and of TDBench for releasing their data. Code and text were written with the help of an AI coding assistant (Claude); the author reviewed all of it and is responsible for its content.
+We thank Niriana Blasco, Steven Anaya and Anderson Jiménez, members of an AI and Architecture team whose earlier work on a similar approach inspired Keel, for the discussions that shaped its design. We thank the authors of the Public Jira Dataset and of TDBench for releasing their data. Code and text were written with the help of an AI coding assistant (Claude); the author reviewed all of it and is responsible for its content.
 
 \begin{thebibliography}{50}
 
@@ -580,9 +595,6 @@ Alp Niksarli, Gopesh Baheti. A Graph-Native Bitemporal Memory Store for Conversa
 
 \bibitem{longmemeval}
 Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-Wei Chang, Dong Yu. LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory. ICLR 2025; \url{https://arxiv.org/abs/2410.10813}, 2024.
-
-\bibitem{memgpt}
-Charles Packer, Sarah Wooders, Kevin Lin, Vivian Fang, Shishir G. Patil, Ion Stoica, Joseph E. Gonzalez. MemGPT: Towards LLMs as Operating Systems. \url{https://arxiv.org/abs/2310.08560}, 2023. The source of the DMR benchmark.
 
 \bibitem{locomo}
 Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov, Mohit Bansal, Francesco Barbieri, Yuwei Fang. Evaluating Very Long-Term Conversational Memory of LLM Agents. ACL 2024; \url{https://arxiv.org/abs/2402.17753}, 2024. The LoCoMo benchmark.

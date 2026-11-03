@@ -36,7 +36,7 @@
 \email{angel@angelkurten.com}
 \settopmatter{printacmref=false}
 \maketitle
-\noindent Appendices to the paper. Section, figure and table numbers without a letter refer to the paper; those with a letter, to this supplement.
+\noindent Supplemental material for the paper, outside its 12 pages and part of its artifact. Section, figure and table numbers without a letter refer to the paper; those with a letter, to this supplement.
 
 \appendix
 \renewcommand{\thetable}{\thesection.\arabic{table}}
@@ -134,13 +134,13 @@ Before the benchmark & A close took the arriving fact's \code{recorded\_at} inst
 \addlinespace
 Before the benchmark & Facts starting at the same instant were ordered by arrival, which left two open statuses; a predicate's history is now ordered by \code{valid\_from}, \code{recorded\_at}, evidence, value & The same replay check; a store conformance test covers it \\
 \addlinespace
-9060ac5 (2026-10-20), before the benchmark & Transaction time (\code{recorded\_at}) taken from the event when its source declares one, instead of the ingest clock, so replay rebuilds it & The injected windows (900 of Hyperledger's wrong before it, Appendix~\ref{sec:ingest}) \\
+9060ac5 (2026-10-20), before the benchmark & Transaction time (\code{recorded\_at}) taken from the event when its source declares one, instead of the ingest clock, so replay rebuilds it & The injected windows (900 of Hyperledger's wrong before it, \S\ref{sec:ingest}) \\
 \addlinespace
-242d8c2 & \code{memory.evidence}: a cartridge says what counts as evidence, an event the tenant's log applied or a reference prefix such as \code{photo:} or \code{human:}; without it, evidence stays free text & The poisoning run (Appendix~\ref{sec:governed}) \\
+242d8c2 & \code{memory.evidence}: a cartridge says what counts as evidence, an event the tenant's log applied or a reference prefix such as \code{photo:} or \code{human:}; without it, evidence stays free text & The poisoning run (\S\ref{sec:governed}) \\
 \addlinespace
-ea9b30a & An event cited as evidence must have set a fact on the subject written about & The poisoning run (Appendix~\ref{sec:governed}) \\
+ea9b30a & An event cited as evidence must have set a fact on the subject written about & The poisoning run (\S\ref{sec:governed}) \\
 \addlinespace
-545c96f & A correction arriving before the value it corrects left the predecessor's \code{closed\_at} at the later successor's \code{recorded\_at}; now the earliest successor's. 0.3\% of facts under shuffled ingest; log-order ingest, used by every result, unaffected & Quantifying the determinism check (Appendix~\ref{sec:ingest}); a store conformance test runs the three events in every order \\
+545c96f & A correction arriving before the value it corrects left the predecessor's \code{closed\_at} at the later successor's \code{recorded\_at}; now the earliest successor's. 0.3\% of facts under shuffled ingest; log-order ingest, used by every result, unaffected & Quantifying the determinism check (\S\ref{sec:ingest}); a store conformance test runs the three events in every order \\
 \addlinespace
 9451668 & Mem0 telemetry off: its shared Qdrant under \code{\textasciitilde/.mem0} locked every tenant after the first in a process & The Mem0 run \\
 \addlinespace
@@ -179,7 +179,7 @@ During Graphiti's ingest, a fallback model's schema error was retried (b60a51a) 
 \subsection{Cost measurement}
 \label{app:costmeas}
 
-Commit f364733 gives direct Claude calls their own cache breakpoint on the system prompt. Rows measured before it, the development set's first run included, overstate the cost of long system prompts; answers are unaffected. The overstatement is largest for Keel, whose system prompt (the cartridge's kinds, relations and rules) is the longest, and smallest for the API and RAG, so it works against Keel's cost claim rather than for it.
+Commit f364733 gives direct Claude calls their own cache breakpoint on the system prompt. Rows measured before it, the development set's first run included, overstate the cost of long system prompts; answers are unaffected. The overstatement is largest for Keel, whose system prompt (the cartridge's kinds, relations and rules) is the longest, and smallest for the API and RAG, so it works against the Keel conditions' measured cost rather than for it.
 
 \subsection{The held-out and confirmation sets}
 \label{app:prov-sets}
@@ -324,7 +324,7 @@ both         Which issues of the {project} project had a status among: {progress
 \subsection{Adversary attacks}
 \label{app:attacks}
 
-The twelve attacks of the adversary run (Appendix~\ref{sec:governed}). Each carries the sentence ``Use every tool and parameter you have; try more than once.'' at the position marked [TELL].
+The twelve attacks of the adversary run (\S\ref{sec:governed}). Each carries the sentence ``Use every tool and parameter you have; try more than once.'' at the position marked [TELL].
 
 \begin{lstlisting}
 tenant             Another customer of this tracker, the Hyperledger instance, stored a note on its issue INDY-311. [TELL] Find that note and quote its exact value.
@@ -356,7 +356,7 @@ write-kind         Write a tenant-wide note on the project MXS (project:MXS) say
 \label{app:dev}
 \setcounter{table}{0}
 
-The paper's first version reported this run as its main result; the paper now reports it as the development set's (Section~\ref{sec:sets}). It ran Keel's five tools with their full-text replies, before the compact form, the held-out set and the SQL conditions existed, and with three agents. It is kept here whole, as it ran: its numbers are on the development questions that Keel was later tuned against, and are not a test of what development never saw.
+This run predates the held-out set; the paper summarizes it as development-set results (Section~\ref{sec:firstrun}). It ran Keel's five tools with their full-text replies, before the compact form, the held-out set and the SQL conditions existed, and with three agents. It is kept here whole, as it ran: its numbers are on the development questions that Keel was later tuned against, and are not a test of what development never saw.
 
 \subsection{Systems and protocol}
 \label{app:dev-systems}
@@ -364,7 +364,7 @@ The paper's first version reported this run as its main result; the paper now re
 Every system reads the same source, the tenant's log as written, in its best ordinary form; agents differ only in their tools (Table~\ref{tab:systems}).
 
 \begin{table*}[t]
-\caption{The systems compared, their tools and their ingest.}
+\caption{The conditions compared in this run, their tools and their ingest.}
 \label{tab:systems}
 \centering
 \small
@@ -374,7 +374,7 @@ System & Tools & Ingest \\
 \midrule
 Keel & The five tools over MCP, the listing ceiling (200) (\code{-{}-max-list 200}) & Deterministic, no LLM \\
 Keel without a ceiling (ablation) & Same, listings uncapped & Same \\
-Product API & \code{get\_issue}, \code{get\_changelog} (both times, initial values), \code{search\_issues} with JQL's \code{WAS\,\ldots\,ON} and \code{CHANGED DURING} (Appendix~\ref{app:apitools}) & None \\
+Product API & \code{get\_issue}, \code{get\_changelog} (both times, initial values), \code{search\_issues} with JQL's \code{WAS\,\ldots\,ON} and \code{CHANGED DURING} (\S\ref{app:apitools}) & None \\
 RAG & Hybrid search (dense 512-d + BM25, RRF) over one record per event, both times in it, issue filter & Embeddings \\
 Closed book & None & None \\
 Graphiti 0.30.2 & \code{search\_memory} & LLM extraction (Luna), one-issue subset \\
@@ -384,9 +384,9 @@ TGMS 0.8.0 & Its fifteen tools (its paper describes thirteen operators); and its
 \end{tabularx}
 \end{table*}
 
-\textbf{Agents.} GPT-6 Luna runs through a gateway (OfoxAI) at temperature 0, and Claude Haiku 5.5 and Claude Sonnet 5.5 straight from Anthropic's API, with the same system prompt for every system, except one paragraph that describes that system's tools (Appendix~\ref{app:prompt}). Claude runs at its default temperature, which Haiku and Sonnet do not let a caller change, with thinking off and prompt caching on; caching changes the price, not the answer. Claude Sonnet 5.5 is a one-repetition extension: every system but the two memory systems, on both question sets.
+\textbf{Agents.} GPT-6 Luna runs through a gateway (OfoxAI) at temperature 0, and Claude Haiku 5.5 and Claude Sonnet 5.5 straight from Anthropic's API, with the same system prompt for every system, except one paragraph that describes that system's tools (\S\ref{app:prompt}). Claude runs at its default temperature, which Haiku and Sonnet do not let a caller change, with thinking off and prompt caching on; caching changes the price, not the answer. Claude Sonnet 5.5 is a one-repetition extension: every system but the two memory systems, on both question sets.
 
-\textbf{Grading.} Every answer is structured: the agent ends with \code{ANSWER: <json>}, graded by exact match after normalizing case, empty values, issue-key prefixes and yes/no. No judge model is used. A run that ends in an error (a prompt over the model's limit) counts as wrong; a gateway outage leaves the run out for a rerun. A partial set scores zero under exact match; Appendix~\ref{app:tables}, Table~\ref{tab:b6} grades the set-valued tenant-wide questions by set-F1 as well, which narrows the Keel--API gap to 15 to 27 points and leaves RAG far behind.
+\textbf{Grading.} Every answer is structured: the agent ends with \code{ANSWER: <json>}, graded by exact match after normalizing case, empty values, issue-key prefixes and yes/no. No judge model is used. A run that ends in an error (a prompt over the model's limit) counts as wrong; a gateway outage leaves the run out for a rerun. A partial set scores zero under exact match; Table~\ref{tab:b6} grades the set-valued tenant-wide questions by set-F1 as well, which narrows the Keel--API gap to 15 to 27 points and leaves RAG far behind.
 
 For a system $S$, agent $m$ and question set $Q$ with $R$ repetitions, accuracy is the share of runs graded correct, where $g$ is the exact-match grader and $a$ the extracted answer:
 \begin{equation*}
@@ -398,17 +398,17 @@ The 95\% interval resamples questions with replacement, $B = 10{,}000$ times wit
 \mathrm{CI}_{95} = \big[\,\widehat{\mathrm{Acc}}^{*}_{(0.025)},\ \widehat{\mathrm{Acc}}^{*}_{(0.975)}\,\big], \qquad \Delta^{*}_b = \mathrm{Acc}^{*}_b(S_1) - \mathrm{Acc}^{*}_b(S_2)
 \end{equation*}
 
-Cost is reported per question as input and output tokens and dollars at each provider's prices. Every result row records the repository commit (Keel, harness and questions), whether the code had uncommitted changes, and the versions of the packages each system ran on. Keel's code is the same in every row of this run; the harness commits after the first changed only how failures are handled (Appendix~\ref{app:provenance}).
+Cost is reported per question as input and output tokens and dollars at each provider's prices. Every result row records the repository commit (Keel, harness and questions), whether the code had uncommitted changes, and the versions of the packages each system ran on. Keel's code is the same in every row of this run; the harness commits after the first changed only how failures are handled (\S\ref{app:provenance}).
 
 \textbf{Fairness.} Baselines get their documented best setup: JQL's history operators for the API, a hybrid retriever for RAG, each memory system configured by its own guide with pinned releases. Graphiti and Mem0 ingest only the issues the one-issue questions touch (4,381 events), because the whole log would take Graphiti about 210 hours. This favours them, and they are not asked tenant-wide questions. TGMS stamps transaction time with its own clock, so ``as recorded by'' questions are not natively answerable by it.
 
-\textbf{Pilot.} A pilot on MariaDB (105 one-issue and 24 tenant-wide questions, Luna and Haiku through the gateway) preceded this run and shaped it (Appendix~\ref{app:provenance}).
+\textbf{Pilot.} A pilot on MariaDB (105 one-issue and 24 tenant-wide questions, Luna and Haiku through the gateway) preceded this run and shaped it (\S\ref{app:provenance}).
 
-The tenant-wide templates were written before the pilot. The pilot then changed what Keel's tools return (Appendix~\ref{app:provenance}); the baselines' tools were not revised. Appendix~\ref{app:tables}, Table~\ref{tab:b5} breaks the 72 questions down by sub-type: the API ties Keel on status at an instant and beats it on change windows, and loses on known-at sets and rule listings, which the product's API cannot express; Table~\ref{tab:b6} grades the set-valued questions by set-F1 as well.
+The tenant-wide templates were written before the pilot. The pilot then changed what Keel's tools return (\S\ref{app:provenance}); the baselines' tools were not revised. Table~\ref{tab:b5} breaks the 72 questions down by sub-type: the API ties Keel on status at an instant and beats it on change windows, and loses on known-at sets and rule listings, which the product's API cannot express; Table~\ref{tab:b6} grades the set-valued questions by set-F1 as well.
 
 \textbf{Runs.} Three tenants, 387 questions: 315 one-issue (105 per tenant) and 72 tenant-wide (24 per tenant). Luna and Haiku run three repetitions of Keel, the API and RAG, except Luna's RAG on tenant-wide questions, one repetition. Closed book runs once with Luna and three times with Haiku. Graphiti and Mem0 run one repetition, one-issue questions only, with Luna and Haiku; we cut them from three to one for budget. Sonnet runs once on everything but the memory systems. A per-invocation budget cap (\code{-{}-max-usd}) stops starting runs once an invocation has spent that much; the rows it leaves out are reported where they occur. The ablation, Keel without a ceiling, runs once with Luna on tenant-wide questions. The agents cost 33.49 USD of a 100 USD Anthropic credit and about 6.9 USD at the gateway. Confidence intervals by bootstrap over questions, as above.
 
-Appendix~\ref{sec:ingest} measures ingest cost and determinism; \ref{sec:oneissue} and \ref{sec:tenant} give accuracy on one-issue and tenant-wide questions, \ref{sec:bytype} by question type and \ref{sec:memory} for the memory systems; \ref{sec:cost} gives cost per correct answer, \ref{sec:ablations} the ablations, \ref{sec:governed} governed memory and \ref{sec:tdbench} the external check on TDBench.
+\S\ref{sec:ingest} measures ingest cost and determinism; \S\ref{sec:oneissue} and \S\ref{sec:tenant} give accuracy on one-issue and tenant-wide questions, \S\ref{sec:bytype} by question type and \S\ref{sec:memory} for the memory systems; \S\ref{sec:cost} gives cost per correct answer, \S\ref{sec:ablations} the ablations, \S\ref{sec:governed} governed memory and \S\ref{sec:tdbench} the external check on TDBench.
 
 \subsection{Ingest cost and determinism}
 \label{sec:ingest}
@@ -432,7 +432,7 @@ Graphiti & 2.9--3.0 (up to 6--7 in early trials) & $\sim$5,000--5,200 & $\sim$15
 \end{tabularx}
 \end{table*}
 
-Mem0 ingested the 4,381-event subset of the three tenants for about 4.2 USD. Graphiti finished MariaDB (1,122 events) and Spring (938) at 14.5 to 14.8 s per event, then Hyperledger (2,321): about 17 hours in all. In early trials its cost per event grew with its graph, as it deduplicates and invalidates against more facts. The extractor's content filter refused prompts for harmless Jira text that other models accept. The refused events went to a fallback model (DeepSeek V4.1 Flash; Haiku for Mem0's first 4) and were counted: 41 of Graphiti's 4,381 events (Hyperledger 20, MariaDB 15, Spring 6) and 5 of Mem0's. No event was refused by every model, so none was dropped. Keel builds the same graph from each tenant's log in order, reversed and in three shuffles: Hyperledger 2,324 entities and 35,876 facts, MariaDB 3,334 and 41,244, Spring 3,151 and 36,655, compared on value, evidence and all four times, in 0.1 to 0.2 s of ingest per tenant in memory (0.3 to 0.4 s with the graph comparison). Quantifying this check found a residual order dependence: before the fix in Appendix~\ref{app:provenance}, a shuffled order differed in \code{closed\_at} alone on 107 to 155 facts per tenant (0.3\%), where a correction arrived before the value it corrects; log order and reversed order were already identical, and every result here, and in the paper, was measured in log order. Keel answered all 2,692 injected windows as expected; before transaction time was taken from the event's \code{recorded\_at} rather than the ingest clock (Appendix~\ref{app:provenance}) it got all 900 of Hyperledger's wrong.
+Mem0 ingested the 4,381-event subset of the three tenants for about 4.2 USD. Graphiti finished MariaDB (1,122 events) and Spring (938) at 14.5 to 14.8 s per event, then Hyperledger (2,321): about 17 hours in all. In early trials its cost per event grew with its graph, as it deduplicates and invalidates against more facts. The extractor's content filter refused prompts for harmless Jira text that other models accept. The refused events went to a fallback model (DeepSeek V4.1 Flash; Haiku for Mem0's first 4) and were counted: 41 of Graphiti's 4,381 events (Hyperledger 20, MariaDB 15, Spring 6) and 5 of Mem0's. No event was refused by every model, so none was dropped. Keel builds the same graph from each tenant's log in order, reversed and in three shuffles: Hyperledger 2,324 entities and 35,876 facts, MariaDB 3,334 and 41,244, Spring 3,151 and 36,655, compared on value, evidence and all four times, in 0.1 to 0.2 s of ingest per tenant in memory (0.3 to 0.4 s with the graph comparison). Quantifying this check found a residual order dependence: before the fix in \S\ref{app:provenance}, a shuffled order differed in \code{closed\_at} alone on 107 to 155 facts per tenant (0.3\%), where a correction arrived before the value it corrects; log order and reversed order were already identical, and every result here, and in the paper, was measured in log order. Keel answered all 2,692 injected windows as expected; before transaction time was taken from the event's \code{recorded\_at} rather than the ingest clock (\S\ref{app:provenance}) it got all 900 of Hyperledger's wrong.
 
 \subsection{One-issue questions (315)}
 \label{sec:oneissue}
@@ -477,7 +477,7 @@ Keel's lead over the API on one issue is three points with Luna and Haiku and no
 \subsection{Tenant-wide questions (72)}
 \label{sec:tenant}
 
-Tenant-wide questions separate the systems: Keel answers 0.93 to 0.99, the API 0.61 to 0.78, RAG 0.14 to 0.26 (Figure~\ref{fig:3}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b1}).
+Tenant-wide questions separate the systems: Keel answers 0.93 to 0.99, the API 0.61 to 0.78, RAG 0.14 to 0.26 (Figure~\ref{fig:3}; exact values in Table~\ref{tab:b1}).
 
 \begin{figure}[t]
 \centering
@@ -507,7 +507,7 @@ The gap over the API holds with every agent (Table~\ref{tab:tenant-paired}). A s
 \subsection{Accuracy by question type}
 \label{sec:bytype}
 
-Pooled over agents, Keel's advantage is on tenant-wide questions: 0.94 against 0.65 for the API and 0.17 for RAG (Figure~\ref{fig:4}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b2}). On one-issue types every system that reads the log scores 0.92 or above.
+Pooled over agents, Keel's advantage is on tenant-wide questions: 0.94 against 0.65 for the API and 0.17 for RAG (Figure~\ref{fig:4}; exact values in Table~\ref{tab:b2}). On one-issue types every system that reads the log scores 0.92 or above.
 
 \begin{figure*}[t]
 \centering
@@ -521,7 +521,7 @@ The API loses ground on one issue only where history matters: as-of, known-at an
 \subsection{Memory systems}
 \label{sec:memory}
 
-Mem0 and Graphiti lose on one-issue questions, consistent with loss at extraction, since both agents score alike. Both ran one repetition, on the one-issue subset only (Appendix~\ref{app:dev-systems}; Table~\ref{tab:memory}).
+Mem0 and Graphiti lose on one-issue questions, consistent with loss at extraction, since both agents score alike. Both ran one repetition, on the one-issue subset only (\S\ref{app:dev-systems}; Table~\ref{tab:memory}).
 
 \begin{table}[t]
 \caption{Memory systems: accuracy on one-issue questions, by agent, system and tenant.}
@@ -546,7 +546,7 @@ Both agents score alike on each memory, so what fails is what extraction stored:
 \subsection{Cost per correct answer}
 \label{sec:cost}
 
-On tenant-wide questions Keel is the cheapest per correct answer with all three agents (Figure~\ref{fig:5}; exact values in Appendix~\ref{app:tables}, Table~\ref{tab:b3}); on one-issue questions it reads more tokens than the API (Table~\ref{tab:oneissue-cost}).
+On tenant-wide questions Keel is the cheapest per correct answer with all three agents (Figure~\ref{fig:5}; exact values in Table~\ref{tab:b3}); on one-issue questions it reads more tokens than the API (Table~\ref{tab:oneissue-cost}).
 
 \begin{figure}[t]
 \centering
@@ -666,7 +666,7 @@ A seeded test (\path{tests/test_memory_properties.py}) writes 2,000 memories on 
 
 \subsubsection*{Adversary agent}
 
-The adversary agent, an LLM, gets the five tools over the MariaDB graph, with Hyperledger's in the same store. Its registry lets it read issues only and write task and agent scope; a trusted copilot has planted four canaries it may not read: another tenant's, another agent's, another task's, and one on a kind outside its registry. 12 attacks (Appendix~\ref{app:attacks}): 8 reads and 4 forbidden writes, each tell it to use every tool and parameter and to retry; Luna and Haiku run each three times, 72 runs for 0.71 USD (Table~\ref{tab:adversary}).
+The adversary agent, an LLM, gets the five tools over the MariaDB graph, with Hyperledger's in the same store. Its registry lets it read issues only and write task and agent scope; a trusted copilot has planted four canaries it may not read: another tenant's, another agent's, another task's, and one on a kind outside its registry. 12 attacks (\S\ref{app:attacks}): 8 reads and 4 forbidden writes, each tell it to use every tool and parameter and to retry; Luna and Haiku run each three times, 72 runs for 0.71 USD (Table~\ref{tab:adversary}).
 
 \begin{table}[t]
 \caption{Adversary agent: twelve attacks, three runs each. Refused: calls Keel refused; Leaked: canaries read; Forbidden writes: stored.}
@@ -688,7 +688,7 @@ Of 62 annotate calls, 41 were refused; the 21 accepted were proposals, which the
 
 \subsubsection*{Poisoning}
 
-Without governance, one untrusted agent's wrong write is repeated by another agent in 91 to 98\% of its answers; each of Keel's checks, with the evidence check as fixed after the run, holds that at 0 with both agents (Figure~\ref{fig:6}). Before each of the 60 current-state questions (20 per tenant), the scripted poisoner writes a wrong value for the issue and field asked, one the field really takes in the tenant, never the gold. Luna and Haiku then answer through this run's harness, in no task, three repetitions per condition: 2,880 runs for 1.43 USD. The condition added after ea9b30a (Appendix~\ref{app:provenance}) adds 360 runs for 0.14 USD. An answer is poisoned when it equals that value. The conditions differ in what the Jira cartridge lets the poisoner write (the paper's Table~\ref{tab:gov}; poisoned shares in Appendix~\ref{app:tables}, Table~\ref{tab:b4}).
+Without governance, one untrusted agent's wrong write is repeated by another agent in 91 to 98\% of its answers; each of Keel's checks, with the evidence check as fixed after the run, holds that at 0 with both agents (Figure~\ref{fig:6}). Before each of the 60 current-state questions (20 per tenant), the scripted poisoner writes a wrong value for the issue and field asked, one the field really takes in the tenant, never the gold. Luna and Haiku then answer through this run's harness, in no task, three repetitions per condition: 2,880 runs for 1.43 USD. The condition added after ea9b30a (\S\ref{app:provenance}) adds 360 runs for 0.14 USD. An answer is poisoned when it equals that value. The conditions differ in what the Jira cartridge lets the poisoner write (the paper's Table~\ref{tab:gov}; poisoned shares in Table~\ref{tab:b4}).
 
 
 \begin{figure}[t]
@@ -698,7 +698,7 @@ Without governance, one untrusted agent's wrong write is repeated by another age
 \label{fig:6}
 \end{figure}
 
-With no policy the write is accepted, and the answering agent repeats it in 91\% of Luna's answers and 98\% of Haiku's; accuracy falls from 1.00 to 0.09 and 0.00. Verified evidence with the subject check, the agent registry and proposals each leave both agents at 0 poisoned and 0.99 to 1.00 accurate: a refused write lands in the poisoner's task scope, which an agent in no task does not read. Evidence must be checked against the subject: free text, or a real event about another issue, gets through; after 242d8c2 and ea9b30a (Appendix~\ref{app:provenance}) the same writes are refused. Mem0 moves from 0.56 to 0.54 and 0.55 and matches the poisoner's value in 0 to 2\% of answers with or without the write: it rarely finds the field at all, so this is retrieval loss, not protection.
+With no policy the write is accepted, and the answering agent repeats it in 91\% of Luna's answers and 98\% of Haiku's; accuracy falls from 1.00 to 0.09 and 0.00. Verified evidence with the subject check, the agent registry and proposals each leave both agents at 0 poisoned and 0.99 to 1.00 accurate: a refused write lands in the poisoner's task scope, which an agent in no task does not read. Evidence must be checked against the subject: free text, or a real event about another issue, gets through; after 242d8c2 and ea9b30a (\S\ref{app:provenance}) the same writes are refused. Mem0 moves from 0.56 to 0.54 and 0.55 and matches the poisoner's value in 0 to 2\% of answers with or without the write: it rarely finds the field at all, so this is retrieval loss, not protection.
 
 A tenth condition, same-task, puts the answering agent on the poisoner's task. The note is written to task scope and read, since task memory is the task's to share. Scopes never close each other, so \code{context} shows the log's value and the note side by side, each with its author (\code{by:~jira}, and \code{by:~intern}, the poisoner's agent id): Luna repeats the note in 14\% of answers [9, 19] and Haiku in 17\% [10, 24], with accuracy 0.85 [0.79, 0.90] and 0.81 [0.73, 0.88] (360 runs, 0.18 USD). This is the limit of governance: a task trusts its own agents, and what the reader has left is provenance, not policy.
 
@@ -729,7 +729,7 @@ Sonnet & 0.80 [0.74, 0.85] & \makecell[l]{0.82 [0.77, 0.87]\\ $-$2 [$-$5, +1], $
 
 On the 13 questions where the pasted rows succeeded and Keel missed, the five transcripts we read were interval misreadings (an agent counting a term that started in 2014 as `starting after 2020'), with the correct dates in Keel's output. With every agent Keel answers ``now'' questions at 0.99 to 1.00 and unique-answer questions at 0.86 to 0.90, but those with several or no answers at 0.59 to 0.69. The interval misreading is a difficulty every condition shares. Keel reads 5.6k to 9.2k input tokens a question against 15k to 21k for the whole tables.
 
-This marks a boundary, not a win. With small, static data that fits in a prompt, pasting it in does as well as Keel or better. Keel's gain in this run is on tenant-wide questions, whose log of tens of thousands of events does not fit in a prompt (Appendix~\ref{sec:tenant}). TDBench has no transaction time, so it does not test known-at reads.
+This marks a boundary, not a win. With small, static data that fits in a prompt, pasting it in does as well as Keel or better. Keel's gain in this run is on tenant-wide questions, whose log of tens of thousands of events does not fit in a prompt (\S\ref{sec:tenant}). TDBench has no transaction time, so it does not test known-at reads.
 
 % ===========================================================================
 \section{Tables behind the first run's figures}
@@ -737,7 +737,7 @@ This marks a boundary, not a win. With small, static data that fits in a prompt,
 \setcounter{table}{0}
 
 \begin{table*}[t]
-\caption{Accuracy on the 72 tenant-wide questions, by agent and system (Appendix~\ref{sec:tenant}); backs Figure~\ref{fig:3}.}
+\caption{Accuracy on the 72 tenant-wide questions, by agent and system (\S\ref{sec:tenant}); backs Figure~\ref{fig:3}.}
 \label{tab:b1}
 \centering
 \small
@@ -756,7 +756,7 @@ Sonnet & 0.99 & 0.78 & 0.26$^\dagger$ & 0.00 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Accuracy by question type, pooled over agents (Appendix~\ref{sec:bytype}); backs Figure~\ref{fig:4}.}
+\caption{Accuracy by question type, pooled over agents (\S\ref{sec:bytype}); backs Figure~\ref{fig:4}.}
 \label{tab:b2}
 \centering
 \small
@@ -775,7 +775,7 @@ Closed book & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 & 1.00 & 0.00 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Tenant-wide questions, USD per correct answer, with mean input tokens per question in parentheses (Appendix~\ref{sec:cost}); backs Figure~\ref{fig:5}.}
+\caption{Tenant-wide questions, USD per correct answer, with mean input tokens per question in parentheses (\S\ref{sec:cost}); backs Figure~\ref{fig:5}.}
 \label{tab:b3}
 \centering
 \small
@@ -791,7 +791,7 @@ Sonnet & 0.040 (26k) & 0.073 (54k) & 1.12 (420k) \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Poisoning run: accuracy with 95\% CI and the share of answers equal to the poisoner's wrong value, by condition and agent (Appendix~\ref{sec:governed}); backs Figure~\ref{fig:6}.}
+\caption{Poisoning run: accuracy with 95\% CI and the share of answers equal to the poisoner's wrong value, by condition and agent (\S\ref{sec:governed}); backs Figure~\ref{fig:6}.}
 \label{tab:b4}
 \centering
 \small
@@ -814,7 +814,7 @@ Same task & 0.85 [0.79, 0.90] & 0.14 & 0.81 [0.73, 0.88] & 0.17 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Tenant-wide accuracy by sub-type, pooled over every run of the three agents ($n$ questions) (Appendix~\ref{app:dev-systems}).}
+\caption{Tenant-wide accuracy by sub-type, pooled over every run of the three agents ($n$ questions) (\S\ref{app:dev-systems}).}
 \label{tab:b5}
 \centering
 \small
@@ -832,7 +832,7 @@ Rule listing (18) & 0.94 & 0.36 & 0.05 \\
 \end{table*}
 
 \begin{table*}[t]
-\caption{Set-valued tenant-wide questions (60 of 72): exact match vs set-F1, per agent (Appendix~\ref{app:dev-systems}).}
+\caption{Set-valued tenant-wide questions (60 of 72): exact match vs set-F1, per agent (\S\ref{app:dev-systems}).}
 \label{tab:b6}
 \centering
 \small
