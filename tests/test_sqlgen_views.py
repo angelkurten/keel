@@ -318,6 +318,21 @@ def test_describe_says_macros_take_no_schema_prefix():
     assert "no schema prefix" in text and "never spring.project_state_at(" in text  # named as what not to write
 
 
+def test_describe_names_the_duration_function():
+    """Haiku on the hard slice (evals/jira/hard): over the generated views, time_in questions were mostly missed by one day,
+    the agent counting days in its reply, though keel_days was there; the paragraph never named it."""
+    for dialect in ("duckdb", "postgres", "sqlite"):
+        text = sqlgen.describe(load_cartridge(JIRA), "acme", dialect=dialect)
+        assert "keel_days(a, b)" in text and "in SQL" in text, dialect
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_keel_days_is_the_fractional_days_between_two_instants(backend):
+    con = connect(load_cartridge(JIRA), backend)
+    a, b = ("'2020-01-01T00:00:00+00:00'", "'2020-01-03T12:00:00+00:00'")
+    assert con.execute(f"SELECT keel_days({a}, {b})").fetchall()[0][0] == pytest.approx(2.5)
+
+
 @pytest.mark.parametrize("backend", [b for b in BACKENDS if b != "sqlite"])
 def test_views_take_a_timestamp_or_iso_text_whatever_the_session_time_zone(backend):
     """An agent writes TIMESTAMP '2020-01-10 00:00' (UTC) or ISO text, for t and k alike, in a session in another zone."""

@@ -195,3 +195,42 @@ sqlgen2 − sql-log and keel+query − sql-log −0.3 (1 / 2). `confirm_analysis
 that label is the Haiku registration's rule, which does not apply here (no decision rule was registered for Sonnet).
 USD per correct answer: sql 0.0091, keel+query 0.0094, sqlgen2 0.0108, sql-log 0.0129 (1.2 to 1.4 times the others);
 input tokens per run 5,531, 10,170, 7,355 and 7,507 (Haiku read 20,122 over the raw log).
+
+## Third addendum, 2026-11-03, before any of its runs: the duration remedy (exploratory, with a stated prediction)
+
+Read after the slice's result: Haiku over the compiled interfaces missed `time_in` mostly by one day, counting days in
+its reply, although the compiled SQL has had `keel_days(a, b)` (fractional days between two instants) in every
+dialect; the generated paragraph never named it. The remedy, a change to `keel/` (`keel.sqlgen.describe`, the
+first time this slice's runs leave d620fcb): one sentence in the paragraph, the same for every cartridge, "keel_days(a,
+b) is the days from instant a to b as a fraction (2.5: two and a half days): compute durations in SQL with it, adding
+periods and rounding there, rather than counting dates by hand." Nothing else under `keel/` changes; tests in
+`tests/test_sqlgen_views.py`.
+
+Run: Haiku, 3 repetitions, `sqlgen2` and `keel+query` (the two conditions whose paragraph is generated), all 320
+questions so a side effect on the other types shows, from a clean worktree of the commit that adds this section;
+1,920 runs, about 1.5 USD (their cost on the registered run), brakes 1.0, 1.0 and 0.7 USD.
+
+What is compared: each condition after the remedy against the same condition's registered rows
+(`results/hard-haiku.jsonl`), paired per question, accuracy per type and overall, with the cluster interval and no
+adjustment. Stated before the run: the remedy is called effective if, for **both** conditions, `time_in` accuracy
+rises by at least 5 points and overall accuracy does not fall by more than 1 point; otherwise it is reported as not
+effective. Either way the slice's registered result above is unchanged; the paper reports this as an exploratory test
+of a post-hoc explanation.
+
+```bash
+B="... the same command as above, with --systems sqlgen2,keel+query"
+$B --data $D/export  --tenants hyperledger,mariadb,spring --reps 3 --max-usd 1.0 --out $R/hard-days-haiku.jsonl
+$B --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 3 --max-usd 1.0 --out $R/hard-days-haiku.jsonl
+$B --data $D/confirm --tenants apache-tajo,apache-rave --reps 3 --max-usd 0.7 --out $R/hard-days-haiku.jsonl
+# the new rows renamed `<system>+days`, paired against the registered rows of the same condition
+uv run --with numpy python -c "
+import json; from pathlib import Path; from evals.jira import confirm_analysis as ca
+H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())
+qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}
+old = [json.loads(l) for l in open('$R/hard-haiku.jsonl')]
+new = [json.loads(l) | {'system': json.loads(l)['system'] + '+days'} for l in open('$R/hard-days-haiku.jsonl')]
+for typ in (None, 'time_in'):
+    q = {k: v for k, v in qs.items() if typ is None or v['type'] == typ}
+    print(typ or 'all', ca.markdown(ca.analyze(q, old + new, pairs=[('sqlgen2+days', 'sqlgen2'), ('keel+query+days', 'keel+query')])))
+" > $R/hard-days-stats.md
+```

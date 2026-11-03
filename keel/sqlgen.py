@@ -808,7 +808,8 @@ def describe(cartridge: Any, tenant: str | None = None, dialect: str = "duckdb")
         f"by its bare name, no schema prefix ({m}(...), never {tenant or '<tenant>'}.{m}(...)), and takes the tenant "
         f"first{who}. t is valid time (when something held in the world); k is transaction time: with k := k a "
         f"macro answers as recorded by k (some records came late, some were first recorded wrong and corrected later). "
-        f"{instants}")]
+        f"{instants} keel_days(a, b) is the days from instant a to b as a fraction (2.5: two and a half days): compute "
+        f"durations in SQL with it, adding periods and rounding there, rather than counting dates by hand.")]
     for kind, facts, attrs, ones in kind_views(cartridge):
         spec = cartridge.entities.get(kind)
         first = str(spec.get("description") or "").strip().split(". ")[0].rstrip(".") if isinstance(spec, dict) else ""
