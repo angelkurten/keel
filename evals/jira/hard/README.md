@@ -286,3 +286,18 @@ print(ca.markdown(ca.analyze(qs, old + comp + base, pairs=[('sqlgen2+days', 'sql
       ('sql+days', 'sql-log+days'), ('sql+days', 'sql-tables+days'), ('sql+days', 'sql'), ('sql-tables+days', 'sql-tables'), ('sql-log+days', 'sql-log')])))
 " > $R/hard-days-baselines-stats.md
 ```
+
+Result of the fourth addendum, 2026-11-03 (`results/hard-days-baselines-haiku.jsonl`, `results/hard-days-baselines-stats.md`):
+2,880 runs, all on 8a9b2e3 with `dirty: false`, no harness error, 2.45 USD. With the sentence: sql 97.8%, sql-tables
+96.9, sql-log 96.6 (sqlgen2 98.2 and keel+query 98.6 from the third addendum).
+
+- **R1** sqlgen2+days − sql+days +0.4 points [−0.6, +1.6] (10 / 7): **confirmed**.
+- **R2** keel+query+days − sql+days +0.8 [−0.1, +2.2] (10 / 4): **confirmed**.
+- **R3** sql+days − sql-log+days +1.2 [−0.2, +2.8] (14 / 8): the lower bound is not above 0, so **the lesson "the views
+  matter more than the language" is withdrawn for Haiku**, as registered.
+
+Beside them: sql+days − sql-tables+days +0.9 [−0.4, +2.3]; each baseline against its unremedied rows: sql +0.4
+[−0.5, +1.3], sql-tables +0.9 [−0.6, +2.6], sql-log +2.1 [+0.5, +3.5]. time_in with the sentence: sql 99.5, sql-tables
+99.0, sql-log 99.5. By type (sql, sql-tables, sql-log): two_hop 95.8, 95.8, 94.3; known_count 100, 99.5, 98.4; entries
+94.8, 93.8, 96.9; both 99.0, 96.4, 93.8. USD per correct answer: sql 0.00059, sql-tables 0.00082, sql-log 0.00123
+(keel+query 0.00067, sqlgen2 0.00095); input tokens per run 7,119, 8,601 and 15,084.
