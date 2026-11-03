@@ -239,3 +239,48 @@ def test_bench_runs_the_tables_only_condition(monkeypatch, tmp_path):
     res = bench.ask(Gw(), tmp_path, "sql-tables", "m", q, {}, {})
     assert res["system"] == "sql-tables" and res["calls"][0]["error"]  # the macro does not exist there
     assert sql_system.TOOLS_TEXT_TABLES in seen[0][0]["content"] and "issue_state_at" not in seen[0][0]["content"]
+
+
+def test_log_only_database_has_the_raw_log_and_nothing_else():
+    con = sql_system.connect(sql_system.build(LOG, log=True))
+    assert [r[0] for r in con.execute("SELECT table_name FROM information_schema.tables").fetchall()] == ["events"]
+    assert one(con, "SELECT count(*) FROM events") == len(LOG)
+    assert one(con, "SELECT payload->>'status' FROM events WHERE id = 'jira:t:P-1:h1'") == "In Progress"
+
+
+def test_log_only_text_documents_the_log_but_no_derived_table():
+    text = sql_system.TOOLS_TEXT_LOG
+    for name in ("events", "occurred_at", "recorded_at", "payload", "issue.created", "issue.status_changed", "issue.linked",
+                 "issue.unlinked", "status_category", "relation", "other", "parent"):
+        assert name in text, name
+    for name in ("field_versions", "links(", "statuses(", "valid_from", "superseded_at", *MACROS):
+        assert name not in text, name
+    for rule in ("blocked", "stalled", "urgent_unassigned"):
+        assert rule in text
+
+
+def test_bench_runs_the_log_only_condition(monkeypatch, tmp_path):
+    pytest.importorskip("numpy")
+    pytest.importorskip("mcp")
+    from evals.jira import bench
+
+    (tmp_path / "t.bitemporal.jsonl").write_text("".join(json.dumps(e) + "\n" for e in LOG))
+    monkeypatch.setitem(bench.INSTANCES, "t", ("Test", "P"))
+    seen: list[list[dict[str, Any]]] = []
+
+    class Gw:
+        def route(self, model: str) -> str:
+            return "fake"
+
+        def chat(self, model: str, messages: list[dict[str, Any]], tools: Any) -> tuple[dict[str, Any], dict[str, int], float]:
+            seen.append([dict(m) for m in messages])
+            if len(messages) == 2:
+                call = {"id": "c1", "function": {"name": "sql_query", "arguments": json.dumps({"sql": "SELECT count(*) FROM field_versions"})}}
+                return {"content": "", "tool_calls": [call]}, {"input": 10, "output": 5}, 0.001
+            return {"content": 'ANSWER: "unknown"'}, {"input": 20, "output": 5}, 0.001
+
+    q = {"id": "t-as_of-001", "tenant": "t", "type": "as_of", "question": "What was the status of P-1 on 2020-01-15 00:00 UTC?",
+         "answer": "In Progress", "answer_type": "value", "params": {}}
+    res = bench.ask(Gw(), tmp_path, "sql-log", "m", q, {}, {})
+    assert res["system"] == "sql-log" and res["calls"][0]["error"]  # no derived table there
+    assert sql_system.TOOLS_TEXT_LOG in seen[0][0]["content"]

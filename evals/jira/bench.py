@@ -23,6 +23,8 @@ happened and when it was recorded, corrections included), in its best ordinary f
           (evals/jira/sql_system.py; run with `--with duckdb==2.0.0`).
 - sql-tables: the same tables, prompt and tool without the macros or ready-made predicates (an ablation): the agent
           writes the bitemporal conditions itself, and gets the rules as the cartridge's definitions in words.
+- sql-log: the raw event log alone, one table (evals/jira/sql_system.TOOLS_TEXT_LOG): the agent derives valid time,
+          transaction time and corrections from the events itself, knowing nothing of Keel's or our tables.
 - sqlgen: the same tool over the schema and macros Keel generates from the cartridge (keel/sqlgen.py), filled by
           ingesting the log through Keel (evals/jira/sqlgen_system.py): generated macros in place of hand-written ones.
 - sqlgen2: post hoc (after the held-out results, not pre-registered): the same, with the cartridge's declared facts
@@ -100,6 +102,7 @@ TOOLS_TEXT = {
     "tgms": "",  # filled from evals.jira.tgms_system on first use
     "sql": "",  # filled from evals.jira.sql_system on first use
     "sql-tables": "",
+    "sql-log": "",
     "sqlgen": "",
     "sqlgen2": "",
 }
@@ -163,6 +166,7 @@ def keel_cartridge() -> Any:
     return c if KEEL_RULES else replace(c, rules={})
 
 
+SQL_SYSTEMS = ("sql", "sql-tables", "sql-log", "sqlgen", "sqlgen2")
 KEEL_SYSTEMS = ("keel", "keel+query")  # keel+query: the five tools and the optional sixth (keel serve --query), exploratory
 
 
@@ -365,7 +369,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
 
         tools_text = tgms_system.TOOLS_TEXT
         prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=tools_text, fmt=fmt)
-    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+    if system in SQL_SYSTEMS:
         from evals.jira import sql_system
 
         if system in ("sqlgen", "sqlgen2"):
@@ -375,13 +379,13 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
             db = sqlgen_system.tenant_db(data, tenant, source(data, tenant), v2=v2)
             text = sqlgen_system.tools_text_v2(tenant) if v2 else sqlgen_system.tools_text(tenant)
         else:
-            db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql")
-            text = sql_system.TOOLS_TEXT if system == "sql" else sql_system.TOOLS_TEXT_TABLES
+            db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql", log=system == "sql-log")
+            text = {"sql": sql_system.TOOLS_TEXT, "sql-tables": sql_system.TOOLS_TEXT_TABLES, "sql-log": sql_system.TOOLS_TEXT_LOG}[system]
         prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "keel+query": keel_tools(data, tenant, True) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
-             "sql": None, "sql-tables": None, "sqlgen": None, "sqlgen2": None}[system]
-    if system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+             "sql": None, "sql-tables": None, "sql-log": None, "sqlgen": None, "sqlgen2": None}[system]
+    if system in SQL_SYSTEMS:
         tools = sql_system.TOOLS
     if system == "tgms":
         tools = tgms_system.tools()
@@ -418,7 +422,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
                         text = json.dumps(rags[tenant].search(gw, str(args.get("query", "")), args.get("issue"), min(int(args.get("k") or 15), 50)))
                     elif system == "tgms":
                         text = tgms_system.call(data, tenant, name, args)
-                    elif system in ("sql", "sql-tables", "sqlgen", "sqlgen2"):
+                    elif system in SQL_SYSTEMS:
                         if name != "sql_query":
                             raise ValueError(f"unknown tool {name}")
                         text = sql_system.query(db, str(args.get("sql", "")))

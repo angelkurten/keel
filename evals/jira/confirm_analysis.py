@@ -28,7 +28,8 @@ HYPOTHESES = [
 ]
 
 
-def analyze(qs: dict[str, dict[str, Any]], rows: list[dict[str, Any]], b: int = B, seed: int = SEED) -> dict[str, Any]:
+def analyze(qs: dict[str, dict[str, Any]], rows: list[dict[str, Any]], b: int = B, seed: int = SEED,
+            pairs: list[tuple[str, str]] = ()) -> dict[str, Any]:
     res = ha.analyze(qs, rows, b, seed)  # per-condition accuracy, cost and tokens, as for the held-out set
     an = Analysis(qs, b, seed)
     acc = {s: per_question([r for r in rows if r["id"] in qs and r["system"] == s and AGENTS.get(r["model"], r["model"]) == AGENT])
@@ -43,7 +44,13 @@ def analyze(qs: dict[str, dict[str, Any]], rows: list[dict[str, Any]], b: int = 
         cl = p["cluster"]
         hyps.append(h | {"n": p["n"], "diff": p["mean"], "lo": cl["lo"], "hi": cl["hi"], "pos": p["pos"], "neg": p["neg"],
                          "confirmed": cl["lo"] > h["margin"]})
-    return res | {"hypotheses": hyps}
+    extra = []  # exploratory differences (--pairs): the same statistics, no decision rule
+    for a, b_ in pairs:
+        p = an.paired(acc[a], acc[b_]) if acc.get(a) and acc.get(b_) else None
+        if p is not None:
+            extra.append({"a": a, "b": b_, "n": p["n"], "diff": p["mean"], "lo": p["cluster"]["lo"], "hi": p["cluster"]["hi"],
+                          "pos": p["pos"], "neg": p["neg"]})
+    return res | {"hypotheses": hyps, "pairs": extra}
 
 
 def markdown(res: dict[str, Any]) -> str:
@@ -56,6 +63,11 @@ def markdown(res: dict[str, Any]) -> str:
         out.append(f"| {h['name']} | {h['claim']} | {h['a']} - {h['b']} | {h['n']} | {ha._pt(h['diff'])} | "
                    f"[{ha._pt(h['lo'])}, {ha._pt(h['hi'])}] | > {ha._pt(h['margin'])} | {h['pos']} / {h['neg']} | "
                    f"{'confirmed' if h['confirmed'] else 'not confirmed'} |")
+    if res.get("pairs"):
+        out += ["", "## Exploratory differences (paired, questions both answered; 95% cluster interval, no decision rule)", "",
+                "| A - B | n | A - B (points) | 95% CI (cluster) | A better / B better |", "| --- | ---: | ---: | --- | --- |"]
+        out += [f"| {x['a']} - {x['b']} | {x['n']} | {ha._pt(x['diff'])} | [{ha._pt(x['lo'])}, {ha._pt(x['hi'])}] | {x['pos']} / {x['neg']} |"
+                for x in res["pairs"]]
     return text + "\n".join(out) + "\n"
 
 
@@ -64,11 +76,13 @@ def main() -> None:
     ap.add_argument("results", nargs="+", type=Path)
     ap.add_argument("--questions", type=Path, default=HERE)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--pairs", default="", help="exploratory differences to add, as a:b,a:b (e.g. sql-log:sql)")
     a = ap.parse_args()
     manifest = json.loads((a.questions / "manifest.json").read_text())
     qs = {q["id"]: q for t in manifest["tenants"] for q in json.loads((a.questions / f"{t}.questions.json").read_text())}
     rows = [json.loads(line) for p in a.results for line in p.open()]
-    text = markdown(analyze(qs, rows))
+    pairs = [tuple(x.split(":")) for x in a.pairs.split(",") if x]
+    text = markdown(analyze(qs, rows, pairs=pairs))
     print(text)
     if a.out:
         a.out.write_text(text)

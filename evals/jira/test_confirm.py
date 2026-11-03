@@ -89,6 +89,19 @@ def test_the_three_hypotheses_and_their_decision_rules():
     assert "H1" in ca.markdown(res) and "not confirmed" in ca.markdown(res)
 
 
+def test_exploratory_pairs_are_reported_without_a_decision():
+    pytest.importorskip("numpy")
+    from evals.jira import confirm_analysis as ca
+
+    qs = questions()
+    data = rows(qs, "sql", set()) + rows(qs, "sql-log", set(range(0, 40, 4)))  # sql-log misses 10 of 40
+    res = ca.analyze(qs, data, b=500, pairs=[("sql-log", "sql"), ("keel", "sql")])
+    assert [(x["a"], x["b"]) for x in res["pairs"]] == [("sql-log", "sql")]  # a pair without its rows is left out
+    assert res["pairs"][0]["diff"] == pytest.approx(-0.25) and "confirmed" not in res["pairs"][0]
+    md = ca.markdown(res)
+    assert "Exploratory" in md and "sql-log - sql" in md
+
+
 def test_amended_candidates_are_every_project_neither_set_used(tmp_path):
     """Amendment 2026-11-01: no candidate of the eight unused instances passed; every project of the restored instances
     but the held-out set's three is a candidate."""

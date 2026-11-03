@@ -108,3 +108,36 @@ doing the date arithmetic in its reply instead of in SQL. The agent's queries co
 `time_in` runs with `sql` (4 missed), 25 with `sqlgen2` (21 missed) and 8 with `keel+query` (26 missed). Neither
 paragraph documents date functions; why the hand-written schema leads the agent to compute in SQL is not measured.
 This is where most of hand-written SQL's lead over the generated layer comes from.
+
+## Addendum, 2026-11-02, before any of its runs: the agent writing SQL from less (exploratory)
+
+The author asked whether the agent could be measured writing the SQL itself, knowing neither Keel's generated layer
+nor ours. Two conditions run on the same 320 questions, same agent, repetitions and route, both **exploratory** (no
+decision rule; the result above is unchanged by them):
+
+- `sql-tables`: our bitemporal tables (`field_versions`, `links` with valid and transaction intervals, `issues`,
+  `statuses`, `events`) without macros or ready-made predicates; the agent writes every condition. Run before on the
+  held-out set only.
+- `sql-log`: new (`sql_system.TOOLS_TEXT_LOG`, with tests in `test_sql.py`): one table, `events`, the raw log as written,
+  with each event type's payload and how late records and corrections show in it; the agent derives valid time,
+  transaction time and corrections itself. Written by the author after this slice's result was known; like the other
+  paragraphs it documents no date function. Event ids are as written, so a corrected record's id ends in `:wrong`, as
+  in `sql-tables`' `events` table. No SQL over the raw log was checked to reach the gold.
+
+What is reported: accuracy per condition and per type, and these paired differences with the same cluster interval,
+no adjustment and no decision rule: `sql-tables − sql`, `sql-log − sql`, `sqlgen2 − sql-log`, `keel+query − sql-log`,
+`keel − sql-log`. `confirm_analysis.py` gained `--pairs` for that (its registered output is unchanged, checked
+byte for byte on `results/hard-stats.md`). Code: the commit that adds this section; `keel/` still d620fcb.
+
+```bash
+B="... the same command as above ... --systems sql-tables,sql-log"
+# pilot, harness errors only, not analysed
+$B --data $D/export --tenants hyperledger,mariadb,spring --per-type 1 --reps 1 --max-usd 0.1 --out $R/hard-ablation-pilot.jsonl
+# (and the held-out and confirmation tenants, as above)
+# the run: 1,920 runs, about 1.6 USD; brakes 0.9, 0.9 and 0.6 USD
+$B --data $D/export  --tenants hyperledger,mariadb,spring --reps 3 --max-usd 0.9 --out $R/hard-ablation-haiku.jsonl
+$B --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 3 --max-usd 0.9 --out $R/hard-ablation-haiku.jsonl
+$B --data $D/confirm --tenants apache-tajo,apache-rave --reps 3 --max-usd 0.6 --out $R/hard-ablation-haiku.jsonl
+uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R/hard-ablation-haiku.jsonl --questions evals/jira/hard \
+    --pairs sql-tables:sql,sql-log:sql,sqlgen2:sql-log,keel+query:sql-log,keel:sql-log --out $R/hard-ablation-stats.md
+```
