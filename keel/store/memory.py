@@ -745,7 +745,7 @@ class MemoryStore:
 
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
-        return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels)) - set(self._forgotten) if not is_global(t))
+        return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels) | {t for t, _ in self._agents}) - set(self._forgotten) if not is_global(t))
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return dict(self._forgotten)

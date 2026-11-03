@@ -1512,6 +1512,7 @@ def test_stored_agents_are_bitemporal_per_tenant(store):
     assert store.agent("acme/c1", "writer")["description"] == "Writes scripts"
     assert store.agent("acme/c1", "writer", at=t0 + timedelta(days=1)) == {"extends": "team-member"}  # who it was then
     assert store.agent("acme/c2", "writer") is None  # never another tenant's
+    assert store.tenants() == ["acme/c1", "acme/c2"]  # a tenant with only agents is a tenant (keel validate --db sweeps them)
     assert store.agents("acme/c1") == {"writer": {"extends": "team-member", "description": "Writes scripts"}}
     assert store.remove_agent("acme/c1", "writer", t1 + timedelta(days=1)) and not store.remove_agent("acme/c1", "writer", t1 + timedelta(days=2))
     assert store.agent("acme/c1", "writer") is None and store.agents("acme/c1") == {}

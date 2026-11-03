@@ -81,4 +81,19 @@ try {
     ok($e->status === 401, '401');
 }
 ok(Cartridge::NAME === 'fleet' && count(Cartridge::KINDS) === 7 && Cartridge::RULES['tire_critical']['threshold_mm'] === 3, 'constants');
+// stored agents, on the server whose cartridge says registry: store
+if (isset($argv[3])) {
+    $store = new \Keel\Sdk\Client($argv[3], $tenant, $secret);
+    $put = $store->putAgent('writer', ['extends' => 'team-member', 'description' => 'Writes']);
+    ok($put === ['id' => 'writer', 'extends' => 'team-member', 'description' => 'Writes'], 'putAgent: ' . json_encode($put));
+    try {
+        $store->putAgent('x', ['extends' => 'nobody']);
+        ok(false, 'expected 422');
+    } catch (KeelError $e) {
+        ok($e->status === 422, 'putAgent refusal ' . $e->status);
+    }
+    ok(array_column($store->agents(), 'id') === ['writer'], 'agents');
+    ok(count((new \Keel\Sdk\Client($argv[3], $tenant, $secret, 'writer'))->search('T-9001')) > 0, 'a stored agent binds');
+    ok($store->removeAgent('writer') === ['removed' => 'writer'] && $store->agents() === [], 'removeAgent');
+}
 echo "php sdk ok\n";

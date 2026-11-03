@@ -23,7 +23,7 @@ import json
 import threading
 from datetime import datetime
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from keel import __version__
 from keel.envelope import Event
@@ -71,6 +71,9 @@ class Client:
             conn.close()
 
     def _post(self, path: str, body: Any) -> Any:
+        return self._request("POST", path, body)
+
+    def _request(self, method: str, path: str, body: Any = None) -> Any:
         headers = {"Content-Type": "application/json", "User-Agent": f"keel-context/{__version__}", "X-Keel-Tenant": self.tenant}
         if self.agent:
             headers["X-Keel-Agent"] = self.agent
@@ -79,15 +82,15 @@ class Client:
         if self.traceparent:
             headers["traceparent"] = self.traceparent
         headers.update(self.headers)
-        data = json.dumps(body).encode()
+        data = None if body is None else json.dumps(body).encode()
         if self.http_client is not None:
-            res = self.http_client.post(self.base_url + path, content=data, headers=headers)
+            res = self.http_client.request(method, self.base_url + path, content=data, headers=headers)
             return self._answer(res.status_code, res.content, res.reason_phrase)
         for attempt in (1, 2):
             conn = self._connection()
             reused = conn.sock is not None
             try:
-                conn.request("POST", self._prefix + path, body=data, headers=headers)
+                conn.request(method, self._prefix + path, body=data, headers=headers)
                 res = conn.getresponse()
                 raw = res.read()
                 break
@@ -171,3 +174,16 @@ class Client:
     def events(self, batch: Event | dict[str, Any] | list[Event | dict[str, Any]]) -> dict[str, Any]:
         items = batch if isinstance(batch, list) else [batch]
         return self._post("/v1/events", [e.model_dump(mode="json") if isinstance(e, Event) else e for e in items])
+
+    # stored agents (`registry: store`): the operator's secret or an account key, never a key narrowed to an agent
+    def put_agent(self, agent_id: str, spec: dict[str, Any]) -> dict[str, Any]:
+        """Create or replace this tenant's agent: `{"extends": <profile>, ...}`, which may only narrow its profile."""
+        return self._request("PUT", f"/v1/agents/{quote(agent_id, safe='')}", spec)
+
+    def agents(self) -> list[dict[str, Any]]:
+        """This tenant's stored agents, each with its `id`."""
+        return self._request("GET", "/v1/agents")
+
+    def remove_agent(self, agent_id: str) -> dict[str, Any]:
+        """Close this tenant's agent; the audit keeps who it was."""
+        return self._request("DELETE", f"/v1/agents/{quote(agent_id, safe='')}")

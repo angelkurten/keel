@@ -275,3 +275,68 @@ def test_stored_agents_over_http():
     c.agent_registry = None
     off = TestClient(build_http_app(c, s, secret="s3cret"))
     assert off.get("/v1/agents", headers={"Authorization": "Bearer s3cret", "X-Keel-Tenant": "c1"}).status_code == 404
+
+
+def test_the_python_client_manages_stored_agents():
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from keel.client import Client, KeelError
+    from keel.http import build_http_app
+
+    c, s = _fleet_with_profiles()
+    http = TestClient(build_http_app(c, s, secret="s3cret"))
+    keel = Client("http://testserver", TENANT, secret="s3cret", http_client=http)
+    assert keel.put_agent("writer", {"extends": "team-member", "description": "Writes"}) == {"id": "writer", "extends": "team-member", "description": "Writes"}
+    assert keel.agents() == [{"id": "writer", "extends": "team-member", "description": "Writes"}]
+    with pytest.raises(KeelError) as err:
+        keel.put_agent("x", {"extends": "nobody"})
+    assert err.value.status == 422
+    assert Client("http://testserver", TENANT, secret="s3cret", agent="writer", http_client=http).search("T-9001")  # it binds
+    assert keel.remove_agent("writer") == {"removed": "writer"} and keel.agents() == []
+
+
+def _cartridge_with_profiles(tmp_path):
+    cart = tmp_path / "fleet"
+    shutil.copytree(FLEET, cart)
+    with (cart / "cartridge.yaml").open("a", encoding="utf-8") as fh:
+        fh.write("\nregistry: store\nagents:\n  team-member:\n    writes: [task, agent]\n    reads: { kinds: [unit, tire, inspection] }\n")
+    return cart
+
+
+def test_cli_sets_lists_and_removes_stored_agents(tmp_path):
+    from typer.testing import CliRunner
+
+    from keel.cli import app
+
+    cart, db, run = _cartridge_with_profiles(tmp_path), str(tmp_path / "k.db"), CliRunner().invoke
+    res = run(app, ["agents", "set", str(cart), "writer", "--tenant", "c1", "--db", db, "--extends", "team-member",
+                    "--description", "Writes", "--kinds", "tire", "--writes", "task"])
+    assert res.exit_code == 0, res.output
+    assert json.loads(res.output) == {"id": "writer", "extends": "team-member", "description": "Writes", "writes": ["task"], "reads": {"kinds": ["tire"]}}
+    res = run(app, ["agents", "set", str(cart), "x", "--tenant", "c1", "--db", db, "--extends", "team-member", "--kinds", "ticket"])
+    assert res.exit_code != 0 and "widens" in res.output
+    res = run(app, ["agents", "list", "--tenant", "c1", "--db", db])
+    assert [json.loads(line)["id"] for line in res.output.splitlines()] == ["writer"]
+    assert run(app, ["agents", "rm", "writer", "--tenant", "c1", "--db", db]).exit_code == 0
+    assert run(app, ["agents", "rm", "writer", "--tenant", "c1", "--db", db]).exit_code != 0
+    assert run(app, ["agents", "list", "--tenant", "c1", "--db", db]).output == ""
+
+
+def test_validate_reports_stored_agents_the_cartridge_no_longer_allows(tmp_path):
+    from typer.testing import CliRunner
+
+    from keel import SqliteStore
+    from keel.cli import app
+
+    cart, db = _cartridge_with_profiles(tmp_path), tmp_path / "k.db"
+    c = load_cartridge(cart)
+    from keel.agents import put_agent
+
+    put_agent(c, SqliteStore(db), "c1", "writer", {"extends": "team-member", "reads": {"kinds": ["unit"]}})
+    run = CliRunner().invoke
+    assert run(app, ["validate", str(cart), "--db", str(db)]).exit_code == 0
+    yaml = (cart / "cartridge.yaml").read_text(encoding="utf-8")
+    (cart / "cartridge.yaml").write_text(yaml.replace("kinds: [unit, tire, inspection]", "kinds: [tire, inspection]"), encoding="utf-8")
+    res = run(app, ["validate", str(cart), "--db", str(db)])
+    assert res.exit_code == 1 and "tenant 'c1': stored agent 'writer'" in res.output and "unit" in res.output

@@ -165,10 +165,19 @@ def init(
 def validate(
     cartridge: Path,
     events: Path | None = typer.Option(None, help="Also check a .jsonl stream: unknown types, wrong subject kinds, payload shape."),
+    db: str | None = typer.Option(None, "--db", help="Also check every tenant's stored agents (registry: store) against this cartridge, after an ontology change: a SQLite file, or a mysql:// or postgresql:// URL."),
 ):
-    """Check that the catalog, the ontology and the handlers agree; with --events, that a stream fits the catalog."""
+    """Check that the catalog, the ontology and the handlers agree; with --events, that a stream fits the catalog;
+    with --db, that the agents tenants stored still fit their profiles."""
     c = load_cartridge(cartridge)
     problems = c.validate()
+    if db and c.agent_registry == "store":
+        from keel.agents import stored_problems
+
+        store = _store(db)
+        for t in store.tenants():
+            for agent_id, spec in store.agents(t).items():
+                problems += [f"tenant '{t}': stored agent '{agent_id}': {p}" for p in stored_problems(c, agent_id, spec)]
     checked = 0
     if events:
         for n, line in enumerate(events.read_text(encoding="utf-8").splitlines(), 1):
@@ -804,6 +813,56 @@ def keys_revoke(key_id: str = typer.Argument(..., help="The key's id (kk_...).",
     if not revoke_key(_store(db), key_id):
         raise typer.BadParameter(f"no live key '{key_id}'")
     typer.echo(json.dumps({"id": key_id, "revoked": True}))
+
+
+agents_app = typer.Typer(help="Stored agents: a tenant's own agents, each extending a profile of the cartridge (`registry: store`).", no_args_is_help=True)
+app.add_typer(agents_app, name="agents")
+AGENTS_TENANT = typer.Option(..., "--tenant", envvar="KEEL_TENANT", help="The tenant, as stored (an account's tenant is account/tenant).")
+NAMES = lambda what: typer.Option(None, help=f"Comma-separated {what}: only these (a subset of the profile's).")
+
+
+@agents_app.command("set")
+def agents_set(
+    cartridge: Path,
+    agent_id: str = typer.Argument(..., help="The agent's id: it signs as annotate:<id>.", show_default=False),
+    tenant: str = AGENTS_TENANT,
+    db: str = KEYS_DB,
+    extends: str = typer.Option(..., "--extends", help="The cartridge entry (profile) it inherits and may only narrow."),
+    description: str | None = typer.Option(None, help="What this agent does."),
+    writes: str | None = NAMES("scopes it may annotate"),
+    kinds: str | None = NAMES("entity kinds it may read"),
+    relations: str | None = NAMES("relations it may read"),
+    query: bool | None = typer.Option(None, "--query/--no-query", help="--no-query takes the profile's query away; --query keeps it."),
+):
+    """Create or replace a stored agent. Prints it as JSON; a spec that widens its profile is refused."""
+    from keel.agents import put_agent
+
+    split = lambda s: [x.strip() for x in s.split(",") if x.strip()]
+    reads = {k: split(v) for k, v in (("kinds", kinds), ("relations", relations)) if v is not None}
+    spec = {"extends": extends, "description": description, "writes": split(writes) if writes is not None else None, "reads": reads or None, "query": query}
+    spec = {k: v for k, v in spec.items() if v is not None}
+    try:
+        put_agent(load_cartridge(cartridge), _store(db), tenant, agent_id, spec)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps({"id": agent_id, **spec}))
+
+
+@agents_app.command("list")
+def agents_list(tenant: str = AGENTS_TENANT, db: str = KEYS_DB):
+    """The tenant's stored agents, as JSON lines."""
+    for agent_id, spec in _store(db).agents(tenant).items():
+        typer.echo(json.dumps({"id": agent_id, **spec}))
+
+
+@agents_app.command("rm")
+def agents_rm(agent_id: str = typer.Argument(..., help="The agent's id.", show_default=False), tenant: str = AGENTS_TENANT, db: str = KEYS_DB):
+    """Remove a stored agent: its row is closed, never deleted, so the audit keeps who it was."""
+    from keel.agents import remove_agent
+
+    if not remove_agent(_store(db), tenant, agent_id):
+        raise typer.BadParameter(f"no stored agent '{agent_id}' for tenant '{tenant}'")
+    typer.echo(json.dumps({"id": agent_id, "removed": True}))
 
 
 def _index_cursor(index: str, tenant: str) -> Path:
