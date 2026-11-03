@@ -246,3 +246,43 @@ to 7% (12,954 and 13,982); cost per correct answer 0.00095 and 0.00067.
 Read after the result, post hoc and not registered: against hand-written SQL's registered rows (on d620fcb's
 `keel/`), sqlgen2 with the remedy is +0.8 points [−0.2, +2.0] (14 / 7) and keel+query +1.2 [+0.2, +2.5] (12 / 3).
 Different commits and a remedy chosen after reading the result: a direction, not a test.
+
+## Fourth addendum, 2026-11-03, before any of its runs: the duration remedy for the baselines too
+
+A reviewer noted the third addendum's remedy was asymmetric: only the generated paragraphs got the duration sentence,
+though the hand-written ones never named a date function either. This run gives the three hand-written baselines the
+same sentence, with DuckDB's own function in place of `keel_days` (their databases are unchanged):
+`sql_system.DAYS_SENTENCE`, "date_diff('microsecond', a, b) / 86400000000.0 is the days from instant a to b as a
+fraction (2.5: two and a half days): compute durations in SQL with it, adding periods and rounding there, rather than
+counting dates by hand.", appended to `sql`'s, `sql-tables`' and `sql-log`'s paragraphs (bench systems `sql+days`,
+`sql-tables+days`, `sql-log+days`; tests in `test_sql.py`).
+
+Run: Haiku, 3 repetitions, the three on all 320 questions, from a clean worktree of the commit that adds this
+section; 2,880 runs, about 2.8 USD (their cost on the registered run), brakes 1.2, 1.2 and 0.8 USD. `keel/` is a75faee's
+(the remedied paragraph); the compiled conditions' remedied rows are the third addendum's (`hard-days-haiku.jsonl`,
+same `keel/`; the harness differs only by the baselines' sentence).
+
+Decided by rules fixed now (paired over all 320 questions, cluster interval, no adjustment):
+- **R1** `sqlgen2+days − sql+days`: the compiled SQL is not worse than hand-written SQL when both are told the same,
+  if the lower bound is above −2 points.
+- **R2** `keel+query+days − sql+days`: the same.
+- **R3**, whether "the views matter more than the language" survives for Haiku: it does if `sql+days − sql-log+days` has
+  a lower bound above 0; otherwise the paper withdraws that lesson for Haiku.
+Reported beside them: each baseline's change from its unremedied rows, by type, and cost per correct answer.
+
+```bash
+B="... the same command as above, with --systems sql+days,sql-tables+days,sql-log+days"
+$B --data $D/export  --tenants hyperledger,mariadb,spring --reps 3 --max-usd 1.2 --out $R/hard-days-baselines-haiku.jsonl
+$B --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 3 --max-usd 1.2 --out $R/hard-days-baselines-haiku.jsonl
+$B --data $D/confirm --tenants apache-tajo,apache-rave --reps 3 --max-usd 0.8 --out $R/hard-days-baselines-haiku.jsonl
+uv run --with numpy python -c "
+import json; from pathlib import Path; from evals.jira import confirm_analysis as ca
+H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())
+qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}
+old = [json.loads(l) for l in open('$R/hard-haiku.jsonl')] + [json.loads(l) for l in open('$R/hard-ablation-haiku.jsonl')]
+comp = [json.loads(l) | {'system': json.loads(l)['system'] + '+days'} for l in open('$R/hard-days-haiku.jsonl')]
+base = [json.loads(l) for l in open('$R/hard-days-baselines-haiku.jsonl')]
+print(ca.markdown(ca.analyze(qs, old + comp + base, pairs=[('sqlgen2+days', 'sql+days'), ('keel+query+days', 'sql+days'),
+      ('sql+days', 'sql-log+days'), ('sql+days', 'sql-tables+days'), ('sql+days', 'sql'), ('sql-tables+days', 'sql-tables'), ('sql-log+days', 'sql-log')])))
+" > $R/hard-days-baselines-stats.md
+```

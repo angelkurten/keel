@@ -172,6 +172,11 @@ Rules (definitions):
 - stalled (issue): An issue has stalled when it is in progress and its status has not changed for 30 days.
 - urgent_unassigned (issue): An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned."""
 
+# The duration remedy for the hand-written baselines (evals/jira/hard/README.md, fourth addendum): the sentence
+# keel.sqlgen.describe gives the compiled views, with DuckDB's own function in place of keel_days.
+DAYS_SENTENCE = ("date_diff('microsecond', a, b) / 86400000000.0 is the days from instant a to b as a fraction (2.5: two and a "
+                 "half days): compute durations in SQL with it, adding periods and rounding there, rather than counting dates by hand.")
+
 TOOLS = [{"type": "function", "function": {
     "name": "sql_query", "description": "Run one read-only SQL query (DuckDB dialect) over the project's tables and macros; returns columns and rows (at most 200, with the total when cut).",
     "parameters": {"type": "object", "properties": {"sql": {"type": "string", "description": "one SELECT (or WITH ... SELECT) statement"}}, "required": ["sql"]}}}]

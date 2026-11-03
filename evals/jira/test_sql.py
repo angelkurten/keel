@@ -284,3 +284,38 @@ def test_bench_runs_the_log_only_condition(monkeypatch, tmp_path):
     res = bench.ask(Gw(), tmp_path, "sql-log", "m", q, {}, {})
     assert res["system"] == "sql-log" and res["calls"][0]["error"]  # no derived table there
     assert sql_system.TOOLS_TEXT_LOG in seen[0][0]["content"]
+
+
+def test_duration_sentence_is_duckdbs_own_function_and_right(con):
+    """The duration remedy given to the hand-written baselines (evals/jira/hard/README.md, fourth addendum): the same
+    sentence as the generated paragraph's, with DuckDB's built-in function in place of keel_days."""
+    assert "date_diff('microsecond', a, b) / 86400000000.0" in sql_system.DAYS_SENTENCE
+    assert "rather than counting dates by hand" in sql_system.DAYS_SENTENCE
+    assert one(con, "SELECT date_diff('microsecond', TIMESTAMP '2020-01-01', TIMESTAMP '2020-01-03 12:00') / 86400000000.0") == 2.5
+
+
+@pytest.mark.parametrize("base", ["sql", "sql-tables", "sql-log"])
+def test_bench_runs_each_baseline_with_the_duration_sentence(monkeypatch, tmp_path, base):
+    pytest.importorskip("numpy")
+    pytest.importorskip("mcp")
+    from evals.jira import bench
+
+    (tmp_path / "t.bitemporal.jsonl").write_text("".join(json.dumps(e) + "\n" for e in LOG))
+    monkeypatch.setitem(bench.INSTANCES, "t", ("Test", "P"))
+    seen: list[str] = []
+
+    class Gw:
+        def route(self, model: str) -> str:
+            return "fake"
+
+        def chat(self, model: str, messages: list[dict[str, Any]], tools: Any) -> tuple[dict[str, Any], dict[str, int], float]:
+            seen.append(messages[0]["content"])
+            return {"content": 'ANSWER: "unknown"'}, {"input": 20, "output": 5}, 0.001
+
+    q = {"id": "t-as_of-001", "tenant": "t", "type": "as_of", "question": "What was the status of P-1 on 2020-01-15 00:00 UTC?",
+         "answer": "In Progress", "answer_type": "value", "params": {}}
+    res = bench.ask(Gw(), tmp_path, f"{base}+days", "m", q, {}, {})
+    text = {"sql": sql_system.TOOLS_TEXT, "sql-tables": sql_system.TOOLS_TEXT_TABLES, "sql-log": sql_system.TOOLS_TEXT_LOG}[base]
+    assert res["system"] == f"{base}+days" and text in seen[0] and sql_system.DAYS_SENTENCE in seen[0]
+    plain = bench.ask(Gw(), tmp_path, base, "m", q, {}, {})
+    assert plain["system"] == base and sql_system.DAYS_SENTENCE not in seen[-1]

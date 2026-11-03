@@ -167,6 +167,7 @@ def keel_cartridge() -> Any:
 
 
 SQL_SYSTEMS = ("sql", "sql-tables", "sql-log", "sqlgen", "sqlgen2")
+DAYS_SYSTEMS = ("sql+days", "sql-tables+days", "sql-log+days")  # a baseline with sql_system.DAYS_SENTENCE appended
 KEEL_SYSTEMS = ("keel", "keel+query")  # keel+query: the five tools and the optional sixth (keel serve --query), exploratory
 
 
@@ -354,6 +355,8 @@ API_TOOLS = [{"type": "function", "function": f} for f in (
 
 
 def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rags: dict[str, Rag], apis: dict[str, Api], max_steps: int = 15) -> dict[str, Any]:
+    label, days = system, system in DAYS_SYSTEMS
+    system = system.removesuffix("+days") if days else system
     tenant = q["tenant"]
     if system == "tgms-pev":
         return ask_pev(gw, data, model, q)
@@ -381,6 +384,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
         else:
             db = sql_system.tenant_db(data, tenant, source(data, tenant), macros=system == "sql", log=system == "sql-log")
             text = {"sql": sql_system.TOOLS_TEXT, "sql-tables": sql_system.TOOLS_TEXT_TABLES, "sql-log": sql_system.TOOLS_TEXT_LOG}[system]
+            text += "\n" + sql_system.DAYS_SENTENCE if days else ""
         prompt = SYSTEM.format(project=project, instance=inst, today=datetime.now().strftime("%Y-%m-%d"), tools=text, fmt=fmt)
     tools = {"keel": keel_tools(data, tenant) if server else None, "keel+query": keel_tools(data, tenant, True) if server else None, "rag": RAG_TOOLS, "api": API_TOOLS, "closed": None,
              "graphiti": MEMORY_TOOLS, "mem0": MEMORY_TOOLS, "tgms": None,
@@ -448,7 +452,7 @@ def ask(gw: Gateway, data: Path, system: str, model: str, q: dict[str, Any], rag
     else:
         reply = "(stopped after the step limit)"
     answer, parsed = extract(reply)
-    return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": system, "model": model, "gold": q["answer"],
+    return {"id": q["id"], "tenant": tenant, "type": q["type"], "system": label, "model": model, "gold": q["answer"],
             "answer": answer, "parsed": parsed, "correct": parsed and grade(q, answer), "reply": reply[-2000:], "calls": calls,
             **({"keel_max_list": KEEL_MAX_LIST} if system in KEEL_SYSTEMS and KEEL_MAX_LIST else {}),
             **({"keel_rules": False} if system in KEEL_SYSTEMS and not KEEL_RULES else {}),
