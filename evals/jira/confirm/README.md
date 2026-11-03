@@ -185,3 +185,20 @@ same wording. Nothing is changed: the hypotheses are paired differences, and on 
 conditions fail alike, so each adds 0 to every difference; what they lower is every condition's absolute accuracy,
 by about 4 points on one-issue questions. A later set would word the question "linked to X by 'relates to'"; this
 one keeps the wording it was registered with.
+
+## Clean rerun, registered 2026-11-02 before it starts
+
+Every row of the run above carries commit 78d3f0d with `dirty: true` (untracked result files of another benchmark in
+the working tree), so the commit alone does not prove what ran. The author asked to rerun the set from a clean
+checkout. What is fixed now, before the rerun:
+
+- The same four conditions, agent, repetitions, route (Claude straight from Anthropic), questions and analysis, from a
+  clean `git worktree` of the commit that adds this section, so every row records `dirty: false`. `keel/` is
+  unchanged since d620fcb. The harness differs from 78d3f0d only by the `sql-log` condition of the hard slice
+  (`sql_system.TOOLS_TEXT_LOG`, `build(log=)`, `bench.SQL_SYSTEMS`), which none of the four conditions reads; and
+  `confirm_analysis --pairs`, unused here.
+- Commands: those above, without the pilot, the out file `results/confirm-haiku-clean.jsonl`, brake 2.5 USD, and
+  `confirm_analysis` on that file alone, out `results/confirm-clean-stats.md`.
+- What it decides: nothing new. The registered result above stands as run, and the rerun is reported beside it. If
+  a hypothesis's decision (confirmed or not) differs between the two runs, the paper says that hypothesis did not
+  reproduce and gives both; if all three agree, the paper cites the clean rows as the auditable copy.
