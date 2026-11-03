@@ -78,7 +78,8 @@ Numbers in the text that no table carries:
 | `sec:confirm` | clean rerun H3 lower bound 4 × 10⁻¹⁹; Holm / Bonferroni bounds −0.4 and 0.0; sign test p = 0.039; 10 questions every condition misses, all `links` | Snippet C |
 | `sec:heldout`, `sec:res-cost` | API 3.8 calls a run, Keel 1.6; 2.2 to 2.6 turns a run | Snippet G |
 | `sec:posthoc` | development set: 1,534 `query` calls, 281 failed | Snippet G. The split into 250 timeouts (185 during the sandbox copy) and 31 SQL errors (17 schema prefixes) is not recomputable: rows record only `error: true` per call, not the error text |
-| `sec:repro` | costs per stage; the hard slice 23.5 USD (3.3 + 2.3 + 13.9 + 4.0, the remedy's 4.0 being the third and fourth addenda, 1.53 + 2.45); 34.7 USD in all | Snippet H |
+| `sec:repro` | the hard slice 37.3 USD (3.27 + 2.30 + 13.92 + 1.53 + 2.45 + 13.84, the registration and its five addenda); 48.5 USD in all | Snippet H |
+| `sec:hard`, "A stronger agent" (fifth addendum); `sec:lessons`; `sec:conclusion` | Sonnet with the sentence 99.7 / 99.4 / 99.4 / 99.1 (`sql+days`, `keel+query`, `sqlgen2`, `sql-log+days`), none moved by more than one question; 1,280 runs, 13.8 USD; Haiku's prepared interfaces with the sentence 0.8 to 1.9 points below Sonnet with it on the same interface, at a twelfth to a fifteenth of its cost (15.3, 14.3, 11.8) | `hard-days-sonnet-stats.md` (command in `evals/jira/hard/README.md`, "Fifth addendum"); Haiku's side: `hard-days-baselines-stats.md`, `hard-days-stats.md` |
 | `sec:determinism` | real-log and synthetic determinism, ingest rates, read latencies | `evals/scale/README.md` ("Running it"), results in `evals/scale/results/scale.jsonl` and `summary.md` (`uv run python -m evals.scale.harness summary`) |
 | `sec:firstrun` | the development set's first run (accuracies, CIs, Holm) | `uv run --with numpy python -m evals.jira.stats_cluster` (writes `results/stats-cluster.{md,json}`; needs the development questions in `~/datasets/public-jira/export`); supplement §A to §E |
 
@@ -281,7 +282,8 @@ stages = {"held-out (registered, zone fix, sqlgen2, keel+query)": ["heldout-pilo
           "hard slice, registered": ["hard-pilot", "hard-haiku"], "hard slice, addendum": ["hard-ablation-pilot", "hard-ablation-haiku"],
           "hard slice, second addendum (Sonnet)": ["hard-sonnet-pilot", "hard-sonnet"],
           "hard slice, third addendum (remedy)": ["hard-days-haiku"],
-          "hard slice, fourth addendum (remedy for the baselines)": ["hard-days-baselines-haiku"]}
+          "hard slice, fourth addendum (remedy for the baselines)": ["hard-days-baselines-haiku"],
+          "hard slice, fifth addendum (Sonnet with the sentence)": ["hard-days-sonnet"]}
 total = 0
 for stage, files in stages.items():
     usd = 0
@@ -296,8 +298,8 @@ print(f"all: {total:.2f} USD")
 PY
 ```
 
-It prints 3.27, 2.30, 13.92, 1.53 and 2.45 USD for the five hard-slice stages (23.47; 23.5 in the paper, as 3.3 + 2.3 +
-13.9 + 4.0, the remedy's two addenda together) and 34.66 in all (34.7). Every row of `hard-days-baselines-haiku.jsonl`
+It prints 3.27, 2.30, 13.92, 1.53, 2.45 and 13.84 USD for the six hard-slice stages (37.31; 37.3 in the paper) and
+48.49 in all (48.5). Every row of `hard-days-baselines-haiku.jsonl`
 carries 8a9b2e3, clean.
 
 **I. Sonnet against Haiku on the hard slice** (`tab:hard` Sonnet rows, `sec:hard` "A stronger agent", `sec:lessons`):
@@ -443,7 +445,8 @@ at Anthropic's list prices of 2026-10-06 (`evals/efficiency/run.py`, `DIRECT_PRI
 | Hard slice, second addendum (Sonnet) | same README, "Second addendum" (`--models anthropic/claude-sonnet-5.5`; pilot brake 3 USD, then 17, 17 and 11) | `hard-sonnet-pilot.jsonl`, `hard-sonnet.jsonl` | 0.49 + 13.43 |
 | Hard slice, third addendum (remedy) | same README, "Third addendum" (`--systems sqlgen2,keel+query`, brakes 1.0, 1.0 and 0.7 USD, clean worktree of a75faee) | `hard-days-haiku.jsonl` | 1.53 |
 | Hard slice, fourth addendum (remedy for the baselines) | same README, "Fourth addendum" (`--systems sql+days,sql-tables+days,sql-log+days`, brakes 1.2, 1.2 and 0.8 USD, clean worktree of 8a9b2e3) | `hard-days-baselines-haiku.jsonl` | 2.45 |
-| **All of the above** | | | **34.66** (paper: 34.7; the hard slice 23.5 = 3.3 + 2.3 + 13.9 + 4.0, the remedy 1.53 + 2.45) |
+| Hard slice, fifth addendum (Sonnet with the sentence) | same README, "Fifth addendum" (`--models anthropic/claude-sonnet-5.5 --systems sql+days,sqlgen2,keel+query,sql-log+days`, brakes 6, 6 and 4 USD, clean worktree of 3b99234) | `hard-days-sonnet.jsonl` | 13.84 |
+| **All of the above** | | | **48.49** (paper: 48.5; the hard slice 37.3) |
 
 The development set's first run (GPT-6 Luna, Claude Haiku 5.5, Claude Sonnet 5.5; Graphiti, Mem0, retrieval, the API,
 TGMS, governed memory) is in `evals/jira/README.md`, in the order it was run; its spend is in supplement
@@ -477,6 +480,7 @@ harness (`evals/jira/sql_system.py`, `evals/jira/bench.py`).
 | Hard slice, second addendum (Sonnet, exploratory) | eaf3951 (2026-11-02 23:36) | fd6353c pilot recorded; 15ed1f0 result | pilot: eaf3951 (clean); run: fd6353c (clean) |
 | Hard slice, third addendum (duration remedy, exploratory, prediction stated) | a75faee (2026-11-03 09:09), with the `keel/sqlgen.py` sentence | 5f60d2b result | a75faee (clean) |
 | Hard slice, fourth addendum (duration remedy for the baselines, three decision rules) | 8a9b2e3 (2026-11-03 11:16) | f8c9a29 result | 8a9b2e3 (clean) |
+| Hard slice, fifth addendum (Sonnet with the sentence, exploratory) | 3b99234 (2026-11-03 13:24) | c3213b3 result | 3b99234 (clean) |
 
 Development-set rows: `full-haiku.jsonl` `keel` on 784630f and 72314eb (clean), `full-sql.jsonl` on e8ae81e (dirty).
 
