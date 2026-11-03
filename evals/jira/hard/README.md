@@ -141,3 +141,7 @@ $B --data $D/confirm --tenants apache-tajo,apache-rave --reps 3 --max-usd 0.6 --
 uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R/hard-ablation-haiku.jsonl --questions evals/jira/hard \
     --pairs sql-tables:sql,sql-log:sql,sqlgen2:sql-log,keel+query:sql-log,keel:sql-log --out $R/hard-ablation-stats.md
 ```
+
+Pilot of the addendum, 2026-11-02 (`results/hard-ablation-pilot.jsonl`, not analysed): 80 runs, 0.11 USD, no harness
+error; the bench printed its accuracy table. It projects 2.7 USD for the run, so before the run the brakes are raised to
+1.2, 1.2 and 0.8 USD (3.2 in all), approved by the author; nothing else changes.
