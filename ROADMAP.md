@@ -160,6 +160,12 @@ From reading every wrong answer in the Jira benchmark, and from the decision of 
 - [x] The suite runs in parallel (`uv run pytest -n auto`, pytest-xdist in the `dev` extra; CI and the release workflow use it); with Postgres about 42 to 10 minutes (0.35.0)
 - [x] `query` confirmed on the development set; a sandbox copy no longer counts against the query's timeout (bounded by its 100,000-row ceiling); the schema paragraph names each rule's two macros, what the state views lack and that macros take no schema prefix; `now()` on SQLite (0.36.0, 2026-11-01)
 
+## 0.37 — agents created at runtime (0.37.0 on 2026-11-02)
+
+From a multi-tenant agents platform that creates agents from its UI, per customer organization ([#5](https://github.com/angelkurten/keel/issues/5)).
+
+- [x] Stored agents: with `registry: store`, a tenant keeps agents of its own that `extends` a cartridge entry (a profile) and may only narrow it; bitemporal, closed never deleted, erased by `forget`; resolved after the cartridge's entries and cached a few seconds, so an edit needs no restart; `PUT/GET/DELETE /v1/agents/{id}`, `keel agents set|list|rm`, `keel validate --db`, and every SDK (0.37.0)
+
 ## Exit to beta (set 2026-10-22)
 
 Beta is not a feature list: it is a contract that stops moving, no known wrong answers, and real use outside our own products. It can stay 0.x; the classifier moves to `Development Status :: 4 - Beta`. Not required for beta: 1.0, a Graphiti store (a Postgres store shipped in 0.35.0), multi-cartridge tenants; experimental pieces (MCP `detail="text"`) stay marked experimental.
