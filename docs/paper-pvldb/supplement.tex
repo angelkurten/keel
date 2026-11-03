@@ -42,7 +42,7 @@
 \renewcommand{\thetable}{\thesection.\arabic{table}}
 \counterwithin{figure}{section}
 
-\section{The held-out and confirmation sets by question type}
+\section{The held-out and confirmation sets by question type, and the hard slice by tenant group}
 \label{app:sets}
 \setcounter{table}{0}
 
@@ -85,6 +85,28 @@ Condition & Current & As-of & Known-at & Links & Rule & Abstain & Tenant \\
 \bottomrule
 \end{tabular}
 \end{table*}
+
+Table~\ref{tab:hard-sets} splits the hard slice (Section~\ref{sec:hard}) by the set its tenants come from.
+
+\begin{table}[t]
+\caption{Hard slice (320 questions) by tenant group: accuracy (\%), Haiku, three repetitions; 120, 120 and 80 questions on the development, held-out and confirmation tenants. Descriptive.}
+\label{tab:hard-sets}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{l r r r}
+\toprule
+ & Dev. tenants & Held-out tenants & Conf. tenants \\
+\midrule
+\code{keel} & 95.0 & 89.2 & 94.2 \\
+\code{keel+query} & 96.4 & 95.3 & 95.8 \\
+\code{sql} & 97.5 & 97.2 & 97.5 \\
+\code{sqlgen2} & 96.7 & 95.6 & 96.7 \\
+\code{sql-tables} & 95.8 & 95.6 & 96.7 \\
+\code{sql-log} & 94.7 & 95.3 & 92.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 
 
@@ -162,7 +184,7 @@ Commit f364733 gives direct Claude calls their own cache breakpoint on the syste
 \subsection{The held-out and confirmation sets}
 \label{app:prov-sets}
 
-Each set's registration, amendments, commands and results are in its README (\code{evals/jira/heldout/README.md}, \code{evals/jira/confirm/README.md}). Table~\ref{tab:fixes-sets} lists what changed in \code{keel/} between the held-out registration (d7b3576) and the release the confirmation set froze (0.36.0, d620fcb), and Table~\ref{tab:aside} every row set aside. No row set aside is counted in any result.
+Each set's registration, amendments, commands and results are in its README (\code{evals/jira/heldout/README.md}, \code{evals/jira/confirm/README.md}, \code{evals/jira/hard/README.md}). The hard slice changed nothing under \code{keel/} (still d620fcb); its harness commits are 552e729 (the 320 questions, \code{hard.py}, its tests and manifest, registered before any run; every registered row carries it), 22e8716 (results and pilot), 9df0aa3 (\code{sql-log} and \code{confirm\_analysis --pairs}, whose registered output was checked byte for byte), d5e7201 (the addendum's pilot and raised brakes; every addendum row carries it) and 5bc7a20 (the addendum's results). Table~\ref{tab:fixes-sets} lists what changed in \code{keel/} between the held-out registration (d7b3576) and the release the confirmation set froze (0.36.0, d620fcb), and Table~\ref{tab:aside} every row set aside. No row set aside is counted in any result.
 
 \begin{table*}[t]
 \caption{Changes to \code{keel/} from the held-out registration to release 0.36.0, by commit, with what found each and which runs they reach.}
@@ -195,7 +217,7 @@ cbfd0fa & The SQLite sandbox's authorizer is cleared correctly on Python 3.10 & 
 \end{table*}
 
 \begin{table*}[t]
-\caption{Rows set aside on the held-out and confirmation sets and the development set's later runs, never counted.}
+\caption{Rows set aside on the held-out and confirmation sets, the hard slice and the development set's later runs, never counted.}
 \label{tab:aside}
 \centering
 \footnotesize
@@ -207,11 +229,13 @@ File & Rows & Why \\
 \code{dev-haiku-query-sqlgen2.discarded-credit.jsonl} (kept locally, not in the repository) & 6 & The direct Anthropic account ran out of credit (an API error, not an answer); the run continued through the gateway \\
 \code{confirm-pilot.jsonl} & 56 & The registered pilot, read for harness errors only \\
 \code{confirm-haiku.discarded-gateway.jsonl} & 82 & The first 82 confirmation runs, through the gateway, before the third amendment moved the run to Anthropic's API and started it again from nothing; of their results only the progress count and that the first 45 \code{keel} runs were correct were seen \\
+\code{hard-pilot.jsonl} & 160 & The hard slice's registered pilot (552e729), read for harness errors; the bench printed its accuracy by type, which the author saw; nothing changed because of it \\
+\code{hard-ablation-pilot.jsonl} & 80 & The addendum's pilot (9df0aa3), read for harness errors; its accuracy table was seen; it led only to raised brakes (d5e7201) \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-One edit to a registration was itself a mistake, and was undone: commit 78d3f0d, which recorded the third amendment, also slipped the progress check's wording into the text of rule 5; 46eabbf took it out again, so rule 5 reads as registered.
+One edit to a registration was itself a mistake, and was undone: commit 78d3f0d, which recorded the third amendment, also slipped the progress check's wording into the text of rule 5; 46eabbf took it out again, so rule 5 reads as registered. During the hard slice's addendum run (\code{sql-tables}, \code{sql-log}) the author asked for and saw partial accuracy twice, at 782 and 1,527 of 1,920 runs; nothing was changed, and no decision rule depends on those conditions.
 
 % ===========================================================================
 \clearpage
@@ -238,17 +262,38 @@ bool   true or false.
 count  a JSON integer.
 \end{lstlisting}
 
-Per-system tools paragraph (\code{\{tools\}}) of the first run's systems; the later conditions' paragraphs are in the harness: \code{sql} and \code{sql-tables} in \code{evals/jira/sql\_system.py}, \code{sqlgen} in \code{evals/jira/sqlgen\_system.py}, \code{sqlgen2}'s generated by \code{keel.sqlgen.describe}, and \code{keel+query}'s the \code{keel} paragraph with the server's instructions, which carry the generated one:
+Per-system tools paragraph (\code{\{tools\}}) of the first run's systems, and \code{keel+query}'s; the SQL conditions' paragraphs are in the harness: \code{sql}, \code{sql-tables} and \code{sql-log} in \code{evals/jira/sql\_system.py} (\code{TOOLS\_TEXT}, \code{TOOLS\_TEXT\_TABLES}, \code{TOOLS\_TEXT\_LOG}), \code{sqlgen} in \code{evals/jira/sqlgen\_system.py}, \code{sqlgen2}'s generated by \code{keel.sqlgen.describe}. \code{keel+query}'s is followed by the server's instructions, which carry the generated one. The \code{keel} paragraph says five tools in every condition; in the read-only form of the held-out, confirmation and hard-slice runs the server lists four (\code{annotate} off).
 
 \begin{lstlisting}
 keel      The project's data is in Keel, a context graph, through five tools. Subjects are '<kind>:<id>', issues are 'issue:<KEY>'.
           (followed by the MCP server's instructions: the cartridge's kinds, its relations and the definition of each rule)
+keel+query The project's data is in Keel, a context graph, through its tools, query among them (read-only SQL over the schema below). Subjects are '<kind>:<id>', issues are 'issue:<KEY>'.
 api       The tracker's API is available: get_issue, get_changelog and search_issues.
 rag       The project's records (every change to every issue, with when it happened and when it was recorded) are searchable through search_records.
 closed    You have no tools: answer from what you know.
 graphiti  The project's history is in a temporal knowledge graph (Graphiti), searchable through search_memory: facts with when they became and stopped being true.
 mem0      The project's history is in a memory store (Mem0), searchable through search_memory: memories with when the change happened and when it was recorded.
 tgms      The project's history is in TGMS, a bi-temporal graph: issues are nodes 'issue:<KEY>' (label Issue, props key, status, priority, assignee, resolution, issue_type, reporter, summary), the project is node 'project:<KEY>', edges in_project, subtask_of and Jira link types (blocks, relates_to, ...); each field value is also an edge over the interval it held: has_status -> 'status:<value>', has_priority -> 'priority:<value>', has_assignee -> 'user:<id>', has_resolution -> 'resolution:<value>', has_issue_type -> 'issue_type:<value>'. Valid time is when it happened in Jira, transaction time when it was recorded; times are int64 epoch microseconds UTC.
+\end{lstlisting}
+
+\code{sql-log}'s paragraph, written after the hard slice's main result was known (9df0aa3), in full:
+
+\begin{lstlisting}
+The project's history is in a DuckDB database, queried with SQL through sql_query (read-only; a result shows at most 200 rows and says when it cut, so filter or aggregate in SQL). Times are TIMESTAMP in UTC: write TIMESTAMP '2018-06-12 14:00'.
+There is one table, the tracker's event log as written:
+- events(id, type, issue_key, occurred_at, recorded_at, payload JSON): one row per event. occurred_at is when the change happened in Jira (valid time); recorded_at is when the tracker recorded it (transaction time). Some changes were recorded late, and some were first recorded with a wrong value and corrected later by an event of the same type for the same issue and the same occurred_at, recorded later: what was believed at an instant is what had been recorded by then. Read payload fields with payload->>'name'. Event types and their payload:
+  - issue.created: project, summary, reporter, parent (the parent issue's key for a sub-task, else null), and the initial status, status_category, priority, assignee, resolution, issue_type.
+  - issue.status_changed: status, status_category, by.
+  - issue.assigned: assignee (null: unassigned), by.
+  - issue.priority_changed: priority, by.
+  - issue.resolution_changed: resolution (null: unresolved), by.
+  - issue.type_changed: issue_type, by.
+  - issue.linked / issue.unlinked: relation, other: issue_key <relation> other from occurred_at on (linked) or no longer (unlinked). relation: blocks (issue_key blocks other), depends_on (issue_key depends on other), subtask_of, duplicates, clones, relates_to (these three read in either direction).
+status_category is 'new', 'indeterminate' (in progress) or 'done'. A field keeps its value until a later change.
+Rules (definitions):
+- blocked (issue): An issue is blocked while an issue that blocks it is not done.
+- stalled (issue): An issue has stalled when it is in progress and its status has not changed for 30 days.
+- urgent_unassigned (issue): An urgent issue (priority Blocker, Critical or Highest) that is not done and has nobody assigned.
 \end{lstlisting}
 
 \subsection{Question templates}
@@ -264,6 +309,16 @@ links     On {at}, of the issues that block {key}, which were done (done means a
 rule      An issue is blocked while it is not done itself and an issue that blocks it is not done (done means a status among: {done}). Was {key} blocked on {at}?
 abstain   What is the current status of {key}?   (a key above the project's highest, never created)
 tenant    On {at}, which issues of the {project} project had status {status}?
+\end{lstlisting}
+
+The hard slice's five types (\code{evals/jira/hard.py}); \code{\{first\}} and \code{\{then\}} are relation phrases such as ``the sub-tasks of {key}'' and ``the issues that block any of them'', and \code{\{progress\}} the tenant's in-progress statuses:
+
+\begin{lstlisting}
+two_hop      On {at}, take {first}. What were {then}? Count a link only if it existed on {at}, and leave {key} itself out.
+known_count  According to what had been recorded by {known}, how many issues of the {project} project had status {status} at {at}?
+entries      Between {a} and {b}, how many times was {key} moved into status {status}? Count every move into it, not the issue's creation.
+time_in      Up to {at}, how many whole days in total had {key} spent in status {status}, adding every period it was in it? Round the total down to whole days.
+both         Which issues of the {project} project had a status among: {progress} both on {a} and on {b}?
 \end{lstlisting}
 
 \subsection{Adversary attacks}
