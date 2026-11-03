@@ -301,3 +301,40 @@ Beside them: sql+days − sql-tables+days +0.9 [−0.4, +2.3]; each baseline aga
 99.0, sql-log 99.5. By type (sql, sql-tables, sql-log): two_hop 95.8, 95.8, 94.3; known_count 100, 99.5, 98.4; entries
 94.8, 93.8, 96.9; both 99.0, 96.4, 93.8. USD per correct answer: sql 0.00059, sql-tables 0.00082, sql-log 0.00123
 (keel+query 0.00067, sqlgen2 0.00095); input tokens per run 7,119, 8,601 and 15,084.
+
+## Fifth addendum, 2026-11-03, before any of its runs: Sonnet with the duration sentence (exploratory)
+
+The second addendum's Sonnet rows had no duration sentence (`keel/` d620fcb, baselines without `DAYS_SENTENCE`), so
+Haiku with the sentence and Sonnet without it were compared across a difference in description. This run gives Sonnet
+the same four interfaces with the sentence: `sql+days`, `sqlgen2` and `keel+query` (their paragraph is generated, and
+`keel/` is a75faee's, which carries the sentence), and `sql-log+days`.
+
+Run: Claude Sonnet 5.5, 1 repetition, all 320 questions, from a clean worktree of the commit that adds this section;
+1,280 runs, about 14 USD (the second addendum's 13.4 plus the sentence's 6 to 7% more input), brakes 6, 6 and 4 USD.
+No pilot: the harness and the conditions already ran (second, third and fourth addenda).
+
+Exploratory, no decision rule. Reported: accuracy by type and overall; paired, with the cluster interval and no
+adjustment, `sqlgen2 − sql+days`, `keel+query − sql+days`, `sql+days − sql-log+days`, `keel+query − sql-log+days`,
+`sqlgen2 − sql-log+days`, and each condition against its second-addendum row without the sentence; cost per correct
+answer and input tokens.
+
+```bash
+S="uv run --extra mcp --with tiktoken --with anthropic --with numpy --with duckdb==2.0.0 python -m evals.jira.bench \
+   --questions evals/jira/hard --keel-compact --keel-read-only --models anthropic/claude-sonnet-5.5 \
+   --systems sql+days,sqlgen2,keel+query,sql-log+days"
+$S --data $D/export  --tenants hyperledger,mariadb,spring --reps 1 --max-usd 6 --out $R/hard-days-sonnet.jsonl
+$S --data $D/heldout --tenants ecosystem-ac,sakai-grbk,redhat-projquay --reps 1 --max-usd 6 --out $R/hard-days-sonnet.jsonl
+$S --data $D/confirm --tenants apache-tajo,apache-rave --reps 1 --max-usd 4 --out $R/hard-days-sonnet.jsonl
+uv run --with numpy python -c "
+import json; from pathlib import Path; from evals.jira import confirm_analysis as ca
+H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())
+qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}
+old = [json.loads(l) for l in open('$R/hard-sonnet.jsonl')]
+new = [json.loads(l) for l in open('$R/hard-days-sonnet.jsonl')]
+new = [r | {'system': r['system'] + '+days'} if not r['system'].endswith('+days') else r for r in new]
+print(ca.markdown(ca.analyze(qs, old + new, agent='Sonnet', pairs=[('sqlgen2+days', 'sql+days'),
+      ('keel+query+days', 'sql+days'), ('sql+days', 'sql-log+days'), ('keel+query+days', 'sql-log+days'),
+      ('sqlgen2+days', 'sql-log+days'), ('sql+days', 'sql'), ('sqlgen2+days', 'sqlgen2'),
+      ('keel+query+days', 'keel+query'), ('sql-log+days', 'sql-log')])))
+" > $R/hard-days-sonnet-stats.md
+```
