@@ -49,6 +49,7 @@ class Cartridge:
     policy: MemoryPolicy = field(default_factory=MemoryPolicy.default)
     registry: HandlerRegistry = field(default_factory=HandlerRegistry)
     agents: dict[str, AgentSpec] = field(default_factory=dict)  # empty = no registry, any caller
+    agent_registry: str | None = None  # YAML `registry: store`: tenants also store agents that extend an entry of `agents`
     calendar: Calendar = field(default_factory=Calendar)  # business days for duration rules
     predicates: dict[str, dict[str, Any]] = field(default_factory=dict)  # write policy per predicate: {multi: true}
     semantic: dict[str, Any] = field(default_factory=dict)  # what keel index renders: kinds, predicates|exclude, attrs, relations
@@ -94,6 +95,10 @@ class Cartridge:
         for name, rule in self.rules.items():
             problems += rule_problems(name, rule, set(self.relations))
         problems += agent_problems(self.agents, self.entities, self.relations)
+        if self.agent_registry not in (None, "store"):
+            problems.append(f"registry: '{self.agent_registry}' (the only value is store)")
+        elif self.agent_registry and not self.agents:
+            problems.append("registry: store needs `agents:`: every stored agent extends one of its entries")
         sem = self.semantic
         known = {"kinds", "predicates", "exclude", "attrs", "relations", "labels", "lexical_weight", "min_score", "split"}
         for key in sorted(set(sem) - known):
@@ -306,6 +311,7 @@ def load_cartridge(path: str | Path, handlers: bool = True) -> Cartridge:
         policy=_policy_from(raw.get("memory")),
         registry=_load_registry(path) if handlers else HandlerRegistry(),
         agents=parse_agents(raw.get("agents")),
+        agent_registry=raw.get("registry"),
         calendar=Calendar.parse(raw.get("calendar")),
         predicates=raw.get("predicates") or {},
         semantic=raw.get("semantic") or {},

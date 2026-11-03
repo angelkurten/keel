@@ -1272,7 +1272,8 @@ def test_forget_erases_one_tenant_for_good(store):
     assert len(list(store.dump("beta"))) == beta > 0  # the other tenant is untouched
     assert any(f.predicate == "fleet_rule" for f in store.facts("__global__", "unit:MXK-4821"))  # every tenant's, kept
     at = store.forgotten(TENANT)
-    assert store.forget(TENANT) == dict.fromkeys(("entities", "relations", "facts", "annotations", "ingested"), 0)  # idempotent
+    counted = ("entities", "relations", "facts", "annotations", "ingested") + (("agents",) if hasattr(store, "put_agent") else ())  # agents: optional
+    assert store.forget(TENANT) == dict.fromkeys(counted, 0)  # idempotent
     assert store.forgotten(TENANT) == at and TENANT in store.forgotten_tenants()
     with pytest.raises(PermissionError):
         Tools(c, store, TENANT).annotate("unit:MXK-4821", "note", "late", scope="tenant", evidence="call:2")
@@ -1501,6 +1502,25 @@ def test_accounts_and_retention_cutoffs(store):
     assert cutoff_for("3y", now) == datetime(2023, 3, 28, 12, tzinfo=timezone.utc)
     assert cutoff_for("18m", now) == datetime(2024, 9, 28, 12, tzinfo=timezone.utc)
     assert cutoff_for("90d", now) == datetime(2025, 12, 31, 12, tzinfo=timezone.utc)
+
+
+def test_stored_agents_are_bitemporal_per_tenant(store):
+    t0, t1 = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 2, 1, tzinfo=UTC)
+    store.put_agent("acme/c1", "writer", {"extends": "team-member"}, t0)
+    store.put_agent("acme/c1", "writer", {"extends": "team-member", "description": "Writes scripts"}, t1)
+    store.put_agent("acme/c2", "other", {"extends": "team-member"}, t0)
+    assert store.agent("acme/c1", "writer")["description"] == "Writes scripts"
+    assert store.agent("acme/c1", "writer", at=t0 + timedelta(days=1)) == {"extends": "team-member"}  # who it was then
+    assert store.agent("acme/c2", "writer") is None  # never another tenant's
+    assert store.agents("acme/c1") == {"writer": {"extends": "team-member", "description": "Writes scripts"}}
+    assert store.remove_agent("acme/c1", "writer", t1 + timedelta(days=1)) and not store.remove_agent("acme/c1", "writer", t1 + timedelta(days=2))
+    assert store.agent("acme/c1", "writer") is None and store.agents("acme/c1") == {}
+    assert store.agent("acme/c1", "writer", at=t1 + timedelta(hours=1))["description"] == "Writes scripts"  # closed, never deleted
+    store.reset("acme/c2")
+    assert store.agents("acme/c2")  # replay rebuilds the graph; agents are configuration, not derived from events
+    assert store.forget("acme/c2")["agents"] == 1  # erasure takes everything about the tenant, its agents' history too
+    assert store.agents("acme/c2") == {} and store.agent("acme/c2", "other", at=t0) is None
+    assert store.agent("acme/c1", "writer", at=t1 + timedelta(hours=1))  # never another tenant's
 
 
 def test_a_pinned_clock_puts_reads_and_notes_on_that_day():

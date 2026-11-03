@@ -154,7 +154,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_from|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_from|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|agents_id|agents|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     TIME = "TEXT"  # the dialect's type for a timestamp column
@@ -847,11 +847,12 @@ class SqlStore:
                 "annotations": self._exec("DELETE FROM facts WHERE tenant = ? AND (source LIKE ? OR source LIKE ?)", (tenant, "annotate:%", "consolidate:%")),
                 "facts": self._exec("DELETE FROM facts WHERE tenant = ?", (tenant,)),
                 "ingested": self._exec("DELETE FROM ingested WHERE tenant = ?", (tenant,)),
+                "agents": self._exec("DELETE FROM agents WHERE tenant = ?", (tenant,)),  # every version: erasure, not a close
             }
             self._exec(self.TOMBSTONE, (tenant, _ts(utcnow())))
             if self._cache is not None:
                 self._cache.clear()
-        return {k: counts[k] for k in ("entities", "relations", "facts", "annotations", "ingested")}
+        return {k: counts[k] for k in ("entities", "relations", "facts", "annotations", "ingested", "agents")}
 
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
@@ -967,6 +968,27 @@ class SqlStore:
 
     def revoke_key(self, key_id: str, at: datetime) -> bool:
         return self._exec("UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL", (_ts(at), key_id)) > 0
+
+    # ---- stored agents (keel/agents.py, `registry: store`): configuration, not derived from events, so reset leaves them ----
+
+    def put_agent(self, tenant: str, agent_id: str, spec: dict[str, Any], at: datetime) -> None:
+        with self.transaction():
+            self.remove_agent(tenant, agent_id, at)
+            self._exec("INSERT INTO agents (tenant, id, spec, valid_from) VALUES (?, ?, ?, ?)", (tenant, agent_id, json.dumps(spec, sort_keys=True), _ts(at)))
+
+    def agent(self, tenant: str, agent_id: str, at: datetime | None = None) -> dict[str, Any] | None:
+        if at is None:
+            row = self._one("SELECT spec FROM agents WHERE tenant = ? AND id = ? AND valid_to IS NULL", (tenant, agent_id))
+        else:
+            row = self._one("SELECT spec FROM agents WHERE tenant = ? AND id = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) "
+                            "ORDER BY valid_from DESC LIMIT 1", (tenant, agent_id, _ts(at), _ts(at)))
+        return json.loads(row["spec"]) if row else None
+
+    def agents(self, tenant: str) -> dict[str, dict[str, Any]]:
+        return {r["id"]: json.loads(r["spec"]) for r in self._rows("SELECT id, spec FROM agents WHERE tenant = ? AND valid_to IS NULL ORDER BY id", (tenant,))}
+
+    def remove_agent(self, tenant: str, agent_id: str, at: datetime) -> bool:
+        return self._exec("UPDATE agents SET valid_to = ? WHERE tenant = ? AND id = ? AND valid_to IS NULL", (_ts(at), tenant, agent_id)) > 0
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With

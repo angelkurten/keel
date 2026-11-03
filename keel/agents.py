@@ -21,6 +21,7 @@ Authentication is the host's job; Keel takes the agent id as given.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -86,12 +87,126 @@ def problems(agents: dict[str, AgentSpec], entities: dict[str, Any], relations: 
     return out
 
 
-def resolve(agents: dict[str, AgentSpec], agent_id: str | None) -> AgentSpec | None:
-    """The spec a Tools instance is bound to. No registry: None, the open behaviour."""
+def resolve(agents: dict[str, AgentSpec], agent_id: str | None, store: Any = None, tenant: str | None = None) -> AgentSpec | None:
+    """The spec a Tools instance is bound to. No registry: None, the open behaviour. With a `store` (the cartridge
+    says `registry: store`), an id the cartridge does not declare is looked up among the tenant's stored agents."""
     if not agents:
         return None
     if agent_id in agents and ":" not in agent_id:  # 'human:ana' would sign as the person ana (problems() says so too)
         return agents[agent_id]
+    spec = _stored(store, tenant, agent_id) if store is not None and agent_id and ":" not in agent_id else None
+    if spec is not None and spec.get("extends") in agents:  # a profile the cartridge dropped since: refused, not guessed
+        return from_stored(agents, agent_id, spec)
+    stored = f" nor stored for tenant '{tenant}'" if store is not None else ""
     raise PermissionError(
-        f"agent {agent_id!r} is not declared in this cartridge (declared: {', '.join(sorted(agents))}); pass a declared agent id"
+        f"agent {agent_id!r} is not declared in this cartridge{stored} (declared: {', '.join(sorted(agents))}); pass a declared agent id"
     )
+
+
+# ---- stored agents (`registry: store`): per tenant, each `extends` a cartridge entry (its profile) and only narrows it,
+# so the cartridge, reviewed with the ontology, stays the boundary of what any agent may do.
+
+STORED_KEYS = {"extends", "description", "writes", "reads", "query"}
+
+
+def _narrow(profile: frozenset[str] | None, asked: Any) -> frozenset[str] | None:
+    if asked is None:
+        return profile
+    return frozenset(asked) if profile is None else frozenset(asked) & profile
+
+
+def from_stored(agents: dict[str, AgentSpec], agent_id: str, spec: dict[str, Any]) -> AgentSpec:
+    """The spec a stored agent binds as: its profile, narrowed by what it sets. Intersected again here, so a profile
+    narrowed in the cartridge after the agent was stored narrows the agent too."""
+    p, reads = agents[spec["extends"]], spec.get("reads") or {}
+    return AgentSpec(
+        id=agent_id,
+        description=spec.get("description", p.description),
+        kind=p.kind,
+        writes=frozenset(spec["writes"]) & p.writes if "writes" in spec else p.writes,
+        kinds=_narrow(p.kinds, reads.get("kinds")),
+        relations=_narrow(p.relations, reads.get("relations")),
+        query=p.query and spec.get("query", True) is not False,
+    )
+
+
+def stored_problems(cartridge: Any, agent_id: str, spec: Any) -> list[str]:
+    """Why a stored spec may not be put: checked before anything is stored, so nothing invalid ever is."""
+    agents = cartridge.agents
+    if not isinstance(spec, dict):
+        return ["an agent spec is an object"]
+    out = []
+    if not agent_id or ":" in agent_id or "/" in agent_id:
+        out.append(f"agent id '{agent_id}': give one without ':' or '/' (it signs annotations as annotate:<id>)")
+    if agent_id in agents:
+        out.append(f"agent id '{agent_id}' is a cartridge entry, which would shadow it; pick another id")
+    if "kind" in spec:
+        out.append("a stored agent's kind comes from its profile (extends a `kind: human` entry for a person)")
+    out += [f"unknown key '{k}' (allowed: {', '.join(sorted(STORED_KEYS))})" for k in sorted(set(spec) - STORED_KEYS - {"kind"})]
+    if "extends" not in spec:
+        return out + [f"a stored agent extends a cartridge entry (one of: {', '.join(sorted(agents))})"]
+    p = agents.get(spec["extends"])
+    if p is None:
+        return out + [f"profile '{spec['extends']}' is not declared in the cartridge (declared: {', '.join(sorted(agents))})"]
+    reads = spec.get("reads") or {}
+    lists = {"writes": spec.get("writes", []), "reads.kinds": reads.get("kinds", []), "reads.relations": reads.get("relations", [])}
+    if not isinstance(reads, dict) or not all(isinstance(v, list) and all(isinstance(x, str) for x in v) for v in lists.values()):
+        return out + ["writes, reads.kinds and reads.relations are lists of names"]
+    out += [f"writes '{s}' widens profile '{p.id}' (it writes {', '.join(sorted(p.writes)) or 'nothing'})" for s in lists["writes"] if s not in p.writes]
+    for name, asked, declared, allowed in (("kind", lists["reads.kinds"], cartridge.entities, p.kinds),
+                                           ("relation", lists["reads.relations"], cartridge.relations, p.relations)):
+        for x in asked:
+            if x not in declared:
+                out.append(f"reads undeclared {name} '{x}'")
+            elif allowed is not None and x not in allowed:
+                out.append(f"reads {name} '{x}', which widens profile '{p.id}'")
+    if spec.get("query") is True and not p.query:
+        out.append(f"query: true widens profile '{p.id}', which may not query")
+    if "description" in spec and not isinstance(spec["description"], str):
+        out.append("description is a string")
+    return out
+
+
+_cache: dict[tuple[int, str, str], tuple[float, dict[str, Any] | None]] = {}
+
+
+def _stored(store: Any, tenant: str | None, agent_id: str) -> dict[str, Any] | None:
+    """The tenant's live stored spec, cached a few seconds per process like API keys: an edit applies without a restart."""
+    from keel.keys import CACHE_SECONDS
+
+    if getattr(store, "agent", None) is None or tenant is None:
+        return None
+    k, now = (id(store), tenant, agent_id), time.monotonic()
+    hit = _cache.get(k)
+    if hit and now - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    if len(_cache) > 10_000:  # ponytail: cleared wholesale, an LRU if many tenants churn through one process
+        _cache.clear()
+    spec = store.agent(tenant, agent_id)
+    _cache[k] = (now, spec)
+    return spec
+
+
+def put_agent(cartridge: Any, store: Any, tenant: str, agent_id: str, spec: dict[str, Any]) -> dict[str, Any]:
+    """Create or replace a tenant's stored agent. Raises ValueError with every problem; nothing invalid is stored."""
+    from keel.envelope import utcnow
+
+    if cartridge.agent_registry != "store":
+        raise ValueError("this cartridge does not store agents: it declares no `registry: store`")
+    if getattr(store, "put_agent", None) is None:
+        raise ValueError(f"{type(store).__name__} does not keep agents (put_agent, agent, agents, remove_agent)")
+    problems_ = stored_problems(cartridge, agent_id, spec)
+    if problems_:
+        raise ValueError("; ".join(problems_))
+    store.put_agent(tenant, agent_id, spec, utcnow())
+    _cache.clear()  # this process applies it now; others within CACHE_SECONDS
+    return spec
+
+
+def remove_agent(store: Any, tenant: str, agent_id: str) -> bool:
+    """Close a tenant's stored agent (never delete it: the audit still says who annotate:<id> was)."""
+    from keel.envelope import utcnow
+
+    ok = store.remove_agent(tenant, agent_id, utcnow())
+    _cache.clear()
+    return ok

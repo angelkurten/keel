@@ -1123,6 +1123,12 @@
     "description": "Write policy per predicate, for annotations: predicate -> {multi, description}.",
     "type": "object"
    },
+   "registry": {
+    "description": "store: each tenant may also store agents (PUT /v1/agents/{id}) that extend an entry of `agents` (a profile) and only narrow it. Absent: only the entries of `agents`.",
+    "enum": [
+     "store"
+    ]
+   },
    "relations": {
     "additionalProperties": {
      "$ref": "#/$defs/relation"
@@ -1492,6 +1498,14 @@
   "paths": {
    "/health": [
     "get"
+   ],
+   "/v1/agents": [
+    "get"
+   ],
+   "/v1/agents/{agent_id}": [
+    "delete",
+    "get",
+    "put"
    ],
    "/v1/annotate": [
     "post"

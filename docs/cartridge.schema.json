@@ -76,6 +76,10 @@
     "calendar": {
       "$ref": "#/$defs/calendar"
     },
+    "registry": {
+      "enum": ["store"],
+      "description": "store: each tenant may also store agents (PUT /v1/agents/{id}) that extend an entry of `agents` (a profile) and only narrow it. Absent: only the entries of `agents`."
+    },
     "agents": {
       "type": "object",
       "description": "The agent registry: id -> spec. Absent means no registry: any caller, any scope with evidence. With it, every Tools instance is bound to a declared agent.",

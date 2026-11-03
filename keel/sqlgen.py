@@ -90,7 +90,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE TABLE IF NOT EXISTS metering (
   tenant VARCHAR NOT NULL, day VARCHAR NOT NULL, item VARCHAR NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (tenant, day, item));
 CREATE TABLE IF NOT EXISTS cutoffs (tenant VARCHAR NOT NULL PRIMARY KEY, cut VARCHAR NOT NULL, "at" VARCHAR NOT NULL);
-CREATE TABLE IF NOT EXISTS accounts (id VARCHAR NOT NULL PRIMARY KEY, rps INTEGER, events_month BIGINT, store VARCHAR, retention VARCHAR)
+CREATE TABLE IF NOT EXISTS accounts (id VARCHAR NOT NULL PRIMARY KEY, rps INTEGER, events_month BIGINT, store VARCHAR, retention VARCHAR);
+CREATE TABLE IF NOT EXISTS agents (tenant VARCHAR NOT NULL, id VARCHAR NOT NULL, spec VARCHAR NOT NULL, valid_from VARCHAR NOT NULL, valid_to VARCHAR)
 """
 
     def prelude(self) -> str:
@@ -247,7 +248,9 @@ CREATE TABLE IF NOT EXISTS api_keys (
 CREATE TABLE IF NOT EXISTS metering (
   tenant {t} NOT NULL, day {t} NOT NULL, item {t} NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (tenant, day, item));
 CREATE TABLE IF NOT EXISTS cutoffs (tenant {t} NOT NULL PRIMARY KEY, cut {t} NOT NULL, at {t} NOT NULL);
-CREATE TABLE IF NOT EXISTS accounts (id {t} NOT NULL PRIMARY KEY, rps INTEGER, events_month BIGINT, store {t}, retention {t})
+CREATE TABLE IF NOT EXISTS accounts (id {t} NOT NULL PRIMARY KEY, rps INTEGER, events_month BIGINT, store {t}, retention {t});
+CREATE TABLE IF NOT EXISTS agents (tenant {t} NOT NULL, id {t} NOT NULL, spec {t} NOT NULL, valid_from {t} NOT NULL, valid_to {t});
+CREATE INDEX IF NOT EXISTS agents_id ON agents (tenant, id)
 """
 
     def prelude(self) -> str:

@@ -60,7 +60,10 @@ class MysqlStore(SqlStore):
       tenant VARCHAR(191) NOT NULL, day CHAR(10) NOT NULL, item VARCHAR(32) NOT NULL, n BIGINT NOT NULL, PRIMARY KEY (tenant, day, item)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
     CREATE TABLE IF NOT EXISTS cutoffs (tenant VARCHAR(191) NOT NULL PRIMARY KEY, cut VARCHAR(40) NOT NULL, at VARCHAR(40) NOT NULL) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
     CREATE TABLE IF NOT EXISTS accounts (
-      id VARCHAR(64) NOT NULL PRIMARY KEY, rps INT, events_month BIGINT, store TEXT, retention VARCHAR(16)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+      id VARCHAR(64) NOT NULL PRIMARY KEY, rps INT, events_month BIGINT, store TEXT, retention VARCHAR(16)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+    CREATE TABLE IF NOT EXISTS agents (
+      tenant VARCHAR(191) NOT NULL, id VARCHAR(191) NOT NULL, spec TEXT NOT NULL, valid_from VARCHAR(40) NOT NULL, valid_to VARCHAR(40),
+      KEY agents_id (tenant, id)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "
