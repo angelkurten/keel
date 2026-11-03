@@ -234,3 +234,15 @@ for typ in (None, 'time_in'):
     print(typ or 'all', ca.markdown(ca.analyze(q, old + new, pairs=[('sqlgen2+days', 'sqlgen2'), ('keel+query+days', 'keel+query')])))
 " > $R/hard-days-stats.md
 ```
+
+Result of the third addendum, 2026-11-03 (`results/hard-days-haiku.jsonl`, `results/hard-days-stats.md`): 1,920 runs,
+all on a75faee with `dirty: false`, no harness error, 1.53 USD. **The remedy is effective by the rule stated above**:
+`time_in` rose from 89.1% to 98.4% for sqlgen2 (+9.4 points paired, [+5.2, +13.5], 15 / 3) and from 86.5% to 99.0%
+for keel+query (+12.5, [+8.3, +16.7], 19 / 1); overall accuracy rose too, 96.2 → 98.2 (+2.0, [+0.5, +3.5], 20 / 7) and
+95.8 → 98.6 (+2.8, [+1.1, +4.8], 24 / 3). By type after the remedy (sqlgen2, keel+query): two_hop 95.3, 95.8;
+known_count 100, 100; entries 98.4, 99.0; time_in 98.4, 99.0; both 99.0, 99.5. Input tokens per run rose by about 6
+to 7% (12,954 and 13,982); cost per correct answer 0.00095 and 0.00067.
+
+Read after the result, post hoc and not registered: against hand-written SQL's registered rows (on d620fcb's
+`keel/`), sqlgen2 with the remedy is +0.8 points [−0.2, +2.0] (14 / 7) and keel+query +1.2 [+0.2, +2.5] (12 / 3).
+Different commits and a remedy chosen after reading the result: a direction, not a test.
