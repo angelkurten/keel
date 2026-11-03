@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Rebuild the six paper figures (vector PDFs) and their PNG twins.
+# Rebuild the seven paper figures (vector PDFs) and their PNG twins: fig1, fig2 and fig7 in main.tex, fig3 to fig6 in
+# supplement.tex.
 # Charts: matplotlib via uv.  Diagrams: TikZ via tectonic; PNG twins via qlmanage (macOS).
 set -euo pipefail
 cd "$(dirname "$0")"
 
-for f in fig3-tenant-accuracy fig4-by-type fig5-cost fig6-poisoned; do
+for f in fig3-tenant-accuracy fig4-by-type fig5-cost fig6-poisoned fig7-hypotheses; do
   uv run --with matplotlib python "$f.py"
 done
 
