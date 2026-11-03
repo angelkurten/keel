@@ -338,3 +338,14 @@ print(ca.markdown(ca.analyze(qs, old + new, agent='Sonnet', pairs=[('sqlgen2+day
       ('keel+query+days', 'keel+query'), ('sql-log+days', 'sql-log')])))
 " > $R/hard-days-sonnet-stats.md
 ```
+
+Result of the fifth addendum, 2026-11-03 (`results/hard-days-sonnet.jsonl`, `results/hard-days-sonnet-stats.md`):
+1,280 runs, all on 3b99234 with `dirty: false`, no harness error, 13.84 USD. With the sentence Sonnet reads sql+days
+99.7%, keel+query 99.4, sqlgen2 99.4, sql-log+days 99.1; 8 misses in all, 7 of them `entries`. The sentence moved no
+condition by more than one question: sql −0.3 (0 / 1), sqlgen2 +0.3 (1 / 0), keel+query +0.3 (1 / 0), sql-log −0.3
+(1 / 2). Paired, exploratory: sqlgen2 − sql and keel+query − sql −0.3 [−0.9, 0.0] (0 / 1); sql − sql-log +0.6
+[0.0, +1.6] (2 / 0); keel+query − sql-log and sqlgen2 − sql-log +0.3 [0.0, +0.9] (1 / 0). `confirm_analysis` prints
+H1 and H2 over the second addendum's rows with the Haiku rule's label, which does not apply. USD per correct answer:
+sql 0.00905, keel+query 0.00955, sqlgen2 0.01123, sql-log 0.01370; input tokens per run 5,778, 10,712, 8,024 and 8,219.
+Against Haiku with the sentence on the same interface, Sonnet is 0.8 to 2.5 points higher and costs 11 to 15 times as
+much per correct answer (sql 15.3, keel+query 14.3, sqlgen2 11.8, sql-log 11.1).
