@@ -77,3 +77,32 @@ Descriptive, from the same rows: accuracy per type and per set for each conditio
 The slice is reported as off the ceiling if the best condition scores below 95%; if every condition scores 95% or
 more, the slice did not do what it was made for, and the paper says so. Reported whatever it shows, beside the three
 sets, never in place of them.
+
+## Pilot, 2026-11-02 (`results/hard-pilot.jsonl`, not analysed)
+
+160 runs, 0.15 USD, no harness error. Two changes to the commands, neither to the code: the worktree's fresh
+environment lacks `httpx` (`--with httpx` added), and the commands run under bash (zsh does not split `$B`). The
+bench prints an accuracy table after each command, so the author saw the pilot's accuracy by type; nothing was
+changed because of it. The pilot projected 3.6 USD for the run, above the 2 USD first estimated; the author approved it.
+
+## Result, 2026-11-02 (`results/hard-haiku.jsonl`, `results/hard-stats.md`)
+
+3,840 runs, all on 552e729 with `dirty: false`, Claude straight from Anthropic, no harness error, 3.12 USD; no brake
+reached. Accuracy: keel 92.6% [90.1, 94.9], keel+query 95.8 [93.6, 97.8], sql 97.4 [95.8, 98.8], sqlgen2 96.2
+[94.4, 97.9]. The best condition scores above 95%, so by the rule above the slice is **not** off the ceiling, though
+below it keel's five tools fall to 92.6 and the hypotheses are decided on 26 to 53 discordant questions, against 4 to
+12 on the confirmation set.
+
+- **H1** sqlgen2 − sql −1.1 points [−3.1, +0.8] (10 better, 16 worse): **not confirmed**.
+- **H2** keel+query − sql −1.6 [−3.8, +0.5] (12 / 23): **not confirmed**.
+- **H3** keel+query − keel +3.2 [+0.9, +5.7] (36 / 17): **confirmed**.
+
+Descriptive, accuracy by type (keel, keel+query, sql, sqlgen2): two_hop 95.3, 93.8, 95.3, 94.3; known_count 100 for
+all four (the type turned out easy); entries 94.3, 99.0, 93.7, 99.0; time_in 86.5, 86.5, 97.9, 89.1; both 87.0, 100,
+100, 99.0. By set: development 95.0, 96.4, 97.5, 96.7; held-out 89.2, 95.3, 97.2, 95.6; confirmation 94.2, 95.8,
+97.5, 96.7. Input tokens per run 16,287, 13,015, 6,908 and 12,183; USD per correct answer 0.00120, 0.00067, 0.00062
+and 0.00093.
+
+Read after the result: keel+query and sqlgen2 miss `time_in` mostly by one day (e.g. 1,529 for 1,528), the agent
+doing the date arithmetic in its reply instead of in SQL; hand-written SQL misses it in 4 runs of 192. This is
+where most of hand-written SQL's lead over the generated layer comes from.
