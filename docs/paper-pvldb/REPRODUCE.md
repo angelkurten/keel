@@ -60,7 +60,7 @@ outputs byte for byte, or the paper's numbers where there is no committed output
 | `fig:hyp` | The three hypotheses on each set: paired difference ... | `figures/hypotheses.json`, from the rows of `tab:sets-acc` | Snippet B prints every value of `hypotheses.json`; then `cd docs/paper-pvldb/figures && uv run --with matplotlib python fig7-hypotheses.py` |
 | `tab:hyp` | Confirmation set (258 questions, Haiku, three repetitions) ... | `confirm-haiku.jsonl` (the first run, not the clean rerun) | `uv run --with numpy python -m evals.jira.confirm_analysis $R/confirm-haiku.jsonl --out $R/confirm-stats.md`. Clean rerun (text of `sec:confirm`): the same on `confirm-haiku-clean.jsonl`, out `confirm-clean-stats.md`. Sensitivity paragraph: snippet C |
 | `tab:sets-acc` | Accuracy (%) by condition and set, Haiku, three repetitions ... | dev: `full-haiku.jsonl` (`keel`), `full-sql.jsonl` (Haiku `sql`), `dev-haiku-query-sqlgen2.jsonl`; held-out: `heldout-haiku.jsonl`, `heldout-haiku-sqlgen2.jsonl`, `heldout-haiku-keel-query.jsonl`; `confirm-haiku.jsonl`; `hard-haiku.jsonl` | Snippet B |
-| `tab:hard` | Hard slice (320 questions, 64 per type, Haiku, three repetitions) ... | `hard-haiku.jsonl`, `hard-ablation-haiku.jsonl`; "Remedy" rows: `hard-days-haiku.jsonl`; "Sonnet" rows: `hard-sonnet.jsonl` | Overall accuracy, USD per correct and tokens: `uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R/hard-ablation-haiku.jsonl --questions evals/jira/hard --pairs sql-tables:sql,sql-log:sql,sqlgen2:sql-log,keel+query:sql-log,keel:sql-log --out $R/hard-ablation-stats.md` (the registered part alone: `confirm_analysis $R/hard-haiku.jsonl --questions evals/jira/hard --out $R/hard-stats.md`). Per-type rows and the cost rows as printed: snippet D. "Remedy" rows (`time_in` and all): the third addendum's command, first in snippet J, which writes `hard-days-stats.md` (its `time_in` and `all` tables, rows `<system>+days`). "Sonnet" rows: `uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl --questions evals/jira/hard --agent Sonnet --pairs sqlgen2:sql-log,keel+query:sql-log,sql-log:sql --out $R/hard-sonnet-stats.md`; as printed (USD per correct ×10⁻⁴, tokens in k): snippet I |
+| `tab:hard` | Hard slice (320 questions, 64 per type, Haiku, three repetitions) ... | `hard-haiku.jsonl`, `hard-ablation-haiku.jsonl`; "Remedy" rows: `hard-days-haiku.jsonl` (compiled interfaces), `hard-days-baselines-haiku.jsonl` (`sql`, `sql-tables`, `sql-log`); "Sonnet" rows: `hard-sonnet.jsonl` | Overall accuracy, USD per correct and tokens: `uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R/hard-ablation-haiku.jsonl --questions evals/jira/hard --pairs sql-tables:sql,sql-log:sql,sqlgen2:sql-log,keel+query:sql-log,keel:sql-log --out $R/hard-ablation-stats.md` (the registered part alone: `confirm_analysis $R/hard-haiku.jsonl --questions evals/jira/hard --out $R/hard-stats.md`). Per-type rows and the cost rows as printed: snippet D. "Remedy" rows: overall accuracy and USD per correct of all five from `hard-days-baselines-stats.md` (rows `<system>+days`), written by the fourth addendum's command (first in snippet K); the compiled interfaces' `time_in` also in `hard-days-stats.md` (snippet J); every Remedy row as printed, the baselines' `time_in` included: snippet K. "Sonnet" rows: `uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl --questions evals/jira/hard --agent Sonnet --pairs sqlgen2:sql-log,keel+query:sql-log,sql-log:sql --out $R/hard-sonnet-stats.md`; as printed (USD per correct ×10⁻⁴, tokens in k): snippet I |
 | `tab:gov` | Governed memory, development set ... | `c4.jsonl`, `c4-subject.jsonl` (cited, after ea9b30a), `c4-same-task.jsonl` | `for f in c4 c4-subject c4-same-task; do uv run --extra mcp --with numpy --with tiktoken python -m evals.jira.c4 report $R/$f.jsonl; done` (`evals/jira/README.md` writes `uv run python -m evals.jira.c4 report`, which fails without numpy) |
 
 Numbers in the text that no table carries:
@@ -68,15 +68,17 @@ Numbers in the text that no table carries:
 | Where | Number | How |
 | --- | --- | --- |
 | `sec:hard` | by tenant group, `sqlgen2 − sql` −0.8 / −1.7 / −0.8, `keel+query − sql` −1.1 / −1.9 / −1.7 | Snippet D (last three lines) |
-| `sec:hard` | a date function in 131 / 25 / 8 of 192 `time_in` runs (`sql`, `sqlgen2`, `keel+query`), misses 4 / 21 / 26, one miss among the runs that use one | Snippet E |
-| `sec:hard` | of the compiled interfaces' 47 `time_in` misses, only 2 match flooring each spell | Snippet F |
-| `sec:hard`, "Testing the explanation"; abstract | `time_in` 89.1 → 98.4 (`sqlgen2`) and 86.5 → 99.0 (`keel+query`), paired +9.4 [+5.2, +13.5] and +12.5 [+8.3, +16.7]; overall 96.2 → 98.2 and 95.8 → 98.6, +2.0 [+0.5, +3.5] and +2.8 [+1.1, +4.8]; 6 to 7% more input tokens; against hand-written SQL +0.8 [−0.2, +2.0] and +1.2 [+0.2, +2.5] | Snippet J: the first command writes `hard-days-stats.md` (the paired differences against the same condition); the second prints the comparison with `sql`, the token increase and the cost per correct (0.00095 and 0.00067) |
+| `sec:lessons`, "Arithmetic belongs in the database" | over the hand-written schema the agent computes the difference in SQL in two thirds of the runs (a date function in 131 of 192 `time_in` runs, against 25 and 8 for `sqlgen2` and `keel+query`) and almost never misses (4 misses, 1 among those 131); every `time_in` query over it read `valid_to` (192 of 192), against 19 and 3; with the remedy, `keel_days` in 189 and 171 of 192 | Snippet E (a regex over the `args` of every call in the `time_in` rows of `hard-haiku.jsonl` and `hard-days-haiku.jsonl`) |
+| `sec:hard`, "Testing the explanation"; abstract | `time_in` 89.1 → 98.4 (`sqlgen2`) and 86.5 → 99.0 (`keel+query`), paired +9.4 [+5.2, +13.5] and +12.5 [+8.3, +16.7]; overall 96.2 → 98.2 and 95.8 → 98.6, +2.0 [+0.5, +3.5] and +2.8 [+1.1, +4.8]; 6 to 7% more input tokens | Snippet J: the first command writes `hard-days-stats.md` (the paired differences against the same condition); the second prints the token increase and the cost per correct (0.00095 and 0.00067) |
+| `sec:hard`, "Testing the explanation"; abstract; `sec:conclusion` | fourth addendum, with the sentence: `sql` 97.8, `sql-tables` 96.9, `sql-log` 96.6; **R1** `sqlgen2 − sql` +0.4 [−0.6, +1.6] and **R2** `keel+query − sql` +0.8 [−0.1, +2.2], both confirmed; **R3** `sql − sql-log` +1.2 [−0.2, +2.8], not, so the lesson is withdrawn; every `time_in` 99.0 or more (the baselines 99.5 / 99.0 / 99.5); 2,880 runs, 2.5 USD | `hard-days-baselines-stats.md` (snippet K's first command, checked byte for byte; R1 to R3 are the first three rows of its exploratory table); `time_in` by condition and the run count: snippet K's second command; the cost: snippet H |
+| `sec:hard`, "Testing the explanation"; `sec:lessons`, "What prepared views buy is cost"; abstract; `sec:conclusion` | USD per correct with the sentence: `sql-log` 0.00123, `sql` 0.00059, `keel+query` 0.00067, `sqlgen2` 0.00095; `sql-log` 2.1, 1.8 and 1.3 times those ("1.3 to 2.1 times"); 15.1k input tokens a run against 7.1k | `hard-days-baselines-stats.md` (columns "cost per correct" and "Input tokens/run"); the ratios as printed: snippet K |
+| `sec:lessons`, "Described alike, the interfaces barely differ in accuracy" | before the sentence 97.4 / 95.9 / 94.5 (`sql`, `sql-tables`, `sql-log`; held-out 98.7 and 96.2 for the first two); with it 97.8 / 96.9 / 96.6, the ends 1.2 points apart with an interval that includes 0 (R3) | Hard slice: `hard-days-baselines-stats.md`, which carries the unremedied rows too (or snippets D and K); held-out: `tab:heldout` |
 | `sec:hard`, "A stronger agent"; `sec:lessons`; abstract | Sonnet 100 / 99.4 / 99.1 / 99.1 (`sql`, `sql-log`, `keel+query`, `sqlgen2`), 8 misses; every paired difference under 1 point, decided by at most 3 questions; raw log 7.5k input tokens a run against Haiku's 20.1k; `sql-log` 1.2 to 1.4 times the other three per correct answer (Haiku 1.7 to 2.5); Sonnet 8 to 15 times Haiku per correct on the same interface; Haiku `sql` against Sonnet `sql-log`, 2 points for 21 times the price | Paired differences and discordant counts: `hard-sonnet-stats.md` (command in the `tab:hard` row). The rest: snippet I |
 | `sec:hard`, `sec:lessons` | `sql-log` 2.3 and 1.7 times the cost per correct answer of `keel+query` and `sqlgen2` | 15.4 / 6.7 and 15.4 / 9.3 from snippet D |
 | `sec:confirm` | clean rerun H3 lower bound 4 × 10⁻¹⁹; Holm / Bonferroni bounds −0.4 and 0.0; sign test p = 0.039; 10 questions every condition misses, all `links` | Snippet C |
 | `sec:heldout`, `sec:res-cost` | API 3.8 calls a run, Keel 1.6; 2.2 to 2.6 turns a run | Snippet G |
 | `sec:posthoc` | development set: 1,534 `query` calls, 281 failed | Snippet G. The split into 250 timeouts (185 during the sandbox copy) and 31 SQL errors (17 schema prefixes) is not recomputable: rows record only `error: true` per call, not the error text |
-| `sec:repro` | costs per stage; the hard slice 21.0 USD (3.3 + 2.3 + 13.9 + 1.5); 32.2 USD in all | Snippet H |
+| `sec:repro` | costs per stage; the hard slice 23.5 USD (3.3 + 2.3 + 13.9 + 4.0, the remedy's 4.0 being the third and fourth addenda, 1.53 + 2.45); 34.7 USD in all | Snippet H |
 | `sec:determinism` | real-log and synthetic determinism, ingest rates, read latencies | `evals/scale/README.md` ("Running it"), results in `evals/scale/results/scale.jsonl` and `summary.md` (`uv run python -m evals.scale.harness summary`) |
 | `sec:firstrun` | the development set's first run (accuracies, CIs, Holm) | `uv run --with numpy python -m evals.jira.stats_cluster` (writes `results/stats-cluster.{md,json}`; needs the development questions in `~/datasets/public-jira/export`); supplement §A to §E |
 
@@ -193,23 +195,34 @@ for g in ("dev", "heldout", "confirm"):
 PY
 ```
 
-**E. Date functions in the agents' `time_in` SQL** (`sec:hard`):
+**E. Date functions, `valid_to` and `keel_days` in the agents' `time_in` SQL** (`sec:lessons`, "Arithmetic belongs in
+the database"). A regex over the `args` of every call of each `time_in` row, before the remedy (`hard-haiku.jsonl`) and
+after it (`hard-days-haiku.jsonl`):
 
 ```bash
 python3 -I - <<'PY'
 import json, re
-rows = [r for r in map(json.loads, open("evals/jira/results/hard-haiku.jsonl")) if r["type"] == "time_in"]
-date_fn = re.compile(r"date_diff|datediff|julianday|epoch", re.I)  # DuckDB and SQLite date arithmetic
-for s in ("sql", "sqlgen2", "keel+query"):
-    rs = [r for r in rows if r["system"] == s]
-    use = [r for r in rs if any(date_fn.search(json.dumps(c.get("args", {}))) for c in r["calls"])]
-    print(f"{s:11} runs {len(rs)}  with a date function {len(use):3}  missed {sum(not r['correct'] for r in rs):2}"
-          f"  missed among those {sum(not r['correct'] for r in use)}")
+R = "evals/jira/results/"
+pat = {"date function": re.compile(r"date_diff|datediff|julianday|epoch", re.I),  # DuckDB and SQLite date arithmetic
+       "valid_to": re.compile(r"valid_to", re.I), "keel_days": re.compile(r"keel_days", re.I)}
+for f, systems in (("hard-haiku", ("sql", "sqlgen2", "keel+query")), ("hard-days-haiku", ("sqlgen2", "keel+query"))):
+    rows = [r for r in map(json.loads, open(R + f + ".jsonl")) if r["type"] == "time_in"]
+    for s in systems:
+        rs = [r for r in rows if r["system"] == s]
+        use = {k: [r for r in rs if any(p.search(json.dumps(c.get("args", {}))) for c in r["calls"])] for k, p in pat.items()}
+        print(f"{f:15} {s:11} runs {len(rs)}", *(f" {k} {len(v):3}" for k, v in use.items()),
+              f"  missed {sum(not r['correct'] for r in rs):2}  missed with a date function"
+              f" {sum(not r['correct'] for r in use['date function'])}")
 PY
 ```
 
-**F. The compiled interfaces' `time_in` misses that match flooring each spell** (`sec:hard`; reads the bitemporal logs
-under `~/datasets/public-jira` through the oracle):
+Before the remedy it prints a date function in 131, 25 and 8 of 192 runs (`sql`, `sqlgen2`, `keel+query`; 131 / 192 is
+the paper's "two thirds"), `valid_to` in 192, 19 and 3, and misses 4, 21 and 26, one of them among `sql`'s 131; after
+it, `keel_days` in 189 (`sqlgen2`) and 171 (`keel+query`) of 192.
+
+**F. The compiled interfaces' `time_in` misses that match flooring each spell** (supplementary: the paper no longer
+cites it; it printed 47 misses, 2 of them matching the floor of each spell, summed. It reads the bitemporal logs under
+`~/datasets/public-jira` through the oracle):
 
 ```bash
 uv run -q python - <<'PY'
@@ -267,7 +280,8 @@ stages = {"held-out (registered, zone fix, sqlgen2, keel+query)": ["heldout-pilo
           "confirmation, clean rerun": ["confirm-haiku-clean"],
           "hard slice, registered": ["hard-pilot", "hard-haiku"], "hard slice, addendum": ["hard-ablation-pilot", "hard-ablation-haiku"],
           "hard slice, second addendum (Sonnet)": ["hard-sonnet-pilot", "hard-sonnet"],
-          "hard slice, third addendum (remedy)": ["hard-days-haiku"]}
+          "hard slice, third addendum (remedy)": ["hard-days-haiku"],
+          "hard slice, fourth addendum (remedy for the baselines)": ["hard-days-baselines-haiku"]}
 total = 0
 for stage, files in stages.items():
     usd = 0
@@ -282,7 +296,9 @@ print(f"all: {total:.2f} USD")
 PY
 ```
 
-It prints 3.27, 2.30, 13.92 and 1.53 USD for the four hard-slice stages (21.0 in the paper) and 32.20 in all.
+It prints 3.27, 2.30, 13.92, 1.53 and 2.45 USD for the five hard-slice stages (23.47; 23.5 in the paper, as 3.3 + 2.3 +
+13.9 + 4.0, the remedy's two addenda together) and 34.66 in all (34.7). Every row of `hard-days-baselines-haiku.jsonl`
+carries 8a9b2e3, clean.
 
 **I. Sonnet against Haiku on the hard slice** (`tab:hard` Sonnet rows, `sec:hard` "A stronger agent", `sec:lessons`):
 
@@ -323,9 +339,9 @@ three 1.20 to 1.42 (Sonnet) and 1.65 to 2.47 (Haiku); Sonnet 8.4 to 14.6 times H
 interface; and +2.0 points for 20.8 times the price.
 
 **J. The duration remedy** (`tab:hard` Remedy rows, `sec:hard` "Testing the explanation"). The first command is the
-third addendum's (`evals/jira/hard/README.md`), checked against the committed output; the second is post hoc: the
-remedied rows, relabelled `<system>+days`, against hand-written SQL's registered rows, then the input-token increase
-and the cost per correct answer after the remedy:
+third addendum's (`evals/jira/hard/README.md`), checked against the committed output; the second prints the
+input-token increase and the cost per correct answer after the remedy. (The remedied rows' comparison with hand-written
+SQL's unremedied rows, across commits, is no longer in the paper; the fourth addendum's, snippet K, replaced it.)
 
 ```bash
 R=evals/jira/results; T=$(mktemp -d)
@@ -340,17 +356,11 @@ for typ in (None, 'time_in'):
     print(typ or 'all', ca.markdown(ca.analyze(q, old + new, pairs=[('sqlgen2+days', 'sqlgen2'), ('keel+query+days', 'keel+query')])))
 " > $T/days.md
 diff $T/days.md $R/hard-days-stats.md && echo remedy: same
-uv run -q --with numpy python - <<'PY'
+python3 -I - <<'PY'
 import json
-from pathlib import Path
-from evals.jira.confirm_analysis import analyze
-R = Path("evals/jira/results")
-qs = {q["id"]: q for p in Path("evals/jira/hard").glob("*.questions.json") for q in json.loads(p.read_text())}
-old = [json.loads(l) for l in open(R / "hard-haiku.jsonl")]
-new = [r | {"system": r["system"] + "+days"} for r in map(json.loads, open(R / "hard-days-haiku.jsonl"))]
-res = analyze(qs, old + new, pairs=[("sqlgen2+days", "sql"), ("keel+query+days", "sql")])
-for x in res["pairs"]:
-    print(f"{x['a']} - {x['b']}", f"{100*x['diff']:+.1f} [{100*x['lo']:+.1f}, {100*x['hi']:+.1f}]", f"{x['pos']} / {x['neg']}")
+R = "evals/jira/results/"
+old = [json.loads(l) for l in open(R + "hard-haiku.jsonl")]
+new = [r | {"system": r["system"] + "+days"} for r in map(json.loads, open(R + "hard-days-haiku.jsonl"))]
 for s in ("sqlgen2", "keel+query"):
     o, n = [r for r in old if r["system"] == s], [r for r in new if r["system"] == s + "+days"]
     tok = lambda rs: sum(r["tokens"]["input"] for r in rs) / len(rs)
@@ -359,8 +369,58 @@ for s in ("sqlgen2", "keel+query"):
 PY
 ```
 
-The second prints `sqlgen2+days - sql +0.8 [-0.2, +2.0] 14 / 7` and `keel+query+days - sql +1.2 [+0.2, +2.5] 12 / 3`,
-then +6.3% and +7.4% input tokens and 0.00095 and 0.00067 USD per correct answer.
+The second prints +6.3% and +7.4% input tokens and 0.00095 and 0.00067 USD per correct answer.
+
+**K. The duration remedy for the baselines** (the fourth addendum: `tab:hard` Remedy rows, `sec:hard` "Testing the
+explanation", `sec:lessons`, `sec:conclusion`). The first command is the fourth addendum's analysis
+(`evals/jira/hard/README.md`, "Fourth addendum"), checked against the committed `hard-days-baselines-stats.md`; R1 to R3
+are the first three rows of its exploratory table. The second prints the Remedy rows by type, the cost per correct
+answer and its ratios, and the input tokens:
+
+```bash
+R=evals/jira/results; T=$(mktemp -d)
+uv run -q --with numpy python -c "
+import json; from pathlib import Path; from evals.jira import confirm_analysis as ca
+H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())
+qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}
+old = [json.loads(l) for l in open('$R/hard-haiku.jsonl')] + [json.loads(l) for l in open('$R/hard-ablation-haiku.jsonl')]
+comp = [json.loads(l) | {'system': json.loads(l)['system'] + '+days'} for l in open('$R/hard-days-haiku.jsonl')]
+base = [json.loads(l) for l in open('$R/hard-days-baselines-haiku.jsonl')]
+print(ca.markdown(ca.analyze(qs, old + comp + base, pairs=[('sqlgen2+days', 'sql+days'), ('keel+query+days', 'sql+days'),
+      ('sql+days', 'sql-log+days'), ('sql+days', 'sql-tables+days'), ('sql+days', 'sql'), ('sql-tables+days', 'sql-tables'), ('sql-log+days', 'sql-log')])))
+" > $T/baselines.md
+diff $T/baselines.md $R/hard-days-baselines-stats.md && echo baselines: same
+python3 -I - <<'PY'
+import collections, json
+R = "evals/jira/results/"
+rows = [r | {"system": r["system"] + "+days"} for r in map(json.loads, open(R + "hard-days-haiku.jsonl"))]
+rows += [json.loads(l) for l in open(R + "hard-days-baselines-haiku.jsonl")]
+S = ["keel+query+days", "sql+days", "sqlgen2+days", "sql-tables+days", "sql-log+days"]
+def acc(rs):  # a question's repetitions averaged first
+    q = collections.defaultdict(list)
+    for r in rs: q[r["id"]].append(bool(r["correct"]))
+    return 100 * sum(sum(v) / len(v) for v in q.values()) / len(q)
+by = {s: [r for r in rows if r["system"] == s] for s in S}
+print(f"{'':13}", *(f"{s.removesuffix('+days'):>11}" for s in S))
+for ty in ("two_hop", "known_count", "entries", "time_in", "both"):
+    print(f"{ty:13}", *(f"{acc([r for r in by[s] if r['type'] == ty]):11.1f}" for s in S))
+print(f"{'All':13}", *(f"{acc(by[s]):11.1f}" for s in S))
+usd = {s: sum(r["cost_usd"] for r in by[s]) / sum(r["correct"] for r in by[s]) for s in S}
+print(f"{'USD/correct':13}", *(f"{usd[s]:11.5f}" for s in S))
+print(f"{'tokens (k)':13}", *(f"{sum(r['tokens']['input'] for r in by[s]) / len(by[s]) / 1e3:11.1f}" for s in S))
+print("sql-log per correct over", ", ".join(f"{s.removesuffix('+days')} {usd['sql-log+days'] / usd[s]:.2f}" for s in S[:4]))
+print("baseline runs", sum(len(by[s]) for s in ("sql+days", "sql-tables+days", "sql-log+days")))
+PY
+```
+
+The first prints `baselines: same`; in the file, R1 `sqlgen2+days - sql+days` +0.4 [−0.6, +1.6] (10 / 7), R2
+`keel+query+days - sql+days` +0.8 [−0.1, +2.2] (10 / 4), R3 `sql+days - sql-log+days` +1.2 [−0.2, +2.8] (14 / 8). The
+second prints, in the order of `tab:hard`'s columns (`keel+query`, `sql`, `sqlgen2`, `sql-tables`, `sql-log`),
+`time_in` 99.0, 99.5, 98.4, 99.0, 99.5; all 98.6, 97.8, 98.2, 96.9, 96.6; USD per correct 0.00067, 0.00059, 0.00095,
+0.00082, 0.00123 (the Remedy row ×10⁻⁴: 6.7, 5.9, 9.5, 8.2, 12.3); input tokens 14.0k, 7.1k, 13.0k, 8.6k, 15.1k;
+`sql-log` per correct over `keel+query` 1.83, `sql` 2.07, `sqlgen2` 1.29 (and `sql-tables` 1.50, inside the paper's "1.3
+to 2.1"); 2,880 baseline runs. `sql-tables` reads 8,601 input tokens a run with and without the sentence: a coincidence
+of rounding (8,600.8 and 8,601.4), not a missing sentence.
 
 ## 3. Rerunning the paid stages
 
@@ -382,7 +442,8 @@ at Anthropic's list prices of 2026-10-06 (`evals/efficiency/run.py`, `DIRECT_PRI
 | Hard slice, addendum | same README, "Addendum", with the raised brakes 1.2, 1.2 and 0.8 USD of its pilot paragraph (clean worktree of d5e7201) | `hard-ablation-pilot.jsonl`, `hard-ablation-haiku.jsonl` | 0.11 + 2.18 |
 | Hard slice, second addendum (Sonnet) | same README, "Second addendum" (`--models anthropic/claude-sonnet-5.5`; pilot brake 3 USD, then 17, 17 and 11) | `hard-sonnet-pilot.jsonl`, `hard-sonnet.jsonl` | 0.49 + 13.43 |
 | Hard slice, third addendum (remedy) | same README, "Third addendum" (`--systems sqlgen2,keel+query`, brakes 1.0, 1.0 and 0.7 USD, clean worktree of a75faee) | `hard-days-haiku.jsonl` | 1.53 |
-| **All of the above** | | | **32.20** (paper: 32.2; the hard slice 21.0 = 3.3 + 2.3 + 13.9 + 1.5) |
+| Hard slice, fourth addendum (remedy for the baselines) | same README, "Fourth addendum" (`--systems sql+days,sql-tables+days,sql-log+days`, brakes 1.2, 1.2 and 0.8 USD, clean worktree of 8a9b2e3) | `hard-days-baselines-haiku.jsonl` | 2.45 |
+| **All of the above** | | | **34.66** (paper: 34.7; the hard slice 23.5 = 3.3 + 2.3 + 13.9 + 4.0, the remedy 1.53 + 2.45) |
 
 The development set's first run (GPT-6 Luna, Claude Haiku 5.5, Claude Sonnet 5.5; Graphiti, Mem0, retrieval, the API,
 TGMS, governed memory) is in `evals/jira/README.md`, in the order it was run; its spend is in supplement
@@ -401,7 +462,9 @@ every row; `versions.dirty` says whether `keel/` or `evals/` had uncommitted cha
 identical at d7b3576 and bef9b07 (held-out), and at d620fcb (release 0.36.0), 78d3f0d, 98a9621, 552e729, d5e7201,
 eaf3951 and fd6353c (`git diff --stat d620fcb <commit> -- keel/` is empty). The one exception is the third addendum's
 a75faee: `git diff d620fcb a75faee -- keel/` is one sentence added to `describe()` in `keel/sqlgen.py`, naming
-`keel_days` (the remedy that addendum tests); nothing else under `keel/` differs.
+`keel_days` (the remedy that addendum tests); nothing else under `keel/` differs. The fourth addendum's 8a9b2e3 has
+a75faee's `keel/` (`git diff --stat a75faee 8a9b2e3 -- keel/` is empty): its change, the baselines' sentence, is in the
+harness (`evals/jira/sql_system.py`, `evals/jira/bench.py`).
 
 | Stage | Registered in | Amendments and later records | Rows carry (dirty) |
 | --- | --- | --- | --- |
@@ -413,6 +476,7 @@ a75faee: `git diff d620fcb a75faee -- keel/` is one sentence added to `describe(
 | Hard slice, addendum (exploratory) | 9df0aa3 (2026-11-02 21:35) | d5e7201 brakes raised after its pilot; 5bc7a20 result | pilot: 9df0aa3 (clean); run: d5e7201 (clean) |
 | Hard slice, second addendum (Sonnet, exploratory) | eaf3951 (2026-11-02 23:36) | fd6353c pilot recorded; 15ed1f0 result | pilot: eaf3951 (clean); run: fd6353c (clean) |
 | Hard slice, third addendum (duration remedy, exploratory, prediction stated) | a75faee (2026-11-03 09:09), with the `keel/sqlgen.py` sentence | 5f60d2b result | a75faee (clean) |
+| Hard slice, fourth addendum (duration remedy for the baselines, three decision rules) | 8a9b2e3 (2026-11-03 11:16) | f8c9a29 result | 8a9b2e3 (clean) |
 
 Development-set rows: `full-haiku.jsonl` `keel` on 784630f and 72314eb (clean), `full-sql.jsonl` on e8ae81e (dirty).
 
