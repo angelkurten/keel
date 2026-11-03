@@ -202,3 +202,15 @@ checkout. What is fixed now, before the rerun:
 - What it decides: nothing new. The registered result above stands as run, and the rerun is reported beside it. If
   a hypothesis's decision (confirmed or not) differs between the two runs, the paper says that hypothesis did not
   reproduce and gives both; if all three agree, the paper cites the clean rows as the auditable copy.
+
+## Clean rerun: result, 2026-11-02 (`results/confirm-haiku-clean.jsonl`, `results/confirm-clean-stats.md`)
+
+3,096 runs, all on 98a9621 with `dirty: false`, no harness error, 1.40 USD. Accuracy: keel 94.7%, keel+query 96.0,
+sql 95.9, sqlgen2 96.0 (first run: 94.8, 96.0, 95.7, 96.0).
+
+- **H1** sqlgen2 − sql +0.1 points [−0.3, +0.5] (2 / 1): confirmed again.
+- **H2** keel+query − sql +0.1 [−0.5, +0.6] (3 / 2): confirmed again.
+- **H3** keel+query − keel +1.3 [0.0, +2.6] (12 / 2): the interval's lower bound is 4 × 10⁻¹⁹, zero up to
+  floating-point error (seeds 1 and 2 give the same), so `confirm_analysis` prints "confirmed" only because of that
+  error. The rule above asks for a lower bound above 0; a bound of 0 does not meet it, so, as registered for this
+  rerun, **H3 did not reproduce**: it sits on its bound. The code is left as it is; this paragraph is the reading.
