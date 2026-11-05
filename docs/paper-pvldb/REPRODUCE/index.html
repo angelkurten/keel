@@ -1,0 +1,1730 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/docs/paper-pvldb/REPRODUCE/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Reproducing the paper - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#reproducing-the-paper" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Reproducing the paper
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first pilot in a day
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Send your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serve the tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/hosted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/showcase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The support showcase
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Setup
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-tables-and-figures-of-maintex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Tables and figures of main.tex
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Tables and figures of main.tex">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#snippets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Snippets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rerunning-the-paid-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Rerunning the paid stages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-registration-commits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Registration commits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-building-the-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Building the paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="reproducing-the-paper">Reproducing the paper<a class="headerlink" href="#reproducing-the-paper" title="Permanent link">&para;</a></h1>
+<p>The single entry point for reproducing <em>Do LLM Agents Need Prepared Views?</em> (<code>main.tex</code>, <code>supplement.tex</code>).
+It says where every table and figure of <code>main.tex</code> comes from, how to recompute each number from the committed
+result rows (free, no model call), how to rerun each paid stage, and which commit registered each stage.</p>
+<p>Tables and figures are named by their <code>\label</code> and the start of their caption, not by number.</p>
+<h2 id="1-setup">1. Setup<a class="headerlink" href="#1-setup" title="Permanent link">&para;</a></h2>
+<p><strong>Requirements.</strong></p>
+<ul>
+<li>Python 3.10+ and <a href="https://docs.astral.sh/uv/"><code>uv</code></a>; <code>uv sync --extra dev</code> at the repository root.</li>
+<li>DuckDB 2.0.0 for every <code>sql*</code> condition and the gold checks: pass <code>--with duckdb==2.0.0</code> to <code>uv run</code>, as the
+  commands below do.</li>
+<li><a href="https://tectonic-typesetting.github.io/"><code>tectonic</code></a> for the paper, the supplement and the two TikZ diagrams.
+  On macOS, <code>qlmanage</code> (built in) makes the diagrams' PNG twins; it is optional.</li>
+<li>The Public Jira Dataset (Montgomery, Lüders and Maalej, MSR 2022, Zenodo, CC BY 4.0), unzipped to
+  <code>~/datasets/public-jira/ThePublicJiraDataset/</code>, and Docker for the MongoDB restore. The event logs, injections
+  and questions the pipeline writes go to:</li>
+<li><code>~/datasets/public-jira/export/</code>: the development set (hyperledger, mariadb, spring), seed 7. Its question files
+    are not committed; <code>evals/jira/README.md</code> §1 generates them.</li>
+<li><code>~/datasets/public-jira/heldout/</code>: the held-out set (ecosystem-ac, sakai-grbk, redhat-projquay), seed 31, and
+    every project export screened for the confirmation set.</li>
+<li><code>~/datasets/public-jira/confirm/</code>: the confirmation set (apache-tajo, apache-rave), seed 47.</li>
+</ul>
+<p>The held-out, confirmation and hard-slice questions are committed (<code>evals/jira/{heldout,confirm,hard}/</code>), each
+  directory with a <code>manifest.json</code> of SHA-256 sums, so the analyses in §2 need no dataset except for the
+  development set's question files.</p>
+<p><strong>Keys</strong> (only for the paid runs of §3; nothing in §2 calls a model). Never commit or paste a key.</p>
+<ul>
+<li>Anthropic: <code>ANTHROPIC_API_KEY</code>, or the file <code>~/.anthropic_key</code> (<code>evals/efficiency/run.py</code>, <code>anthropic_key()</code>).
+  With either set, Claude runs go straight to Anthropic; <code>EVAL_ANTHROPIC_DIRECT=0</code> sends them through the gateway.</li>
+<li><code>OFOX_API_KEY</code> (OfoxAI gateway) is required even when every call goes straight to Anthropic: the harness's
+  <code>Gateway()</code> constructor (<code>evals/efficiency/run.py</code>) reads <code>os.environ["OFOX_API_KEY"]</code> and fetches the gateway's
+  model list before any question, so a missing or invalid key stops the run.</li>
+</ul>
+<p><strong>Shell.</strong> Every command here is bash. The stage READMEs store the bench command in <code>$B</code> and run <code>$B --systems ...</code>;
+zsh does not split an unquoted <code>$B</code> into words, so under zsh it fails with <code>command not found</code>. Run them with
+<code>bash</code>, from the repository root. A fresh worktree's environment also lacked <code>httpx</code> during the hard slice's
+pilot; add <code>--with httpx</code> to the bench command if it is missing.</p>
+<h2 id="2-tables-and-figures-of-maintex">2. Tables and figures of <code>main.tex</code><a class="headerlink" href="#2-tables-and-figures-of-maintex" title="Permanent link">&para;</a></h2>
+<p><code>R=evals/jira/results</code>. Every analysis below is free (no model call). Each <code>--out</code> writes a file that is committed;
+point it at a scratch path to compare with <code>diff</code>. All of these were rerun for this file and give the committed
+outputs byte for byte, or the paper's numbers where there is no committed output.</p>
+<table>
+<thead>
+<tr>
+<th>Label</th>
+<th>Caption starts</th>
+<th>Result file(s)</th>
+<th>How to regenerate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fig:1</code></td>
+<td>Keel (top): product events through cartridge handlers ...</td>
+<td>none (diagram)</td>
+<td>TikZ: <code>figures/fig1-architecture.tex</code>, built by <code>figures/build.sh</code> (<code>tectonic fig1-architecture.tex</code>)</td>
+</tr>
+<tr>
+<td><code>fig:2</code></td>
+<td>One field's versions in valid time (across) and recorded time (up) ...</td>
+<td>none (diagram)</td>
+<td>TikZ: <code>figures/fig2-bitemporal.tex</code>, built by <code>figures/build.sh</code></td>
+</tr>
+<tr>
+<td><code>tab:questions</code></td>
+<td>Question types, with the number per tenant ...</td>
+<td><code>evals/jira/{heldout,confirm}/*.questions.json</code>, the development set's in <code>~/datasets/public-jira/export/</code></td>
+<td>Templates and counts in <code>evals/jira/questions.py</code>; per-type counts in each <code>manifest.json</code> (<code>counts</code>, <code>tenants.*.by_type</code>)</td>
+</tr>
+<tr>
+<td><code>tab:sets</code></td>
+<td>The three question sets. Tenants are whole projects ...</td>
+<td><code>evals/jira/{heldout,confirm}/manifest.json</code></td>
+<td>Issue counts and seeds from the manifests; development issues are the <code>issue.created</code> events of <code>~/datasets/public-jira/export/&lt;tenant&gt;.jsonl</code> (2,323, 3,333, 3,150)</td>
+</tr>
+<tr>
+<td><code>tab:conditions</code></td>
+<td>Conditions. The <code>sql*</code> conditions run DuckDB 2.0.0 ...</td>
+<td>none (design)</td>
+<td><code>evals/jira/bench.py</code> (module docstring and <code>SQL_SYSTEMS</code>), <code>evals/jira/sql_system.py</code>, <code>evals/jira/sqlgen_system.py</code></td>
+</tr>
+<tr>
+<td><code>tab:deviations</code></td>
+<td>Deviations from the registrations, in order ...</td>
+<td>none (record)</td>
+<td>The amendment, correction and result sections of <code>evals/jira/{heldout,confirm,hard}/README.md</code>; commits in §4</td>
+</tr>
+<tr>
+<td><code>tab:heldout</code></td>
+<td>Held-out set, Haiku, 387 questions, three repetitions ...</td>
+<td><code>heldout-haiku.jsonl</code> (registered), <code>heldout-haiku-sqlgen-tzfix.jsonl</code>, <code>heldout-haiku-sqlgen2.jsonl</code>, <code>heldout-haiku-keel-query.jsonl</code></td>
+<td>Snippet A: registered rows (<code>heldout-stats.md</code>), zone-fixed <code>sqlgen</code> (<code>heldout-stats-tzfix.md</code>), <code>sqlgen2</code> (<code>heldout-sqlgen2-stats.md</code>), <code>keel+query</code> (printed)</td>
+</tr>
+<tr>
+<td><code>tab:planned</code></td>
+<td>Held-out set, the five registered comparisons ...</td>
+<td>as <code>tab:heldout</code></td>
+<td>Snippet A: the registered rows from <code>heldout-stats.md</code>, the zone-fixed rows from <code>heldout-stats-tzfix.md</code></td>
+</tr>
+<tr>
+<td><code>fig:hyp</code></td>
+<td>The three hypotheses on each set: paired difference ...</td>
+<td><code>figures/hypotheses.json</code>, from the rows of <code>tab:sets-acc</code></td>
+<td>Snippet B prints every value of <code>hypotheses.json</code>; then <code>cd docs/paper-pvldb/figures &amp;&amp; uv run --with matplotlib python fig7-hypotheses.py</code></td>
+</tr>
+<tr>
+<td><code>tab:hyp</code></td>
+<td>Confirmation set (258 questions, Haiku, three repetitions) ...</td>
+<td><code>confirm-haiku.jsonl</code> (the first run, not the clean rerun)</td>
+<td><code>uv run --with numpy python -m evals.jira.confirm_analysis $R/confirm-haiku.jsonl --out $R/confirm-stats.md</code>. Clean rerun (text of <code>sec:confirm</code>): the same on <code>confirm-haiku-clean.jsonl</code>, out <code>confirm-clean-stats.md</code>. Sensitivity paragraph: snippet C</td>
+</tr>
+<tr>
+<td><code>tab:sets-acc</code></td>
+<td>Accuracy (%) by condition and set, Haiku, three repetitions ...</td>
+<td>dev: <code>full-haiku.jsonl</code> (<code>keel</code>), <code>full-sql.jsonl</code> (Haiku <code>sql</code>), <code>dev-haiku-query-sqlgen2.jsonl</code>; held-out: <code>heldout-haiku.jsonl</code>, <code>heldout-haiku-sqlgen2.jsonl</code>, <code>heldout-haiku-keel-query.jsonl</code>; <code>confirm-haiku.jsonl</code>; <code>hard-haiku.jsonl</code></td>
+<td>Snippet B</td>
+</tr>
+<tr>
+<td><code>tab:hard</code></td>
+<td>Hard slice (320 questions, 64 per type, Haiku, three repetitions) ...</td>
+<td><code>hard-haiku.jsonl</code>, <code>hard-ablation-haiku.jsonl</code>; "Remedy" rows: <code>hard-days-haiku.jsonl</code> (compiled interfaces), <code>hard-days-baselines-haiku.jsonl</code> (<code>sql</code>, <code>sql-tables</code>, <code>sql-log</code>); "Sonnet" rows: <code>hard-sonnet.jsonl</code></td>
+<td>Overall accuracy, USD per correct and tokens: <code>uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-haiku.jsonl $R/hard-ablation-haiku.jsonl --questions evals/jira/hard --pairs sql-tables:sql,sql-log:sql,sqlgen2:sql-log,keel+query:sql-log,keel:sql-log --out $R/hard-ablation-stats.md</code> (the registered part alone: <code>confirm_analysis $R/hard-haiku.jsonl --questions evals/jira/hard --out $R/hard-stats.md</code>). Per-type rows and the cost rows as printed: snippet D. "Remedy" rows: overall accuracy and USD per correct of all five from <code>hard-days-baselines-stats.md</code> (rows <code>&lt;system&gt;+days</code>), written by the fourth addendum's command (first in snippet K); the compiled interfaces' <code>time_in</code> also in <code>hard-days-stats.md</code> (snippet J); every Remedy row as printed, the baselines' <code>time_in</code> included: snippet K. "Sonnet" rows: <code>uv run --with numpy python -m evals.jira.confirm_analysis $R/hard-sonnet.jsonl --questions evals/jira/hard --agent Sonnet --pairs sqlgen2:sql-log,keel+query:sql-log,sql-log:sql --out $R/hard-sonnet-stats.md</code>; as printed (USD per correct ×10⁻⁴, tokens in k): snippet I</td>
+</tr>
+<tr>
+<td><code>tab:gov</code></td>
+<td>Governed memory, development set ...</td>
+<td><code>c4.jsonl</code>, <code>c4-subject.jsonl</code> (cited, after ea9b30a), <code>c4-same-task.jsonl</code></td>
+<td><code>for f in c4 c4-subject c4-same-task; do uv run --extra mcp --with numpy --with tiktoken python -m evals.jira.c4 report $R/$f.jsonl; done</code> (<code>evals/jira/README.md</code> writes <code>uv run python -m evals.jira.c4 report</code>, which fails without numpy)</td>
+</tr>
+</tbody>
+</table>
+<p>Numbers in the text that no table carries:</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Number</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sec:hard</code></td>
+<td>by tenant group, <code>sqlgen2 − sql</code> −0.8 / −1.7 / −0.8, <code>keel+query − sql</code> −1.1 / −1.9 / −1.7</td>
+<td>Snippet D (last three lines)</td>
+</tr>
+<tr>
+<td><code>sec:lessons</code>, "Arithmetic belongs in the database"</td>
+<td>over the hand-written schema the agent computes the difference in SQL in two thirds of the runs (a date function in 131 of 192 <code>time_in</code> runs, against 25 and 8 for <code>sqlgen2</code> and <code>keel+query</code>) and almost never misses (4 misses, 1 among those 131); every <code>time_in</code> query over it read <code>valid_to</code> (192 of 192), against 19 and 3; with the remedy, <code>keel_days</code> in 189 and 171 of 192</td>
+<td>Snippet E (a regex over the <code>args</code> of every call in the <code>time_in</code> rows of <code>hard-haiku.jsonl</code> and <code>hard-days-haiku.jsonl</code>)</td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, "Testing the explanation"; abstract</td>
+<td><code>time_in</code> 89.1 → 98.4 (<code>sqlgen2</code>) and 86.5 → 99.0 (<code>keel+query</code>), paired +9.4 [+5.2, +13.5] and +12.5 [+8.3, +16.7]; overall 96.2 → 98.2 and 95.8 → 98.6, +2.0 [+0.5, +3.5] and +2.8 [+1.1, +4.8]; 6 to 7% more input tokens</td>
+<td>Snippet J: the first command writes <code>hard-days-stats.md</code> (the paired differences against the same condition); the second prints the token increase and the cost per correct (0.00095 and 0.00067)</td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, "Testing the explanation"; abstract; <code>sec:conclusion</code></td>
+<td>fourth addendum, with the sentence: <code>sql</code> 97.8, <code>sql-tables</code> 96.9, <code>sql-log</code> 96.6; <strong>R1</strong> <code>sqlgen2 − sql</code> +0.4 [−0.6, +1.6] and <strong>R2</strong> <code>keel+query − sql</code> +0.8 [−0.1, +2.2], both confirmed; <strong>R3</strong> <code>sql − sql-log</code> +1.2 [−0.2, +2.8], not, so the lesson is withdrawn; every <code>time_in</code> 99.0 or more (the baselines 99.5 / 99.0 / 99.5); 2,880 runs, 2.5 USD</td>
+<td><code>hard-days-baselines-stats.md</code> (snippet K's first command, checked byte for byte; R1 to R3 are the first three rows of its exploratory table); <code>time_in</code> by condition and the run count: snippet K's second command; the cost: snippet H</td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, "Testing the explanation"; <code>sec:lessons</code>, "What prepared views buy is cost"; abstract; <code>sec:conclusion</code></td>
+<td>USD per correct with the sentence: <code>sql-log</code> 0.00123, <code>sql</code> 0.00059, <code>keel+query</code> 0.00067, <code>sqlgen2</code> 0.00095; <code>sql-log</code> 2.1, 1.8 and 1.3 times those ("1.3 to 2.1 times"); 15.1k input tokens a run against 7.1k</td>
+<td><code>hard-days-baselines-stats.md</code> (columns "cost per correct" and "Input tokens/run"); the ratios as printed: snippet K</td>
+</tr>
+<tr>
+<td><code>sec:lessons</code>, "With the same duration sentence, the SQL interfaces end within about 2 points of each other"</td>
+<td>before the sentence 97.4 / 95.9 / 94.5 (<code>sql</code>, <code>sql-tables</code>, <code>sql-log</code>; held-out 98.7 and 96.2 for the first two); with it 97.8 / 96.9 / 96.6, the ends 1.2 points apart with an interval that includes 0 (R3)</td>
+<td>Hard slice: <code>hard-days-baselines-stats.md</code>, which carries the unremedied rows too (or snippets D and K); held-out: <code>tab:heldout</code></td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, "A stronger agent"; <code>sec:lessons</code>; abstract</td>
+<td>Sonnet 100 / 99.4 / 99.1 / 99.1 (<code>sql</code>, <code>sql-log</code>, <code>keel+query</code>, <code>sqlgen2</code>), 8 misses; every paired difference under 1 point, decided by at most 3 questions; raw log 7.5k input tokens a run against Haiku's 20.1k; <code>sql-log</code> 1.2 to 1.4 times the other three per correct answer (Haiku 1.7 to 2.5); Sonnet 8 to 15 times Haiku per correct on the same interface; Haiku <code>sql</code> against Sonnet <code>sql-log</code>, 2 points for 21 times the price</td>
+<td>Paired differences and discordant counts: <code>hard-sonnet-stats.md</code> (command in the <code>tab:hard</code> row). The rest: snippet I</td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, <code>sec:lessons</code></td>
+<td><code>sql-log</code> 2.3 and 1.7 times the cost per correct answer of <code>keel+query</code> and <code>sqlgen2</code></td>
+<td>15.4 / 6.7 and 15.4 / 9.3 from snippet D</td>
+</tr>
+<tr>
+<td><code>sec:confirm</code></td>
+<td>clean rerun H3 lower bound 4 × 10⁻¹⁹; Holm / Bonferroni bounds −0.4 and 0.0; sign test p = 0.039; 10 questions every condition misses, all <code>links</code></td>
+<td>Snippet C</td>
+</tr>
+<tr>
+<td><code>sec:heldout</code>, <code>sec:res-cost</code></td>
+<td>API 3.8 calls a run, Keel 1.6; 2.2 to 2.6 turns a run</td>
+<td>Snippet G</td>
+</tr>
+<tr>
+<td><code>sec:posthoc</code></td>
+<td>development set: 1,534 <code>query</code> calls, 281 failed</td>
+<td>Snippet G. The split into 250 timeouts (185 during the sandbox copy) and 31 SQL errors (17 schema prefixes) is not recomputable: rows record only <code>error: true</code> per call, not the error text</td>
+</tr>
+<tr>
+<td><code>sec:repro</code></td>
+<td>the hard slice 37.3 USD (3.27 + 2.30 + 13.92 + 1.53 + 2.45 + 13.84, the registration and its five addenda); 48.5 USD in all</td>
+<td>Snippet H</td>
+</tr>
+<tr>
+<td><code>sec:hard</code>, "A stronger agent" (fifth addendum); <code>sec:lessons</code>; <code>sec:conclusion</code></td>
+<td>Sonnet with the sentence 99.7 / 99.4 / 99.4 / 99.1 (<code>sql+days</code>, <code>keel+query</code>, <code>sqlgen2</code>, <code>sql-log+days</code>), none moved by more than one question; 1,280 runs, 13.8 USD; Haiku's prepared interfaces with the sentence 0.8 to 1.9 points below Sonnet with it on the same interface, at a twelfth to a fifteenth of its cost (15.3, 14.3, 11.8)</td>
+<td><code>hard-days-sonnet-stats.md</code> (command in <code>evals/jira/hard/README.md</code>, "Fifth addendum"); Haiku's side: <code>hard-days-baselines-stats.md</code>, <code>hard-days-stats.md</code></td>
+</tr>
+<tr>
+<td><code>sec:determinism</code></td>
+<td>real-log and synthetic determinism, ingest rates, read latencies</td>
+<td><code>evals/scale/README.md</code> ("Running it"), results in <code>evals/scale/results/scale.jsonl</code> and <code>summary.md</code> (<code>uv run python -m evals.scale.harness summary</code>)</td>
+</tr>
+<tr>
+<td><code>sec:firstrun</code></td>
+<td>the development set's first run (accuracies, CIs, Holm)</td>
+<td><code>uv run --with numpy python -m evals.jira.stats_cluster</code> (writes <code>results/stats-cluster.{md,json}</code>; needs the development questions in <code>~/datasets/public-jira/export</code>); supplement §A to §E</td>
+</tr>
+</tbody>
+</table>
+<p>The supplement's figures (<code>fig3-tenant-accuracy</code> to <code>fig6-poisoned</code>) are built by the same <code>figures/build.sh</code>;
+fig3 and fig5 read <code>figures/tenant-ci.json</code>, fig4 and fig6 carry their numbers in the script. Their docstrings cite
+<code>full-run-results.md</code> and <code>c4-results.md</code>, which are not in this repository; the numbers are those of
+<code>stats-cluster.md</code> and of the <code>c4 report</code> above.</p>
+<h3 id="snippets">Snippets<a class="headerlink" href="#snippets" title="Permanent link">&para;</a></h3>
+<p>Run each from the repository root under bash. Each was run for this file and prints the paper's numbers.</p>
+<p><strong>A. Held-out table variants</strong> (<code>tab:heldout</code>, <code>tab:planned</code>). The zone-fixed and <code>sqlgen2</code> outputs put the fixed
+<code>sqlgen</code> arm in place of the registered one:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">R</span><span class="o">=</span>evals/jira/results<span class="p">;</span><span class="w"> </span><span class="nv">T</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>evals.jira.heldout_analysis<span class="w"> </span><span class="nv">$R</span>/heldout-haiku.jsonl<span class="w"> </span>--out<span class="w"> </span><span class="nv">$T</span>/heldout-stats.md
+diff<span class="w"> </span><span class="nv">$T</span>/heldout-stats.md<span class="w"> </span><span class="nv">$R</span>/heldout-stats.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>registered:<span class="w"> </span>same
+python3<span class="w"> </span>-I<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import json,sys</span>
+<span class="s2">for l in open('</span><span class="nv">$R</span><span class="s2">/heldout-haiku.jsonl'):</span>
+<span class="s2">    if json.loads(l)['system'] != 'sqlgen': sys.stdout.write(l)"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$T</span>/no-sqlgen.jsonl
+uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>evals.jira.heldout_analysis<span class="w"> </span><span class="nv">$T</span>/no-sqlgen.jsonl<span class="w"> </span><span class="nv">$R</span>/heldout-haiku-sqlgen-tzfix.jsonl<span class="w"> </span>--out<span class="w"> </span><span class="nv">$T</span>/tz.md
+diff<span class="w"> </span><span class="nv">$T</span>/tz.md<span class="w"> </span><span class="nv">$R</span>/heldout-stats-tzfix.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>zone-fixed:<span class="w"> </span>same
+uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>evals.jira.heldout_analysis<span class="w"> </span><span class="nv">$T</span>/no-sqlgen.jsonl<span class="w"> </span><span class="nv">$R</span>/heldout-haiku-sqlgen-tzfix.jsonl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">$R</span>/heldout-haiku-sqlgen2.jsonl<span class="w"> </span>--out<span class="w"> </span><span class="nv">$T</span>/g2.md
+diff<span class="w"> </span><span class="nv">$T</span>/g2.md<span class="w"> </span><span class="nv">$R</span>/heldout-sqlgen2-stats.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>sqlgen2:<span class="w"> </span>same
+uv<span class="w"> </span>run<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>evals.jira.heldout_analysis<span class="w"> </span><span class="nv">$R</span>/heldout-haiku.jsonl<span class="w"> </span><span class="nv">$R</span>/heldout-haiku-keel-query.jsonl<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--out<span class="w"> </span><span class="nv">$T</span>/kq.md<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span><span class="s1">'keel+query'</span>
+</code></pre></div>
+<p><strong>B. Accuracy by set and the three hypotheses on each</strong> (<code>tab:sets-acc</code>, <code>figures/hypotheses.json</code>):</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>-q<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json</span>
+<span class="s">from pathlib import Path</span>
+<span class="s">from evals.jira.confirm_analysis import analyze</span>
+<span class="s">R, J = Path("evals/jira/results"), Path("evals/jira")</span>
+<span class="s">def rows(*fs, keep=lambda r: True):</span>
+<span class="s">    return [r for f in fs for r in map(json.loads, open(R / f)) if keep(r)]</span>
+<span class="s">def qs(d):</span>
+<span class="s">    return {q["id"]: q for p in sorted(Path(d).expanduser().glob("*.questions.json")) for q in json.loads(p.read_text())}</span>
+<span class="s">haiku = lambda r: "haiku" in r["model"]</span>
+<span class="s">sets = {</span>
+<span class="s">    "dev": (qs("~/datasets/public-jira/export"),</span>
+<span class="s">            rows("full-haiku.jsonl", keep=lambda r: r["system"] == "keel") + rows("full-sql.jsonl", keep=haiku)</span>
+<span class="s">            + rows("dev-haiku-query-sqlgen2.jsonl")),</span>
+<span class="s">    "heldout": (qs(J / "heldout"), rows("heldout-haiku.jsonl", "heldout-haiku-sqlgen2.jsonl", "heldout-haiku-keel-query.jsonl")),</span>
+<span class="s">    "confirm": (qs(J / "confirm"), rows("confirm-haiku.jsonl")),</span>
+<span class="s">    "hard": (qs(J / "hard"), rows("hard-haiku.jsonl")),</span>
+<span class="s">}</span>
+<span class="s">for name, (q, rs) in sets.items():</span>
+<span class="s">    res = analyze(q, rs)</span>
+<span class="s">    acc = {s: round(100 * v["accuracy"], 1) for (_, s), v in res["systems"].items() if s in ("keel", "keel+query", "sql", "sqlgen2")}</span>
+<span class="s">    print(name, len(q), acc)</span>
+<span class="s">    for h in res["hypotheses"]:</span>
+<span class="s">        print("  ", h["name"], f"{100*h['diff']:+.1f} [{100*h['lo']:+.1f}, {100*h['hi']:+.1f}]", f"{h['pos']} / {h['neg']}")</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p><strong>C. Confirmation set: sensitivity, the clean rerun's H3 bound, the links questions</strong> (<code>sec:confirm</code>):</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>-q<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import collections, json</span>
+<span class="s">from math import comb</span>
+<span class="s">from pathlib import Path</span>
+<span class="s">import numpy as np</span>
+<span class="s">from evals.jira.confirm_analysis import analyze</span>
+<span class="s">from evals.jira.stats_cluster import cell, cluster_dist, per_question</span>
+<span class="s">qs = {q["id"]: q for p in Path("evals/jira/confirm").glob("*.questions.json") for q in json.loads(p.read_text())}</span>
+<span class="s">rows = [json.loads(l) for l in open("evals/jira/results/confirm-haiku.jsonl")]</span>
+<span class="s">acc = {s: per_question([r for r in rows if r["system"] == s]) for s in ("keel", "keel+query", "sql", "sqlgen2")}</span>
+<span class="s">for h, a, b in (("H1", "sqlgen2", "sql"), ("H2", "keel+query", "sql"), ("H3", "keel+query", "keel")):</span>
+<span class="s">    ids = sorted(acc[a].keys() &amp; acc[b].keys())</span>
+<span class="s">    dist = cluster_dist([acc[a][q] - acc[b][q] for q in ids], [cell(qs[q]) for q in ids])</span>
+<span class="s">    print(h, "lower bound at 95%%: %+.1f, 97.5%%: %+.1f, 98.3%% (Bonferroni over 3): %+.1f"</span>
+<span class="s">          % tuple(100 * np.percentile(dist, 100 * (1 - lvl) / 2) for lvl in (0.95, 1 - 0.05 / 2, 1 - 0.05 / 3)))</span>
+<span class="s">print("H3 exact sign test, 10 / 2: p = %.3f" % (2 * sum(comb(12, i) for i in range(3)) / 2**12))</span>
+<span class="s">clean = analyze(qs, [json.loads(l) for l in open("evals/jira/results/confirm-haiku-clean.jsonl")])</span>
+<span class="s">print("clean rerun, H3 lower bound:", [h["lo"] for h in clean["hypotheses"] if h["name"] == "H3"][0])</span>
+<span class="s">wrong, kind = collections.defaultdict(collections.Counter), {}</span>
+<span class="s">for r in rows:</span>
+<span class="s">    wrong[r["id"]][r["system"]] += not r["correct"]; kind[r["id"]] = r["type"]</span>
+<span class="s">every = [q for q, c in wrong.items() if all(c[s] &gt;= 2 for s in acc)]</span>
+<span class="s">print("missed by all four in 2 of 3 reps:", len(every), dict(collections.Counter(kind[q] for q in every)))</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p><strong>D. Hard slice by type, cost, tokens and tenant group</strong> (<code>tab:hard</code>, <code>sec:hard</code>):</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import collections, json</span>
+<span class="s">rows = [json.loads(l) for f in ("hard-haiku", "hard-ablation-haiku") for l in open(f"evals/jira/results/{f}.jsonl")]</span>
+<span class="s">S = ["keel", "keel+query", "sql", "sqlgen2", "sql-tables", "sql-log"]</span>
+<span class="s">def acc(rs):  # a question's repetitions averaged first</span>
+<span class="s">    q = collections.defaultdict(list)</span>
+<span class="s">    for r in rs: q[r["id"]].append(bool(r["correct"]))</span>
+<span class="s">    return 100 * sum(sum(v) / len(v) for v in q.values()) / len(q)</span>
+<span class="s">by = {s: [r for r in rows if r["system"] == s] for s in S}</span>
+<span class="s">print(f"{'':13}", *(f"{s:&gt;10}" for s in S))</span>
+<span class="s">for ty in ("two_hop", "known_count", "entries", "time_in", "both"):</span>
+<span class="s">    print(f"{ty:13}", *(f"{acc([r for r in by[s] if r['type'] == ty]):10.1f}" for s in S))</span>
+<span class="s">print(f"{'All':13}", *(f"{acc(by[s]):10.1f}" for s in S))</span>
+<span class="s">print(f"{'USD/corr e-4':13}", *(f"{1e4 * sum(r['cost_usd'] for r in by[s]) / sum(r['correct'] for r in by[s]):10.1f}" for s in S))</span>
+<span class="s">print(f"{'tokens (k)':13}", *(f"{sum(r['tokens']['input'] for r in by[s]) / len(by[s]) / 1e3:10.1f}" for s in S))</span>
+<span class="s">grp = {"hyperledger": "dev", "mariadb": "dev", "spring": "dev", "ecosystem-ac": "heldout", "sakai-grbk": "heldout",</span>
+<span class="s">       "redhat-projquay": "heldout", "apache-tajo": "confirm", "apache-rave": "confirm"}</span>
+<span class="s">for g in ("dev", "heldout", "confirm"):</span>
+<span class="s">    a = {s: acc([r for r in by[s] if grp[r["tenant"]] == g]) for s in S}</span>
+<span class="s">    print(g, "sqlgen2 - sql %+.1f" % (a["sqlgen2"] - a["sql"]), " keel+query - sql %+.1f" % (a["keel+query"] - a["sql"]))</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p><strong>E. Date functions, <code>valid_to</code> and <code>keel_days</code> in the agents' <code>time_in</code> SQL</strong> (<code>sec:lessons</code>, "Arithmetic belongs in
+the database"). A regex over the <code>args</code> of every call of each <code>time_in</code> row, before the remedy (<code>hard-haiku.jsonl</code>) and
+after it (<code>hard-days-haiku.jsonl</code>):</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json, re</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">pat = {"date function": re.compile(r"date_diff|datediff|julianday|epoch", re.I),  # DuckDB and SQLite date arithmetic</span>
+<span class="s">       "valid_to": re.compile(r"valid_to", re.I), "keel_days": re.compile(r"keel_days", re.I)}</span>
+<span class="s">for f, systems in (("hard-haiku", ("sql", "sqlgen2", "keel+query")), ("hard-days-haiku", ("sqlgen2", "keel+query"))):</span>
+<span class="s">    rows = [r for r in map(json.loads, open(R + f + ".jsonl")) if r["type"] == "time_in"]</span>
+<span class="s">    for s in systems:</span>
+<span class="s">        rs = [r for r in rows if r["system"] == s]</span>
+<span class="s">        use = {k: [r for r in rs if any(p.search(json.dumps(c.get("args", {}))) for c in r["calls"])] for k, p in pat.items()}</span>
+<span class="s">        print(f"{f:15} {s:11} runs {len(rs)}", *(f" {k} {len(v):3}" for k, v in use.items()),</span>
+<span class="s">              f"  missed {sum(not r['correct'] for r in rs):2}  missed with a date function"</span>
+<span class="s">              f" {sum(not r['correct'] for r in use['date function'])}")</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>Before the remedy it prints a date function in 131, 25 and 8 of 192 runs (<code>sql</code>, <code>sqlgen2</code>, <code>keel+query</code>; 131 / 192 is
+the paper's "two thirds"), <code>valid_to</code> in 192, 19 and 3, and misses 4, 21 and 26, one of them among <code>sql</code>'s 131; after
+it, <code>keel_days</code> in 189 (<code>sqlgen2</code>) and 171 (<code>keel+query</code>) of 192.</p>
+<p><strong>F. The compiled interfaces' <code>time_in</code> misses that match flooring each spell</strong> (supplementary: the paper no longer
+cites it; it printed 47 misses, 2 of them matching the floor of each spell, summed. It reads the bitemporal logs under
+<code>~/datasets/public-jira</code> through the oracle):</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>-q<span class="w"> </span>python<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json</span>
+<span class="s">from datetime import datetime, timedelta, timezone</span>
+<span class="s">from pathlib import Path</span>
+<span class="s">from evals.jira.hard import timeline</span>
+<span class="s">from evals.jira.questions import Oracle</span>
+<span class="s">D = Path.home() / "datasets/public-jira"</span>
+<span class="s">home = {"hyperledger": "export", "mariadb": "export", "spring": "export", "ecosystem-ac": "heldout",</span>
+<span class="s">        "sakai-grbk": "heldout", "redhat-projquay": "heldout", "apache-tajo": "confirm", "apache-rave": "confirm"}</span>
+<span class="s">qs = {q["id"]: q for p in Path("evals/jira/hard").glob("*.questions.json") for q in json.loads(p.read_text())}</span>
+<span class="s">miss = [r for r in map(json.loads, open("evals/jira/results/hard-haiku.jsonl"))</span>
+<span class="s">        if r["type"] == "time_in" and r["system"] in ("sqlgen2", "keel+query") and not r["correct"]]</span>
+<span class="s">oracles, floor = {}, 0</span>
+<span class="s">for r in miss:</span>
+<span class="s">    p = qs[r["id"]]["params"]</span>
+<span class="s">    if r["tenant"] not in oracles:</span>
+<span class="s">        oracles[r["tenant"]] = Oracle([json.loads(l) for l in open(D / home[r["tenant"]] / f"{r['tenant']}.bitemporal.jsonl")])</span>
+<span class="s">    line = timeline(oracles[r["tenant"]], p["subject"])</span>
+<span class="s">    at = datetime.strptime(p["as_of"], "%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)</span>
+<span class="s">    ends = [s for s, _ in line[1:]] + [at]</span>
+<span class="s">    floored = sum((min(e, at) - s) // timedelta(days=1) for (s, v), e in zip(line, ends) if v == p["status"] and s &lt; at)</span>
+<span class="s">    floor += int(r["answer"]) == floored</span>
+<span class="s">print("misses", len(miss), " matching the floor of each spell, summed", floor)</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p><strong>G. Calls and turns per run (held-out), <code>query</code> calls on the development set:</strong></p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">rs = [json.loads(l) for f in ("heldout-haiku", "heldout-haiku-sqlgen2", "heldout-haiku-keel-query") for l in open(R + f + ".jsonl")]</span>
+<span class="s">for s in ("api", "keel", "sql", "sql-tables", "sqlgen", "sqlgen2", "keel+query"):</span>
+<span class="s">    x = [r for r in rs if r["system"] == s]</span>
+<span class="s">    print(f"{s:11} calls/run {sum(len(r['calls']) for r in x) / len(x):.1f}  turns/run {sum(r['turns'] for r in x) / len(x):.1f}")</span>
+<span class="s">q = [c for l in open(R + "dev-haiku-query-sqlgen2.jsonl") for r in [json.loads(l)] if r["system"] == "keel+query"</span>
+<span class="s">     for c in r["calls"] if c["tool"] == "query"]</span>
+<span class="s">print("development set: query calls", len(q), "failed", sum(bool(c.get("error")) for c in q))</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p><strong>H. Spend per stage, and the commit every row carries</strong> (<code>sec:repro</code>, §4):</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">stages = {"held-out (registered, zone fix, sqlgen2, keel+query)": ["heldout-pilot", "heldout-haiku", "heldout-haiku-sqlgen-tzfix",</span>
+<span class="s">          "heldout-haiku-sqlgen2", "heldout-haiku-keel-query"],</span>
+<span class="s">          "development keel+query, sqlgen2 (gateway)": ["dev-haiku-query-sqlgen2"],</span>
+<span class="s">          "confirmation (pilot, 82 rows set aside, run)": ["confirm-pilot", "confirm-haiku.discarded-gateway", "confirm-haiku"],</span>
+<span class="s">          "confirmation, clean rerun": ["confirm-haiku-clean"],</span>
+<span class="s">          "hard slice, registered": ["hard-pilot", "hard-haiku"], "hard slice, addendum": ["hard-ablation-pilot", "hard-ablation-haiku"],</span>
+<span class="s">          "hard slice, second addendum (Sonnet)": ["hard-sonnet-pilot", "hard-sonnet"],</span>
+<span class="s">          "hard slice, third addendum (remedy)": ["hard-days-haiku"],</span>
+<span class="s">          "hard slice, fourth addendum (remedy for the baselines)": ["hard-days-baselines-haiku"],</span>
+<span class="s">          "hard slice, fifth addendum (Sonnet with the sentence)": ["hard-days-sonnet"]}</span>
+<span class="s">total = 0</span>
+<span class="s">for stage, files in stages.items():</span>
+<span class="s">    usd = 0</span>
+<span class="s">    for f in files:</span>
+<span class="s">        rs = [json.loads(l) for l in open(R + f + ".jsonl")]</span>
+<span class="s">        usd += sum(r["cost_usd"] for r in rs)</span>
+<span class="s">        print(f"  {f:34} {len(rs):5} runs  {sum(r['cost_usd'] for r in rs):.3f} USD  commit/dirty",</span>
+<span class="s">              sorted({(r["versions"]["commit"][:7], r["versions"]["dirty"]) for r in rs}))</span>
+<span class="s">    total += usd</span>
+<span class="s">    print(f"{stage}: {usd:.2f} USD")</span>
+<span class="s">print(f"all: {total:.2f} USD")</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>It prints 3.27, 2.30, 13.92, 1.53, 2.45 and 13.84 USD for the six hard-slice stages (37.31; 37.3 in the paper) and
+48.49 in all (48.5). Every row of <code>hard-days-baselines-haiku.jsonl</code>
+carries 8a9b2e3, clean.</p>
+<p><strong>I. Sonnet against Haiku on the hard slice</strong> (<code>tab:hard</code> Sonnet rows, <code>sec:hard</code> "A stronger agent", <code>sec:lessons</code>):</p>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import collections, json</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">def load(*fs):</span>
+<span class="s">    return [json.loads(l) for f in fs for l in open(R + f + ".jsonl")]</span>
+<span class="s">def acc(rs):  # a question's repetitions averaged first</span>
+<span class="s">    q = collections.defaultdict(list)</span>
+<span class="s">    for r in rs: q[r["id"]].append(bool(r["correct"]))</span>
+<span class="s">    return 100 * sum(sum(v) / len(v) for v in q.values()) / len(q)</span>
+<span class="s">S = ["sql", "sqlgen2", "keel+query", "sql-log"]</span>
+<span class="s">agents = {"Haiku": load("hard-haiku", "hard-ablation-haiku"), "Sonnet": load("hard-sonnet")}</span>
+<span class="s">st = {}</span>
+<span class="s">for a, rows in agents.items():</span>
+<span class="s">    for s in S:</span>
+<span class="s">        rs = [r for r in rows if r["system"] == s]</span>
+<span class="s">        st[a, s] = (acc(rs), sum(r["cost_usd"] for r in rs) / sum(r["correct"] for r in rs),</span>
+<span class="s">                    sum(r["tokens"]["input"] for r in rs) / len(rs) / 1e3)</span>
+<span class="s">        print(f"{a:6} {s:10} acc {st[a, s][0]:5.1f}  USD/correct {st[a, s][1]:.5f}  input tokens {st[a, s][2]:.1f}k")</span>
+<span class="s">print("Sonnet misses:", sum(not r["correct"] for r in agents["Sonnet"]),</span>
+<span class="s">      dict(collections.Counter(r["type"] for r in agents["Sonnet"] if not r["correct"])))</span>
+<span class="s">for a in agents:</span>
+<span class="s">    x = [st[a, "sql-log"][1] / st[a, s][1] for s in S[:3]]</span>
+<span class="s">    print(f"{a}: sql-log per correct / the other three: {min(x):.2f} to {max(x):.2f}")</span>
+<span class="s">x = [st["Sonnet", s][1] / st["Haiku", s][1] for s in S]</span>
+<span class="s">print(f"Sonnet / Haiku per correct, same interface: {min(x):.1f} to {max(x):.1f}", [round(v, 1) for v in x])</span>
+<span class="s">print("Haiku sql vs Sonnet sql-log: %+.1f points for %.1f times the price"</span>
+<span class="s">      % (st["Sonnet", "sql-log"][0] - st["Haiku", "sql"][0], st["Sonnet", "sql-log"][1] / st["Haiku", "sql"][1]))</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>It prints Sonnet 100.0, 99.1, 99.1 and 99.4 (<code>sql</code>, <code>sqlgen2</code>, <code>keel+query</code>, <code>sql-log</code>); 8 misses (entries 5,
+time_in 2, two_hop 1); <code>sql-log</code> 7.5k input tokens a run against Haiku's 20.1k; <code>sql-log</code> per correct over the other
+three 1.20 to 1.42 (Sonnet) and 1.65 to 2.47 (Haiku); Sonnet 8.4 to 14.6 times Haiku per correct on the same
+interface; and +2.0 points for 20.8 times the price.</p>
+<p><strong>J. The duration remedy</strong> (<code>tab:hard</code> Remedy rows, <code>sec:hard</code> "Testing the explanation"). The first command is the
+third addendum's (<code>evals/jira/hard/README.md</code>), checked against the committed output; the second prints the
+input-token increase and the cost per correct answer after the remedy. (The remedied rows' comparison with hand-written
+SQL's unremedied rows, across commits, is no longer in the paper; the fourth addendum's, snippet K, replaced it.)</p>
+<div class="highlight"><pre><span></span><code><span class="nv">R</span><span class="o">=</span>evals/jira/results<span class="p">;</span><span class="w"> </span><span class="nv">T</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+uv<span class="w"> </span>run<span class="w"> </span>-q<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span>
+<span class="s2">import json; from pathlib import Path; from evals.jira import confirm_analysis as ca</span>
+<span class="s2">H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())</span>
+<span class="s2">qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}</span>
+<span class="s2">old = [json.loads(l) for l in open('</span><span class="nv">$R</span><span class="s2">/hard-haiku.jsonl')]</span>
+<span class="s2">new = [json.loads(l) | {'system': json.loads(l)['system'] + '+days'} for l in open('</span><span class="nv">$R</span><span class="s2">/hard-days-haiku.jsonl')]</span>
+<span class="s2">for typ in (None, 'time_in'):</span>
+<span class="s2">    q = {k: v for k, v in qs.items() if typ is None or v['type'] == typ}</span>
+<span class="s2">    print(typ or 'all', ca.markdown(ca.analyze(q, old + new, pairs=[('sqlgen2+days', 'sqlgen2'), ('keel+query+days', 'keel+query')])))</span>
+<span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$T</span>/days.md
+diff<span class="w"> </span><span class="nv">$T</span>/days.md<span class="w"> </span><span class="nv">$R</span>/hard-days-stats.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>remedy:<span class="w"> </span>same
+python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import json</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">old = [json.loads(l) for l in open(R + "hard-haiku.jsonl")]</span>
+<span class="s">new = [r | {"system": r["system"] + "+days"} for r in map(json.loads, open(R + "hard-days-haiku.jsonl"))]</span>
+<span class="s">for s in ("sqlgen2", "keel+query"):</span>
+<span class="s">    o, n = [r for r in old if r["system"] == s], [r for r in new if r["system"] == s + "+days"]</span>
+<span class="s">    tok = lambda rs: sum(r["tokens"]["input"] for r in rs) / len(rs)</span>
+<span class="s">    print(f"{s}: input tokens {tok(n) / tok(o) - 1:+.1%}, USD per correct after the remedy "</span>
+<span class="s">          f"{sum(r['cost_usd'] for r in n) / sum(r['correct'] for r in n):.5f}")</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>The second prints +6.3% and +7.4% input tokens and 0.00095 and 0.00067 USD per correct answer.</p>
+<p><strong>K. The duration remedy for the baselines</strong> (the fourth addendum: <code>tab:hard</code> Remedy rows, <code>sec:hard</code> "Testing the
+explanation", <code>sec:lessons</code>, <code>sec:conclusion</code>). The first command is the fourth addendum's analysis
+(<code>evals/jira/hard/README.md</code>, "Fourth addendum"), checked against the committed <code>hard-days-baselines-stats.md</code>; R1 to R3
+are the first three rows of its exploratory table. The second prints the Remedy rows by type, the cost per correct
+answer and its ratios, and the input tokens:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">R</span><span class="o">=</span>evals/jira/results<span class="p">;</span><span class="w"> </span><span class="nv">T</span><span class="o">=</span><span class="k">$(</span>mktemp<span class="w"> </span>-d<span class="k">)</span>
+uv<span class="w"> </span>run<span class="w"> </span>-q<span class="w"> </span>--with<span class="w"> </span>numpy<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"</span>
+<span class="s2">import json; from pathlib import Path; from evals.jira import confirm_analysis as ca</span>
+<span class="s2">H = Path('evals/jira/hard'); m = json.loads((H / 'manifest.json').read_text())</span>
+<span class="s2">qs = {q['id']: q for t in m['tenants'] for q in json.loads((H / f'{t}.questions.json').read_text())}</span>
+<span class="s2">old = [json.loads(l) for l in open('</span><span class="nv">$R</span><span class="s2">/hard-haiku.jsonl')] + [json.loads(l) for l in open('</span><span class="nv">$R</span><span class="s2">/hard-ablation-haiku.jsonl')]</span>
+<span class="s2">comp = [json.loads(l) | {'system': json.loads(l)['system'] + '+days'} for l in open('</span><span class="nv">$R</span><span class="s2">/hard-days-haiku.jsonl')]</span>
+<span class="s2">base = [json.loads(l) for l in open('</span><span class="nv">$R</span><span class="s2">/hard-days-baselines-haiku.jsonl')]</span>
+<span class="s2">print(ca.markdown(ca.analyze(qs, old + comp + base, pairs=[('sqlgen2+days', 'sql+days'), ('keel+query+days', 'sql+days'),</span>
+<span class="s2">      ('sql+days', 'sql-log+days'), ('sql+days', 'sql-tables+days'), ('sql+days', 'sql'), ('sql-tables+days', 'sql-tables'), ('sql-log+days', 'sql-log')])))</span>
+<span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">$T</span>/baselines.md
+diff<span class="w"> </span><span class="nv">$T</span>/baselines.md<span class="w"> </span><span class="nv">$R</span>/hard-days-baselines-stats.md<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span>baselines:<span class="w"> </span>same
+python3<span class="w"> </span>-I<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;'PY'</span>
+<span class="s">import collections, json</span>
+<span class="s">R = "evals/jira/results/"</span>
+<span class="s">rows = [r | {"system": r["system"] + "+days"} for r in map(json.loads, open(R + "hard-days-haiku.jsonl"))]</span>
+<span class="s">rows += [json.loads(l) for l in open(R + "hard-days-baselines-haiku.jsonl")]</span>
+<span class="s">S = ["keel+query+days", "sql+days", "sqlgen2+days", "sql-tables+days", "sql-log+days"]</span>
+<span class="s">def acc(rs):  # a question's repetitions averaged first</span>
+<span class="s">    q = collections.defaultdict(list)</span>
+<span class="s">    for r in rs: q[r["id"]].append(bool(r["correct"]))</span>
+<span class="s">    return 100 * sum(sum(v) / len(v) for v in q.values()) / len(q)</span>
+<span class="s">by = {s: [r for r in rows if r["system"] == s] for s in S}</span>
+<span class="s">print(f"{'':13}", *(f"{s.removesuffix('+days'):&gt;11}" for s in S))</span>
+<span class="s">for ty in ("two_hop", "known_count", "entries", "time_in", "both"):</span>
+<span class="s">    print(f"{ty:13}", *(f"{acc([r for r in by[s] if r['type'] == ty]):11.1f}" for s in S))</span>
+<span class="s">print(f"{'All':13}", *(f"{acc(by[s]):11.1f}" for s in S))</span>
+<span class="s">usd = {s: sum(r["cost_usd"] for r in by[s]) / sum(r["correct"] for r in by[s]) for s in S}</span>
+<span class="s">print(f"{'USD/correct':13}", *(f"{usd[s]:11.5f}" for s in S))</span>
+<span class="s">print(f"{'tokens (k)':13}", *(f"{sum(r['tokens']['input'] for r in by[s]) / len(by[s]) / 1e3:11.1f}" for s in S))</span>
+<span class="s">print("sql-log per correct over", ", ".join(f"{s.removesuffix('+days')} {usd['sql-log+days'] / usd[s]:.2f}" for s in S[:4]))</span>
+<span class="s">print("baseline runs", sum(len(by[s]) for s in ("sql+days", "sql-tables+days", "sql-log+days")))</span>
+<span class="s">PY</span>
+</code></pre></div>
+<p>The first prints <code>baselines: same</code>; in the file, R1 <code>sqlgen2+days - sql+days</code> +0.4 [−0.6, +1.6] (10 / 7), R2
+<code>keel+query+days - sql+days</code> +0.8 [−0.1, +2.2] (10 / 4), R3 <code>sql+days - sql-log+days</code> +1.2 [−0.2, +2.8] (14 / 8). The
+second prints, in the order of <code>tab:hard</code>'s columns (<code>keel+query</code>, <code>sql</code>, <code>sqlgen2</code>, <code>sql-tables</code>, <code>sql-log</code>),
+<code>time_in</code> 99.0, 99.5, 98.4, 99.0, 99.5; all 98.6, 97.8, 98.2, 96.9, 96.6; USD per correct 0.00067, 0.00059, 0.00095,
+0.00082, 0.00123 (the Remedy row ×10⁻⁴: 6.7, 5.9, 9.5, 8.2, 12.3); input tokens 14.0k, 7.1k, 13.0k, 8.6k, 15.1k;
+<code>sql-log</code> per correct over <code>keel+query</code> 1.83, <code>sql</code> 2.07, <code>sqlgen2</code> 1.29 (and <code>sql-tables</code> 1.50, inside the paper's "1.3
+to 2.1"); 2,880 baseline runs. <code>sql-tables</code> reads 8,601 input tokens a run with and without the sentence: a coincidence
+of rounding (8,600.8 and 8,601.4), not a missing sentence.</p>
+<h2 id="3-rerunning-the-paid-stages">3. Rerunning the paid stages<a class="headerlink" href="#3-rerunning-the-paid-stages" title="Permanent link">&para;</a></h2>
+<p>Every paid command is in a stage README, beside its registration; this file does not copy them. Each <code>bench</code>
+command resumes when rerun with the same <code>--out</code>, and stops at its <code>--max-usd</code> brake. Costs are measured from the
+rows (snippet H), pilots and rows set aside included; Claude Haiku 5.5 and, for the second addendum, Claude Sonnet 5.5,
+at Anthropic's list prices of 2026-10-06 (<code>evals/efficiency/run.py</code>, <code>DIRECT_PRICES</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Commands</th>
+<th>Out file(s)</th>
+<th style="text-align: right;">Measured cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Held-out, registered</td>
+<td><code>evals/jira/heldout/README.md</code>, "Budget and commands" (pilot and run), with "Amendment, 2026-10-26": <code>--models anthropic/claude-haiku-5.5</code> only</td>
+<td><code>heldout-pilot.jsonl</code>, <code>heldout-haiku.jsonl</code></td>
+<td style="text-align: right;">0.07 + 3.75</td>
+</tr>
+<tr>
+<td>Held-out, zone-fixed <code>sqlgen</code></td>
+<td>No block of its own ("Correction after the run"): the run command above with <code>--systems sqlgen</code> on 89e8510 or later</td>
+<td><code>heldout-haiku-sqlgen-tzfix.jsonl</code></td>
+<td style="text-align: right;">0.85</td>
+</tr>
+<tr>
+<td>Held-out, <code>sqlgen2</code></td>
+<td>same README, "Post hoc: <code>sqlgen2</code>"</td>
+<td><code>heldout-haiku-sqlgen2.jsonl</code></td>
+<td style="text-align: right;">0.54</td>
+</tr>
+<tr>
+<td>Held-out, <code>keel+query</code></td>
+<td>same README, "Post hoc: <code>keel+query</code>"</td>
+<td><code>heldout-haiku-keel-query.jsonl</code></td>
+<td style="text-align: right;">0.50</td>
+</tr>
+<tr>
+<td>Development, <code>keel+query</code> and <code>sqlgen2</code></td>
+<td>same README, end of "Post hoc: <code>keel+query</code>" (<code>EVAL_ANTHROPIC_DIRECT=0</code>, gateway prices)</td>
+<td><code>dev-haiku-query-sqlgen2.jsonl</code></td>
+<td style="text-align: right;">2.52</td>
+</tr>
+<tr>
+<td>Confirmation</td>
+<td><code>evals/jira/confirm/README.md</code>, "Conditions and agent", with <code>--tenants apache-tajo,apache-rave</code> ("Selected") and without <code>EVAL_ANTHROPIC_DIRECT=0</code> ("Third amendment")</td>
+<td><code>confirm-pilot.jsonl</code>, <code>confirm-haiku.discarded-gateway.jsonl</code>, <code>confirm-haiku.jsonl</code></td>
+<td style="text-align: right;">0.05 + 0.07 + 1.44</td>
+</tr>
+<tr>
+<td>Confirmation, clean rerun</td>
+<td>same README, "Clean rerun, registered 2026-11-02": the run command from a clean <code>git worktree</code> of 98a9621, <code>--max-usd 2.5</code>, out <code>confirm-haiku-clean.jsonl</code></td>
+<td><code>confirm-haiku-clean.jsonl</code></td>
+<td style="text-align: right;">1.40</td>
+</tr>
+<tr>
+<td>Hard slice</td>
+<td><code>evals/jira/hard/README.md</code>, "Conditions, agent, commands" (pilot and run, from a clean worktree of 552e729)</td>
+<td><code>hard-pilot.jsonl</code>, <code>hard-haiku.jsonl</code></td>
+<td style="text-align: right;">0.15 + 3.12</td>
+</tr>
+<tr>
+<td>Hard slice, addendum</td>
+<td>same README, "Addendum", with the raised brakes 1.2, 1.2 and 0.8 USD of its pilot paragraph (clean worktree of d5e7201)</td>
+<td><code>hard-ablation-pilot.jsonl</code>, <code>hard-ablation-haiku.jsonl</code></td>
+<td style="text-align: right;">0.11 + 2.18</td>
+</tr>
+<tr>
+<td>Hard slice, second addendum (Sonnet)</td>
+<td>same README, "Second addendum" (<code>--models anthropic/claude-sonnet-5.5</code>; pilot brake 3 USD, then 17, 17 and 11)</td>
+<td><code>hard-sonnet-pilot.jsonl</code>, <code>hard-sonnet.jsonl</code></td>
+<td style="text-align: right;">0.49 + 13.43</td>
+</tr>
+<tr>
+<td>Hard slice, third addendum (remedy)</td>
+<td>same README, "Third addendum" (<code>--systems sqlgen2,keel+query</code>, brakes 1.0, 1.0 and 0.7 USD, clean worktree of a75faee)</td>
+<td><code>hard-days-haiku.jsonl</code></td>
+<td style="text-align: right;">1.53</td>
+</tr>
+<tr>
+<td>Hard slice, fourth addendum (remedy for the baselines)</td>
+<td>same README, "Fourth addendum" (<code>--systems sql+days,sql-tables+days,sql-log+days</code>, brakes 1.2, 1.2 and 0.8 USD, clean worktree of 8a9b2e3)</td>
+<td><code>hard-days-baselines-haiku.jsonl</code></td>
+<td style="text-align: right;">2.45</td>
+</tr>
+<tr>
+<td>Hard slice, fifth addendum (Sonnet with the sentence)</td>
+<td>same README, "Fifth addendum" (<code>--models anthropic/claude-sonnet-5.5 --systems sql+days,sqlgen2,keel+query,sql-log+days</code>, brakes 6, 6 and 4 USD, clean worktree of 3b99234)</td>
+<td><code>hard-days-sonnet.jsonl</code></td>
+<td style="text-align: right;">13.84</td>
+</tr>
+<tr>
+<td><strong>All of the above</strong></td>
+<td></td>
+<td></td>
+<td style="text-align: right;"><strong>48.49</strong> (paper: 48.5; the hard slice 37.3)</td>
+</tr>
+</tbody>
+</table>
+<p>The development set's first run (GPT-6 Luna, Claude Haiku 5.5, Claude Sonnet 5.5; Graphiti, Mem0, retrieval, the API,
+TGMS, governed memory) is in <code>evals/jira/README.md</code>, in the order it was run; its spend is in supplement
+<code>app:dev-systems</code>. Graphiti's ingest alone takes hours.</p>
+<p>Before any paid run, the offline checks need no key: <code>uv run --extra mcp --with tiktoken --with numpy --with
+duckdb==2.0.0 pytest evals/jira/test_heldout.py -q</code> (checksums, byte-for-byte regeneration of the questions, the
+gold reached three ways, every condition run with a scripted model), and <code>evals/jira/test_hard.py</code> and
+<code>evals/jira/test_confirm.py</code> the same way for the other two.</p>
+<h2 id="4-registration-commits">4. Registration commits<a class="headerlink" href="#4-registration-commits" title="Permanent link">&para;</a></h2>
+<p>A stage is pre-registered if its registration commit is older than the commit its rows carry (<code>versions.commit</code> in
+every row; <code>versions.dirty</code> says whether <code>keel/</code> or <code>evals/</code> had uncommitted changes). Check with
+<code>git log --format='%h %ad %s' --date=iso -- evals/jira/&lt;set&gt;/README.md</code> and snippet H. Keel's own code, <code>keel/</code>, is
+identical at d7b3576 and bef9b07 (held-out), and at d620fcb (release 0.36.0), 78d3f0d, 98a9621, 552e729, d5e7201,
+eaf3951 and fd6353c (<code>git diff --stat d620fcb &lt;commit&gt; -- keel/</code> is empty). The one exception is the third addendum's
+a75faee: <code>git diff d620fcb a75faee -- keel/</code> is one sentence added to <code>describe()</code> in <code>keel/sqlgen.py</code>, naming
+<code>keel_days</code> (the remedy that addendum tests); nothing else under <code>keel/</code> differs. The fourth addendum's 8a9b2e3 has
+a75faee's <code>keel/</code> (<code>git diff --stat a75faee 8a9b2e3 -- keel/</code> is empty): its change, the baselines' sentence, is in the
+harness (<code>evals/jira/sql_system.py</code>, <code>evals/jira/bench.py</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Registered in</th>
+<th>Amendments and later records</th>
+<th>Rows carry (dirty)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Held-out</td>
+<td>e7cfeba (2026-10-26 10:27)</td>
+<td>bef9b07 Haiku only, before any run; 6b68924 the zone fix recorded as a correction after the run</td>
+<td>pilot and <code>heldout-haiku</code>: bef9b07 (dirty); zone fix: 89e8510 (dirty)</td>
+</tr>
+<tr>
+<td>Held-out, post hoc (not registered)</td>
+<td>1cca5aa <code>sqlgen2</code>; 1719e41 <code>keel+query</code></td>
+<td>29da32b <code>keel+query</code> result; 59eb821 development-set confirmation</td>
+<td><code>sqlgen2</code>: 1cca5aa (clean); <code>keel+query</code>: 25979b2 (dirty); development: 74e7079 (dirty)</td>
+</tr>
+<tr>
+<td>Confirmation</td>
+<td>b51b725 (2026-11-01 15:40)</td>
+<td>1476765 first amendment; bb03436 its screening passes none; 7721f67 second amendment; 1456094; b538eff tenants selected; 78d3f0d third amendment (Anthropic direct; slipped a clause into rule 5); 3b62a01 result; b53e381 links note; 46eabbf rule 5 restored</td>
+<td>pilot and the 82 rows set aside: b538eff (dirty); <code>confirm-haiku</code>: 78d3f0d (dirty)</td>
+</tr>
+<tr>
+<td>Confirmation, clean rerun</td>
+<td>98a9621 (2026-11-02 22:18)</td>
+<td>53d0bc2 result</td>
+<td>98a9621 (clean)</td>
+</tr>
+<tr>
+<td>Hard slice</td>
+<td>552e729 (2026-11-02 18:42)</td>
+<td>22e8716 result</td>
+<td>pilot and run: 552e729 (clean)</td>
+</tr>
+<tr>
+<td>Hard slice, addendum (exploratory)</td>
+<td>9df0aa3 (2026-11-02 21:35)</td>
+<td>d5e7201 brakes raised after its pilot; 5bc7a20 result</td>
+<td>pilot: 9df0aa3 (clean); run: d5e7201 (clean)</td>
+</tr>
+<tr>
+<td>Hard slice, second addendum (Sonnet, exploratory)</td>
+<td>eaf3951 (2026-11-02 23:36)</td>
+<td>fd6353c pilot recorded; 15ed1f0 result</td>
+<td>pilot: eaf3951 (clean); run: fd6353c (clean)</td>
+</tr>
+<tr>
+<td>Hard slice, third addendum (duration remedy, exploratory, prediction stated)</td>
+<td>a75faee (2026-11-03 09:09), with the <code>keel/sqlgen.py</code> sentence</td>
+<td>5f60d2b result</td>
+<td>a75faee (clean)</td>
+</tr>
+<tr>
+<td>Hard slice, fourth addendum (duration remedy for the baselines, three decision rules)</td>
+<td>8a9b2e3 (2026-11-03 11:16)</td>
+<td>f8c9a29 result</td>
+<td>8a9b2e3 (clean)</td>
+</tr>
+<tr>
+<td>Hard slice, fifth addendum (Sonnet with the sentence, exploratory)</td>
+<td>3b99234 (2026-11-03 13:24)</td>
+<td>c3213b3 result</td>
+<td>3b99234 (clean)</td>
+</tr>
+</tbody>
+</table>
+<p>Development-set rows: <code>full-haiku.jsonl</code> <code>keel</code> on 784630f and 72314eb (clean), <code>full-sql.jsonl</code> on e8ae81e (dirty).</p>
+<h2 id="5-building-the-paper">5. Building the paper<a class="headerlink" href="#5-building-the-paper" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>docs/paper-pvldb/figures/build.sh<span class="w">   </span><span class="c1"># optional: the seven figures (matplotlib through uv, TikZ through tectonic)</span>
+bash<span class="w"> </span>docs/paper-pvldb/build.sh<span class="w">           </span><span class="c1"># main.pdf and supplement.pdf, each compiled twice (xr cross-references)</span>
+</code></pre></div>
+<p><code>build.sh</code> ends by printing the page count and the page where the references start (<code>pages.py</code>). <code>main.pdf</code>,
+<code>supplement.pdf</code> and the LaTeX by-products are not tracked (<code>docs/paper-pvldb/.gitignore</code>); the figure PDFs under
+<code>figures/</code> are tracked, their PNG twins are not.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

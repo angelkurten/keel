@@ -1,0 +1,1543 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/docs/design/hosted/">
+      
+      
+        <link rel="prev" href="../semantic-evals/">
+      
+      
+        <link rel="next" href="../console/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Hosted Keel - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-note-hosted-keel" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Hosted Keel
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first pilot in a day
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Send your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serve the tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../semantic-evals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accounts-are-a-tenant-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accounts are a tenant prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retention-as-a-dated-forget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention as a dated forget
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#isolation-a-container-per-account-decided-2026-10-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Isolation: a container per account (decided 2026-10-18)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#control-plane-hosted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control plane (hosted/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-per-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage per account
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gate-before-launching-hosted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate before launching hosted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decided-on-2026-10-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decided on 2026-10-18
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-review-2026-10-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security review (2026-10-22)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../showcase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The support showcase
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proposal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Proposal
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Proposal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#accounts-are-a-tenant-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accounts are a tenant prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#retention-as-a-dated-forget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention as a dated forget
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#isolation-a-container-per-account-decided-2026-10-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Isolation: a container per account (decided 2026-10-18)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#control-plane-hosted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Control plane (hosted/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage-per-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage per account
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gate-before-launching-hosted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate before launching hosted
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decided-on-2026-10-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decided on 2026-10-18
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-review-2026-10-22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security review (2026-10-22)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design-note-hosted-keel">Design note: hosted Keel<a class="headerlink" href="#design-note-hosted-keel" title="Permanent link">&para;</a></h1>
+<p>Status: proposed on 2026-10-18. Decided the same day: accounts, API keys and metering go into the core now, because they also serve anyone self-hosting Keel for several customers. Retention is designed as a dated <code>forget</code>. A shared database is the default, with a database per account as the enterprise plan. Keys live in a table in the store. Account names are short slugs; only a key marked global writes an account's global memory; tool calls are counted, not billed. The hosted launch itself waits for the gate below. Accounts and API keys are implemented as proposed (<code>keel/keys.py</code>, <code>keel keys</code>), metering with one change (counters, not <code>ingested.recorded_at</code>, below) (<code>keel/usage.py</code>, <code>keel usage</code>), and retention with two simplifications (below) (<code>forgets: before</code>, <code>keel forget --before</code>), shipped in 0.27.0. Quotas, a database per account and a retention policy per account (<code>keel/accounts.py</code>, <code>keel accounts</code>, <code>keel forget --policy</code>) shipped in 0.28.0, and so did Postgres CDC (<code>keel cdc</code>), SSO in front of <code>/ui</code> (<code>deploy/sso</code>), <code>keel serve --account</code> and the control plane (<code>hosted/</code>: invite-only sign-up, a database and a Coolify container per account, the usage panel). Running on Coolify since 2026-10-18: the control plane at https://keel.angelkurten.com (sign-up by invitation), a shared MySQL with daily backups, and one container per account under <code>*.keel.angelkurten.com</code>; a <code>demo</code> account was signed up, ingested the fleet events and answered <code>context</code> end to end.</p>
+<h2 id="problem">Problem<a class="headerlink" href="#problem" title="Permanent link">&para;</a></h2>
+<p>Today one <code>keel serve</code> belongs to one SaaS. Every request carries the same shared secret (<code>_Bearer</code> in <code>keel/http.py</code>). The tenant arrives in <code>X-Keel-Tenant</code> and is never checked against the caller: whoever holds the secret reads every tenant. That is right when the SaaS owns the box. It is wrong once Kubbo runs one deployment for several SaaS products, which is what the 2027 roadmap promises: "Kubbo operates graph, bus and jobs; billed by events ingested per month".</p>
+<p>Two more gaps block billing:</p>
+<ul>
+<li><strong>Usage cannot be counted.</strong> <code>ingested</code> holds <code>(tenant, id)</code> with no time, so "events per month" cannot be read from the store. The event log lives at the source, not in Keel.</li>
+<li><strong>Nothing limits one customer.</strong> One noisy SaaS slows down every other one.</li>
+</ul>
+<h2 id="goals">Goals<a class="headerlink" href="#goals" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Accounts.</strong> An account is the SaaS that pays. Its tenants are its end-customers, exactly as today. A credential never reaches another account's data, whatever the request says.</li>
+<li><strong>Keys.</strong> API keys belong to an account and can be narrowed to one tenant or one agent. They can be created, listed and revoked without a restart.</li>
+<li><strong>Metering.</strong> Events applied per account, tenant and month, read from the store.</li>
+<li><strong>Quotas.</strong> A rate limit and a monthly event limit per account, answered with 429 and <code>Retry-After</code>.</li>
+<li><strong>Retention.</strong> An account can drop domain history older than a date, deterministically and with an audit trail.</li>
+<li><strong>The core stays unaware of accounts.</strong> <code>Tools</code>, handlers and stores keep seeing one tenant string. Rules 6, 7 and 8 hold unchanged.</li>
+</ol>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>SSO for the API.</strong> Agents authenticate with keys. SSO concerns the people who open <code>/ui</code>, and a proxy in front of it covers that (oauth2-proxy, Cloudflare Access) without code in Keel.</li>
+<li><strong>Billing.</strong> Keel exposes usage; invoices, plans and payment live outside it.</li>
+<li><strong>Cross-account reads,</strong> including a shared global partition across accounts.</li>
+<li><strong>Per-user permissions.</strong> The unit is still the agent (see the <a href="../agent-registry/">agent registry</a>).</li>
+</ul>
+<h2 id="proposal">Proposal<a class="headerlink" href="#proposal" title="Permanent link">&para;</a></h2>
+<h3 id="accounts-are-a-tenant-prefix">Accounts are a tenant prefix<a class="headerlink" href="#accounts-are-a-tenant-prefix" title="Permanent link">&para;</a></h3>
+<p>An account is named by a slug chosen at creation and never renamed: lowercase letters, digits and hyphens, at most 32 characters (<code>acme</code>). It is short because it appears in every tenant key, in logs and in <code>keel usage</code>.</p>
+<p>The HTTP layer resolves the key to an account and prefixes the tenant: <code>X-Keel-Tenant: cliente-42</code> under account <code>acme</code> becomes the tenant <code>acme/cliente-42</code>. The prefix is added by the server and cannot be chosen by the client: a tenant header that already contains <code>/</code> is refused when keys are on. Everything below the HTTP layer sees an ordinary tenant, so stores, conformance tests and replay are untouched.</p>
+<p>The global partition follows the account: <code>annotate(scope="global")</code> writes to <code>acme/__global__</code>, and reads merge <code>acme/__global__</code>, never another account's. This is the one change inside <code>Tools</code>: the global partition's name is derived from the tenant's prefix instead of being the constant <code>__global__</code>. Without a prefix it stays <code>__global__</code>, so self-hosted deployments see no difference.</p>
+<p>Envelopes posted to <code>/v1/ingest</code> go through the same rule: their <code>tenant</code> is prefixed, and one naming another account is refused.</p>
+<h3 id="keys">Keys<a class="headerlink" href="#keys" title="Permanent link">&para;</a></h3>
+<p>A new table, <code>api_keys</code> (<code>KEYS</code> is reserved in MySQL), sits in the same store, so there is one backup and rotation needs no restart:</p>
+<table>
+<thead>
+<tr>
+<th>column</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>public prefix shown in listings (<code>kk_7f3a…</code>)</td>
+</tr>
+<tr>
+<td><code>hash</code></td>
+<td>SHA-256 of the full key; the key itself is shown once, at creation</td>
+</tr>
+<tr>
+<td><code>account</code></td>
+<td>the account it belongs to</td>
+</tr>
+<tr>
+<td><code>tenant</code></td>
+<td>optional: only this tenant</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>optional: binds calls to this agent id, as <code>--agent</code> does</td>
+</tr>
+<tr>
+<td><code>global</code></td>
+<td>true for the account's privileged key: the only one that may <code>annotate(scope="global")</code>, and only into <code>account/__global__</code></td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>revoked_at</code></td>
+<td>when it was issued and when it stopped working</td>
+</tr>
+</tbody>
+</table>
+<p><code>keel keys create &lt;account&gt; [--tenant] [--agent] [--global]</code>, <code>keel keys list &lt;account&gt;</code> and <code>keel keys revoke &lt;id&gt;</code> manage the table. The middleware looks a key up by hash, refuses revoked ones, and caches lookups for a few seconds. When the table is empty, the single secret of today keeps working, so nothing changes for anyone who never creates a key. Once keys exist, the secret stays the operator's credential: it reaches every tenant by its full name.</p>
+<h3 id="metering">Metering<a class="headerlink" href="#metering" title="Permanent link">&para;</a></h3>
+<p>Counters per tenant, day and item in a <code>metering</code> table: <code>(tenant, day, item, n)</code>, where item is <code>events</code> or a tool's name. <code>keel usage [--month 2027-01] [--account acme]</code> groups them by account (the tenant prefix), tenant and month.</p>
+<ul>
+<li><strong>Events</strong> are counted by the Ingestor after each commit: events applied for the first time, from any path. Duplicates and events for a forgotten tenant are not counted, and neither is <code>replay</code>. The first proposal, a <code>recorded_at</code> on <code>ingested</code>, would have billed a replay twice: <code>reset</code> deletes a tenant's applied ids so the log can be applied again. Counting after the commit means a crash in between undercounts, never bills twice.</li>
+<li><strong>Tool calls</strong> are counted but not billed: <code>Tools(meter=)</code> calls the meter once per tool call, and the HTTP transport passes one that keeps counts in memory and writes them every ten seconds and at shutdown (<code>/v1</code> and <code>/mcp</code>). It feeds quotas, abuse detection and the plain question of whether agents use Keel at all.</li>
+</ul>
+<h3 id="quotas">Quotas<a class="headerlink" href="#quotas" title="Permanent link">&para;</a></h3>
+<p>They go in the same middleware as the keys: a token bucket per account for requests per second, and a check of the month's count against the account's event limit before <code>/v1/ingest</code> applies a batch. Both answer 429 with <code>Retry-After</code>, the way an exhausted embeddings provider already answers 503. Limits are columns on an <code>accounts</code> table that holds only the account id and its limits.</p>
+<h3 id="retention-as-a-dated-forget">Retention as a dated forget<a class="headerlink" href="#retention-as-a-dated-forget" title="Permanent link">&para;</a></h3>
+<p>Rule 1 says the graph must be rebuildable from events. Physical deletion of history is compatible with it if the deletion is itself recorded and applied again on every rebuild. That is what <code>forgets: tenant</code> already does for a whole tenant (0.24.0). Retention extends it:</p>
+<ul>
+<li>An event declared <code>forgets: before</code> in the catalog makes the Ingestor call <code>store.forget_before(tenant, event.occurred_at)</code> in its transaction. It deletes facts (annotations included) and relations whose <code>valid_to</code> is at or before the cutoff. Open facts, current relations and entities stay. The report says what was deleted (<code>retained</code>), and the store keeps the cutoff per tenant, the latest one winning.</li>
+<li><code>keel forget &lt;tenant&gt; --before 2024-01-01 --db --yes</code> does the same for operators, and <code>--all-tenants</code> makes it a retention policy to schedule.</li>
+<li><code>replay</code> rebuilds from the log and then applies the kept cutoff again, so what the log brought back goes again.</li>
+<li>Annotations follow their own TTL (<code>MemoryPolicy</code>). A retention cutoff also removes closed annotations older than it, because a contract that asks for deletion means all of it.</li>
+</ul>
+<p>Two simplifications against the first proposal. Applied event ids are kept, because they are what stops an old redelivery from reviving deleted history, and they are hashes, not content. Events are not skipped by the cutoff: an event that occurred before it can still open a fact that is current today, and skipping it would lose that fact. The price is that an event arriving later with a valid time before the cutoff stays until the next run, so the policy is scheduled, not run once.</p>
+<h3 id="isolation-a-container-per-account-decided-2026-10-18">Isolation: a container per account (decided 2026-10-18)<a class="headerlink" href="#isolation-a-container-per-account-decided-2026-10-18" title="Permanent link">&para;</a></h3>
+<p>A cartridge carries Python (<code>handlers.py</code>). A shared server that loaded every account's cartridge would run one customer's code in a process that holds every other customer's data. So hosted runs <strong>one Keel container per account</strong>, with its cartridge and its own database, and a shared <strong>control plane</strong> (sign-up, keys, accounts, usage, a panel) on a shared database. <code>keel serve --account acme --db &lt;shared&gt;</code> makes a server accept only that account's keys and keep its graph in the account's database (<code>accounts.store</code>), while keys, limits and usage come from the shared one. The control plane creates each account's container on Coolify through its API. Declarative handlers, which would let one server load many cartridges safely, stay a later option.</p>
+<h3 id="control-plane-hosted">Control plane (<code>hosted/</code>)<a class="headerlink" href="#control-plane-hosted" title="Permanent link">&para;</a></h3>
+<p>Sign-up creates the account in the control database, a MySQL database and user for it, its first key (the hash written to both databases) and its container on Coolify. The account's container gets only its own database's credentials, so the key and limits it enforces are copied into that database, and the panel reads usage back from it. A customer's handlers can therefore change their own counters; acceptable for invited pilots, to be closed by metering at the edge before billing strangers.</p>
+<h3 id="storage-per-account">Storage per account<a class="headerlink" href="#storage-per-account" title="Permanent link">&para;</a></h3>
+<p>By default every account shares one MySQL database, isolated by the tenant prefix. An enterprise account can get its own database: the server maps the account to a store URL (<code>accounts.store</code>), opened lazily and kept in a small pool. The store is pluggable already, so this is configuration in the HTTP layer, not a change to any store.</p>
+<h2 id="gate-before-launching-hosted">Gate before launching hosted<a class="headerlink" href="#gate-before-launching-hosted" title="Permanent link">&para;</a></h2>
+<p>The goal of 0.1 is "used by two SaaS products that are not ours". Building the hosted shell before the demand is the main risk. Hosted launches once all of these hold:</p>
+<ul>
+<li>[x] A design customer with evaluations in Keel's favour (kagent: +0.35 on the dev assistant, +0.80 on technical instructions).</li>
+<li>[x] Production wired at that customer (22,285 entities, 79,220 facts, 36,796 events).</li>
+<li>[ ] Real usage measured in production (today, a weekend of traffic).</li>
+<li>[ ] A second SaaS pilot with real events.</li>
+<li>[ ] A customer who asks to pay so as not to run it.</li>
+</ul>
+<p>Accounts, keys, metering and dated forget do not wait for the gate. They are small, and they are useful to self-hosted deployments too.</p>
+<p><strong>Revised on 2026-10-18 (later the same day):</strong> the whole hosted product is built before looking for the second pilot, on the reasoning that a pilot says yes more easily to a hosted Keel it can sign up for than to a deployment it has to run. The gate still decides when hosted is announced and billed; it no longer decides when it is built. Operations run on Coolify.</p>
+<h2 id="phases">Phases<a class="headerlink" href="#phases" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Items</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Now</td>
+<td>accounts as tenant prefix, <code>api_keys</code> table and <code>keel keys</code>, <code>metering</code> counters and <code>keel usage</code></td>
+<td>core</td>
+</tr>
+<tr>
+<td>Now</td>
+<td><code>forgets: before</code> and <code>keel forget --before</code></td>
+<td>core</td>
+</tr>
+<tr>
+<td>Next (revised 2026-10-18)</td>
+<td>quotas, a database per account, a retention policy per account, Postgres CDC</td>
+<td>core</td>
+</tr>
+<tr>
+<td>Next (revised 2026-10-18)</td>
+<td>operations on Coolify (backups, per-account jobs), self-serve sign-up, a usage panel, SSO in front of <code>/ui</code> through a proxy</td>
+<td>infra + product</td>
+</tr>
+</tbody>
+</table>
+<h2 id="decided-on-2026-10-18">Decided on 2026-10-18<a class="headerlink" href="#decided-on-2026-10-18" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Account names</strong> are short slugs chosen at creation and never renamed, because they appear in every tenant key.</li>
+<li><strong>The global memory of an account</strong> is written only by a key created with <code>--global</code>, and only into <code>account/__global__</code>. The SaaS manages its own semantics; no other key of the account can touch them.</li>
+<li><strong>Tool calls</strong> are counted per account, tenant, day and tool, for quotas, abuse and real usage. Billing stays on events ingested.</li>
+</ul>
+<h2 id="security-review-2026-10-22">Security review (2026-10-22)<a class="headerlink" href="#security-review-2026-10-22" title="Permanent link">&para;</a></h2>
+<p>An adversarial review (<code>tests/test_security_hosted.py</code>) closed these: an invitation opens one account (<code>hosted_invites</code>, the code its primary key, so two racing sign-ups cannot share it); failed logins and failed invitations are throttled per email and address (10 in 15 minutes, then 429), and an unknown email costs the same scrypt as a known one; a session ends when the account's password changes (<code>python -m hosted password</code>), since it keeps a fingerprint of the password it was opened with; a state-changing request whose <code>Origin</code> is not the console's own is refused, because customer containers on sibling subdomains are same-site for <code>SameSite=Lax</code>; slugs are DNS labels and infrastructure names (<code>www</code>, <code>admin</code>, <code>api</code>, <code>mcp</code>, ...) are reserved; <code>/api/cartridge/check</code> needs a session and a size limit and reports a malformed section instead of failing; the SDK proxy accepts only the four languages; a provisioning error hides the database URL and secret it may echo. Accepted: per-process throttling (one control plane), counters checked before they are written (a burst can pass a daily cap by a little), and <code>/api/slug</code> telling which slugs are taken.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../semantic-evals/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Semantic search, research and evals">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Semantic search, research and evals
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../console/" class="md-footer__link md-footer__link--next" aria-label="Next: The console">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                The console
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

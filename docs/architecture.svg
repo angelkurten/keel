@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 980" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-label="Keel architecture: sources, adapters, deterministic ingest, bitemporal store, cartridge, five tools, jobs, surfaces and agents">
+  <style>
+    .bg { fill: #f6f8f9 }
+    .box { fill: #ffffff; stroke: #c3d0d6; stroke-width: 1.2 }
+    .core { fill: #d6ecee; stroke: #0a6b77; stroke-width: 1.2 }
+    .cfg { fill: #e6e2f7; stroke: #5a4bb0; stroke-width: 1.2 }
+    .job { fill: #f6e5d6; stroke: #b25a17; stroke-width: 1.2 }
+    .pill { fill: #ffffff; stroke: #0a6b77; stroke-width: 1.2 }
+    .pillr { fill: #ffffff; stroke: #b25a17; stroke-width: 1.4 }
+    .zone { fill: none; stroke: #0a6b77; stroke-width: 1; stroke-dasharray: 5 5 }
+    .flow { fill: none; stroke: #0f1d27; stroke-width: 1.4 }
+    .read { fill: none; stroke: #0a6b77; stroke-width: 1.4 }
+    .dash { fill: none; stroke: #5a4bb0; stroke-width: 1.3; stroke-dasharray: 5 4 }
+    .jobl { fill: none; stroke: #b25a17; stroke-width: 1.4; stroke-dasharray: 5 4 }
+    .ah { fill: #0f1d27 } .aa { fill: #0a6b77 } .av { fill: #5a4bb0 } .ar { fill: #b25a17 }
+    text { fill: #0f1d27 }
+    .t { font-size: 14px; font-weight: 600 }
+    .ts { font-size: 12.5px; font-weight: 600 }
+    .s { font-size: 12px; fill: #4d5f6b }
+    .m { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; fill: #4d5f6b }
+    .h { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: 0.08em; fill: #0a6b77 }
+    .hv { fill: #5a4bb0 } .hr { fill: #b25a17 }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0c151b }
+      .box, .pill, .pillr { fill: #121f27 }
+      .box { stroke: #2b404c }
+      .core { fill: #123a40; stroke: #4fc0cc }
+      .cfg { fill: #26214a; stroke: #a69bf0 }
+      .job { fill: #3a2616; stroke: #e59a5a }
+      .pill, .zone, .read { stroke: #4fc0cc }
+      .pillr, .jobl { stroke: #e59a5a }
+      .flow { stroke: #e3ecef }
+      .dash { stroke: #a69bf0 }
+      .ah { fill: #e3ecef } .aa { fill: #4fc0cc } .av { fill: #a69bf0 } .ar { fill: #e59a5a }
+      text { fill: #e3ecef }
+      .s, .m { fill: #9db0ba }
+      .h { fill: #4fc0cc } .hv { fill: #a69bf0 } .hr { fill: #e59a5a }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+    <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="aa"/></marker>
+    <marker id="av" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="av"/></marker>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1000" height="980" rx="12"/>
+
+  <!-- 1 sources -->
+  <text class="h" x="20" y="28">1 · SOURCES: WHERE YOUR EVENTS ARE</text>
+  <rect class="box" x="20" y="38" width="150" height="56" rx="7"/><text class="ts" x="30" y="60">Outbox table</text><text class="s" x="30" y="80">your app INSERTs</text>
+  <rect class="box" x="182" y="38" width="150" height="56" rx="7"/><text class="ts" x="192" y="60">Your Postgres tables</text><text class="s" x="192" y="80">wal_level = logical</text>
+  <rect class="box" x="344" y="38" width="150" height="56" rx="7"/><text class="ts" x="354" y="60">Your backend code</text><text class="s" x="354" y="80">typed SDK, emit.*</text>
+  <rect class="box" x="506" y="38" width="150" height="56" rx="7"/><text class="ts" x="516" y="60">Any HTTP sender</text><text class="s" x="516" y="80">JSON envelopes</text>
+  <rect class="box" x="668" y="38" width="150" height="56" rx="7"/><text class="ts" x="678" y="60">Queue or bus</text><text class="s" x="678" y="80">SQS · Kafka</text>
+  <rect class="box" x="830" y="38" width="150" height="56" rx="7"/><text class="ts" x="840" y="60">JSONL file</text><text class="s" x="840" y="80">dev · backfill · replay</text>
+
+  <!-- 2 adapters -->
+  <rect class="zone" x="10" y="112" width="980" height="240" rx="12"/>
+  <path class="flow" d="M95 94 V138" marker-end="url(#a)"/>
+  <path class="flow" d="M257 94 V138" marker-end="url(#a)"/>
+  <path class="flow" d="M419 94 V138" marker-end="url(#a)"/>
+  <path class="flow" d="M581 94 V138" marker-end="url(#a)"/>
+  <path class="flow" d="M743 94 V138" marker-end="url(#a)"/>
+  <path class="flow" d="M905 94 V138" marker-end="url(#a)"/>
+  <rect class="bg" x="16" y="119" width="340" height="18"/><text class="h" x="20" y="132">2 · ADAPTERS: EVERYTHING BECOMES AN ENVELOPE</text>
+  <rect class="box" x="20" y="140" width="150" height="56" rx="7"/><text class="ts" x="30" y="162">PostgresTable…</text><text class="m" x="30" y="182">poll, seq cursor</text>
+  <rect class="box" x="182" y="140" width="150" height="56" rx="7"/><text class="ts" x="192" y="162">PostgresCdc…</text><text class="m" x="192" y="182">keel cdc · --cdc</text>
+  <rect class="box" x="344" y="140" width="150" height="56" rx="7"/><text class="ts" x="354" y="162">client.events()</text><text class="m" x="354" y="182">POST /v1/events</text>
+  <rect class="box" x="506" y="140" width="150" height="56" rx="7"/><text class="ts" x="516" y="162">/v1/events</text><text class="m" x="516" y="182">or build_app()</text>
+  <rect class="box" x="668" y="140" width="150" height="56" rx="7"/><text class="ts" x="678" y="162">Sqs · Kafka</text><text class="m" x="678" y="182">keel consume</text>
+  <rect class="box" x="830" y="140" width="150" height="56" rx="7"/><text class="ts" x="840" y="162">JsonlAdapter</text><text class="m" x="840" y="182">keel ingest</text>
+  <path class="flow" d="M95 196 V214 M257 196 V214 M419 196 V214 M581 196 V214 M743 196 V214 M905 196 V214 M95 214 H905"/>
+  <path class="flow" d="M125 214 V244" marker-end="url(#a)"/>
+
+  <!-- 3 ingest -->
+  <text class="h" x="160" y="236">3 · INGEST</text>
+  <rect class="core" x="20" y="246" width="216" height="80" rx="7"/>
+  <text class="ts" x="32" y="268">Event envelope</text>
+  <text class="m" x="32" y="288">id · tenant · type · subject</text>
+  <text class="m" x="32" y="303">occurred_at · recorded_at</text>
+  <text class="m" x="32" y="318">source · payload</text>
+  <path class="flow" d="M236 286 H266" marker-end="url(#a)"/>
+  <rect class="core" x="268" y="246" width="216" height="80" rx="7"/>
+  <text class="ts" x="280" y="268">Ingestor</text>
+  <text class="s" x="280" y="290">skips event ids already applied</text>
+  <text class="s" x="280" y="308">dispatches by event.type</text>
+  <path class="flow" d="M484 286 H514" marker-end="url(#a)"/>
+  <rect class="core" x="516" y="246" width="216" height="80" rx="7"/>
+  <text class="ts" x="528" y="268">Cartridge handlers</text>
+  <text class="s" x="528" y="290">~10 lines: payload → primitives</text>
+  <text class="s" x="528" y="308">the only code that reads payload</text>
+  <path class="flow" d="M732 286 H762" marker-end="url(#a)"/>
+  <rect class="core" x="764" y="246" width="216" height="80" rx="7"/>
+  <text class="ts" x="776" y="268">Store primitives</text>
+  <text class="m" x="776" y="288">upsert_entity · link · unlink</text>
+  <text class="m" x="776" y="303">open_fact · close_fact</text>
+  <text class="s" x="776" y="319">facts close, never overwritten</text>
+  <text class="m" x="20" y="345">deterministic: no network, no LLM, no randomness · replaying the log rebuilds the same graph</text>
+
+  <!-- 4 cartridge + store -->
+  <text class="h hv" x="20" y="378">THE CARTRIDGE: YOUR DOMAIN</text>
+  <text class="h" x="440" y="378">4 · BITEMPORAL STORE</text>
+  <path class="flow" d="M872 326 V384" marker-end="url(#a)"/>
+
+  <rect class="cfg" x="20" y="386" width="400" height="200" rx="10"/>
+  <text class="t hv" x="36" y="410">Cartridge</text>
+  <text class="m" x="112" y="410">cartridge.yaml + handlers.py</text>
+  <rect class="box" x="36" y="424" width="88" height="48" rx="6"/><text class="ts" x="44" y="443">entities</text><text class="m" x="44" y="461">kinds + ref</text>
+  <rect class="box" x="132" y="424" width="88" height="48" rx="6"/><text class="ts" x="140" y="443">relations</text><text class="m" x="140" y="461">from → to</text>
+  <rect class="box" x="228" y="424" width="88" height="48" rx="6"/><text class="ts" x="236" y="443">events</text><text class="m" x="236" y="461">the catalog</text>
+  <rect class="box" x="324" y="424" width="88" height="48" rx="6"/><text class="ts" x="332" y="443">handlers</text><text class="m" x="332" y="461">@on(type)</text>
+  <rect class="box" x="36" y="480" width="88" height="48" rx="6"/><text class="ts" x="44" y="499">rules</text><text class="m" x="44" y="517">verdicts</text>
+  <rect class="box" x="132" y="480" width="88" height="48" rx="6"/><text class="ts" x="140" y="499">memory</text><text class="m" x="140" y="517">policy</text>
+  <rect class="box" x="228" y="480" width="88" height="48" rx="6"/><text class="ts" x="236" y="499">agents</text><text class="m" x="236" y="517">registry</text>
+  <rect class="box" x="324" y="480" width="88" height="48" rx="6"/><text class="ts" x="332" y="499">consolidate</text><text class="m" x="332" y="517">reducers</text>
+  <text class="s" x="36" y="556">The only domain-specific code you write.</text>
+  <text class="s" x="36" y="573">The core knows no kind, predicate or event type.</text>
+  <path class="dash" d="M380 386 V366 H700 V330" marker-end="url(#av)"/>
+
+  <rect class="box" x="440" y="386" width="540" height="200" rx="10"/>
+  <text class="t" x="454" y="410">Bitemporal store</text>
+  <text class="s" x="454" y="428">one subgraph per tenant</text>
+  <rect class="core" x="454" y="440" width="66" height="30" rx="5"/><text class="m" x="464" y="459">acme</text>
+  <rect class="core" x="528" y="440" width="66" height="30" rx="5"/><text class="m" x="536" y="459">globex</text>
+  <rect class="cfg" x="602" y="440" width="82" height="30" rx="5"/><text class="m" x="610" y="459">__global__</text>
+  <text class="m" x="454" y="496">Backends (the Store protocol):</text>
+  <rect class="pill" x="454" y="506" width="104" height="24" rx="12"/><text class="m" x="466" y="522">MemoryStore</text>
+  <rect class="pill" x="564" y="506" width="100" height="24" rx="12"/><text class="m" x="576" y="522">SqliteStore</text>
+  <rect class="pill" x="670" y="506" width="96" height="24" rx="12"/><text class="m" x="682" y="522">MysqlStore</text>
+  <rect class="pill" x="454" y="536" width="104" height="24" rx="12" style="stroke-dasharray:3 3"/><text class="m" x="466" y="552">your own…</text>
+  <text class="m" x="568" y="552">--db keel.db | mysql://…</text>
+  <text class="ts" x="780" y="414">Entities</text><text class="s" x="780" y="430">kind:id + ref to your row</text>
+  <text class="ts" x="780" y="452">Relations</text><text class="s" x="780" y="468">valid over time</text>
+  <text class="ts" x="780" y="490">Facts</text><text class="s" x="780" y="506">valid_from · valid_to</text><text class="s" x="780" y="521">recorded_at · closed_at</text><text class="s" x="780" y="536">source · evidence · scope</text>
+  <text class="ts" x="780" y="558">Event log</text><text class="s" x="780" y="574">append-only, the truth</text>
+
+  <!-- 5 jobs + tools -->
+  <text class="h hr" x="20" y="616">JOBS: OUTSIDE INGEST</text>
+  <text class="h" x="440" y="616">5 · THE FIVE TOOLS</text>
+  <path class="read" d="M620 586 V622" marker-end="url(#aa)"/><text class="m h" x="628" y="608">reads</text>
+  <path class="jobl" d="M940 624 V590" marker-end="url(#ar)"/><text class="m h hr" x="826" y="608">earned memory</text>
+  <path class="jobl" d="M380 624 V600 H448 V590" marker-start="url(#ar)" marker-end="url(#ar)"/>
+
+  <rect class="job" x="20" y="624" width="400" height="130" rx="10"/>
+  <text class="s" x="36" y="646">CLI or cron; network and LLMs are allowed here</text>
+  <rect class="box" x="36" y="660" width="120" height="34" rx="6"/><text class="m" x="44" y="681">keel consolidate</text>
+  <rect class="box" x="164" y="660" width="120" height="34" rx="6"/><text class="m" x="172" y="681">keel expire</text>
+  <rect class="box" x="292" y="660" width="120" height="34" rx="6"/><text class="m" x="300" y="681">keel index</text>
+  <rect class="box" x="36" y="702" width="120" height="34" rx="6"/><text class="m" x="44" y="723">keel replay</text>
+  <rect class="box" x="164" y="702" width="120" height="34" rx="6"/><text class="m" x="172" y="723">keel export</text>
+  <rect class="box" x="292" y="702" width="120" height="34" rx="6"/><text class="m" x="300" y="723">keel forget</text>
+
+  <rect class="box" x="440" y="624" width="540" height="130" rx="10"/>
+  <text class="t" x="454" y="648">Tools</text>
+  <text class="s" x="506" y="648">bound to one tenant (and one agent)</text>
+  <rect class="pill" x="454" y="662" width="96" height="30" rx="15"/><text class="m" x="466" y="681">context</text>
+  <rect class="pill" x="558" y="662" width="96" height="30" rx="15"/><text class="m" x="570" y="681">history</text>
+  <rect class="pill" x="662" y="662" width="96" height="30" rx="15"/><text class="m" x="674" y="681">search</text>
+  <rect class="pill" x="766" y="662" width="96" height="30" rx="15"/><text class="m" x="778" y="681">related</text>
+  <rect class="pillr" x="870" y="662" width="96" height="30" rx="15"/><text class="m" x="882" y="681">annotate</text>
+  <text class="s" x="454" y="718">From the cartridge, enforced here and not in the agent:</text>
+  <text class="s" x="454" y="737">rule verdicts · memory policy · agent registry · read scopes</text>
+
+  <!-- 6 surfaces -->
+  <text class="h" x="124" y="783">6 · SURFACES</text>
+  
+  <path class="read" d="M710 754 V766 M110 766 H890"/>
+  <path class="read" d="M110 766 V788" marker-end="url(#aa)"/>
+  <path class="read" d="M305 766 V788" marker-end="url(#aa)"/>
+  <path class="read" d="M500 766 V788" marker-end="url(#aa)"/>
+  <path class="read" d="M695 766 V788" marker-end="url(#aa)"/>
+  <path class="read" d="M890 766 V788" marker-end="url(#aa)"/>
+  <rect class="box" x="20" y="790" width="180" height="56" rx="7"/><text class="ts" x="30" y="812">Python, in process</text><text class="m" x="30" y="832">Tools(cartridge, store…)</text>
+  <rect class="box" x="215" y="790" width="180" height="56" rx="7"/><text class="ts" x="225" y="812">HTTP JSON /v1</text><text class="m" x="225" y="832">serve --transport http</text>
+  <rect class="box" x="410" y="790" width="180" height="56" rx="7"/><text class="ts" x="420" y="812">MCP</text><text class="m" x="420" y="832">stdio · /mcp</text>
+  <rect class="box" x="605" y="790" width="180" height="56" rx="7"/><text class="ts" x="615" y="812">Typed SDKs</text><text class="m" x="615" y="832">ts · py · go · php</text>
+  <rect class="box" x="800" y="790" width="180" height="56" rx="7"/><text class="ts" x="810" y="812">Console</text><text class="m" x="810" y="832">serve --ui</text>
+  <path class="read" d="M110 846 V866" marker-end="url(#aa)"/>
+  <path class="read" d="M305 846 V866" marker-end="url(#aa)"/>
+  <path class="read" d="M500 846 V866" marker-end="url(#aa)"/>
+  <path class="read" d="M695 846 V866" marker-end="url(#aa)"/>
+  <path class="read" d="M890 846 V866" marker-end="url(#aa)"/>
+  <rect class="core" x="20" y="868" width="960" height="52" rx="9"/>
+  <text class="t" x="36" y="899">Your agents and people</text>
+  <text class="s" x="214" y="899">LangGraph · Claude Agent SDK · ADK · Claude Code, Codex (MCP) · your backend · humans in the console</text>
+
+  <!-- legend -->
+  <path class="flow" d="M20 950 H52"/><text class="s" x="60" y="954">writes: events into the graph</text>
+  <path class="read" d="M250 950 H282"/><text class="s" x="290" y="954">reads: graph to agents</text>
+  <path class="dash" d="M450 950 H482"/><text class="s" x="490" y="954">cartridge configuration</text>
+  <path class="jobl" d="M650 950 H682"/><text class="s" x="690" y="954">jobs and earned memory</text>
+</svg>

@@ -1,0 +1,1420 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Context layer for AI agents in vertical SaaS. Domain events in, a bitemporal context graph per end-customer out, five tools for every agent.">
+      
+      
+      
+        <link rel="canonical" href="https://angelkurten.github.io/keel/docs/design/semantic-evals/">
+      
+      
+        <link rel="prev" href="../agentic-workflows/">
+      
+      
+        <link rel="next" href="../hosted/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Semantic search, research and evals - Keel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#semantic-search-research-and-evals" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Keel" class="md-header__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Keel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Semantic search, research and evals
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Keel" class="md-nav__button md-logo" aria-label="Keel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Keel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/angelkurten/keel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    angelkurten/keel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../pilot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first pilot in a day
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../first-cartridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Send your events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../serve/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Serve the tools
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sdks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operate
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent registry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sdk-generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SDKs from the cartridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bulk-ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingesting millions of events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agentic-workflows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    What agentic workflows demand
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Semantic search, research and evals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The bench
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results-2026-10-15-openai-text-embedding-3-small-and-large-through-ofoxai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results (2026-10-15, OpenAI text-embedding-3-small and -large through OfoxAI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-numbers-say" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the numbers say
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-research-adds-sources-in-the-research-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the research adds (sources in the research summary)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ranked-improvements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked improvements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-implementation-0120" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After implementation (0.12.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hosted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hosted Keel
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../showcase/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The support showcase
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-bench" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The bench
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results-2026-10-15-openai-text-embedding-3-small-and-large-through-ofoxai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results (2026-10-15, OpenAI text-embedding-3-small and -large through OfoxAI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-numbers-say" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the numbers say
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-research-adds-sources-in-the-research-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the research adds (sources in the research summary)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ranked-improvements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ranked improvements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-implementation-0120" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After implementation (0.12.0)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="semantic-search-research-and-evals">Semantic search: research and evals<a class="headerlink" href="#semantic-search-research-and-evals" title="Permanent link">&para;</a></h1>
+<p>Status: 2026-10-15. Research on vector stores, RAG and hybrid retrieval, plus a labeled eval bench (<code>evals/semantic/</code>) run with real embeddings. Items 1 to 7 of the ranked list shipped in 0.12.0 the same day and were measured again on the bench (end of this note); item 8 waits for real queries.</p>
+<h2 id="the-bench">The bench<a class="headerlink" href="#the-bench" title="Permanent link">&para;</a></h2>
+<p>Three sandboxes built through the real store primitives, each with labeled queries in seven families chosen to probe known weak spots of dense retrieval (<code>evals/semantic/sandboxes.py</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Sandbox</th>
+<th>Shape</th>
+<th>Queries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fleet</td>
+<td>40 units, 160 tires, noisy inspection comments with URLs, one policy</td>
+<td>14</td>
+</tr>
+<tr>
+<td>cards</td>
+<td>125 Jira-like cards in Spanish, 4 clients, comments with URLs and commit hashes, a pause rule</td>
+<td>12</td>
+</tr>
+<tr>
+<td>finance</td>
+<td>a household's debts and dues, Spanish, creditors and amounts</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p>Families: paraphrase (no shared word), exact, id ("CUS-1990"), crosslang (Spanish query, English document or the reverse), relation (answerable only through a related subject), negative (nothing relevant exists), rule (semantic query plus a rule filter).</p>
+<div class="highlight"><pre><span></span><code><span class="nv">KEEL_EMBEDDINGS_API_KEY</span><span class="o">=</span>...<span class="w"> </span><span class="nv">KEEL_EMBEDDINGS_BASE_URL</span><span class="o">=</span>https://api.ofox.ai/v1<span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>evals.semantic.run<span class="w"> </span>--models<span class="w"> </span>small,large
+</code></pre></div>
+<p>Embeddings are cached by model and text, so reruns are free. A full run embedded about 25 000 tokens per model (fractions of a cent with <code>text-embedding-3-small</code>). <code>tests/test_evals.py</code> keeps the harness working offline.</p>
+<h2 id="results-2026-10-15-openai-text-embedding-3-small-and-large-through-ofoxai">Results (2026-10-15, OpenAI text-embedding-3-small and -large through OfoxAI)<a class="headerlink" href="#results-2026-10-15-openai-text-embedding-3-small-and-large-through-ofoxai" title="Permanent link">&para;</a></h2>
+<p>MRR@10 per family, all sandboxes:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>paraphrase</th>
+<th>exact</th>
+<th>id</th>
+<th>crosslang</th>
+<th>relation</th>
+<th>rule</th>
+<th>all (small)</th>
+<th>all (large)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>substring (today's text mode)</td>
+<td>0.00</td>
+<td>0.80</td>
+<td>1.00</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>0.00</td>
+<td>0.28</td>
+<td>0.28</td>
+</tr>
+<tr>
+<td>dense (today's semantic mode, cartridge policy)</td>
+<td>0.78</td>
+<td>1.00</td>
+<td>0.45</td>
+<td>1.00</td>
+<td>0.50</td>
+<td>1.00</td>
+<td>0.82</td>
+<td>0.85</td>
+</tr>
+<tr>
+<td>bm25 over the same documents</td>
+<td>0.45</td>
+<td>1.00</td>
+<td>0.80</td>
+<td>0.00</td>
+<td>1.00</td>
+<td>0.67</td>
+<td>0.58</td>
+<td>0.58</td>
+</tr>
+<tr>
+<td>hybrid RRF(k=60)</td>
+<td>0.59</td>
+<td>1.00</td>
+<td>0.88</td>
+<td>0.80</td>
+<td>0.67</td>
+<td>1.00</td>
+<td>0.79</td>
+<td>0.81</td>
+</tr>
+<tr>
+<td>dense + exact-key shortcut</td>
+<td>0.78</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>0.50</td>
+<td>1.00</td>
+<td>0.89</td>
+<td>0.95</td>
+</tr>
+<tr>
+<td>convex (0.7 dense + 0.3 bm25, min-max normalized)</td>
+<td>0.85</td>
+<td>1.00</td>
+<td>0.78</td>
+<td>1.00</td>
+<td>0.67</td>
+<td>1.00</td>
+<td>0.89</td>
+<td>0.92</td>
+</tr>
+<tr>
+<td><strong>convex + exact-key shortcut</strong></td>
+<td>0.85</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>0.67</td>
+<td>1.00</td>
+<td><strong>0.93</strong></td>
+<td><strong>0.98</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Family columns are the small model. Hit@1 over all positive queries: dense 0.72 (small) and 0.83 (large); convex + key 0.86 and 0.97. Precision@10 on relation queries (many relevant subjects): dense 0.50, convex + key 0.88 (small); 0.75 and 0.88 (large). The offline test caught one impossible label in the first run (a tire that did not exist); these numbers are after the fix.</p>
+<h2 id="what-the-numbers-say">What the numbers say<a class="headerlink" href="#what-the-numbers-say" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Dense alone loses on identifiers</strong> (MRR 0.45 small, 0.28 large): a pooled vector blurs "CUS-1990" into "some card". Today's substring mode gets every id right. An exact-key shortcut fixes ids with no cost elsewhere.</li>
+<li><strong>RRF hurts paraphrases</strong> (0.78 to 0.59): with equal weight, a weak lexical leg drags good dense results down. A convex combination weighted toward dense keeps paraphrases and still gains on ids and relations, in line with Bruch et al. (ACM TOIS), who found convex fusion beats RRF and is easy to tune with a few labels.</li>
+<li><strong>Lexical carries relation queries</strong> (BM25 precision@10 1.00): the client's name in the rendered relation line is an exact word match. Dense spreads over similar-sounding cards.</li>
+<li><strong>The cartridge policy is not free.</strong> Excluding noisy comments did not measurably help these embedders (noise-only equals no policy). Relation lines help relation queries (precision@10 0.50 vs 0.30) but, combined with the exclusion, cost two paraphrase queries: every tire's document now repeats its unit's model and plate, which makes tire documents look alike. Hypothesis to test next: render relations as key plus one label attribute, not every attribute.</li>
+<li><strong>A fixed cosine threshold cannot say "nothing here".</strong> Positives' top score starts at 0.36 to 0.39 while negatives reach 0.44 to 0.45; at 0.45 the large model drops 21% of positives to silence all negatives. The literature agrees: absolute cosine is model-specific (text-embedding-3 averages about 0.43 where ada-002 averaged 0.85), so any threshold must be calibrated per model, and better signals are a reranker score or agreement between the lexical and dense legs.</li>
+<li><strong>The large model buys little once fusion is in</strong> (0.93 to 0.98 MRR at 6.5 times the price). Small with fusion beats large without it.</li>
+</ol>
+<p>Caveats: 34 positive queries and 9 negatives, written by us, so results are directional; differences of one or two queries per family are noise. Synthetic queries are known to be easier than real ones (higher lexical overlap); real agent queries from kagent and Toche should join the bench.</p>
+<h2 id="what-the-research-adds-sources-in-the-research-summary">What the research adds (sources in the research summary)<a class="headerlink" href="#what-the-research-adds-sources-in-the-research-summary" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Hybrid search is standard in production stores: Weaviate relativeScoreFusion, Elasticsearch RRF retriever, Qdrant sparse vectors, turbopuffer BM25. Anthropic's Contextual Retrieval: adding BM25 to contextual embeddings cut top-20 failures from 3.7% to 2.9%, a reranker on top to 1.9%.</li>
+<li><strong>Seen in our own tests:</strong> with 121 vectors, Chroma's HNSW returned at most 90 results however large <code>k</code> was, and which 90 varied when many documents were identical. Keel's widening post-filter loop stops when the index returns fewer than asked, so with an approximate index a filtered match can still be missed. Filtering inside the index (item 6 below) is the real fix.</li>
+<li>Filtering belongs in the store when a kind is a small slice of a tenant: pgvector 0.8 iterative scans, Qdrant filterable HNSW (99.8% recall at 1% selectivity) and <code>is_tenant</code> payload indexes, sqlite-vec metadata columns. Keel's widening post-filter loop is correct but costs round trips at scale.</li>
+<li>Asymmetric embedders (multilingual-e5 "query:" / "passage:", Qwen3 instructions) lose 1 to 5% recall without their prefixes; Keel's <code>Embedder.embed(texts)</code> cannot express the role yet.</li>
+<li>MySQL 9 Community has the VECTOR type but no distance function or index (HeatWave only): not a backend.</li>
+<li>GraphRAG-style LLM summaries at index time conflict with deterministic ingest; what transfers is query-time fusion and one-hop expansion from top hits.</li>
+</ul>
+<h2 id="ranked-improvements">Ranked improvements<a class="headerlink" href="#ranked-improvements" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Change</th>
+<th>Evidence here</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Exact-key shortcut in <code>search(mode="semantic")</code></td>
+<td>id MRR 0.45 to 1.00, no regression elsewhere</td>
+<td>XS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Hybrid with convex fusion (dense 0.7, lexical 0.3) and a lexical leg over the same documents, deterministic tokenizer</td>
+<td>overall MRR 0.82 to 0.93 (small), 0.85 to 0.98 (large); relation p@10 0.50 to 0.88</td>
+<td>M</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>min_score</code> option, documented as model-specific, off by default; the eval's threshold sweep as the way to choose it</td>
+<td>negatives cannot be separated by a fixed cut</td>
+<td>S</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Compact relation lines (key plus one label attribute)</td>
+<td>hypothesis from finding 4</td>
+<td>S</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>Embedder.embed(texts, role="query"|"document")</code> for asymmetric models</td>
+<td>research: 1 to 5% recall</td>
+<td>S</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Optional <code>where={"kind": ...}</code> in <code>VectorIndex.query</code>, mapped by adapters that filter natively</td>
+<td>research: recall and round trips at scale</td>
+<td>M</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Reranker adapter over the top 30 to 50 fused candidates</td>
+<td>research: +5 to 15 nDCG points; not measured here</td>
+<td>M</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Grow the bench with real agent queries from kagent and Toche</td>
+<td>synthetic-query bias</td>
+<td>ongoing</td>
+</tr>
+</tbody>
+</table>
+<h2 id="after-implementation-0120">After implementation (0.12.0)<a class="headerlink" href="#after-implementation-0120" title="Permanent link">&para;</a></h2>
+<p>The bench now also runs <code>search(mode="semantic")</code> as shipped (<code>keel</code>) and with an LLM reranker (<code>gpt-4.1-mini</code> through OfoxAI, <code>keel+rerank</code>). MRR@10, all sandboxes:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>small</th>
+<th>large</th>
+<th>hit@1 small</th>
+<th>relation p@10 small</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dense (0.11 behaviour, before compact relations and the key shortcut)</td>
+<td>0.82</td>
+<td>0.85</td>
+<td>0.72</td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>dense in 0.12 (key shortcut and compact relations, lexical weight 0)</td>
+<td>0.90</td>
+<td>0.97</td>
+<td>0.83</td>
+<td>0.62</td>
+</tr>
+<tr>
+<td><strong>keel 0.12</strong> (keys, convex fusion 0.7/0.3, compact relations)</td>
+<td><strong>0.95</strong></td>
+<td><strong>0.98</strong></td>
+<td>0.90</td>
+<td>0.88</td>
+</tr>
+<tr>
+<td>keel 0.12 + LLM reranker</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>1.00</td>
+<td>1.00</td>
+</tr>
+</tbody>
+</table>
+<p>What shipped matches the best prototype (<code>convex+key</code>) exactly. Compact relation lines (the other side's key and one label instead of every attribute) lifted dense relation precision from 0.50 to 0.62 on their own. The reranker cleared the remaining paraphrase misses, at one chat-model call per search (about a second with a small model) and a few cents per thousand searches. <code>min_score</code> stays off by default: on this bench the best floor (0.45, large model) still drops 17% of positives.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../agentic-workflows/" class="md-footer__link md-footer__link--prev" aria-label="Previous: What agentic workflows demand">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                What agentic workflows demand
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../hosted/" class="md-footer__link md-footer__link--next" aria-label="Next: Hosted Keel">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Hosted Keel
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0. The envelope, the cartridge format and the five tools are the standard.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.footer", "toc.follow", "content.code.copy", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
