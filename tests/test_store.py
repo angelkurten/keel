@@ -1524,6 +1524,24 @@ def test_stored_agents_are_bitemporal_per_tenant(store):
     assert store.agent("acme/c1", "writer", at=t1 + timedelta(hours=1))  # never another tenant's
 
 
+def test_tenant_extensions_are_bitemporal_per_tenant(store):
+    if not hasattr(store, "put_extension"):
+        pytest.skip("this store keeps no tenant extensions (optional)")
+    t0, t1 = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 2, 1, tzinfo=UTC)
+    store.put_extension("acme/c1", {"version": 1, "entities": {"order": {}}}, t0)
+    store.put_extension("acme/c1", {"version": 2, "entities": {"order": {}, "deal": {}}}, t1)
+    store.put_extension("acme/c2", {"version": 1}, t0)
+    assert store.extension("acme/c1")["version"] == 2
+    assert store.extension("acme/c1", at=t0 + timedelta(days=1))["version"] == 1  # what it was then
+    assert store.extension("acme/c3") is None  # never another tenant's
+    assert "acme/c2" in store.tenants()  # a tenant with only an extension is a tenant (keel validate --db sweeps them)
+    store.reset("acme/c1")
+    assert store.extension("acme/c1")["version"] == 2  # configuration, not derived from events: replay keeps it
+    store.forget("acme/c1")
+    assert store.extension("acme/c1") is None and store.extension("acme/c1", at=t0 + timedelta(days=1)) is None
+    assert store.extension("acme/c2") == {"version": 1}
+
+
 def test_a_pinned_clock_puts_reads_and_notes_on_that_day():
     from keel import running_from
 
@@ -1694,3 +1712,16 @@ def test_a_prefixed_postgres_store_evaluates_rules_in_python():
         Ingestor(c, s).ingest(events)
     rules = [r for r, spec in c.rules.items() if spec.get("when") and spec.get("applies_to")]
     assert [Tools(c, store, TENANT).search(rule=r, detail="key") for r in rules] == [Tools(c, ref, TENANT).search(rule=r, detail="key") for r in rules]
+
+
+def test_a_tenant_extension_replaces_only_the_version_it_read(store):
+    if not hasattr(store, "put_extension"):
+        pytest.skip("this store keeps no tenant extensions (optional)")
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    store.put_extension("acme/c1", {"version": 1}, t0, previous=None)
+    with pytest.raises(ValueError, match="changed"):
+        store.put_extension("acme/c1", {"version": 1, "x": 1}, t0, previous=None)  # a first version is already live
+    store.put_extension("acme/c1", {"version": 2}, t0 + timedelta(days=1), previous={"version": 1})
+    with pytest.raises(ValueError, match="changed"):
+        store.put_extension("acme/c1", {"version": 2, "x": 1}, t0 + timedelta(days=2), previous={"version": 1})  # another write won
+    assert store.extension("acme/c1") == {"version": 2}

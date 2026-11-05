@@ -83,6 +83,19 @@ def no_show(event, store):
     store.open_fact(event.tenant, event.subject, "status", "no_show", valid_from=event.occurred_at, source=event.source, evidence=event.id)
 ```
 
+An event that only copies payload fields needs no handler at all. Say which fields become facts and which relations it opens, and leave it out of `handlers.py`:
+
+```yaml
+  appointment.rescheduled:
+    subject: appointment
+    owner: scheduling
+    payload: { starts_at: datetime, room_id: string | null }
+    facts: [starts_at]                      # open_fact(subject, "starts_at", payload["starts_at"])
+    relate: { held_in: "room:{room_id}" }   # link(subject, "held_in", "room:<room_id>"); skipped when room_id is null
+```
+
+A relation declared `one: true` closes the subject's previous link of it first. An event is declarative or has a handler, never both (SPEC §5.2).
+
 `open_fact` closes the previous value of the same predicate instead of overwriting it, and a late event takes its place in the history rather than closing a newer value backwards. That is what makes the graph bitemporal: you can ask what was true on any date. Events are deduplicated by id, so retrying a batch is safe.
 
 ## 5. Add your semantics (2 min)

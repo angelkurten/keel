@@ -156,10 +156,12 @@ def refresh(store: Any, box: Any, tenant: str, cartridge: Any, gate: Any, now: s
     (`gate`, the store's change counter) and no copied fact expired; else a fingerprint of the tenant, and a copy only
     when it changed. A tenant larger than COPY_MAX rows is refused, which bounds the copy; it does not count against the
     query's timeout (under load it outlasted it and cost the agent a turn). Never under the store's main lock."""
-    if box.mark is not None and box.gate == gate and (box.expiry is None or now < box.expiry):
+    # the schema first: a tenant extension changes it with no write to the graph (another process, a new version)
+    schema = (getattr(cartridge, "ident", None), repr(getattr(cartridge, "rules", None)), repr(getattr(cartridge, "entities", None)),
+              repr(getattr(cartridge, "relations", None)), repr(getattr(cartridge, "predicates", None)))
+    if box.mark is not None and box.gate == gate and box.mark[1:] == schema and (box.expiry is None or now < box.expiry):
         return
-    mark = (fingerprint(store, tenant, now), getattr(cartridge, "ident", None), repr(getattr(cartridge, "rules", None)),
-            repr(getattr(cartridge, "entities", None)), repr(getattr(cartridge, "relations", None)))
+    mark = (fingerprint(store, tenant, now), *schema)
     if mark != box.mark:
         tables = visible(store, tenant, now)
         box.load(tables, cartridge)

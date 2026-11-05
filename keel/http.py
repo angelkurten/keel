@@ -47,8 +47,10 @@ from keel.accounts import Quotas
 from keel.agents import put_agent, remove_agent
 from keel.cartridge import Cartridge
 from keel.envelope import Event, parse_iso, utcnow
+from keel.extensions import put_extension
 from keel.ingest import Ingestor
 from keel.keys import check_tenant, has_keys, resolve
+from keel.scopes import is_global
 from keel.semantic import Unavailable
 from keel.store.base import Store
 from keel.tools import Tools
@@ -483,6 +485,34 @@ def build_http_app(
         if not remove_agent(s, t, agent_id):
             raise HTTPException(404, f"no agent '{agent_id}' stored for this tenant")
         return {"removed": agent_id}
+
+    # ---- tenant extensions (keel/extensions.py): the operator, or a key created --extend; never an agent ----
+
+    def extension_of(request: Request, t: str) -> tuple[Store, str]:
+        key = key_of(request)
+        if key is not None and not key.extend:
+            raise HTTPException(403, "only the shared secret or a key created with --extend sets a tenant's extension")
+        if key is None:  # the operator names any tenant, an account's (acme/b) included, like X-Keel-Tenant
+            if not t or is_global(t):
+                raise HTTPException(400, f"tenant '{t}': the global partition has no extension")
+            return graph_for(None)[0], t
+        return graph_for(key)[0], scoped(key, t)
+
+    @app.put("/v1/tenants/{tenant:path}/extension")
+    def extension_put(tenant: str, body: dict[str, Any], request: Request) -> dict[str, Any]:
+        s, t = extension_of(request, tenant)
+        try:
+            return put_extension(cartridge, s, t, body)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+
+    @app.get("/v1/tenants/{tenant:path}/extension")
+    def extension_get(tenant: str, request: Request) -> dict[str, Any]:
+        s, t = extension_of(request, tenant)
+        spec = s.extension(t) if getattr(s, "extension", None) else None
+        if spec is None:
+            raise HTTPException(404, "this tenant has no extension")
+        return spec
 
     @app.get("/v1/cartridge")
     def cartridge_doc() -> dict[str, Any]:

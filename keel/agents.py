@@ -195,7 +195,9 @@ def put_agent(cartridge: Any, store: Any, tenant: str, agent_id: str, spec: dict
         raise ValueError("this cartridge does not store agents: it declares no `registry: store`")
     if getattr(store, "put_agent", None) is None:
         raise ValueError(f"{type(store).__name__} does not keep agents (put_agent, agent, agents, remove_agent)")
-    problems_ = stored_problems(cartridge, agent_id, spec)
+    from keel.extensions import for_tenant
+
+    problems_ = stored_problems(for_tenant(cartridge, store, tenant), agent_id, spec)  # it may read the tenant's extension kinds
     if problems_:
         raise ValueError("; ".join(problems_))
     store.put_agent(tenant, agent_id, spec, utcnow())

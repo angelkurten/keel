@@ -45,16 +45,19 @@ def check_tenant(tenant: str) -> str:
     return tenant
 
 
-def create_key(store: Any, account: str, tenant: str | None = None, agent: str | None = None, glob: bool = False) -> tuple[str, ApiKey]:
+def create_key(store: Any, account: str, tenant: str | None = None, agent: str | None = None, glob: bool = False,
+               extend: bool = False) -> tuple[str, ApiKey]:
     """A new key for `account`. Returns the full key, which is never stored, and the stored record."""
     check_account(account)
     if tenant is not None:
         check_tenant(tenant)
     if glob and (tenant or agent):
         raise ValueError("a global key writes the account's global memory; it is not narrowed to a tenant or an agent")
+    if extend and agent:
+        raise ValueError("an extend key sets its tenants' schema; it never calls as an agent, so no agent widens its own tenant's schema")
     key_id = f"kk_{secrets.token_hex(6)}"
     full = f"{key_id}_{secrets.token_urlsafe(32)}"
-    key = ApiKey(id=key_id, hash=digest(full), account=account, created_at=utcnow(), tenant=tenant, agent=agent, glob=glob)
+    key = ApiKey(id=key_id, hash=digest(full), account=account, created_at=utcnow(), tenant=tenant, agent=agent, glob=glob, extend=extend)
     store.put_key(key)
     return full, key
 

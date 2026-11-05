@@ -26,6 +26,8 @@ import yaml
 
 from keel.agents import AgentSpec, parse_agents
 from keel.agents import problems as agent_problems
+from keel.declarative import is_declarative
+from keel.declarative import problems as declarative_problems
 from keel.envelope import Event
 from keel.handlers import HandlerRegistry
 from keel.rules import Calendar
@@ -81,9 +83,14 @@ class Cartridge:
             forgets = (spec or {}).get("forgets")
             if forgets is not None and forgets not in ("tenant", "before"):
                 problems.append(f"event '{etype}': forgets is `tenant` (the event erases its tenant) or `before` (what closed before it), not '{forgets}'")
-            if forgets and etype in self.registry.types():
+            declared = is_declarative(spec)
+            if declared:
+                problems += declarative_problems(etype, spec, self.relations)
+            if forgets and (declared or etype in self.registry.types()):
                 problems.append(f"event '{etype}' forgets ({forgets}), so its handler would never run; remove it")
-            elif not forgets and etype not in self.registry.types():
+            elif declared and etype in self.registry.types():
+                problems.append(f"event '{etype}' is declarative (facts/relate) and has a handler in handlers.py; keep one, not both")
+            elif not forgets and not declared and etype not in self.registry.types():
                 problems.append(f"event '{etype}' has no handler in handlers.py")
         for etype in self.registry.types() - set(self.events):
             problems.append(f"handler for '{etype}' exists but the event is not in the catalog")

@@ -272,9 +272,10 @@ def build_server(tools: Tools | Callable[[Any], Tools], name: str | None = None,
         return inner
 
     def bound(ctx: Any) -> Tools:
+        # current(): tools built once (stdio, a bound /mcp) follow a new version of the tenant's extension
         if isinstance(tools, Tools):
-            return tools
-        return tools(getattr(getattr(ctx, "request_context", None), "request", None))
+            return tools.current()
+        return tools(getattr(getattr(ctx, "request_context", None), "request", None)).current()
 
     if isinstance(tools, Tools):
         name = ":".join(filter(None, ["keel", tools.cartridge.name, tools.tenant, tools.agent_id]))

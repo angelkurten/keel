@@ -421,7 +421,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 48px 0 40
     <h2 class="rise" data-i18n="how.h">How it works</h2>
     <ol class="flow" style="margin-top:32px">
       <li class="rise"><h3 data-i18n="how.1">Send your events</h3><p data-i18n="how.1p">From Postgres CDC, an outbox, Kafka, SQS, webhooks or the SDK.</p></li>
-      <li class="rise" style="--d:60ms"><h3 data-i18n="how.2">Declare a cartridge</h3><p data-i18n="how.2p">Your entities, events and rules in YAML, plus ten-line handlers. Typed SDKs come out of it.</p></li>
+      <li class="rise" style="--d:60ms"><h3 data-i18n="how.2">Declare a cartridge</h3><p data-i18n="how.2p">Your entities, events and rules in YAML, plus ten-line handlers or none. Typed SDKs come out of it, and each tenant can extend it with kinds of its own, without a deploy.</p></li>
       <li class="rise" style="--d:120ms"><h3 data-i18n="how.3">Keel builds the graph</h3><p data-i18n="how.3p">One bitemporal graph per tenant. No LLM in ingest; replay gives the same graph.</p></li>
       <li class="rise" style="--d:180ms"><h3 data-i18n="how.4">Agents read five tools</h3><p data-i18n="how.4p">context, history, search, related, annotate. Rules arrive evaluated.</p></li>
     </ol>
@@ -706,7 +706,7 @@ const ES = {
   "pb.at": "Con Keel", "pb.atag": "una capa", "pb.ap": "Una ingesta determinista. Todos los agentes leen el mismo grafo con las mismas cinco herramientas.",
   "how.h": "Cómo funciona",
   "how.1": "Envía tus eventos", "how.1p": "Desde CDC de Postgres, un outbox, Kafka, SQS, webhooks o el SDK.",
-  "how.2": "Declara un cartridge", "how.2p": "Tus entidades, eventos y reglas en YAML, más handlers de diez líneas. De ahí salen SDKs tipados.",
+  "how.2": "Declara un cartridge", "how.2p": "Tus entidades, eventos y reglas en YAML, más handlers de diez líneas o ninguno. De ahí salen SDKs tipados, y cada tenant puede extenderlo con tipos propios, sin desplegar.",
   "how.3": "Keel construye el grafo", "how.3p": "Un grafo bitemporal por tenant. Sin LLM en la ingesta; el replay da el mismo grafo.",
   "how.4": "Los agentes usan cinco herramientas", "how.4p": "context, history, search, related, annotate. Las reglas llegan evaluadas.",
   "f1.h": "Define \"bloqueado\" una vez. Cada agente recibe el veredicto.",

@@ -1,6 +1,6 @@
 # Keel specification
 
-Version 0.37 · 2026-11-02 · Status: normative for the 0.37.x line; anything marked *planned* is not implemented yet.
+Version 0.38 · 2026-11-04 · Status: normative for the 0.38.x line; anything marked *planned* is not implemented yet.
 
 This document is the contract. `CLAUDE.md` says how to work on the code; `README.md` says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.
 
@@ -313,13 +313,31 @@ memory:                 # optional; defaults in §6
 
 MUST define `registry = HandlerRegistry()` at module level with one or more `@registry.on(...)` functions.
 
+An event that only copies payload fields needs no handler: it is **declarative**, and says so in the catalog.
+
+```yaml
+order.observed:
+  subject: order
+  payload: { total: number, status: string, customer_id: string | null }
+  facts: [total, status]                          # open_fact(subject, field, payload[field], valid_from=occurred_at)
+  relate: { placed_by: "customer:{customer_id}" }   # link(subject, placed_by, customer:<customer_id>, occurred_at)
+```
+
+The core upserts the subject, writes each listed field present in the payload as a fact (a `null` is written: the
+source said it is empty; an absent field is skipped) with `source` and the event id as `evidence`, and, for each
+`relate`, upserts the target and links it; a relation declared `one` first closes the subject's other live link of it.
+A template whose field is absent or null is skipped. A `one` relation closes the link live at the event's
+`occurred_at`, so two events of one subject arriving out of order can leave two links open, as a handler written the
+same way would; give such a relation an event per change in order, or a handler. An event is declarative or has a handler, never both. This is the
+only place the core reads payload values, and only the fields the catalog names.
+
 ### 5.3 Validation (`keel validate`)
 
 A cartridge is valid when:
 
 1. every relation's `from` and `to` are declared entity kinds;
 2. every event's `subject` is a declared entity kind;
-3. every cataloged event type has at least one handler, except one that `forgets`, which has none (`forgets` takes `tenant` or `before`);
+3. every cataloged event type has at least one handler or is declarative (§5.2), except one that `forgets`, which has neither (`forgets` takes `tenant` or `before`); a declarative event's `facts` and template fields are payload fields, and each `relate` names a declared relation from the subject's kind to the template's kind;
 4. every handler's event type is in the catalog;
 5. every rule's `when` names a `predicate` and uses only the operators in §5.4;
 6. every agent's `kind` is `agent` or `human`, its `writes` are known scopes other than `global`, and its `reads` name declared kinds and relations;
@@ -362,6 +380,43 @@ Extra fields in a payload are allowed: the catalog documents what handlers need,
 ### 5.6 The generality test
 
 Adding or changing a cartridge MUST require no change under `keel/`. The repository keeps four cartridges (`fleet`, `crm`, `finance`, `clinics`) and all MUST pass the test suite after any core change.
+
+### 5.7 Tenant extensions
+
+A tenant MAY have an **extension**: a cartridge fragment layered on the base cartridge for that tenant only, for a
+product whose tenants bring their own data (one connects a shop, another a CRM).
+
+```yaml
+extends: crm@0.1.0      # the base cartridge's name (must match) and the version it was written against
+version: 3              # a whole number, increasing with every change
+entities:   { deal: { description: A deal in the CRM., facts: { amount: number } } }
+relations:  { deal_for: { from: deal, to: customer, one: true } }
+events:     { deal.observed: { subject: deal, owner: "source:hubspot", payload: {...}, facts: [...], relate: {...} } }
+rules:      { ... }     # the same leaf operators (§5.4), applies_to any kind
+predicates: { ... }
+retired:    [ ... ]     # extension kinds hidden from reads; their events still apply
+```
+
+1. **Additive.** Only those keys. No name of the base cartridge; an extension that a later base upgrade collides with
+   does not load at all for its tenant (the base alone, a logged warning) until it is fixed, and
+   `keel validate <cartridge> --db` reports it. No `forgets`. Its events have one of its own kinds as subject and
+   relate only through its own relations; its `predicates` name only facts of its own kinds or events. So it never
+   writes on, or changes the policy of, what the base declares.
+2. **No code.** Every event is declarative (§5.2). An event whose type the tenant does not know yet is refused before
+   it is remembered, so it applies when it is delivered again after the extension is set.
+3. **Monotone.** A new version keeps every name of the live one; an event keeps its `subject`, `payload`, `facts` and
+   `relate`, a relation its `from`, `to`, `one` and `symmetric`. A kind goes by listing it in `retired`: it, its
+   relations and its rules leave what tools read, and its events still apply, so replaying the whole log with the live
+   version rebuilds the same graph. Rules, predicates and descriptions shape reads only and may change.
+4. **Per tenant.** The tenant's ingest, tools, stored agents (`reads.kinds` may name its kinds) and `query` schema see
+   the base plus the extension; no other tenant sees its names. It is configuration, like stored agents: stored
+   bitemporally, kept by `replay`, erased by `forget`. Limits: 50 entities, 100 relations, 100 events, 50 rules.
+5. **Managed at runtime.** `PUT /v1/tenants/{tenant}/extension` validates and stores the next version (422 with every
+   problem), `GET` reads the live one; `keel extension set|get|validate` from the CLI; a change applies within a few
+   seconds, without a restart. A PUT replaces exactly the version it was validated against; when another write won
+   in between it is refused (422) and is read again. Only the operator (the shared secret, the CLI) or a key created `--extend` may set it,
+   and an `--extend` key never calls as an agent. `keel validate <cartridge> --extension <file> --events <stream>`
+   checks a stream against both.
 
 ---
 
@@ -508,6 +563,8 @@ Over MCP its description is fixed text (prompt caches hold) and the schema it re
 8. Ingest performs no I/O other than reading the adapter and writing the store.
 9. Ingesting the same event twice changes nothing, and ingesting the same events in any order yields the same facts.
 10. Scope reads hold (§6): agent memory reaches only its author, task memory only its task, global memory every tenant.
+11. A tenant extension (§5.7) never alters the base: every base name means what the base says, for every tenant.
+12. One tenant's extension is never visible to another: its kinds, relations, events and rules are unknown there.
 
 ---
 

@@ -165,19 +165,32 @@ def init(
 def validate(
     cartridge: Path,
     events: Path | None = typer.Option(None, help="Also check a .jsonl stream: unknown types, wrong subject kinds, payload shape."),
-    db: str | None = typer.Option(None, "--db", help="Also check every tenant's stored agents (registry: store) against this cartridge, after an ontology change: a SQLite file, or a mysql:// or postgresql:// URL."),
+    db: str | None = typer.Option(None, "--db", help="Also check every tenant's stored agents (registry: store) and extension against this cartridge, after an ontology change: a SQLite file, or a mysql:// or postgresql:// URL."),
+    extension: Path | None = typer.Option(None, "--extension", help="A tenant extension (YAML or JSON) layered on the cartridge: checked, and --events is checked against both."),
 ):
     """Check that the catalog, the ontology and the handlers agree; with --events, that a stream fits the catalog;
-    with --db, that the agents tenants stored still fit their profiles."""
+    with --db, that the agents and extensions tenants stored still fit."""
+    from keel import extensions as ext_
+
     c = load_cartridge(cartridge)
     problems = c.validate()
-    if db and c.agent_registry == "store":
-        from keel.agents import stored_problems
-
+    if extension:
+        spec = _extension_file(extension)
+        problems += [f"extension: {p}" for p in ext_.problems(c, spec)]
+    if db:
         store = _store(db)
-        for t in store.tenants():
-            for agent_id, spec in store.agents(t).items():
-                problems += [f"tenant '{t}': stored agent '{agent_id}': {p}" for p in stored_problems(c, agent_id, spec)]
+        for t in store.tenants() if c.agent_registry == "store" or hasattr(store, "extension") else ():
+            spec_t = store.extension(t) if hasattr(store, "extension") else None
+            if spec_t is not None:  # what a base upgrade broke: a name the extension already used, now the base's too
+                problems += [f"tenant '{t}': extension: {p}" for p in ext_.problems(c, spec_t)]
+            if c.agent_registry == "store":
+                from keel.agents import stored_problems
+
+                tc = ext_.merge(c, spec_t)
+                for agent_id, spec in store.agents(t).items():
+                    problems += [f"tenant '{t}': stored agent '{agent_id}': {p}" for p in stored_problems(tc, agent_id, spec)]
+    if extension:
+        c = ext_.merge(c, spec, hide=False)
     checked = 0
     if events:
         for n, line in enumerate(events.read_text(encoding="utf-8").splitlines(), 1):
@@ -768,11 +781,12 @@ def accounts_list(db: str = typer.Option(..., "--db", envvar="KEEL_DB", help="Th
 
 keys_app = typer.Typer(help="API keys: one account per product on a shared deployment (docs/design/hosted.md).", no_args_is_help=True)
 app.add_typer(keys_app, name="keys")
+AGENTS_TENANT_OPT = typer.Option(..., "--tenant", envvar="KEEL_TENANT", help="The tenant, as stored (an account's tenant is account/tenant).")
 KEYS_DB = typer.Option(..., "--db", envvar="KEEL_DB", help="The durable graph the server reads: a SQLite file, or a mysql:// or postgresql:// URL.")
 
 
 def _key_row(k: Any) -> dict[str, Any]:
-    return {"id": k.id, "account": k.account, "tenant": k.tenant, "agent": k.agent, "global": k.glob,
+    return {"id": k.id, "account": k.account, "tenant": k.tenant, "agent": k.agent, "global": k.glob, "extend": k.extend,
             "created_at": k.created_at.isoformat(), "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None}
 
 
@@ -783,13 +797,14 @@ def keys_create(
     tenant: str | None = typer.Option(None, "--tenant", help="Only this tenant of the account."),
     agent: str | None = typer.Option(None, "--agent", help="Calls are made as this agent (the cartridge's registry applies)."),
     glob: bool = typer.Option(False, "--global", help="The account's privileged key: the only one that may annotate(scope=\"global\")."),
+    extend: bool = typer.Option(False, "--extend", help="May set its tenants' extension (PUT /v1/tenants/{tenant}/extension). Not with --agent."),
 ):
     """Create a key. Prints it once, as JSON with the record; only its hash is stored. The first key makes the server
     require a key or the secret on every call."""
     from keel.keys import create_key
 
     try:
-        full, key = create_key(_store(db), account, tenant, agent, glob)
+        full, key = create_key(_store(db), account, tenant, agent, glob, extend)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
     typer.echo(json.dumps({"key": full, **_key_row(key)}))
@@ -813,6 +828,56 @@ def keys_revoke(key_id: str = typer.Argument(..., help="The key's id (kk_...).",
     if not revoke_key(_store(db), key_id):
         raise typer.BadParameter(f"no live key '{key_id}'")
     typer.echo(json.dumps({"id": key_id, "revoked": True}))
+
+
+def _extension_file(path: Path) -> Any:
+    import yaml
+
+    try:
+        return yaml.safe_load(path.read_text(encoding="utf-8"))  # JSON is YAML
+    except (OSError, yaml.YAMLError) as exc:
+        raise typer.BadParameter(f"{path}: {exc}") from exc
+
+
+extension_app = typer.Typer(help="Tenant extensions: additive, declarative cartridge fragments one tenant layers on the cartridge.", no_args_is_help=True)
+app.add_typer(extension_app, name="extension")
+
+
+@extension_app.command("validate")
+def extension_validate(cartridge: Path, file: Path, tenant: str | None = typer.Option(None, "--tenant", help="Also check it as the next version of this tenant's live one (needs --db)."),
+                       db: str | None = typer.Option(None, "--db", help="The durable graph holding the live version.")):
+    """Check an extension against the cartridge (and, with --tenant and --db, against the live version it would follow)."""
+    from keel.extensions import problems as ext_problems
+
+    spec = _extension_file(file)
+    previous = _store(db).extension(tenant) if tenant and db else None
+    found = ext_problems(load_cartridge(cartridge), spec, previous)
+    if found:
+        for p in found:
+            typer.echo(f"  - {p}")
+        raise typer.Exit(code=1)
+    typer.echo(f"{file}: a valid extension of {load_cartridge(cartridge).name}")
+
+
+@extension_app.command("set")
+def extension_set(cartridge: Path, file: Path, tenant: str = AGENTS_TENANT_OPT, db: str = KEYS_DB):
+    """Store the extension as the tenant's next version. Prints it as JSON; nothing invalid is stored."""
+    from keel.extensions import put_extension
+
+    try:
+        spec = put_extension(load_cartridge(cartridge), _store(db), tenant, _extension_file(file))
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    typer.echo(json.dumps(spec))
+
+
+@extension_app.command("get")
+def extension_get(tenant: str = AGENTS_TENANT_OPT, db: str = KEYS_DB):
+    """The tenant's live extension, as JSON."""
+    spec = _store(db).extension(tenant)
+    if spec is None:
+        raise typer.BadParameter(f"tenant '{tenant}' has no extension")
+    typer.echo(json.dumps(spec))
 
 
 agents_app = typer.Typer(help="Stored agents: a tenant's own agents, each extending a profile of the cartridge (`registry: store`).", no_args_is_help=True)

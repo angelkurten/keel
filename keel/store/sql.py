@@ -154,7 +154,7 @@ class SqlStore:
     TOMBSTONE = ""  # (tenant, at) into forgotten; insert or ignore, so the first erasure's time stays
     METER = ""  # (tenant, day, item, n) into metering; on conflict add n
     ENTITY_ORDER = "rowid"
-    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_from|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|agents_id|agents|entities|relations|facts|ingested|forgotten)\b")
+    _NAMES = re.compile(r"\b(entities_key|facts_key|relations_src|relations_dst|relations_recorded|relations_changed|facts_open|facts_from|facts_slot|facts_subject|facts_predicate|facts_recorded|facts_closed|facts_changed|facts_task|api_keys|accounts|metering|cutoffs|agents_id|agents|extensions_tenant|extensions|entities|relations|facts|ingested|forgotten)\b")
     # columns added after 0.8: (name, type) added to existing tables on start, with their index
     ADDED_FACT_COLUMNS: tuple[tuple[str, str, str | None], ...] = ()
     TIME = "TEXT"  # the dialect's type for a timestamp column
@@ -190,6 +190,8 @@ class SqlStore:
             if index and (name not in have or self.INDEX_IF_NOT_EXISTS):
                 self._ddl(index, lambda i=index: self._has_index("facts", re.search(r"INDEX (\w+)", i).group(1)))
         self._add_changed_at()
+        if "extend" not in self._columns("api_keys"):  # since 0.36: a key that may set its tenants' extension
+            self._ddl("ALTER TABLE api_keys ADD COLUMN extend INTEGER DEFAULT 0", lambda: "extend" in self._columns("api_keys"))
         if "closed_at" not in self._columns("relations"):  # since 0.33: the transaction time of an unlink
             self._ddl(f"ALTER TABLE relations ADD COLUMN closed_at {self.TIME}", lambda: "closed_at" in self._columns("relations"))
             self._mark_old_closes()  # a database from <= 0.32 (no relations.closed_at) never wrote a close mark
@@ -848,6 +850,7 @@ class SqlStore:
                 "facts": self._exec("DELETE FROM facts WHERE tenant = ?", (tenant,)),
                 "ingested": self._exec("DELETE FROM ingested WHERE tenant = ?", (tenant,)),
                 "agents": self._exec("DELETE FROM agents WHERE tenant = ?", (tenant,)),  # every version: erasure, not a close
+                "extensions": self._exec("DELETE FROM extensions WHERE tenant = ?", (tenant,)),  # uncounted: schema, not data
             }
             self._exec(self.TOMBSTONE, (tenant, _ts(utcnow())))
             if self._cache is not None:
@@ -857,7 +860,7 @@ class SqlStore:
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
         # ponytail: DISTINCT over the (tenant, ...) indexes; a tenants table if it ever shows in a profile
-        rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts UNION SELECT DISTINCT tenant FROM agents")
+        rows = self._rows("SELECT DISTINCT tenant FROM entities UNION SELECT DISTINCT tenant FROM facts UNION SELECT DISTINCT tenant FROM agents UNION SELECT DISTINCT tenant FROM extensions")
         return sorted(t for t in {r["tenant"] for r in rows} if not is_global(t))
 
     def forgotten(self, tenant: str) -> datetime | None:
@@ -954,8 +957,8 @@ class SqlStore:
 
     def put_key(self, key: ApiKey) -> None:
         self._exec(
-            "INSERT INTO api_keys (id, hash, account, tenant, agent, glob, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (key.id, key.hash, key.account, key.tenant, key.agent, int(key.glob), _ts(key.created_at), _ts(key.revoked_at)),
+            "INSERT INTO api_keys (id, hash, account, tenant, agent, glob, extend, created_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (key.id, key.hash, key.account, key.tenant, key.agent, int(key.glob), int(key.extend), _ts(key.created_at), _ts(key.revoked_at)),
         )
 
     def api_key(self, digest: str) -> ApiKey | None:
@@ -990,6 +993,31 @@ class SqlStore:
     def remove_agent(self, tenant: str, agent_id: str, at: datetime) -> bool:
         return self._exec("UPDATE agents SET valid_to = ? WHERE tenant = ? AND id = ? AND valid_to IS NULL", (_ts(at), tenant, agent_id)) > 0
 
+    # ---- tenant extensions (keel/extensions.py): configuration like stored agents, so reset leaves them ----
+
+    def put_extension(self, tenant: str, spec: dict[str, Any], at: datetime, previous: Any = ...) -> None:
+        """`previous`: the version this one follows (None: none); a different live one refuses it (compare-and-set)."""
+        stale = ValueError(f"tenant '{tenant}': its extension changed since it was read; read it again")
+        with self.transaction():
+            if previous is ...:
+                self._exec("UPDATE extensions SET valid_to = ? WHERE tenant = ? AND valid_to IS NULL", (_ts(at), tenant))
+            elif previous is not None:
+                closed = self._exec("UPDATE extensions SET valid_to = ? WHERE tenant = ? AND valid_to IS NULL AND spec = ?",
+                                    (_ts(at), tenant, json.dumps(previous, sort_keys=True)))
+                if closed != 1:
+                    raise stale
+            self._exec("INSERT INTO extensions (tenant, spec, valid_from) VALUES (?, ?, ?)", (tenant, json.dumps(spec, sort_keys=True), _ts(at)))
+            if previous is None and len(self._rows("SELECT spec FROM extensions WHERE tenant = ? AND valid_to IS NULL", (tenant,))) != 1:
+                raise stale  # ponytail: two first versions at once; READ COMMITTED may still let both in, a unique live row if that matters
+
+    def extension(self, tenant: str, at: datetime | None = None) -> dict[str, Any] | None:
+        if at is None:
+            row = self._one("SELECT spec FROM extensions WHERE tenant = ? AND valid_to IS NULL", (tenant,))
+        else:
+            row = self._one("SELECT spec FROM extensions WHERE tenant = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) "
+                            "ORDER BY valid_from DESC LIMIT 1", (tenant, _ts(at), _ts(at)))
+        return json.loads(row["spec"]) if row else None
+
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With
         `keep_annotations`, what agents and people wrote (and consolidated) stays, closed history included."""
@@ -1008,7 +1036,7 @@ def _account(row: Any) -> Account:
 
 def _key(row: Any) -> ApiKey:
     return ApiKey(id=row["id"], hash=row["hash"], account=row["account"], created_at=_dt(row["created_at"]), tenant=row["tenant"],
-                  agent=row["agent"], glob=bool(row["glob"]), revoked_at=_dt(row["revoked_at"]))
+                  agent=row["agent"], glob=bool(row["glob"]), extend=bool(row["extend"]), revoked_at=_dt(row["revoked_at"]))
 
 
 def where_plan(where: dict[str, Any]) -> list[tuple[str, Any]] | None:

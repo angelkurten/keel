@@ -27,6 +27,7 @@ from typing import Any
 from keel.agents import resolve
 from keel.cartridge import Cartridge
 from keel.envelope import parse_iso, utcnow
+from keel.extensions import for_tenant
 from keel.rules import Calendar, evaluate
 from keel.scopes import Scope, global_of, is_global
 from keel.semantic import (
@@ -374,7 +375,16 @@ class Tools:
         clock: Callable[[], datetime] | None = None, max_list: int | None = None, writes_global: bool = True,
         query: bool = False, query_timeout: float = QUERY_TIMEOUT,
     ) -> None:
-        self.cartridge = cartridge
+        # the base and the tenant's extension (keel/extensions.py): what this tenant's tools read, and no other's
+        self._base = cartridge  # current() resolves the tenant's extension again from it
+        self.cartridge = for_tenant(cartridge, store, tenant)
+        # the store compiles one cartridge's names at a time, shared by every tenant: a tenant whose extension brings
+        # names of its own is answered in Python (the same answers), so concurrent tenants never swap definitions
+        self.extended = self.cartridge is not cartridge
+        # kinds the extension retired: unknown to every read, their subjects never shown through a relation or a hit
+        self.retired = frozenset(for_tenant(cartridge, store, tenant, hide=False).entities) - set(self.cartridge.entities)
+        self._init = (cartridge, store, tenant, agent, trace, embedder, index, reranker, meter, clock, max_list, writes_global, query, query_timeout)
+        cartridge = self.cartridge
         # the optional sixth tool: `query` is listed (spec, MCP) only when the host enables it; the method itself answers
         # whenever the store can (keel/store/query.py)
         self.serves_query = query
@@ -406,18 +416,20 @@ class Tools:
 
     def _readable(self, subject: str) -> None:
         if not isinstance(subject, str) or ":" not in subject:
-            kinds = [k for k in self.cartridge.entities if self.agent is None or self.agent.sees_kind(k)]  # never confirm a hidden subject
+            kinds = [k for k in self.cartridge.entities if self._kind_ok(k)]  # never confirm a hidden subject
             hint = [k for k in kinds if self.store.entity(self.tenant, f"{k}:{subject}")]
             raise ValueError(f"'{subject}' is not a subject key: subjects are '<kind>:<id>'" + (f"; did you mean '{hint[0]}:{subject}'?" if hint else ""))
         self._known("kind", _kind(subject), self.cartridge.entities)
         if self.agent and not self.agent.sees_kind(_kind(subject)):
             raise PermissionError(f"agent '{self.agent.id}' may not read kind '{_kind(subject)}'")
 
+    def _kind_ok(self, kind: str) -> bool:
+        """A kind this caller may see: not retired by the tenant's extension, and allowed by the agent's registry entry."""
+        return kind not in self.retired and (self.agent is None or self.agent.sees_kind(kind))
+
     def _visible(self, r: Relation, subject: str) -> bool:
-        if self.agent is None:
-            return True
         other = r.dst if r.src == subject else r.src
-        return self.agent.sees_relation(r.rel) and self.agent.sees_kind(_kind(other))
+        return self._kind_ok(_kind(other)) and (self.agent is None or self.agent.sees_relation(r.rel))
 
     def _listed(self, items: list[Any], what: str) -> None:
         """A list argument (subjects, texts) holds at most the deployment's ceiling, or LIST_MAX without one."""
@@ -656,8 +668,8 @@ class Tools:
             else:  # what started in the world in that window, across the tenant: every fact of the tenant, read in Python
                 facts = sorted((f for f in self.store.changes(self.tenant, EPOCH) if lo <= f.valid_from <= hi), key=lambda f: (f.valid_from, f.subject))
             facts = [f for f in facts if self._sees(f, task)]
-            if self.agent:
-                facts = [f for f in facts if self.agent.sees_kind(_kind(f.subject))]
+            if self.agent or self.retired:
+                facts = [f for f in facts if self._kind_ok(_kind(f.subject))]
         else:
             self._readable(subject)
             kw: dict[str, Any] = {"since": since, "until": until}
@@ -1018,8 +1030,8 @@ class Tools:
             alive_at = graph.known_at or utcnow()
             hits = [h for h in hits if isinstance(h, Entity) or ((h.expires_at is None or h.expires_at > alive_at)
                                                                  and (graph.known_at is None or h.recorded_at is None or h.recorded_at <= graph.known_at))]
-            if self.agent:
-                hits = [h for h in hits if self.agent.sees_kind(h.kind if isinstance(h, Entity) else _kind(h.subject))]
+            if self.agent or self.retired:
+                hits = [h for h in hits if self._kind_ok(h.kind if isinstance(h, Entity) else _kind(h.subject))]
             if at is not None:  # asked at an instant: a fact hit counts if it held then (as known then, with as_known_at)
                 graph.prime(h.subject for h in hits if isinstance(h, Fact))
                 held = lambda h: any((f.predicate, f.valid_from, f.value) == (h.predicate, h.valid_from, h.value)
@@ -1090,7 +1102,7 @@ class Tools:
         of the kind in Python: `rule_subjects` (the rule's compiled macro) or `subjects_where` (the `where` filter at the
         graph's instant). The same entities in the same order (by key, as `entities` lists them), returned as bare keys
         ({"key", "_bare"}): `_search_one` reads the entities only of those it shows. None: no capability applies."""
-        if text or neighbours is not None:
+        if text or neighbours is not None or self.extended:
             return None
         if spec is not None:
             holds = getattr(self.store, "rule_subjects", None)
@@ -1222,7 +1234,7 @@ class Tools:
 
         def admit(key: str) -> Entity | None:
             kk = _kind(key)
-            if (asked and kk not in asked) or (self.agent and not self.agent.sees_kind(kk)) or (neighbours is not None and key not in neighbours):
+            if (asked and kk not in asked) or not self._kind_ok(kk) or (neighbours is not None and key not in neighbours):
                 return None
             ent = self.store.entity(self.tenant, key)
             if ent is None or (spec and evaluate(spec, key, graph.as_of, graph) is not True):
@@ -1453,6 +1465,8 @@ class Tools:
         _counted(limit, "limit")
         most = self.max_list or LIST_MAX
         cap = min(QUERY_ROWS, most) if limit is None else most if limit == 0 or limit > most else limit
+        if self.extended and not getattr(self.store, "QUERY_SANDBOXED", False):
+            raise ValueError(f"query over a tenant extension needs a store that builds each tenant's schema apart (SqliteStore, DuckdbStore), not {type(self.store).__name__}")
         cols, rows, more = run(self.tenant, self.cartridge, checked(sql), cap, self.query_timeout)
         names: list[str] = []
         for c in cols:  # two columns of one name (a join's ids) both reach the caller
@@ -1474,6 +1488,17 @@ class Tools:
     def can_query(self) -> bool:
         """Whether `query` can answer this caller: a store with SQL, an agent allowed by its registry entry."""
         return getattr(self.store, "query_rows", None) is not None and (self.agent is None or self.agent.query)
+
+    def current(self) -> Tools:
+        """These tools, or the same ones rebuilt when the tenant's extension changed since: for a transport that builds
+        its tools once (keel serve --tenant, stdio), so a new version applies without a restart."""
+        latest = getattr(self, "_latest", self)
+        if for_tenant(self._base, self.store, self.tenant) is latest.cartridge:
+            return latest
+        fresh = Tools(*self._init)
+        fresh.serves_query, fresh.writes_global, fresh.trace = self.serves_query, self.writes_global, self.trace  # what a transport set
+        self._latest = fresh
+        return fresh
 
     def offers_query(self) -> bool:
         """Whether `query` is listed (spec): enabled by the host and able to answer."""

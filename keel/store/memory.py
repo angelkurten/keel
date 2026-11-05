@@ -421,6 +421,7 @@ class MemoryStore:
         self._cutoffs: dict[str, datetime] = {}  # tenant -> retention cutoff (forget_before)
         self._keys: dict[str, ApiKey] = {}  # id -> API key (keel/keys.py)
         self._accounts: dict[str, Account] = {}  # id -> limits (keel/accounts.py)
+        self._extensions: dict[str, list[list[Any]]] = {}  # tenant -> [spec, valid_from, valid_to] rows (keel/extensions.py)
         self._agents: dict[tuple[str, str], list[list[Any]]] = {}  # (tenant, id) -> [spec, valid_from, valid_to] rows (keel/agents.py)
         self._metering: dict[tuple[str, str, str], int] = defaultdict(int)  # (tenant, day, item) -> n (keel/usage.py)
 
@@ -683,6 +684,7 @@ class MemoryStore:
                   "facts": len(facts) - ann, "annotations": ann, "ingested": len(self._seen.get(tenant, ())),
                   "agents": sum(len(rows) for (t, _), rows in self._agents.items() if t == tenant)}
         self._agents = {k: rows for k, rows in self._agents.items() if k[0] != tenant}
+        self._extensions.pop(tenant, None)
         self.reset(tenant)
         self._forgotten.setdefault(tenant, utcnow())
         return counts
@@ -745,7 +747,7 @@ class MemoryStore:
 
     def tenants(self) -> list[str]:
         """Every tenant with something stored (not the global partition), for jobs that sweep them all."""
-        return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels) | {t for t, _ in self._agents}) - set(self._forgotten) if not is_global(t))
+        return sorted(t for t in (set(self._entities) | set(self._all_facts) | set(self._all_rels) | {t for t, _ in self._agents} | set(self._extensions)) - set(self._forgotten) if not is_global(t))
 
     def forgotten_tenants(self) -> dict[str, datetime]:
         return dict(self._forgotten)
@@ -805,6 +807,21 @@ class MemoryStore:
             return False
         rows[-1][2] = at
         return True
+
+    # ---- tenant extensions (keel/extensions.py): configuration like stored agents, so reset leaves them ----
+
+    def put_extension(self, tenant: str, spec: dict[str, Any], at: datetime, previous: Any = ...) -> None:
+        rows = self._extensions.setdefault(tenant, [])
+        live = rows[-1][0] if rows and rows[-1][2] is None else None
+        if previous is not ... and live != previous:
+            raise ValueError(f"tenant '{tenant}': its extension changed since it was read; read it again")
+        if live is not None:
+            rows[-1][2] = at
+        rows.append([json.loads(json.dumps(spec)), at, None])
+
+    def extension(self, tenant: str, at: datetime | None = None) -> dict[str, Any] | None:
+        live = lambda r: r[2] is None if at is None else r[1] <= at and (r[2] is None or at < r[2])
+        return next((r[0] for r in reversed(self._extensions.get(tenant, [])) if live(r)), None)
 
     def reset(self, tenant: str, keep_annotations: bool = False) -> None:
         """Wipe a tenant's subgraph. Used by replay: the event log rebuilds it. With

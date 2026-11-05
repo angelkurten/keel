@@ -7,7 +7,7 @@ Keel is a context layer for the AI agents inside a product: a vertical SaaS, a c
 You describe your vertical once, in a *cartridge*: ontology, event catalog, semantic rules, memory policies. Keel's core knows nothing about your domain. Your second agent connects in a day instead of weeks, because there is no second pipeline to write.
 
 !!! note "Status"
-    0.37.0, alpha. Runs embedded in Python, as a container (`ghcr.io/angelkurten/keel`), or hosted during the pilots. See the [roadmap](roadmap.md).
+    0.38.0, alpha. Runs embedded in Python, as a container (`ghcr.io/angelkurten/keel`), or hosted during the pilots. See the [roadmap](roadmap.md).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](demo.gif)
 
@@ -22,7 +22,7 @@ Existing memory layers ingest text and documents and model memory per user or pe
 
 ## How Keel is different
 
-1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
+1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers, or none for an event that only maps fields. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product; a tenant that brings data of its own extends it with kinds of its own, without a deploy.
 2. **Events in, not documents.** Keel ingests structured facts with time: your Postgres tables through CDC, an outbox, a typed SDK, webhooks, Kafka, SQS. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.

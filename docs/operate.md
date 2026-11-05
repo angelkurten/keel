@@ -42,23 +42,23 @@ The Python API reads nothing from `.env`: a program that embeds Keel passes its 
 
 ## Run it in a container
 
-`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.37.0`, `0.37`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`. Both variants include the Postgres driver, so `KEEL_CDC_MAP` and `KEEL_PG_DSN` make the container follow Postgres too.
+`ghcr.io/angelkurten/keel` serves the tools over HTTP (`/v1` and `/mcp`; `KEEL_TENANT` binds `/mcp` to one tenant) on port 8000, for amd64 and arm64. Tags follow the releases: `0.38.0`, `0.38`, `latest`, and `-slim` variants without the Chroma client (a third of the size, no semantic search on Chroma). The cartridge is not in the image: mount it at `/cartridge`. Both variants include the Postgres driver, so `KEEL_CDC_MAP` and `KEEL_PG_DSN` make the container follow Postgres too.
 
 ```bash
 docker run -p 8000:8000 -e KEEL_SECRET=$(openssl rand -hex 32) \
   -e KEEL_DB=mysql://keel:secret@db.internal:3306/keel \
-  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.37.0
+  -v ./examples/fleet:/cartridge:ro -v keel-data:/data ghcr.io/angelkurten/keel:0.38.0
 ```
 
 - It refuses to start without `KEEL_SECRET` (or `--allow-open` behind your own auth proxy), since it listens on every interface.
 - `/data` is the working directory and a volume: a SQLite graph (`KEEL_DB=/data/keel.db`), the `keel index` cursor (`/data/.keel/`) and a `.env` live there.
 - It runs as an unprivileged user and checks its own `/health` (no `curl` needed in the image). Configuration is the environment ([Configuration](#configuration)); every command reads `KEEL_DB`, `KEEL_TENANT` and `KEEL_INDEX`.
-- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.37.0 index /cartridge` (the entrypoint is `keel`).
-- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.37.0` and `COPY cartridges/mine /cartridge`.
+- Any other command runs the same way: `docker run ... ghcr.io/angelkurten/keel:0.38.0 index /cartridge` (the entrypoint is `keel`).
+- To ship your cartridge inside, two lines: `FROM ghcr.io/angelkurten/keel:0.38.0` and `COPY cartridges/mine /cartridge`.
 
 Single sign-on for your team in front of `/ui`, with Caddy and oauth2-proxy and no code in Keel: [`deploy/sso`](https://github.com/angelkurten/keel/tree/master/deploy/sso).
 
-`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.37.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
+`deploy/docker-compose.yml` runs Keel with its own MySQL, a Chroma server and `keel index` every 15 minutes: `KEEL_SECRET=... docker compose -f deploy/docker-compose.yml up -d`. `docker build -t keel .` builds this checkout; `--build-arg KEEL_VERSION=0.38.0` builds a release from PyPI. `deploy/smoke.sh <image>` checks an image end to end.
 
 ## Consolidate episodic memory
 
@@ -124,6 +124,47 @@ uv run keel validate examples/fleet --db keel.db   # after an ontology change: s
 ```
 
 An edit applies to running servers within a few seconds. Removing an agent closes it; the audit still says who it was.
+
+## Kinds each tenant brings
+
+A horizontal product, where each tenant connects its own data (one a shop, another a CRM), keeps one cartridge for what every tenant shares and gives a tenant an **extension** for the rest: kinds, relations, events, rules and predicates of its own, layered on the cartridge for that tenant only (SPEC §5.7).
+
+```yaml
+# deal.yaml, the extension of tenant acme/org-123
+extends: crm@0.1.0
+version: 1
+entities:
+  deal: { description: A deal in the CRM., facts: { amount: number, stage: string } }
+relations:
+  deal_for: { from: deal, to: customer, one: true }
+events:
+  deal.observed:
+    subject: deal
+    owner: source:hubspot
+    payload: { amount: number, stage: string, customer_id: string | null }
+    facts: [amount, stage]                       # declarative: an extension carries no code
+    relate: { deal_for: "customer:{customer_id}" }
+```
+
+```bash
+uv run keel extension validate examples/crm deal.yaml
+uv run keel extension set examples/crm deal.yaml --tenant acme/org-123 --db keel.db
+uv run keel extension get --tenant acme/org-123 --db keel.db
+uv run keel validate examples/crm --extension deal.yaml --events deal-events.jsonl   # a stream against both
+uv run keel validate examples/crm --db keel.db   # after a cartridge upgrade: extensions whose names it now takes
+```
+
+Over HTTP, `PUT /v1/tenants/{tenant}/extension` stores the next version (422 with every problem) and `GET` reads the live one; the Python client has `put_extension(spec)` and `extension()`. Only the shared secret or a key created with `keel keys create <account> --extend` may set one; an `--extend` key never calls as an agent, so no agent widens its own tenant's schema.
+
+What holds:
+
+- **Additive.** An extension never uses a name of the cartridge and never changes what the cartridge says. If a later cartridge version adds a name an extension already uses, that tenant's extension stops loading (a warning in the log) until you fix it, and `keel validate --db` reports the conflict.
+- **Monotone.** Each version keeps every name of the one before, and a published event or relation keeps its shape. To drop a kind, list it in `retired: [deal]`: tools stop showing it, its events keep applying, so `keel replay` with the live version rebuilds the same graph. Rules, predicates and descriptions may change freely.
+- **Per tenant.** Only that tenant's ingest, tools, stored agents and `query` schema see it; for every other tenant the names do not exist. Replay keeps it; `keel forget` erases it.
+- **Applies without a restart**, within a few seconds, on every transport. One exception: `keel serve --tenant` builds `/mcp`'s instructions once, so restart it to list new kinds there (its tools see them already). A server for many tenants does not list kinds in its instructions at all.
+- **Own kinds only.** Its events have its own kinds as subject and relate through its own relations (to a cartridge kind is fine, `deal_for: deal -> customer`); its `predicates` name only its own facts. A retired kind is gone from every read: `context`, `related`, `search`, `history` and `query`.
+- **Events before the extension.** An event of a type the tenant does not know yet is reported unhandled and not remembered, so deliver it again once the extension is set.
+- **Limits:** 50 entities, 100 relations, 100 events and 50 rules per extension. A tenant with an extension is answered in Python rather than by the store's compiled rules (same answers), and `query` over it needs SQLite or DuckDB.
 
 ## Erase a tenant
 
