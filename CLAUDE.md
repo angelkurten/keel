@@ -28,6 +28,7 @@ sources (Postgres table/CDC, webhooks, Kafka later)
    -> Tools (keel/tools.py)                     context / history / search / annotate / related (+ optional query: read-only SQL); bound to one tenant and, if the cartridge declares agents, one agent (keel/agents.py)
    -> MCP server (keel/mcp_server.py)           optional; exposes the same five tools (and query when enabled)
 cartridges/<name>/cartridge.yaml + handlers.py  ontology, event catalog, rules, memory policy, handlers (your own; empty here)
+tenant extension (keel/extensions.py)            per tenant, stored: additive, declarative fragment layered on the cartridge
 examples/<name>/                                 fleet, crm, finance, clinics: a cartridge, its events.jsonl and its test_<name>.py
 ```
 
@@ -35,7 +36,7 @@ Store primitives are the only write path: `upsert_entity`, `link`, `unlink`, `op
 
 ## Design rules (enforce these in review)
 
-1. **Events are the truth.** The log is append-only; the graph is derived and must be rebuildable with `Ingestor.replay(tenant, events=log)`. Any state that cannot be rebuilt from events is a bug, with one exception: annotations (earned memory written through `annotate`, and consolidations of it) are not events, so replay keeps them and rebuilds around them.
+1. **Events are the truth.** The log is append-only; the graph is derived and must be rebuildable with `Ingestor.replay(tenant, events=log)`. Any state that cannot be rebuilt from events is a bug, with one exception: annotations (earned memory written through `annotate`, and consolidations of it) are not events, so replay keeps them and rebuilds around them. Configuration (stored agents, tenant extensions) is not graph state: replay keeps it and rebuilds with it.
 2. **Pointers, not copies.** An entity carries `ref` to the row in the system of record and the few attributes a tool needs to label it. If a PR copies a whole row or table into the graph, reject it.
 3. **Explicit time, bitemporal.** `valid_from`/`valid_to` = world time. `recorded_at` = when Keel learned it, the event's own `recorded_at` when its source declares one (so replay rebuilds transaction time too), else the ingest clock; `closed_at` = when Keel learned it ended (both feed `as_known_at`). `changed_at` is the ingest clock of the last write, the cursor of `changes`/watermark, never a query time. Facts close; they are never mutated or deleted by handlers. "The tire was critical on Oct 3" and "the tire is critical" are different queries and both must work.
 4. **Provenance on every fact.** `source`, `evidence` (event id, row ref, photo), and `corrected_by` when a human or agent corrected it.
@@ -70,7 +71,7 @@ If `examples/fleet/agent_minimal.py` output changes, say why in the PR.
 
 - **Durable store.** Decided 2026-10-14: pluggable by design, never a core change. `Store` protocol (`keel/store/base.py`), `MemoryStore` as reference, `SqliteStore` as the default durable one, and a conformance suite any store can run (`KEEL_STORE=pkg.module:factory uv run pytest tests/test_store.py`). Postgres and DuckDB shipped as further implementations (0.35); Graphiti would be another; if Graphiti forces an LLM in the ingest path, use only its graph store and keep our deterministic ingest.
 - **Consolidation/decay.** Decided 2026-10-15 and shipped in 0.14.0 (`keel/consolidate.py`): a cartridge-declared job with deterministic reducers and an optional `Summarizer` adapter (an LLM is allowed there because it is a job, never ingest); originals kept until their TTL; `keel consolidate` and `keel expire --consolidate`.
-- **Multi-cartridge tenants.** One tenant, one cartridge for now. Composing cartridges is a later decision.
+- **Multi-cartridge tenants.** Decided 2026-11-04 (issue #7): one base cartridge per process, plus an optional **tenant extension** per tenant (`keel/extensions.py`, SPEC §5.7): additive (no base name), declarative (no code), monotone (a kind is retired, never removed, so replay with the live version rebuilds the same graph), stored per tenant like stored agents and kept by replay. Set by the operator or a key created `--extend`, never by an agent. Composing whole cartridges is still a later decision.
 - **Pricing unit** (hosted): events ingested per month. Not a code concern yet, but metering must be possible from the log.
 
 ## Things to never do
@@ -78,5 +79,5 @@ If `examples/fleet/agent_minimal.py` output changes, say why in the PR.
 - Never add a dependency to the core for one cartridge's convenience.
 - Never let a tool return facts from another tenant.
 - Never delete or mutate a fact from a handler. Close it.
-- Never read `event.payload` in `keel/`. Only handlers do. One exception: `Cartridge.check_event` (behind `keel validate --events`) compares payload keys and types with the catalog; it never reads values.
+- Never read `event.payload` in `keel/`. Only handlers do. Two exceptions: `Cartridge.check_event` (behind `keel validate --events`) compares payload keys and types with the catalog and never reads values; `keel/declarative.py` (declarative events, SPEC §5.2) copies the payload fields the catalog names, and only those, to facts and relation keys.
 - Never write generic placeholders (`TBD`, `n/a`) into cartridge YAML; leave the key out.

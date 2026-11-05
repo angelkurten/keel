@@ -125,6 +125,47 @@ uv run keel validate examples/fleet --db keel.db   # after an ontology change: s
 
 An edit applies to running servers within a few seconds. Removing an agent closes it; the audit still says who it was.
 
+## Kinds each tenant brings
+
+A horizontal product, where each tenant connects its own data (one a shop, another a CRM), keeps one cartridge for what every tenant shares and gives a tenant an **extension** for the rest: kinds, relations, events, rules and predicates of its own, layered on the cartridge for that tenant only (SPEC §5.7).
+
+```yaml
+# deal.yaml, the extension of tenant acme/org-123
+extends: crm@0.1.0
+version: 1
+entities:
+  deal: { description: A deal in the CRM., facts: { amount: number, stage: string } }
+relations:
+  deal_for: { from: deal, to: customer, one: true }
+events:
+  deal.observed:
+    subject: deal
+    owner: source:hubspot
+    payload: { amount: number, stage: string, customer_id: string | null }
+    facts: [amount, stage]                       # declarative: an extension carries no code
+    relate: { deal_for: "customer:{customer_id}" }
+```
+
+```bash
+uv run keel extension validate examples/crm deal.yaml
+uv run keel extension set examples/crm deal.yaml --tenant acme/org-123 --db keel.db
+uv run keel extension get --tenant acme/org-123 --db keel.db
+uv run keel validate examples/crm --extension deal.yaml --events deal-events.jsonl   # a stream against both
+uv run keel validate examples/crm --db keel.db   # after a cartridge upgrade: extensions whose names it now takes
+```
+
+Over HTTP, `PUT /v1/tenants/{tenant}/extension` stores the next version (422 with every problem) and `GET` reads the live one; the Python client has `put_extension(spec)` and `extension()`. Only the shared secret or a key created with `keel keys create <account> --extend` may set one; an `--extend` key never calls as an agent, so no agent widens its own tenant's schema.
+
+What holds:
+
+- **Additive.** An extension never uses a name of the cartridge and never changes what the cartridge says. If a later cartridge version adds a name an extension already uses, that tenant's extension stops loading (a warning in the log) until you fix it, and `keel validate --db` reports the conflict.
+- **Monotone.** Each version keeps every name of the one before, and a published event or relation keeps its shape. To drop a kind, list it in `retired: [deal]`: tools stop showing it, its events keep applying, so `keel replay` with the live version rebuilds the same graph. Rules, predicates and descriptions may change freely.
+- **Per tenant.** Only that tenant's ingest, tools, stored agents and `query` schema see it; for every other tenant the names do not exist. Replay keeps it; `keel forget` erases it.
+- **Applies without a restart**, within a few seconds, on every transport. One exception: `keel serve --tenant` builds `/mcp`'s instructions once, so restart it to list new kinds there (its tools see them already). A server for many tenants does not list kinds in its instructions at all.
+- **Own kinds only.** Its events have its own kinds as subject and relate through its own relations (to a cartridge kind is fine, `deal_for: deal -> customer`); its `predicates` name only its own facts. A retired kind is gone from every read: `context`, `related`, `search`, `history` and `query`.
+- **Events before the extension.** An event of a type the tenant does not know yet is reported unhandled and not remembered, so deliver it again once the extension is set.
+- **Limits:** 50 entities, 100 relations, 100 events and 50 rules per extension. A tenant with an extension is answered in Python rather than by the store's compiled rules (same answers), and `query` over it needs SQLite or DuckDB.
+
 ## Erase a tenant
 
 When an end-customer leaves and the law (Colombia's Ley 1581, GDPR's right to erasure) or your privacy notice says their data goes, Keel deletes everything it stores for that tenant: entities, relations, facts of every scope, what agents and people annotated, the ids of the events it applied, the agents it stored (`registry: store`) and, through the index, its semantic documents. Declare the event your SaaS sends when the customer is deleted:

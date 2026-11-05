@@ -16,7 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from keel.cartridge import Cartridge
+from keel.declarative import apply as apply_declarative
+from keel.declarative import is_declarative
 from keel.envelope import Event, utcnow
+from keel.extensions import for_tenant
 from keel.handlers import UnhandledEvent
 from keel.store.base import Store
 
@@ -194,7 +197,16 @@ class Ingestor:
                         report.processed += 1
                         applied[ev.tenant] += 1
                         continue
-                    kind = (self.cartridge.events.get(ev.type) or {}).get("subject")
+                    # the base and the tenant's extension, retired kinds included: their events apply as they always did
+                    c = for_tenant(self.cartridge, self.store, ev.tenant, hide=False)
+                    if ev.type not in c.events and ev.type not in c.registry.types():
+                        # refused before it is remembered: a type the tenant's extension adds later applies when it comes again
+                        if strict:
+                            raise UnhandledEvent(f"no handler for event type '{ev.type}'")
+                        report.unhandled.append(ev.type)
+                        report.not_applied[seq] = f"unhandled: no handler for '{ev.type}'"
+                        continue
+                    kind = (c.events.get(ev.type) or {}).get("subject")
                     if kind is not None and ev.subject_kind != kind:  # refused before it is remembered: a fixed event can come again
                         problem = f"'{ev.type}' subject '{ev.subject}' is not a '{kind}'"
                         if strict:
@@ -215,7 +227,12 @@ class Ingestor:
                     try:
                         # an event that does not declare recorded_at was learned now, as it is ingested
                         declared = "recorded_at" in ev.model_fields_set
-                        self.cartridge.registry.dispatch(ev, _Recorded(self.store, ev.recorded_at) if declared else self.store)
+                        target = _Recorded(self.store, ev.recorded_at) if declared else self.store
+                        spec = c.events.get(ev.type)
+                        if is_declarative(spec):
+                            apply_declarative(ev, spec, c.relations, target)
+                        else:
+                            c.registry.dispatch(ev, target)
                         report.processed += 1
                         if self.keep_log:
                             self.log.append(ev)

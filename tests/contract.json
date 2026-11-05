@@ -338,6 +338,13 @@
    "event": {
     "description": "One cataloged event type.",
     "properties": {
+     "facts": {
+      "description": "Declarative: the payload fields written as facts on the subject. The event then needs no handler.",
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
      "forgets": {
       "description": "`tenant`: the event erases its tenant. `before`: it deletes what closed before it. Either way it takes no handler.",
       "enum": [
@@ -375,6 +382,14 @@
        "string",
        "null"
       ]
+     },
+     "relate": {
+      "additionalProperties": {
+       "pattern": "^[^:{}]+:.*\\{[A-Za-z_][A-Za-z0-9_]*\\}",
+       "type": "string"
+      },
+      "description": "Declarative: relation -> target key template, e.g. {placed_by: \"customer:{customer_id}\"}. The event then needs no handler.",
+      "type": "object"
      },
      "subject": {
       "description": "The entity kind of event.subject.",
@@ -1539,6 +1554,10 @@
    ],
    "/v1/search": [
     "post"
+   ],
+   "/v1/tenants/{tenant}/extension": [
+    "get",
+    "put"
    ]
   },
   "schemas": {

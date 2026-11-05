@@ -246,6 +246,16 @@
             }
           ]
         },
+        "facts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Declarative: the payload fields written as facts on the subject. The event then needs no handler."
+        },
+        "relate": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "pattern": "^[^:{}]+:.*\\{[A-Za-z_][A-Za-z0-9_]*\\}"},
+          "description": "Declarative: relation -> target key template, e.g. {placed_by: \"customer:{customer_id}\"}. The event then needs no handler."
+        },
         "forgets": {
           "enum": [
             "tenant",

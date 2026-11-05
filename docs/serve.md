@@ -96,6 +96,8 @@ KEEL_SECRET=change-me uv run keel serve examples/fleet --transport http --http2 
 | `POST /v1/annotate` | `{"subject", "predicate", "value", "scope"? ("task"), "evidence"?, "by"?, "task"?, "key"?, "status"?, "detail"? ("ack" or "full")}` | a receipt (`subject`, `predicate`, `scope`, `valid_from`, and `valid_to`, `expires_at`, `task`, `status` when set), or the fact with `"full"` |
 | `POST /v1/related` | `{"subject", "relation"?, "as_of"?, "depth"? (1), "limit"? (50; 0 for all)}` | neighbours; when cut, led by `{"more": ...}` |
 | `POST /v1/query` | `{"sql", "limit"? (200; 0: the ceiling)}` | rows keyed by column; only with `--query` (else 404); see [query](#query-read-only-sql) |
+| `PUT /v1/tenants/{tenant}/extension` | an extension (YAML's keys, as JSON) | the stored extension; 422 with every problem; only the secret or a `--extend` key; see [Kinds each tenant brings](operate.md#kinds-each-tenant-brings) |
+| `GET /v1/tenants/{tenant}/extension` | | the tenant's live extension; 404 when it has none; the same access as PUT |
 | `GET /health` | | `{"ok", "cartridge", "revision", "mcp"}`, plus `cdc` and `index` (each only `{"ok"}`) when the server runs them |
 | `GET /openapi.json` | | the contract, for generated clients |
 

@@ -88,6 +88,7 @@ The parameters of 0.19 (§7.1, §7.3, §7.5 of the spec) are in all four runtime
 | Hide predicates, past instant | `exclude=[...]`, `as_of=` | `exclude`, `asOf` | `Exclude`, `AsOf` | `'exclude'`, `'as_of'` |
 | Read-only SQL (server with `--query`) | `query(sql, limit=None)` (`keel.client.Client`) | `query(sql, limit?)` | not yet | not yet |
 | Stored agents (`registry: store`) | `put_agent(id, spec)`, `agents()`, `remove_agent(id)` | `putAgent(id, spec)`, `agents()`, `removeAgent(id)` | `PutAgent(ctx, id, AgentSpec{...})`, `Agents`, `RemoveAgent` | `putAgent($id, $spec)`, `agents()`, `removeAgent($id)` |
+| Tenant extension (operator or `--extend` key) | `put_extension(spec)`, `extension()` (`keel.client.Client`) | not yet | not yet | not yet |
 
 ## Runtime options
 

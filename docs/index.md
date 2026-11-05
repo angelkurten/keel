@@ -22,7 +22,7 @@ Existing memory layers ingest text and documents and model memory per user or pe
 
 ## How Keel is different
 
-1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
+1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers, or none for an event that only maps fields. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product; a tenant that brings data of its own extends it with kinds of its own, without a deploy.
 2. **Events in, not documents.** Keel ingests structured facts with time: your Postgres tables through CDC, an outbox, a typed SDK, webhooks, Kafka, SQS. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.

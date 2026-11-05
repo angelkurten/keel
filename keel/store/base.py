@@ -56,6 +56,7 @@ class ApiKey:
     tenant: str | None = None  # only this tenant of the account
     agent: str | None = None  # calls are made as this agent
     glob: bool = False  # may annotate(scope="global") into account/__global__
+    extend: bool = False  # may set its tenants' extension (keel/extensions.py); never a key that calls as an agent
     revoked_at: datetime | None = None
 
 
@@ -184,6 +185,13 @@ class Store(Protocol):
     # def agent(self, tenant: str, agent_id: str, at: datetime | None = None) -> dict[str, Any] | None: ...  # live at `at` (now)
     # def agents(self, tenant: str) -> dict[str, dict[str, Any]]: ...  # the live ones, by id
     # def remove_agent(self, tenant: str, agent_id: str, at: datetime) -> bool: ...
+
+    # tenant extensions (optional; keel/extensions.py): a tenant's extension as a plain dict, bitemporal like stored agents.
+    # put_extension closes the live version and opens the new one; with `previous` (the version it was validated against,
+    # None for none) it raises ValueError when another is live (compare-and-set). Configuration: reset keeps it, forget
+    # erases it, and a tenant with only an extension is listed by tenants().
+    # def put_extension(self, tenant: str, spec: dict[str, Any], at: datetime, previous: dict[str, Any] | None = ...) -> None: ...
+    # def extension(self, tenant: str, at: datetime | None = None) -> dict[str, Any] | None: ...  # live at `at` (now)
 
     # optional: every tenant with something stored, never the global partition (`--all-tenants` in jobs)
     # def tenants(self) -> list[str]: ...

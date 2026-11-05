@@ -204,6 +204,7 @@ class DuckdbStore(SqlStore):
     # ---- query: the tenant's rows in a sandbox of their own -------------------------------
 
     QUERY_DIALECT = "duckdb"
+    QUERY_SANDBOXED = True  # each tenant's schema is its own sandbox's (a tenant extension's names stay there)
     SANDBOXES = 8  # tenants whose sandbox is kept; the least recently queried is dropped past it
 
     def query_rows(self, tenant: str, cartridge: Any, sql: str, cap: int, timeout: float) -> tuple[list[str], list[tuple[Any, ...]], bool]:

@@ -32,7 +32,7 @@ Existing memory layers (Zep, Mem0, AgentCore Memory, Neo4j's MKG) ingest text an
 
 ## How Keel is different
 
-1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product.
+1. **Cartridges.** A vertical is declared in YAML plus a few ten-line handlers, or none for an event that only maps fields. The core stays generic. Write a cartridge for fleets, clinics, logistics, or your own product; a tenant that brings data of its own extends it with kinds of its own, without a deploy.
 2. **Events in, not documents.** Keel ingests structured facts with time: your Postgres tables through CDC, an outbox, a typed SDK, webhooks, Kafka, SQS. Ingestion is deterministic and cheap. The graph is exact because it is born from events, not inferred from text.
 3. **Every fact carries its provenance.** Source, `valid_from`, `valid_to`, `recorded_at`, and who corrected it. Audit-ready by construction.
 4. **One graph per tenant.** One subgraph per end-customer, household or team, with its own permissions and expiry.
@@ -143,6 +143,7 @@ Shipped:
 - [x] Semantic search: hybrid, ids first, rerankers, pluggable vector index and embedder, with an eval bench
 - [x] Postgres CDC: follow your own tables through logical replication (0.28.0)
 - [x] `query`, the optional sixth tool: read-only SQL generated from the cartridge, bound to one tenant by the store (0.35.0)
+- [x] Agents created at runtime per tenant (0.37.0); tenant extensions: kinds and events each tenant brings, declarative and additive, without a deploy (next minor)
 
 Open:
 

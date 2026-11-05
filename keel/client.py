@@ -187,3 +187,12 @@ class Client:
     def remove_agent(self, agent_id: str) -> dict[str, Any]:
         """Close this tenant's agent; the audit keeps who it was."""
         return self._request("DELETE", f"/v1/agents/{quote(agent_id, safe='')}")
+
+    # tenant extensions (keel/extensions.py): the operator's secret or a key created --extend, never an agent's
+    def put_extension(self, spec: dict[str, Any]) -> dict[str, Any]:
+        """Store this tenant's extension, the next version of the live one: additive and declarative, or refused (422)."""
+        return self._request("PUT", f"/v1/tenants/{quote(self.tenant, safe='')}/extension", spec)
+
+    def extension(self) -> dict[str, Any]:
+        """This tenant's live extension (404 when it has none)."""
+        return self._request("GET", f"/v1/tenants/{quote(self.tenant, safe='')}/extension")

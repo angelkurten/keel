@@ -54,7 +54,9 @@ class SqliteStore(SqlStore):
     CREATE TABLE IF NOT EXISTS cutoffs (tenant TEXT NOT NULL PRIMARY KEY, cut TEXT NOT NULL, at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS accounts (id TEXT NOT NULL PRIMARY KEY, rps INTEGER, events_month INTEGER, store TEXT, retention TEXT);
     CREATE TABLE IF NOT EXISTS agents (tenant TEXT NOT NULL, id TEXT NOT NULL, spec TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT);
-    CREATE INDEX IF NOT EXISTS agents_id ON agents (tenant, id)
+    CREATE INDEX IF NOT EXISTS agents_id ON agents (tenant, id);
+    CREATE TABLE IF NOT EXISTS extensions (tenant TEXT NOT NULL, spec TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT);
+    CREATE INDEX IF NOT EXISTS extensions_tenant ON extensions (tenant)
     """
     UPSERT_ENTITY = (
         "INSERT INTO entities (tenant, kind, id, ref, attrs) VALUES (?, ?, ?, ?, ?) "
@@ -137,6 +139,7 @@ class SqliteStore(SqlStore):
     # ---- query: the tenant's rows in a sandbox of their own -------------------------------
 
     QUERY_DIALECT = "sqlite"
+    QUERY_SANDBOXED = True  # each tenant's schema is its own sandbox's (a tenant extension's names stay there)
     SANDBOXES = 8  # tenants whose sandbox is kept; the least recently queried is dropped past it
     EXPANDED_MAX = 200_000  # characters an agent's query may grow to with its macros inlined (the largest one alone: ~5,000)
 

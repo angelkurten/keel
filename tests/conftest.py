@@ -20,7 +20,7 @@ for _k in ("KEEL_TENANT", "KEEL_AGENT", "KEEL_DB", "KEEL_INDEX", "KEEL_EMBEDDER"
 EXTERNAL = os.environ.get("KEEL_STORE")  # "pkg.module:factory": a third store runs the conformance suite and the battery
 MYSQL = os.environ.get("KEEL_MYSQL_URL")  # mysql://root:keel@127.0.0.1:3306/keel, see CONTRIBUTING
 POSTGRES = os.environ.get("KEEL_POSTGRES_URL")  # postgresql://postgres:keel@127.0.0.1:5499/keel (uv sync --extra postgres)
-TABLES = ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts", "agents")
+TABLES = ("entities", "relations", "facts", "ingested", "forgotten", "api_keys", "metering", "cutoffs", "accounts", "agents", "extensions")
 
 
 @pytest.fixture(params=["memory", "sqlite"] + (["mysql"] if MYSQL else []) + (["postgres"] if POSTGRES else []) + (["external"] if EXTERNAL else []))
