@@ -166,12 +166,12 @@ From a multi-tenant agents platform that creates agents from its UI, per custome
 
 - [x] Stored agents: with `registry: store`, a tenant keeps agents of its own that `extends` a cartridge entry (a profile) and may only narrow it; bitemporal, closed never deleted, erased by `forget`; resolved after the cartridge's entries and cached a few seconds, so an edit needs no restart; `PUT/GET/DELETE /v1/agents/{id}`, `keel agents set|list|rm`, `keel validate --db`, and every SDK (0.37.0)
 
-## Next minor — tenant extensions (unreleased)
+## 0.38 — tenant extensions (0.38.0 on 2026-11-04)
 
 From the same agents platform: each organization connects its own data sources, so its kinds cannot all live in one shared cartridge ([#7](https://github.com/angelkurten/keel/issues/7)). Decided 2026-11-04: an extension is additive, declarative and monotone.
 
-- [x] Declarative events: `facts:` and `relate:` in the catalog map payload fields to facts and relations with no handler, in any cartridge (SPEC §5.2)
-- [x] Tenant extensions: a per-tenant fragment of kinds, relations, events, rules and predicates layered on the cartridge; additive (never a cartridge name; a later collision keeps the cartridge's meaning and `keel validate --db` reports it), declarative only, monotone (`retired:` instead of removal, so replay with the live version rebuilds the same graph); stored bitemporally, kept by replay, erased by `forget`, applied within seconds without a restart; `PUT/GET /v1/tenants/{tenant}/extension`, `keel extension set|get|validate`, `keel validate --extension`, `keel keys create --extend`, the Python client (SPEC §5.7)
+- [x] Declarative events: `facts:` and `relate:` in the catalog map payload fields to facts and relations with no handler, in any cartridge (SPEC §5.2) (0.38.0)
+- [x] Tenant extensions: a per-tenant fragment of kinds, relations, events, rules and predicates layered on the cartridge; additive (never a cartridge name; a later collision keeps the cartridge's meaning and `keel validate --db` reports it), declarative only, monotone (`retired:` instead of removal, so replay with the live version rebuilds the same graph); stored bitemporally, kept by replay, erased by `forget`, applied within seconds without a restart; `PUT/GET /v1/tenants/{tenant}/extension`, `keel extension set|get|validate`, `keel validate --extension`, `keel keys create --extend`, the Python client (SPEC §5.7) (0.38.0)
 - [ ] The extension in the TypeScript, Go and PHP runtimes
 - [ ] Per-tenant MCP instructions on a server for many tenants, so an agent is told its tenant's extension kinds
 

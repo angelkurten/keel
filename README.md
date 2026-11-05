@@ -20,7 +20,7 @@ keel init fleet --example fleet          # also crm, clinics, finance
 keel context fleet fleet/events.jsonl unit:MXK-4821
 ```
 
-> Status: 0.37.0, alpha. Container: `ghcr.io/angelkurten/keel`. The five tools (plus `query`, an optional read-only SQL sixth, off by default) over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run), MySQL (`--db mysql://...`), Postgres (`--db postgresql://...`) or DuckDB (from Python).
+> Status: 0.38.0, alpha. Container: `ghcr.io/angelkurten/keel`. The five tools (plus `query`, an optional read-only SQL sixth, off by default) over MCP and an HTTP JSON API (`/v1`), Postgres, webhook, Kafka and SQS adapters, semantic search, consolidation, an agent registry and SDKs for TypeScript, Python, Go and PHP, on the in-memory store, SQLite (`--db keel.db`, stdlib, no server to run), MySQL (`--db mysql://...`), Postgres (`--db postgresql://...`) or DuckDB (from Python).
 
 ![Terminal demo: validate the stream against the cartridge, ingest, ask for a tire's context with the rule's verdict, run an agent with no LLM](docs/demo.gif)
 
@@ -143,7 +143,7 @@ Shipped:
 - [x] Semantic search: hybrid, ids first, rerankers, pluggable vector index and embedder, with an eval bench
 - [x] Postgres CDC: follow your own tables through logical replication (0.28.0)
 - [x] `query`, the optional sixth tool: read-only SQL generated from the cartridge, bound to one tenant by the store (0.35.0)
-- [x] Agents created at runtime per tenant (0.37.0); tenant extensions: kinds and events each tenant brings, declarative and additive, without a deploy (next minor)
+- [x] Agents created at runtime per tenant (0.37.0); tenant extensions: kinds and events each tenant brings, declarative and additive, without a deploy (0.38.0)
 
 Open:
 

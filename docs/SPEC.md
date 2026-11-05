@@ -1,6 +1,6 @@
 # Keel specification
 
-Version 0.37 · 2026-11-02 · Status: normative for the 0.37.x line; anything marked *planned* is not implemented yet.
+Version 0.38 · 2026-11-04 · Status: normative for the 0.38.x line; anything marked *planned* is not implemented yet.
 
 This document is the contract. `CLAUDE.md` says how to work on the code; `README.md` says why Keel exists. If the code and this document disagree, one of them is wrong; open an issue.
 
